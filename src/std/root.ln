@@ -1030,7 +1030,535 @@ export type gmat4x2f = WgpuType{"mat4x2f"};
 export type gmat4x3f = WgpuType{"mat4x3f"};
 export type gmat4x4f = WgpuType{"mat4x4f"};
 
-// TODO: Constructors for matrix types
+export fn gmat2x2f() -> gmat2x2f = gmat2x2f("mat2x2f()", Dict{string, string}(), Set{GBuffer}());
+export fn gmat2x2f(a: gvec2f, b: gvec2f) -> gmat2x2f {
+  let statement = "mat2x2f(".concat(a.varName).concat(", ").concat(b.varName).concat(")");
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat2x2f(statement, statements, buffers);
+}
+export fn gmat2x2f(a: gf32, b: gf32, c: gf32, d: gf32) -> gmat2x2f {
+  let statement = "mat2x2f("
+    .concat(a.varName)
+    .concat(", ")
+    .concat(b.varName)
+    .concat(", ")
+    .concat(c.varName)
+    .concat(", ")
+    .concat(d.varName)
+    .concat(")");
+  let statements = a.statements.concat(b.statements).concat(c.statements).concat(d.statements);
+  let buffers = a.buffers.union(b.buffers).union(c.buffers).union(d.buffers);
+  return gmat2x2f(statement, statements, buffers);
+}
+
+export fn gmat2x3f() -> gmat2x3f = gmat2x3f("mat2x3f()", Dict{string, string}(), Set{GBuffer}());
+export fn gmat2x3f(a: gvec3f, b: gvec3f) -> gmat2x3f {
+  let statement = "mat2x3f(".concat(a.varName).concat(", ").concat(b.varName).concat(")");
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat2x3f(statement, statements, buffers);
+}
+export fn gmat2x3f(a: gf32, b: gf32, c: gf32, d: gf32, e: gf32, f: gf32) -> gmat2x3f {
+  let statement = "mat2x3f("
+    .concat(a.varName)
+    .concat(", ")
+    .concat(b.varName)
+    .concat(", ")
+    .concat(c.varName)
+    .concat(", ")
+    .concat(d.varName)
+    .concat(", ")
+    .concat(e.varName)
+    .concat(", ")
+    .concat(f.varName)
+    .concat(")");
+  let statements = a.statements
+    .concat(b.statements)
+    .concat(c.statements)
+    .concat(d.statements)
+    .concat(e.statements)
+    .concat(f.statements);
+  let buffers = a.buffers
+    .union(b.buffers)
+    .union(c.buffers)
+    .union(d.buffers)
+    .union(e.buffers)
+    .union(f.buffers);
+  return gmat2x3f(statement, statements, buffers);
+}
+
+export fn gmat2x4f() -> gmat2x4f = gmat2x4f("mat2x4f()", Dict{string, string}(), Set{GBuffer}());
+export fn gmat2x4f(a: gvec4f, b: gvec4f) -> gmat2x4f {
+  let statement = "mat2x4f(".concat(a.varName).concat(", ").concat(b.varName).concat(")");
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat2x4f(statement, statements, buffers);
+}
+export fn gmat2x4f(a: gf32, b: gf32, c: gf32, d: gf32, e: gf32, f: gf32, g: gf32, h: gf32) -> gmat2x4f {
+  let statement = "mat2x4f("
+    .concat(a.varName)
+    .concat(", ")
+    .concat(b.varName)
+    .concat(", ")
+    .concat(c.varName)
+    .concat(", ")
+    .concat(d.varName)
+    .concat(", ")
+    .concat(e.varName)
+    .concat(", ")
+    .concat(f.varName)
+    .concat(", ")
+    .concat(g.varName)
+    .concat(", ")
+    .concat(h.varName)
+    .concat(")");
+  let statements = a.statements
+    .concat(b.statements)
+    .concat(c.statements)
+    .concat(d.statements)
+    .concat(e.statements)
+    .concat(f.statements)
+    .concat(g.statements)
+    .concat(h.statements);
+  let buffers = a.buffers
+    .union(b.buffers)
+    .union(c.buffers)
+    .union(d.buffers)
+    .union(e.buffers)
+    .union(f.buffers)
+    .union(g.buffers)
+    .union(h.buffers);
+  return gmat2x4f(statement, statements, buffers);
+}
+
+export fn gmat3x2f() -> gmat3x2f = gmat3x2f("mat3x2f()", Dict{string, string}(), Set{GBuffer}());
+export fn gmat3x2f(a: gvec2f, b: gvec2f, c: gvec2f) -> gmat3x2f {
+  let statement = "mat3x2f("
+    .concat(a.varName)
+    .concat(", ")
+    .concat(b.varName)
+    .concat(", ")
+    .concat(c.varName)
+    .concat(")");
+  let statements = a.statements.concat(b.statements).concat(c.statements);
+  let buffers = a.buffers.union(b.buffers).union(c.buffers);
+  return gmat3x2f(statement, statements, buffers);
+}
+export fn gmat3x2f(a: gf32, b: gf32, c: gf32, d: gf32, e: gf32, f: gf32) -> gmat3x2f {
+  let statement = "mat3x2f("
+    .concat(a.varName)
+    .concat(", ")
+    .concat(b.varName)
+    .concat(", ")
+    .concat(c.varName)
+    .concat(", ")
+    .concat(d.varName)
+    .concat(", ")
+    .concat(e.varName)
+    .concat(", ")
+    .concat(f.varName)
+    .concat(")");
+  let statements = a.statements
+    .concat(b.statements)
+    .concat(c.statements)
+    .concat(d.statements)
+    .concat(e.statements)
+    .concat(f.statements);
+  let buffers = a.buffers
+    .union(b.buffers)
+    .union(c.buffers)
+    .union(d.buffers)
+    .union(e.buffers)
+    .union(f.buffers);
+  return gmat3x2f(statement, statements, buffers);
+}
+
+export fn gmat3x3f() -> gmat3x3f = gmat3x3f("mat3x3f()", Dict{string, string}(), Set{GBuffer}());
+export fn gmat3x3f(a: gvec3f, b: gvec3f, c: gvec3f) -> gmat3x3f {
+  let statement = "mat3x3f("
+    .concat(a.varName)
+    .concat(", ")
+    .concat(b.varName)
+    .concat(", ")
+    .concat(c.varName)
+    .concat(")");
+  let statements = a.statements.concat(b.statements).concat(c.statements);
+  let buffers = a.buffers.union(b.buffers).union(c.buffers);
+  return gmat3x3f(statement, statements, buffers);
+}
+export fn gmat3x3f(
+  a: gf32,
+  b: gf32,
+  c: gf32,
+  d: gf32,
+  e: gf32,
+  f: gf32,
+  g: gf32,
+  h: gf32,
+  i: gf32
+) -> gmat3x3f {
+  let statement = "mat3x3f("
+    .concat(a.varName)
+    .concat(", ")
+    .concat(b.varName)
+    .concat(", ")
+    .concat(c.varName)
+    .concat(", ")
+    .concat(d.varName)
+    .concat(", ")
+    .concat(e.varName)
+    .concat(", ")
+    .concat(f.varName)
+    .concat(", ")
+    .concat(g.varName)
+    .concat(", ")
+    .concat(h.varName)
+    .concat(", ")
+    .concat(i.varName)
+    .concat(")");
+  let statements = a.statements
+    .concat(b.statements)
+    .concat(c.statements)
+    .concat(d.statements)
+    .concat(e.statements)
+    .concat(f.statements)
+    .concat(g.statements)
+    .concat(h.statements)
+    .concat(i.statements);
+  let buffers = a.buffers
+    .union(b.buffers)
+    .union(c.buffers)
+    .union(d.buffers)
+    .union(e.buffers)
+    .union(f.buffers)
+    .union(g.buffers)
+    .union(h.buffers)
+    .union(i.buffers);
+  return gmat3x3f(statement, statements, buffers);
+}
+
+export fn gmat3x4f() -> gmat3x4f = gmat3x4f("mat3x4f()", Dict{string, string}(), Set{GBuffer}());
+export fn gmat3x4f(a: gvec4f, b: gvec4f, c: gvec4f) -> gmat3x4f {
+  let statement = "mat3x4f("
+    .concat(a.varName)
+    .concat(", ")
+    .concat(b.varName)
+    .concat(", ")
+    .concat(c.varName)
+    .concat(")");
+  let statements = a.statements.concat(b.statements).concat(c.statements);
+  let buffers = a.buffers.union(b.buffers).union(c.buffers);
+  return gmat3x4f(statement, statements, buffers);
+}
+export fn gmat3x4f(
+  a: gf32,
+  b: gf32,
+  c: gf32,
+  d: gf32,
+  e: gf32,
+  f: gf32,
+  g: gf32,
+  h: gf32,
+  i: gf32,
+  j: gf32,
+  k: gf32,
+  l: gf32
+) -> gmat3x4f {
+  let statement = "mat3x4f("
+    .concat(a.varName)
+    .concat(", ")
+    .concat(b.varName)
+    .concat(", ")
+    .concat(c.varName)
+    .concat(", ")
+    .concat(d.varName)
+    .concat(", ")
+    .concat(e.varName)
+    .concat(", ")
+    .concat(f.varName)
+    .concat(", ")
+    .concat(g.varName)
+    .concat(", ")
+    .concat(h.varName)
+    .concat(", ")
+    .concat(i.varName)
+    .concat(", ")
+    .concat(j.varName)
+    .concat(", ")
+    .concat(k.varName)
+    .concat(", ")
+    .concat(l.varName)
+    .concat(")");
+  let statements = a.statements
+    .concat(b.statements)
+    .concat(c.statements)
+    .concat(d.statements)
+    .concat(e.statements)
+    .concat(f.statements)
+    .concat(g.statements)
+    .concat(h.statements)
+    .concat(i.statements)
+    .concat(j.statements)
+    .concat(k.statements)
+    .concat(l.statements);
+  let buffers = a.buffers
+    .union(b.buffers)
+    .union(c.buffers)
+    .union(d.buffers)
+    .union(e.buffers)
+    .union(f.buffers)
+    .union(g.buffers)
+    .union(h.buffers)
+    .union(i.buffers)
+    .union(j.buffers)
+    .union(k.buffers)
+    .union(l.buffers);
+  return gmat3x4f(statement, statements, buffers);
+}
+
+export fn gmat4x2f() -> gmat4x2f = gmat4x2f("mat4x2f()", Dict{string, string}(), Set{GBuffer}());
+export fn gmat4x2f(a: gvec2f, b: gvec2f, c: gvec2f, d: gvec2f) -> gmat4x2f {
+  let statement = "mat4x2f("
+    .concat(a.varName)
+    .concat(", ")
+    .concat(b.varName)
+    .concat(", ")
+    .concat(c.varName)
+    .concat(", ")
+    .concat(d.varName)
+    .concat(")");
+  let statements = a.statements.concat(b.statements).concat(c.statements).concat(d.statements);
+  let buffers = a.buffers.union(b.buffers).union(c.buffers).union(d.buffers);
+  return gmat4x2f(statement, statements, buffers);
+}
+export fn gmat4x2f(
+  a: gf32,
+  b: gf32,
+  c: gf32,
+  d: gf32,
+  e: gf32,
+  f: gf32,
+  g: gf32,
+  h: gf32
+) -> gmat4x2f {
+  let statement = "mat4x2f("
+    .concat(a.varName)
+    .concat(", ")
+    .concat(b.varName)
+    .concat(", ")
+    .concat(c.varName)
+    .concat(", ")
+    .concat(d.varName)
+    .concat(", ")
+    .concat(e.varName)
+    .concat(", ")
+    .concat(f.varName)
+    .concat(", ")
+    .concat(g.varName)
+    .concat(", ")
+    .concat(h.varName)
+    .concat(")");
+  let statements = a.statements
+    .concat(b.statements)
+    .concat(c.statements)
+    .concat(d.statements)
+    .concat(e.statements)
+    .concat(f.statements)
+    .concat(g.statements)
+    .concat(h.statements);
+  let buffers = a.buffers
+    .union(b.buffers)
+    .union(c.buffers)
+    .union(d.buffers)
+    .union(e.buffers)
+    .union(f.buffers)
+    .union(g.buffers)
+    .union(h.buffers);
+  return gmat4x2f(statement, statements, buffers);
+}
+
+export fn gmat4x3f() -> gmat4x3f = gmat4x3f("mat4x3f()", Dict{string, string}(), Set{GBuffer}());
+export fn gmat4x3f(a: gvec3f, b: gvec3f, c: gvec3f, d: gvec3f) -> gmat4x3f {
+  let statement = "mat4x3f("
+    .concat(a.varName)
+    .concat(", ")
+    .concat(b.varName)
+    .concat(", ")
+    .concat(c.varName)
+    .concat(", ")
+    .concat(d.varName)
+    .concat(")");
+  let statements = a.statements.concat(b.statements).concat(c.statements).concat(d.statements);
+  let buffers = a.buffers.union(b.buffers).union(c.buffers).union(d.buffers);
+  return gmat4x3f(statement, statements, buffers);
+}
+export fn gmat4x3f(
+  a: gf32,
+  b: gf32,
+  c: gf32,
+  d: gf32,
+  e: gf32,
+  f: gf32,
+  g: gf32,
+  h: gf32,
+  i: gf32,
+  j: gf32,
+  k: gf32,
+  l: gf32
+) -> gmat4x3f {
+  let statement = "mat4x3f("
+    .concat(a.varName)
+    .concat(", ")
+    .concat(b.varName)
+    .concat(", ")
+    .concat(c.varName)
+    .concat(", ")
+    .concat(d.varName)
+    .concat(", ")
+    .concat(e.varName)
+    .concat(", ")
+    .concat(f.varName)
+    .concat(", ")
+    .concat(g.varName)
+    .concat(", ")
+    .concat(h.varName)
+    .concat(", ")
+    .concat(i.varName)
+    .concat(", ")
+    .concat(j.varName)
+    .concat(", ")
+    .concat(k.varName)
+    .concat(", ")
+    .concat(l.varName)
+    .concat(")");
+  let statements = a.statements
+    .concat(b.statements)
+    .concat(c.statements)
+    .concat(d.statements)
+    .concat(e.statements)
+    .concat(f.statements)
+    .concat(g.statements)
+    .concat(h.statements)
+    .concat(i.statements)
+    .concat(j.statements)
+    .concat(k.statements)
+    .concat(l.statements);
+  let buffers = a.buffers
+    .union(b.buffers)
+    .union(c.buffers)
+    .union(d.buffers)
+    .union(e.buffers)
+    .union(f.buffers)
+    .union(g.buffers)
+    .union(h.buffers)
+    .union(i.buffers)
+    .union(j.buffers)
+    .union(k.buffers)
+    .union(l.buffers);
+  return gmat4x3f(statement, statements, buffers);
+}
+
+export fn gmat4x4f() -> gmat4x4f = gmat4x4f("mat4x4f()", Dict{string, string}(), Set{GBuffer}());
+export fn gmat4x4f(a: gvec4f, b: gvec4f, c: gvec4f, d: gvec4f) -> gmat4x4f {
+  let statement = "mat4x4f("
+    .concat(a.varName)
+    .concat(", ")
+    .concat(b.varName)
+    .concat(", ")
+    .concat(c.varName)
+    .concat(", ")
+    .concat(d.varName)
+    .concat(")");
+  let statements = a.statements.concat(b.statements).concat(c.statements).concat(d.statements);
+  let buffers = a.buffers.union(b.buffers).union(c.buffers).union(d.buffers);
+  return gmat4x4f(statement, statements, buffers);
+}
+export fn gmat4x4f(
+  a: gf32,
+  b: gf32,
+  c: gf32,
+  d: gf32,
+  e: gf32,
+  f: gf32,
+  g: gf32,
+  h: gf32,
+  i: gf32,
+  j: gf32,
+  k: gf32,
+  l: gf32,
+  m: gf32,
+  n: gf32,
+  o: gf32,
+  p: gf32
+) -> gmat4x4f {
+  let statement = "mat4x4f("
+    .concat(a.varName)
+    .concat(", ")
+    .concat(b.varName)
+    .concat(", ")
+    .concat(c.varName)
+    .concat(", ")
+    .concat(d.varName)
+    .concat(", ")
+    .concat(e.varName)
+    .concat(", ")
+    .concat(f.varName)
+    .concat(", ")
+    .concat(g.varName)
+    .concat(", ")
+    .concat(h.varName)
+    .concat(", ")
+    .concat(i.varName)
+    .concat(", ")
+    .concat(j.varName)
+    .concat(", ")
+    .concat(k.varName)
+    .concat(", ")
+    .concat(l.varName)
+    .concat(", ")
+    .concat(m.varName)
+    .concat(", ")
+    .concat(n.varName)
+    .concat(", ")
+    .concat(o.varName)
+    .concat(", ")
+    .concat(p.varName)
+    .concat(")");
+  let statements = a.statements
+    .concat(b.statements)
+    .concat(c.statements)
+    .concat(d.statements)
+    .concat(e.statements)
+    .concat(f.statements)
+    .concat(g.statements)
+    .concat(h.statements)
+    .concat(i.statements)
+    .concat(j.statements)
+    .concat(k.statements)
+    .concat(l.statements)
+    .concat(m.statements)
+    .concat(n.statements)
+    .concat(o.statements)
+    .concat(p.statements);
+  let buffers = a.buffers
+    .union(b.buffers)
+    .union(c.buffers)
+    .union(d.buffers)
+    .union(e.buffers)
+    .union(f.buffers)
+    .union(g.buffers)
+    .union(h.buffers)
+    .union(i.buffers)
+    .union(j.buffers)
+    .union(k.buffers)
+    .union(l.buffers)
+    .union(m.buffers)
+    .union(n.buffers)
+    .union(o.buffers)
+    .union(p.buffers);
+  return gmat4x4f(statement, statements, buffers);
+}
 
 // TODO: Fixed-length buffers within wgsl
 
