@@ -25,6 +25,10 @@ divan = "0.1.14"
 name = "map"
 harness = false
 
+[[bench]]
+name = "fill"
+harness = false
+
 [[bin]]
 name = "alan"
 test = false
