@@ -1771,30 +1771,6 @@ test!(object_and_array_reassignment => r#"
     }"#;
     stdout "1\n0\n2\ntrue\nfalse\n";
 );
-/* Pending
-test_ignore!(map_support => r#"
-    from @std/app import start, print, exit
-
-    on start {
-      const test5 = new Map<bool, int64> {
-        true: 1
-        false: 0
-      }
-
-      print(test5[true])
-      print(test5[false])
-
-      let test6 = new Map<string, string> {
-        'foo': 'bar'
-      }
-      test6['foo'] = 'baz'
-      print(test6['foo'])
-
-      emit exit 0
-    }"#;
-    stdout "1\n0\nbaz\n";
-);
-*/
 
 // Arrays
 
@@ -2726,10 +2702,10 @@ test!(user_types_and_generics => r#"
 // Closures
 
 test_ignore!(closure_creation_and_usage => r#"
-    fn closure() -> function {
+    fn closure() -> (() -> i64) {
       let num = 0;
       return fn () -> i64 {
-        num = num + 1 || 0;
+        num = num + 1;
         return num;
       };
     }
@@ -2758,7 +2734,6 @@ test_ignore!(inlined_closure_with_arg => r#"
         print(argh);
       };
       arghFn('argh');
-      emit exit 0;
     }"#;
     stdout "argh\n";
 );
