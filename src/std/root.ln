@@ -151,6 +151,7 @@ export fn getOr{T}(v: Maybe{T}, d: T) -> T binds maybe_get_or;
 export fn getOr{T}(v: Fallible{T}, d: T) -> T binds fallible_get_or;
 export fn getOr{T, U}(v: U, d: T) -> T = {T}(v).getOr(d);
 export fn Error{T}(m: string) -> Fallible{T} binds fallible_error;
+export fn Error(m: string) -> Error binds bare_error;
 export fn exists{T}(v: Maybe{T}) -> bool binds maybe_exists;
 
 /// Signed Integer-related functions and function bindings

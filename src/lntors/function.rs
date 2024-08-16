@@ -338,8 +338,8 @@ pub fn from_microstatement(
                                     if ts.len() == 2 {
                                         if let CType::Void = &ts[1] {
                                             return Ok((argstrs[0].clone(), out));
-                                        } else if let CType::Binds(rustname) = &ts[1] {
-                                            if rustname == "AlanError" {
+                                        } else if let CType::Type(name, _) = &ts[1] {
+                                            if name == "Error" {
                                                 if function.name == "Error" {
                                                     return Ok((format!("(match {} {{ Err(e) => Some(e.clone()), _ => None }})", argstrs[0]), out));
                                                 } else {
@@ -429,18 +429,24 @@ pub fn from_microstatement(
                                                             out,
                                                         ));
                                                     }
-                                                } else if let CType::Binds(rustname) = &ts[1] {
-                                                    if rustname == "AlanError" {
+                                                } else if let CType::Type(name, _) = &ts[1] {
+                                                    if name == "Error" {
+                                                        let okrustname =
+                                                            typen::ctype_to_rtype(&ts[0], true)?;
+                                                        let errrustname =
+                                                            typen::ctype_to_rtype(&ts[1], true)?;
                                                         if let CType::Binds(..) = t {
                                                             return Ok((
                                                                 format!(
-                                                                    "{} = Err({})",
+                                                                    "{} = Err::<{}, {}>({})",
                                                                     match argstrs[0]
                                                                         .strip_prefix("&mut ")
                                                                     {
                                                                         Some(s) => s,
                                                                         None => &argstrs[0],
                                                                     },
+                                                                    okrustname,
+                                                                    errrustname,
                                                                     match argstrs[1]
                                                                         .strip_prefix("&mut ")
                                                                     {
@@ -453,13 +459,15 @@ pub fn from_microstatement(
                                                         } else {
                                                             return Ok((
                                                                 format!(
-                                                                    "{} = Ok({})",
+                                                                    "{} = Ok::<{}, {}>({})",
                                                                     match argstrs[0]
                                                                         .strip_prefix("&mut ")
                                                                     {
                                                                         Some(s) => s,
                                                                         None => &argstrs[0],
                                                                     },
+                                                                    okrustname,
+                                                                    errrustname,
                                                                     match argstrs[1]
                                                                         .strip_prefix("&mut ")
                                                                     {
@@ -528,18 +536,24 @@ pub fn from_microstatement(
                                                             out,
                                                         ));
                                                     }
-                                                } else if let CType::Binds(rustname) = &ts[1] {
-                                                    if rustname == "AlanError" {
+                                                } else if let CType::Type(name, _) = &ts[1] {
+                                                    if name == "Error" {
+                                                        let okrustname =
+                                                            typen::ctype_to_rtype(&ts[0], true)?;
+                                                        let errrustname =
+                                                            typen::ctype_to_rtype(&ts[1], true)?;
                                                         if let CType::Binds(..) = t {
                                                             return Ok((
                                                                 format!(
-                                                                    "{} = Err({})",
+                                                                    "{} = Err::<{}, {}>({})",
                                                                     match argstrs[0]
                                                                         .strip_prefix("&mut ")
                                                                     {
                                                                         Some(s) => s,
                                                                         None => &argstrs[0],
                                                                     },
+                                                                    okrustname,
+                                                                    errrustname,
                                                                     match argstrs[1]
                                                                         .strip_prefix("&mut ")
                                                                     {
@@ -552,13 +566,15 @@ pub fn from_microstatement(
                                                         } else {
                                                             return Ok((
                                                                 format!(
-                                                                    "{} = Ok({})",
+                                                                    "{} = Ok::<{}, {}>({})",
                                                                     match argstrs[0]
                                                                         .strip_prefix("&mut ")
                                                                     {
                                                                         Some(s) => s,
                                                                         None => &argstrs[0],
                                                                     },
+                                                                    okrustname,
+                                                                    errrustname,
                                                                     match argstrs[1]
                                                                         .strip_prefix("&mut ")
                                                                     {
@@ -692,12 +708,18 @@ pub fn from_microstatement(
                                                             out,
                                                         ));
                                                     }
-                                                } else if let CType::Binds(rustname) = &ts[1] {
-                                                    if rustname == "AlanError" {
+                                                } else if let CType::Type(name, _) = &ts[1] {
+                                                    if name == "Error" {
+                                                        let okrustname =
+                                                            typen::ctype_to_rtype(&ts[0], true)?;
+                                                        let errrustname =
+                                                            typen::ctype_to_rtype(&ts[1], true)?;
                                                         if let CType::Binds(..) = t {
                                                             return Ok((
                                                                 format!(
-                                                                    "Err({})",
+                                                                    "Err::<{}, {}>({})",
+                                                                    okrustname,
+                                                                    errrustname,
                                                                     match argstrs[0]
                                                                         .strip_prefix("&mut ")
                                                                     {
@@ -710,7 +732,9 @@ pub fn from_microstatement(
                                                         } else {
                                                             return Ok((
                                                                 format!(
-                                                                    "Ok({})",
+                                                                    "Ok::<{}, {}>({})",
+                                                                    okrustname,
+                                                                    errrustname,
                                                                     match argstrs[0]
                                                                         .strip_prefix("&mut ")
                                                                     {
@@ -758,12 +782,18 @@ pub fn from_microstatement(
                                                             out,
                                                         ));
                                                     }
-                                                } else if let CType::Binds(rustname) = &ts[1] {
-                                                    if rustname == "AlanError" {
+                                                } else if let CType::Type(name, _) = &ts[1] {
+                                                    if name == "Error" {
+                                                        let okrustname =
+                                                            typen::ctype_to_rtype(&ts[0], true)?;
+                                                        let errrustname =
+                                                            typen::ctype_to_rtype(&ts[1], true)?;
                                                         if let CType::Binds(..) = t {
                                                             return Ok((
                                                                 format!(
-                                                                    "Err({})",
+                                                                    "Err::<{}, {}>({})",
+                                                                    okrustname,
+                                                                    errrustname,
                                                                     match argstrs[0]
                                                                         .strip_prefix("&mut ")
                                                                     {
@@ -776,7 +806,9 @@ pub fn from_microstatement(
                                                         } else {
                                                             return Ok((
                                                                 format!(
-                                                                    "Ok({})",
+                                                                    "Ok::<{}, {}>({})",
+                                                                    okrustname,
+                                                                    errrustname,
                                                                     match argstrs[0]
                                                                         .strip_prefix("&mut ")
                                                                     {
@@ -824,12 +856,18 @@ pub fn from_microstatement(
                                                             out,
                                                         ));
                                                     }
-                                                } else if let CType::Binds(rustname) = &ts[1] {
-                                                    if rustname == "AlanError" {
+                                                } else if let CType::Type(name, _) = &ts[1] {
+                                                    if name == "Error" {
+                                                        let okrustname =
+                                                            typen::ctype_to_rtype(&ts[0], true)?;
+                                                        let errrustname =
+                                                            typen::ctype_to_rtype(&ts[1], true)?;
                                                         if let CType::Binds(..) = t {
                                                             return Ok((
                                                                 format!(
-                                                                    "Err({})",
+                                                                    "Err::<{}, {}>({})",
+                                                                    okrustname,
+                                                                    errrustname,
                                                                     match argstrs[0]
                                                                         .strip_prefix("&mut ")
                                                                     {
@@ -842,7 +880,9 @@ pub fn from_microstatement(
                                                         } else {
                                                             return Ok((
                                                                 format!(
-                                                                    "Ok({})",
+                                                                    "Ok::<{}, {}>({})",
+                                                                    okrustname,
+                                                                    errrustname,
                                                                     match argstrs[0]
                                                                         .strip_prefix("&mut ")
                                                                     {
@@ -890,12 +930,18 @@ pub fn from_microstatement(
                                                             out,
                                                         ));
                                                     }
-                                                } else if let CType::Binds(rustname) = &ts[1] {
-                                                    if rustname == "AlanError" {
+                                                } else if let CType::Type(name, _) = &ts[1] {
+                                                    if name == "Error" {
+                                                        let okrustname =
+                                                            typen::ctype_to_rtype(&ts[0], true)?;
+                                                        let errrustname =
+                                                            typen::ctype_to_rtype(&ts[1], true)?;
                                                         if let CType::Binds(..) = t {
                                                             return Ok((
                                                                 format!(
-                                                                    "Err({})",
+                                                                    "Err::<{}, {}>({})",
+                                                                    okrustname,
+                                                                    errrustname,
                                                                     match argstrs[0]
                                                                         .strip_prefix("&mut ")
                                                                     {
@@ -908,7 +954,9 @@ pub fn from_microstatement(
                                                         } else {
                                                             return Ok((
                                                                 format!(
-                                                                    "Ok({})",
+                                                                    "Ok::<{}, {}>({})",
+                                                                    okrustname,
+                                                                    errrustname,
                                                                     match argstrs[0]
                                                                         .strip_prefix("&mut ")
                                                                     {
