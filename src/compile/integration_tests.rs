@@ -2525,51 +2525,30 @@ test!(maybe_exists => r#"
     stdout "true\nfalse\ntrue\n";
 );
 
-test_ignore!(maybe => r#"
-    fn fiver(val: float64) {
-      if val.i64 == 5 {
-        return some(5);
-      } else {
-        return none;
-      }
-    }
+test!(maybe => r#"
+    // TODO: Rewrite these conditionals with conditional syntax once implemented
+    fn fiver(val: f64) -> i64? = if(val.i64 == 5,
+      fn () -> i64? = {i64?}(5),
+      fn () -> i64? = {i64?}());
 
     export fn main {
       const maybe5 = fiver(5.5);
-      if maybe5.isSome {
-        print(maybe5.getOr(0));
-      } else {
-        print('what?');
-      }
+      if(maybe5.exists,
+        fn = maybe5.getOr(0).print,
+        fn = 'what?'.print);
 
       const maybeNot5 = fiver(4.4);
-      if maybeNot5.isNone {
-        print('Correctly received nothing!');
-      } else {
-        print('uhhh');
-      }
+      if(!maybeNot5.exists,
+        fn = 'Correctly received nothing!'.print,
+        fn = 'uhhh'.print);
 
-      if maybe5.isSome {
-        print(maybe5 || 0);
-      } else {
-        print('what?');
-      }
-
-      if maybeNot5.isNone {
-        print('Correctly received nothing!');
-      } else {
-        print('uhhh');
-      }
-
-      maybe5.string.print;
-      maybeNot5.string.print;
+      maybe5.print;
+      maybeNot5.print;
     }"#;
     stdout r#"5
 Correctly received nothing!
 5
-Correctly received nothing!
-5
-none
+void
 "#;
 );
 test!(fallible => r#"
