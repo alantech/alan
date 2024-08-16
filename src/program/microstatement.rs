@@ -290,13 +290,19 @@ pub fn baseassignablelist_to_microstatements(
                 match c {
                     parse::Constants::Bool(b) => {
                         prior_value = Some(Microstatement::Value {
-                            typen: CType::Bound("bool".to_string(), "bool".to_string()),
+                            typen: CType::Type(
+                                "bool".to_string(),
+                                Box::new(CType::Binds("bool".to_string())),
+                            ),
                             representation: b.clone(),
                         });
                     }
                     parse::Constants::Strn(s) => {
                         prior_value = Some(Microstatement::Value {
-                            typen: CType::Bound("string".to_string(), "String".to_string()),
+                            typen: CType::Type(
+                                "string".to_string(),
+                                Box::new(CType::Binds("String".to_string())),
+                            ),
                             representation: if s.starts_with('"') {
                                 s.clone()
                             } else {
@@ -313,7 +319,10 @@ pub fn baseassignablelist_to_microstatements(
                             prior_value = Some(Microstatement::Value {
                                 // TODO: Replace this with the `CType::Float` and have built-ins
                                 // that accept them
-                                typen: CType::Bound("f64".to_string(), "f64".to_string()),
+                                typen: CType::Type(
+                                    "f64".to_string(),
+                                    Box::new(CType::Binds("f64".to_string())),
+                                ),
                                 representation: r.clone(),
                             });
                         }
@@ -321,7 +330,10 @@ pub fn baseassignablelist_to_microstatements(
                             prior_value = Some(Microstatement::Value {
                                 // TODO: Replace this with `CType::Int` and have built-ins that
                                 // accept them
-                                typen: CType::Bound("i64".to_string(), "i64".to_string()),
+                                typen: CType::Type(
+                                    "i64".to_string(),
+                                    Box::new(CType::Binds("i64".to_string())),
+                                ),
                                 representation: i.clone(),
                             });
                         }
@@ -559,13 +571,11 @@ pub fn baseassignablelist_to_microstatements(
                                                 opttypegenerics: None,
                                             },
                                             c: "".to_string(),
-                                            typedef: parse::TypeDef::TypeCreate(
-                                                parse::TypeCreate {
-                                                    a: "=".to_string(),
-                                                    b: "".to_string(),
-                                                    typeassignables: returntypeassignables,
-                                                },
-                                            ),
+                                            typedef: parse::TypeDef {
+                                                a: "=".to_string(),
+                                                b: "".to_string(),
+                                                typeassignables: returntypeassignables,
+                                            },
                                             optsemicolon: ";".to_string(),
                                         };
                                         CType::from_ast(&mut inner_scope, &parse_type, false)?;
@@ -761,11 +771,11 @@ pub fn baseassignablelist_to_microstatements(
                         opttypegenerics: None,
                     },
                     c: "".to_string(),
-                    typedef: parse::TypeDef::TypeCreate(parse::TypeCreate {
+                    typedef: parse::TypeDef {
                         a: "=".to_string(),
                         b: "".to_string(),
                         typeassignables: g.typecalllist.clone(),
-                    }),
+                    },
                     optsemicolon: ";".to_string(),
                 };
                 CType::from_ast(scope, &parse_type, false)?;
@@ -1049,7 +1059,7 @@ pub fn baseassignablelist_to_microstatements(
                                 opttypegenerics: None,
                             },
                             c: "".to_string(),
-                            typedef: parse::TypeDef::TypeCreate(parse::TypeCreate {
+                            typedef: parse::TypeDef {
                                 a: "=".to_string(),
                                 b: "".to_string(),
                                 typeassignables: vec![parse::WithTypeOperators::TypeBaseList(
@@ -1058,7 +1068,7 @@ pub fn baseassignablelist_to_microstatements(
                                         parse::TypeBase::GnCall(g.clone()),
                                     ],
                                 )],
-                            }),
+                            },
                             optsemicolon: ";".to_string(),
                         };
                         let t = CType::from_ast(&mut temp_scope, &parse_type, false)?;
@@ -1466,7 +1476,6 @@ pub fn statement_to_microstatements(
             microstatements,
         )?),
         parse::Statement::ArrayAssignment(arrayassignment) => {
-            println!("Hi!");
             let mut args = Vec::new();
             let mut ms = baseassignablelist_to_microstatements(
                 &[arrayassignment.name.clone()],

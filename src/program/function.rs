@@ -307,11 +307,11 @@ impl Function {
                                         opttypegenerics: None,
                                     },
                                     c: "".to_string(),
-                                    typedef: parse::TypeDef::TypeCreate(parse::TypeCreate {
+                                    typedef: parse::TypeDef {
                                         a: "=".to_string(),
                                         b: "".to_string(),
                                         typeassignables: returntypeassignables,
-                                    }),
+                                    },
                                     optsemicolon: ";".to_string(),
                                 };
                                 CType::from_ast(scope, &parse_type, false)?;
