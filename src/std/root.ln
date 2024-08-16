@@ -8,8 +8,8 @@
 // Declaration of the types the compiler-time type system is built on
 export ctype Type; // Any kind of concrete type
 export ctype Generic; // Any type that is a generic type (not yet realized into a concrete type)
-export ctype Bound; // A direct reference into the platform language's type system equivalent to a concrete type
-export ctype BoundGeneric; // A direct reference into the platform language's generic type system
+export ctype Binds{T}; // A direct reference into the platform language's type system equivalen to a concrete type
+export ctype BindsGeneric{T, N}; // A direct reference into the platform language's generic type system
 export ctype Int; // An integer used *to define a type*, like the length of a fixed array
 export ctype Float; // A float used to define a type. I have no idea why you'd want this, yet
 export ctype Bool; // A bool used to define a type. Heavily used for conditional compilation
@@ -58,7 +58,7 @@ export ctype Gte{A, B}; // Returns true if A is greater than or equal to B
 
 // Defining derived types
 export type void = ();
-export type Error binds AlanError;
+export type Error = Binds{"AlanError"};
 export type Fallible{T} = Either{T, Error};
 export type Maybe{T} = Either{T, ()};
 export type Test = Eq{Env{"ALAN_TARGET"}, "test"};
@@ -98,38 +98,38 @@ export type infix Gt as > precedence 1;
 export type infix Gte as >= precedence 1;
 
 // Binding the integer types
-export type i8 binds i8;
-export type i16 binds i16;
-export type i32 binds i32;
-export type i64 binds i64;
-export type u8 binds u8;
-export type u16 binds u16;
-export type u32 binds u32;
-export type u64 binds u64;
+export type i8 = Binds{"i8"};
+export type i16 = Binds{"i16"};
+export type i32 = Binds{"i32"};
+export type i64 = Binds{"i64"};
+export type u8 = Binds{"u8"};
+export type u16 = Binds{"u16"};
+export type u32 = Binds{"u32"};
+export type u64 = Binds{"u64"};
 
 // Binding the float types
-export type f32 binds f32;
-export type f64 binds f64;
+export type f32 = Binds{"f32"};
+export type f64 = Binds{"f64"};
 
 // Binding the string types
-export type string binds String;
+export type string = Binds{"String"};
 
 // Binding the boolean types
-export type bool binds bool;
+export type bool = Binds{"bool"};
 
 // Binding the exit code type
-export type ExitCode binds std::process::ExitCode;
+export type ExitCode = Binds{"std::process::ExitCode"};
 
 // Binding the time types
-export type Instant binds std::time::Instant;
-export type Duration binds std::time::Duration;
+export type Instant = Binds{"std::time::Instant"};
+export type Duration = Binds{"std::time::Duration"};
 
 // Binding the uuid type
-export type uuid binds uuid::Uuid;
+export type uuid = Binds{"uuid::Uuid"};
 
 // Binding the Dict and Set types
-export type Dict{K, V} binds OrderedHashMap<K, V>;
-export type Set{V} binds std::collections::HashSet<V>;
+export type Dict{K, V} = BindsGeneric{"OrderedHashMap", K, V};
+export type Set{V} = BindsGeneric{"std::collections::HashSet", V};
 
 /// Functions for (potentially) every type
 export fn clone{T}(v: T) -> T binds clone;
@@ -722,9 +722,9 @@ export fn string(uuid) -> string binds uuidstring;
 
 // The base bindings to create buffers of memory on the GPU, construct a plan for a compute shader,
 // execute it, and read the buffer back to the CPU
-export type BufferUsages binds wgpu::BufferUsages;
-export type GBuffer binds GBuffer;
-export type GPGPU binds GPGPU;
+export type BufferUsages = Binds{"wgpu::BufferUsages"};
+export type GBuffer = Binds{"GBuffer"};
+export type GPGPU = Binds{"GPGPU"};
 export fn mapReadBuffer() -> BufferUsages binds map_read_buffer_type;
 export fn storageBuffer() -> BufferUsages binds storage_buffer_type;
 export fn GBuffer(usage: BufferUsages, vals: Array{i32}) -> GBuffer binds create_buffer_init;

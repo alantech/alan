@@ -950,20 +950,10 @@ test!(typebaselist =>
         }),
     ];
 );
-named_and!(typecreate: TypeCreate =>
+named_and!(typedef: TypeDef =>
     a: String as eq,
     b: String as whitespace,
     typeassignables: Vec<WithTypeOperators> as typeassignables,
-);
-named_and!(typebind: TypeBind =>
-    binds: String as binds,
-    a: String as whitespace,
-    othertype: String as one_or_more!(not!(";")),
-    semicolon: String as semicolon,
-);
-named_or!(typedef: TypeDef =>
-    TypeCreate: TypeCreate as typecreate,
-    TypeBind: TypeBind as typebind,
 );
 named_and!(types: Types =>
     typen: String as typen,
@@ -978,8 +968,8 @@ named_and!(types: Types =>
 test!(types =>
     pass "type Foo = bar: string;";
     pass "type Foo = Bar";
-    pass "type Result{T, Error} binds Result<T, Error>;";
-    pass "type ExitCode binds std::process::ExitCode;";
+    pass "type Result{T, Error} = BindsGeneric{'Result', T, Error};";
+    pass "type ExitCode = Binds{'std::process::ExitCode'};";
     pass "type{Windows} Path = driveLetter: string, pathsegments: Array{string};";
 );
 named_and!(ctypes: CTypes =>

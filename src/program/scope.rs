@@ -90,14 +90,14 @@ impl<'a> Scope<'a> {
                             // (from the root scope) and can't be hidden, as all code will need these
                             // to construct their own types.
                             match c.name.as_str() {
-                                "Type" | "Generic" | "Bound" | "BoundGeneric" | "Int" | "Float"
-                                | "Bool" | "String" => { /* Do nothing for the 'structural' types */ }
-                                g @ ("Group" | "Array" | "Fail" | "Neg" | "Len" | "Size" | "FileStr"
+                                "Type" | "Generic" | "Int" | "Float" | "Bool" | "String" => { /* Do nothing for the 'structural' types */ }
+                                g @ ("Binds" | "Group" | "Array" | "Fail" | "Neg" | "Len" | "Size" | "FileStr"
                                 | "Env" | "EnvExists" | "Not") => CType::from_generic(&mut s, g, 1),
-                                g @ ("Function" | "Tuple" | "Field" | "Either" | "AnyOf" | "Buffer" | "Add"
+                                g @ ("Function" | "Field" | "Buffer" | "Add"
                                 | "Sub" | "Mul" | "Div" | "Mod" | "Pow" | "Min" | "Max" | "If" | "And" | "Or"
                                 | "Xor" | "Nand" | "Nor" | "Xnor" | "Eq" | "Neq" | "Lt" | "Lte"
                                 | "Gt" | "Gte") => CType::from_generic(&mut s, g, 2),
+                                g @ ("BindsGeneric" | "Tuple" | "Either" | "AnyOf") => CType::from_generic(&mut s, g, 0), // Not kosher in Rust land, but 0 means "as many as we want"
                                 // TODO: Also add support for three arg `If` and `Env` with a
                                 // default property via overloading types
                                 unknown => {

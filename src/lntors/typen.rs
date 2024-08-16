@@ -27,11 +27,8 @@ pub fn ctype_to_rtype(
                                     ctype_to_rtype(v, in_function_type)?
                                 ));
                             }
-                            CType::Type(n, _) | CType::ResolvedBoundGeneric(n, ..) => {
-                                enum_type_strs.push(format!("{}({})", n, n));
-                            }
-                            CType::Bound(n, r) => {
-                                enum_type_strs.push(format!("{}({})", n, r));
+                            CType::Type(n, t) => {
+                                enum_type_strs.push(format!("{}({})", n, ctype_to_rtype(t, in_function_type)?));
                             }
                             CType::Group(g) => {
                                 enum_type_strs.push(ctype_to_rtype(g, in_function_type)?);
@@ -63,29 +60,29 @@ pub fn ctype_to_rtype(
                     }
                     Ok(format!("({})", out.join(", ")))
                 }
+                CType::Binds(n) => Ok(n.clone()),
                 _ => Ok("".to_string()), // TODO: Is this correct?
             }
         }
         CType::Generic(name, args, _) => Ok(format!("{}<{}>", name, args.join(", "))),
-        CType::Bound(_, name) => Ok(name.clone()),
-        CType::BoundGeneric(name, args, _) => Ok(format!("{}<{}>", name, args.join(", "))),
-        CType::ResolvedBoundGeneric(_name, argstrs, args, binding) => {
-            let mut args_rtype = Vec::new();
+        CType::Binds(name) => Ok(name.clone()),
+        CType::BindsGeneric(name, args) => {
+            let mut out_args = Vec::new();
             for arg in args {
-                args_rtype.push(ctype_to_rtype(arg, in_function_type)?);
+                out_args.push(ctype_to_rtype(arg, in_function_type)?);
             }
-            // TODO: Get a real Rust type parser and do this better
-            let mut out_str = binding.clone();
-            for i in 0..argstrs.len() {
-                out_str = out_str.replace(&argstrs[i], &args_rtype[i]);
-            }
-            Ok(out_str.to_string())
+            Ok(format!("{}<{}>", name, out_args.join(", ")))
         }
         CType::IntrinsicGeneric(name, _) => Ok(name.clone()), // How would this even be reached?
         CType::Int(i) => Ok(i.to_string()),
         CType::Float(f) => Ok(f.to_string()),
         CType::Bool(b) => Ok(b.to_string()),
-        CType::TString(s) => Ok(s.replace(['"', '\''], "_")),
+        CType::TString(s) => Ok(s.chars().map(|c| match c {
+            '0'..='9' => c,
+            'a'..='z' => c,
+            'A'..='Z' => c,
+            _ => '_',
+        }).collect::<String>()),
         CType::Group(g) => Ok(format!("({})", ctype_to_rtype(g, in_function_type)?)),
         CType::Function(i, o) => {
             if let CType::Void = **i {
@@ -123,16 +120,11 @@ pub fn ctype_to_rtype(
             // Special handling to convert `Either{T, void}` to `Option<T>` and `Either{T, Error}`
             // to `Result<T, AlanError>`
             if ts.len() == 2 {
-                if let CType::Void = &ts[1] {
-                    Ok(format!("Option<{}>", ctype_to_rtype(&ts[0], in_function_type)?))
-                } else if let CType::Bound(name, rustname) = &ts[1] {
-                    if name == "Error" {
-                        Ok(format!("Result<{}, {}>", ctype_to_rtype(&ts[0], in_function_type)?, rustname))
-                    } else {
-                        Ok(CType::Either(ts.clone()).to_callable_string())
-                    }
-                } else {
-                    Ok(CType::Either(ts.clone()).to_callable_string())
+                match &ts[1] {
+                    CType::Void => Ok(format!("Option<{}>", ctype_to_rtype(&ts[0], in_function_type)?)),
+                    CType::Binds(rustname) if rustname == "AlanError" => Ok(format!("Result<{}, {}>", ctype_to_rtype(&ts[0], in_function_type)?, rustname)),
+                    CType::Type(_, t) if matches!(&**t, CType::Binds(rustname) if rustname == "AlanError") => Ok(format!("Result<{}, {}>", ctype_to_rtype(&ts[0], in_function_type)?, "AlanError")),
+                    _ => Ok(CType::Either(ts.clone()).to_callable_string()),
                 }
             } else {
                 Ok(CType::Either(ts.clone()).to_callable_string())
@@ -164,7 +156,7 @@ pub fn generate(
         // assuming no bugs in the standard library) so they do not alter the generated source
         // output, while the `Structlike` type requires a new struct to be created and inserted
         // into the source definition, potentially inserting inner types as needed
-        CType::Bound(_name, rtype) => Ok((rtype.clone(), out)),
+        CType::Binds(rtype) => Ok((rtype.clone(), out)),
         // TODO: The complexity of this function indicates more fundamental issues in the type
         // generation. This needs a rethink and rewrite.
         CType::Type(name, t) => match &**t {
