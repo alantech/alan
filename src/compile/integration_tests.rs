@@ -2572,56 +2572,36 @@ Correctly received nothing!
 none
 "#;
 );
-test_ignore!(result => r#"
-    fn reciprocal(val: float64) {
-      if val == 0.0 {
-        return err('Divide by zero error!');
-      } else {
-        return 1.0 / val;
-      }
-    }
+test!(fallible => r#"
+    // TODO: Rewrite these conditionals with conditional syntax once implemented
+    fn reciprocal(val: f64) -> Fallible{f64} = if(val == 0.0, fn () -> Fallible{f64} {
+      return Error{f64}('Divide by zero error!');
+    }, fn () -> Fallible{f64} {
+      return Fallible{f64}(1.0 / val);
+    });
 
     export fn main {
       const oneFifth = reciprocal(5.0);
-      if oneFifth.isOk {
-        print(oneFifth.getOr(0.0));
-      } else {
-        print('what?');
-      }
+      if(oneFifth.f64.exists,
+        fn = print(oneFifth.getOr(0.0)),
+        fn = print('what?'));
 
       const oneZeroth = reciprocal(0.0);
-      if oneZeroth.isErr {
-        const error = oneZeroth.getErr(noerr());
-        print(error);
-      } else {
-        print('uhhh');
-      }
+      if(oneZeroth.Error.exists,
+        fn = print(oneZeroth.Error.getOr(Error('No error'))),
+        fn = print('uhhh'));
 
-      if oneFifth.isOk {
-        print(oneFifth || 0.0);
-      } else {
-        print('what?');
-      }
+      oneFifth.print;
+      oneZeroth.print;
 
-      if oneZeroth.isErr {
-        print(oneZeroth || 1.2345);
-      } else {
-        print('uhhh');
-      }
-
-      oneFifth.string.print;
-      oneZeroth.string.print;
-
-      const res = ok('foo');
-      print(res.getErr('there is no error'));
+      const res = Fallible{string}('foo');
+      print(res.Error.getOr(Error('there is no error')));
     }"#;
     stdout r#"0.2
-Divide by zero error!
+Error: Divide by zero error!
 0.2
-1.2345
-0.2
-Divide by zero error!
-there is no error
+Error: Divide by zero error!
+Error: there is no error
 "#;
 );
 test!(either => r#"

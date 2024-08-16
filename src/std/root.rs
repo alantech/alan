@@ -113,6 +113,13 @@ fn fallible_error<T>(m: &String) -> Result<T, AlanError> {
     Err(m.clone().into())
 }
 
+/// `bare_error` create a bare Error value, useful when trying to extract the actual error from a
+/// Fallible type
+#[inline(always)]
+fn bare_error(m: &String) -> AlanError {
+    AlanError { message: m.clone() }
+}
+
 /// `maybe_exists` returns a boolean on whether or not the Maybe has a value
 #[inline(always)]
 fn maybe_exists<T>(v: &Option<T>) -> bool {
