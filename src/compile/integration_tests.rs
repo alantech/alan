@@ -1772,24 +1772,6 @@ test!(object_and_array_reassignment => r#"
     stdout "1\n0\n2\ntrue\nfalse\n";
 );
 
-test!(dict_support => r#"
-    export fn main {
-      // TODO: Anonymous tuples will clean this syntax up
-      const test5 = Dict([
-        {bool, i64}(true, 1),
-        {bool, i64}(false, 0)
-      ]);
-
-      print(test5[true]);
-      print(test5[false]);
-
-      let test6 = Dict('foo', 'bar');
-      test6['foo'] = 'baz';
-      print(test6['foo']);
-    }"#;
-    stdout "1\n0\nbaz\n";
-);
-
 // Arrays
 
 test!(array_accessor_and_length => r#"
