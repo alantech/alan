@@ -495,7 +495,7 @@ impl CType {
             CType::Int(_) | CType::Float(_) => format!("_{}", self.to_functional_string()),
             CType::Type(n, t) => match **t {
                 CType::Int(_) | CType::Float(_) => format!("_{}", self.to_functional_string()),
-                CType::Binds(_) => format!("{}", n),
+                CType::Binds(_) => n.clone(),
                 _ => self.to_functional_string(),
             },
             _ => self.to_functional_string(),
@@ -625,7 +625,7 @@ impl CType {
                         .into());
                     }
                     (Some(CType::Binds(n1)), Some(CType::Binds(n2))) => {
-                        if !(n1 == n2) {
+                        if n1 != n2 {
                             return Err(format!(
                                 "Mismatched bound types {} and {} during inference",
                                 n1, n2
@@ -2164,6 +2164,7 @@ impl CType {
         let base_type = args[0].clone();
         if let CType::TString(base) = base_type {
             let mut out_vec = Vec::new();
+            #[allow(clippy::needless_range_loop)] // It's not needless
             for i in 1..args.len() {
                 out_vec.push(args[i].clone());
             }

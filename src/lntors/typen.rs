@@ -28,7 +28,7 @@ pub fn ctype_to_rtype(
                                 ));
                             }
                             CType::Type(n, t) => {
-                                enum_type_strs.push(format!("{}({})", n, ctype_to_rtype(&**t, in_function_type)?));
+                                enum_type_strs.push(format!("{}({})", n, ctype_to_rtype(t, in_function_type)?));
                             }
                             CType::Group(g) => {
                                 enum_type_strs.push(ctype_to_rtype(g, in_function_type)?);
@@ -60,7 +60,7 @@ pub fn ctype_to_rtype(
                     }
                     Ok(format!("({})", out.join(", ")))
                 }
-                CType::Binds(n) => Ok(format!("{}", n)),
+                CType::Binds(n) => Ok(n.clone()),
                 _ => Ok("".to_string()), // TODO: Is this correct?
             }
         }
