@@ -11,11 +11,11 @@ pub struct Const {
 }
 
 impl Const {
-    pub fn from_ast(
-        scope: &mut Scope,
+    pub fn from_ast<'a>(
+        mut scope: Scope<'a>,
         const_ast: &parse::ConstDeclaration,
         is_export: bool,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> Result<Scope<'a>, Box<dyn std::error::Error>> {
         let name = const_ast.variable.clone();
         if let Some(generics) = &const_ast.opttypegenerics {
             // We are going to conditionally compile this type declaration. If the we get true, we
@@ -23,15 +23,15 @@ impl Const {
             // to the scope to cause compilation to crash *if* something tries to use this, and if
             // we don't get a boolean at all or we get multiple inner values in the generic call,
             // we bail out immediately because of a syntax error.
-            let generic_call = withtypeoperatorslist_to_ctype(&generics.typecalllist, scope)?;
+            let generic_call = withtypeoperatorslist_to_ctype(&generics.typecalllist, &scope)?;
             match generic_call {
                 CType::Bool(b) => match b {
-                    false => return Ok(()),
+                    false => return Ok(scope),
                     true => { /* Do nothing */ }
                 },
                 CType::Type(_, c) => match *c {
                     CType::Bool(b) => match b {
-                        false => return Ok(()),
+                        false => return Ok(scope),
                         true => { /* Do nothing */ }
                     },
                     _ => {
@@ -67,6 +67,6 @@ impl Const {
             scope.exports.insert(c.name.clone(), Export::Const);
         }
         scope.consts.insert(c.name.clone(), c);
-        Ok(())
+        Ok(scope)
     }
 }

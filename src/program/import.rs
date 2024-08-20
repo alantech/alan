@@ -18,12 +18,12 @@ pub struct Import {
 }
 
 impl Import {
-    pub fn from_ast(
+    pub fn from_ast<'a>(
         program: &mut Program,
         path: String,
-        scope: &mut Scope,
+        mut scope: Scope<'a>,
         import_ast: &parse::ImportStatement,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> Result<Scope<'a>, Box<dyn std::error::Error>> {
         match &import_ast {
             parse::ImportStatement::Standard(s) => {
                 // First, get the path for the code
@@ -43,7 +43,7 @@ impl Import {
                     import_type: ImportType::Standard(ln_file.clone(), import_name),
                 };
                 scope.imports.insert(ln_file, i);
-                Ok(())
+                Ok(scope)
             }
             parse::ImportStatement::From(f) => {
                 let ln_file = f.dependency.resolve(path)?;
@@ -68,7 +68,7 @@ impl Import {
                     import_type: ImportType::Fields(field_vec),
                 };
                 scope.imports.insert(ln_file, i);
-                Ok(())
+                Ok(scope)
             }
         }
     }

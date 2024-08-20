@@ -15,11 +15,11 @@ pub struct Function {
 }
 
 impl Function {
-    pub fn from_ast(
-        scope: &mut Scope,
+    pub fn from_ast<'a>(
+        scope: Scope<'a>,
         function_ast: &parse::Functions,
         is_export: bool,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> Result<Scope<'a>, Box<dyn std::error::Error>> {
         // In the top-level of a file, all functions *must* be named
         let name = match &function_ast.optname {
             Some(name) => name.clone(),
@@ -30,27 +30,27 @@ impl Function {
         Function::from_ast_with_name(scope, function_ast, is_export, name)
     }
 
-    pub fn from_ast_with_name(
-        scope: &mut Scope,
+    pub fn from_ast_with_name<'a>(
+        mut scope: Scope<'a>,
         function_ast: &parse::Functions,
         is_export: bool,
         name: String,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> Result<Scope<'a>, Box<dyn std::error::Error>> {
         if let Some(generics) = &function_ast.opttypegenerics {
             // We are going to conditionally compile this type declaration. If the we get true, we
             // continue, if we get false, we don't compile and return a Fail type that isn't added
             // to the scope to cause compilation to crash *if* something tries to use this, and if
             // we don't get a boolean at all or we get multiple inner values in the generic call,
             // we bail out immediately because of a syntax error.
-            let generic_call = withtypeoperatorslist_to_ctype(&generics.typecalllist, scope)?;
+            let generic_call = withtypeoperatorslist_to_ctype(&generics.typecalllist, &scope)?;
             match generic_call {
                 CType::Bool(b) => match b {
-                    false => return Ok(()),
+                    false => return Ok(scope),
                     true => { /* Do nothing */ }
                 },
                 CType::Type(_, c) => match *c {
                     CType::Bool(b) => match b {
-                        false => return Ok(()),
+                        false => return Ok(scope),
                         true => { /* Do nothing */ }
                     },
                     _ => {
@@ -226,7 +226,7 @@ impl Function {
                     let mut temp_scope = scope.child();
                     // This lets us partially resolve the function argument and return types
                     for g in gs {
-                        CType::from_ctype(&mut temp_scope, g.0.clone(), g.1.clone());
+                        temp_scope = CType::from_ctype(temp_scope, g.0.clone(), g.1.clone());
                     }
                     let ctype = withtypeoperatorslist_to_ctype(typeassignable, &temp_scope)?;
                     // If the `ctype` is a Function type, we have both the input and output defined. If
@@ -267,7 +267,7 @@ impl Function {
                 }
                 _ => {
                     // TODO: Figure out how to drop this duplication
-                    let ctype = withtypeoperatorslist_to_ctype(typeassignable, scope)?;
+                    let ctype = withtypeoperatorslist_to_ctype(typeassignable, &scope)?;
                     // If the `ctype` is a Function type, we have both the input and output defined. If
                     // it's any other type, we presume it's only the input type defined
                     let (input_type, output_type) = match ctype {
@@ -314,7 +314,8 @@ impl Function {
                                     },
                                     optsemicolon: ";".to_string(),
                                 };
-                                CType::from_ast(scope, &parse_type, false)?;
+                                let res = CType::from_ast(scope, &parse_type, false)?;
+                                scope = res.0;
                             }
                         }
                     }
@@ -357,7 +358,9 @@ impl Function {
             // still generic
             if function_ast.optgenerics.is_none() {
                 for statement in &statements {
-                    ms = statement_to_microstatements(statement, scope, ms)?;
+                    let res = statement_to_microstatements(statement, scope, ms)?;
+                    scope = res.0;
+                    ms = res.1;
                 }
             }
             ms
@@ -382,14 +385,14 @@ impl Function {
                 .functions
                 .insert(function.name.clone(), vec![function]);
         }
-        Ok(())
+        Ok(scope)
     }
 
     pub fn from_generic_function<'a>(
-        scope: &'a mut Scope,
+        mut scope: Scope<'a>,
         generic_function: &Function,
         generic_types: Vec<CType>,
-    ) -> Result<&'a Function, Box<dyn std::error::Error>> {
+    ) -> Result<(Scope<'a>, Function), Box<dyn std::error::Error>> {
         match &generic_function.kind {
             FnKind::Normal
             | FnKind::Bind(_)
@@ -461,11 +464,12 @@ impl Function {
                 } else {
                     scope.functions.insert(f.name.clone(), vec![f.clone()]);
                 }
-                return match scope.functions.get(&f.name) {
-                    None => Err("This should be impossible. Cannot get the function we just added to the scope".into()),
-                    Some(fs) => Ok(fs.last().unwrap()), // We know it's the last one because we just put
-                                           // it there
-                };
+                let res = match scope.functions.get(&f.name) {
+                    None => Err("This should be impossible. Cannot get the function we just added to the scope"),
+                    Some(fs) => Ok(fs.last().unwrap().clone()), // We know it's the last one
+                                                                // because we just put it there
+                }?;
+                Ok((scope, res))
             }
             FnKind::Generic(gen_args, statements) => {
                 let kind = FnKind::Normal;
@@ -503,7 +507,9 @@ impl Function {
                         });
                     }
                     for statement in statements {
-                        ms = statement_to_microstatements(statement, scope, ms)?;
+                        let res = statement_to_microstatements(statement, scope, ms)?;
+                        scope = res.0;
+                        ms = res.1;
                     }
                     ms
                 };
@@ -529,11 +535,12 @@ impl Function {
                 } else {
                     scope.functions.insert(f.name.clone(), vec![f.clone()]);
                 }
-                return match scope.functions.get(&f.name) {
-                    None => Err("This should be impossible. Cannot get the function we just added to the scope".into()),
-                    Some(fs) => Ok(fs.last().unwrap()), // We know it's the last one because we just put
-                                           // it there
-                };
+                let res = match scope.functions.get(&f.name) {
+                    None => Err("This should be impossible. Cannot get the function we just added to the scope"),
+                    Some(fs) => Ok(fs.last().unwrap().clone()), // We know it's the last one
+                                                                // because we just put it there
+                }?;
+                Ok((scope, res))
             }
         }
     }

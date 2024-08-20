@@ -1793,11 +1793,11 @@ impl CType {
         }
         (t, fs)
     }
-    pub fn from_ast(
-        scope: &mut Scope,
+    pub fn from_ast<'a>(
+        mut scope: Scope<'a>,
         type_ast: &parse::Types,
         is_export: bool,
-    ) -> Result<CType, Box<dyn std::error::Error>> {
+    ) -> Result<(Scope<'a>, CType), Box<dyn std::error::Error>> {
         let name = type_ast.fulltypename.typename.clone();
         if let Some(generics) = &type_ast.opttypegenerics {
             // We are going to conditionally compile this type declaration. If the we get true, we
@@ -1805,15 +1805,15 @@ impl CType {
             // to the scope to cause compilation to crash *if* something tries to use this, and if
             // we don't get a boolean at all or we get multiple inner values in the generic call,
             // we bail out immediately because of a syntax error.
-            let generic_call = withtypeoperatorslist_to_ctype(&generics.typecalllist, scope)?;
+            let generic_call = withtypeoperatorslist_to_ctype(&generics.typecalllist, &scope)?;
             match generic_call {
                 CType::Bool(b) => match b {
-                    false => return Ok(CType::Fail(format!("{} is not supposed to be compiled because the conditional compilation generic value is false", name))),
+                    false => return Ok((scope, CType::Fail(format!("{} is not supposed to be compiled because the conditional compilation generic value is false", name)))),
                     true => { /* Do nothing */ }
                 },
                 CType::Type(n, c) => match *c {
                     CType::Bool(b) => match b {
-                        false => return Ok(CType::Fail(format!("{} is not supposed to be compiled because {} is false", name, n))),
+                        false => return Ok((scope, CType::Fail(format!("{} is not supposed to be compiled because {} is false", name, n)))),
                         true => { /* Do nothing */ }
                     },
                     _ => {
@@ -1847,7 +1847,7 @@ impl CType {
                 // one or more constructor functions, while struct-like Tuples and Either
                 // get accessor functions to dig into the sub-types.
                 let mut inner_type =
-                    withtypeoperatorslist_to_ctype(&type_ast.typedef.typeassignables, scope)?;
+                    withtypeoperatorslist_to_ctype(&type_ast.typedef.typeassignables, &scope)?;
                 // Unwrap a Group type, if any exists, we don't want it here.
                 while matches!(&inner_type, CType::Group(_)) {
                     inner_type = match inner_type {
@@ -1918,10 +1918,10 @@ impl CType {
                 }
             }
         }
-        Ok(t)
+        Ok((scope, t))
     }
 
-    pub fn from_ctype(scope: &mut Scope, name: String, ctype: CType) {
+    pub fn from_ctype(mut scope: Scope, name: String, ctype: CType) -> Scope {
         scope.exports.insert(name.clone(), Export::Type);
         let (_, fs) = ctype.to_functions(name.clone());
         scope.types.insert(name, ctype.clone());
@@ -1947,9 +1947,10 @@ impl CType {
                 }
             }
         }
+        scope
     }
 
-    pub fn from_generic(scope: &mut Scope, name: &str, arglen: usize) {
+    pub fn from_generic<'a>(scope: Scope<'a>, name: &str, arglen: usize) -> Scope<'a> {
         CType::from_ctype(
             scope,
             name.to_string(),

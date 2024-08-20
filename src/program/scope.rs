@@ -54,28 +54,30 @@ impl<'a> Scope<'a> {
             for (i, element) in ast.body.iter().enumerate() {
                 match element {
                     parse::RootElements::Types(t) => {
-                        CType::from_ast(&mut s, t, false).expect("Invalid root scope type");
+                        let res = CType::from_ast(s, t, false).expect("Invalid root scope type");
+                        s = res.0;
                     }
 
-                    parse::RootElements::Functions(f) => Function::from_ast(&mut s, f, false).expect("Invalid root scope function"),
-                    parse::RootElements::ConstDeclaration(c) => Const::from_ast(&mut s, c, false).expect("Invalid root scope const declaration"),
+                    parse::RootElements::Functions(f) => s = Function::from_ast(s, f, false).expect("Invalid root scope function"),
+                    parse::RootElements::ConstDeclaration(c) => s = Const::from_ast(s, c, false).expect("Invalid root scope const declaration"),
                     parse::RootElements::OperatorMapping(o) => {
-                        OperatorMapping::from_ast(&mut s, o, false).expect("Invalid root scope operator mapping")
+                        s = OperatorMapping::from_ast(s, o, false).expect("Invalid root scope operator mapping")
                     }
                     parse::RootElements::TypeOperatorMapping(o) => {
-                        TypeOperatorMapping::from_ast(&mut s, o, false).expect("Invalid root scope type operator mapping")
+                        s = TypeOperatorMapping::from_ast(s, o, false).expect("Invalid root scope type operator mapping")
                     }
                     parse::RootElements::Exports(e) => match &e.exportable {
-                        parse::Exportable::Functions(f) => Function::from_ast(&mut s, f, true).expect("Invalid root scope exported function"),
-                        parse::Exportable::ConstDeclaration(c) => Const::from_ast(&mut s, c, true).expect("Invalid root scope exported const declaration"),
+                        parse::Exportable::Functions(f) => s = Function::from_ast(s, f, true).expect("Invalid root scope exported function"),
+                        parse::Exportable::ConstDeclaration(c) => s = Const::from_ast(s, c, true).expect("Invalid root scope exported const declaration"),
                         parse::Exportable::OperatorMapping(o) => {
-                            OperatorMapping::from_ast(&mut s, o, true).expect("Invalid root scope exported operator mapping")
+                            s = OperatorMapping::from_ast(s, o, true).expect("Invalid root scope exported operator mapping")
                         }
                         parse::Exportable::TypeOperatorMapping(o) => {
-                            TypeOperatorMapping::from_ast(&mut s, o, true).expect("Invalid root scope exported type operator mapping")
+                            s = TypeOperatorMapping::from_ast(s, o, true).expect("Invalid root scope exported type operator mapping")
                         }
                         parse::Exportable::Types(t) => {
-                            CType::from_ast(&mut s, t, true).expect("Invalid root scope exported type");
+                            let res = CType::from_ast(s, t, true).expect("Invalid root scope exported type");
+                            s = res.0;
                         }
                         parse::Exportable::CTypes(c) => {
                             // For now this is just declaring in the Alan source code the compile-time
@@ -92,12 +94,12 @@ impl<'a> Scope<'a> {
                             match c.name.as_str() {
                                 "Type" | "Generic" | "Int" | "Float" | "Bool" | "String" => { /* Do nothing for the 'structural' types */ }
                                 g @ ("Binds" | "Group" | "Array" | "Fail" | "Neg" | "Len" | "Size" | "FileStr"
-                                | "Env" | "EnvExists" | "Not") => CType::from_generic(&mut s, g, 1),
+                                | "Env" | "EnvExists" | "Not") => s = CType::from_generic(s, g, 1),
                                 g @ ("Function" | "Field" | "Buffer" | "Add"
                                 | "Sub" | "Mul" | "Div" | "Mod" | "Pow" | "Min" | "Max" | "If" | "And" | "Or"
                                 | "Xor" | "Nand" | "Nor" | "Xnor" | "Eq" | "Neq" | "Lt" | "Lte"
-                                | "Gt" | "Gte") => CType::from_generic(&mut s, g, 2),
-                                g @ ("BindsGeneric" | "Tuple" | "Either" | "AnyOf") => CType::from_generic(&mut s, g, 0), // Not kosher in Rust land, but 0 means "as many as we want"
+                                | "Gt" | "Gte") => s = CType::from_generic(s, g, 2),
+                                g @ ("BindsGeneric" | "Tuple" | "Either" | "AnyOf") => s = CType::from_generic(s, g, 0), // Not kosher in Rust land, but 0 means "as many as we want"
                                 // TODO: Also add support for three arg `If` and `Env` with a
                                 // default property via overloading types
                                 unknown => {
@@ -137,36 +139,44 @@ impl<'a> Scope<'a> {
             exports: OrderedHashMap::new(),
         };
         for i in ast.imports.iter() {
-            Import::from_ast(program, path.to_string(), &mut s, i)?;
+            s = Import::from_ast(program, path.to_string(), s, i)?;
         }
         for (i, element) in ast.body.iter().enumerate() {
             match element {
-                parse::RootElements::Types(t) => match CType::from_ast(&mut s, t, false) {
-                    Err(e) => Err(e),
-                    Ok(_) => Ok(()),
-                }?, // TODO: Make this match the rest?
+                parse::RootElements::Types(t) => match CType::from_ast(s, t, false) {
+                    Err(e) => {
+                        return Err(e);
+                    }
+                    Ok((scope, _)) => {
+                        s = scope;
+                    }
+                }, // TODO: Make this match the rest?
 
-                parse::RootElements::Functions(f) => Function::from_ast(&mut s, f, false)?,
-                parse::RootElements::ConstDeclaration(c) => Const::from_ast(&mut s, c, false)?,
+                parse::RootElements::Functions(f) => s = Function::from_ast(s, f, false)?,
+                parse::RootElements::ConstDeclaration(c) => s = Const::from_ast(s, c, false)?,
                 parse::RootElements::OperatorMapping(o) => {
-                    OperatorMapping::from_ast(&mut s, o, false)?
+                    s = OperatorMapping::from_ast(s, o, false)?
                 }
                 parse::RootElements::TypeOperatorMapping(o) => {
-                    TypeOperatorMapping::from_ast(&mut s, o, false)?
+                    s = TypeOperatorMapping::from_ast(s, o, false)?
                 }
                 parse::RootElements::Exports(e) => match &e.exportable {
-                    parse::Exportable::Functions(f) => Function::from_ast(&mut s, f, true)?,
-                    parse::Exportable::ConstDeclaration(c) => Const::from_ast(&mut s, c, true)?,
+                    parse::Exportable::Functions(f) => s = Function::from_ast(s, f, true)?,
+                    parse::Exportable::ConstDeclaration(c) => s = Const::from_ast(s, c, true)?,
                     parse::Exportable::OperatorMapping(o) => {
-                        OperatorMapping::from_ast(&mut s, o, true)?
+                        s = OperatorMapping::from_ast(s, o, true)?
                     }
                     parse::Exportable::TypeOperatorMapping(o) => {
-                        TypeOperatorMapping::from_ast(&mut s, o, true)?
+                        s = TypeOperatorMapping::from_ast(s, o, true)?
                     }
-                    parse::Exportable::Types(t) => match CType::from_ast(&mut s, t, true) {
-                        Err(e) => Err(e),
-                        Ok(_) => Ok(()),
-                    }?, // TODO: Make this match the rest?
+                    parse::Exportable::Types(t) => match CType::from_ast(s, t, true) {
+                        Err(e) => {
+                            return Err(e);
+                        }
+                        Ok((scope, _)) => {
+                            s = scope;
+                        }
+                    }, // TODO: Make this match the rest?
                     parse::Exportable::CTypes(_) => {
                         return Err(
                             "ctypes can only be defined in the compiler internals".into()
@@ -377,16 +387,16 @@ impl<'a> Scope<'a> {
     }
 
     pub fn resolve_generic_function(
-        &'a mut self,
+        mut self,
         function: &String,
         generic_types: &[CType],
         args: &[CType],
-    ) -> Option<&Function> {
+    ) -> Option<(Scope<'a>, Function)> {
         // Tries to find the specified function within the portion of the program accessible from
         // the current scope (so first checking the current scope, then all imports, then the root
         // scope). It checks against the args array to find a match. TODO: Go beyond exact matching
         // Returns a reference to the function and the scope it came from.
-        let mut scope_to_check: Option<&Scope> = Some(self);
+        let mut scope_to_check: Option<&Scope> = Some(&self);
         let mut fs = Vec::new();
         while scope_to_check.is_some() {
             if let Some(s) = scope_to_check {
@@ -431,11 +441,11 @@ impl<'a> Scope<'a> {
             temp_scopes.push(self.child());
         }
         let mut realized_fs = Vec::new();
-        for (i, temp_scope) in temp_scopes.iter_mut().enumerate() {
+        for (i, temp_scope) in temp_scopes.clone().into_iter().enumerate() {
             let f = generic_fs.get(i).unwrap();
             match Function::from_generic_function(temp_scope, f, generic_types.to_vec()) {
                 Err(_) => { /* Do nothing */ }
-                Ok(f) => realized_fs.push(f.clone()),
+                Ok((_, f)) => realized_fs.push(f.clone()),
             }
         }
         let mut funcs = Vec::new();
@@ -493,26 +503,37 @@ impl<'a> Scope<'a> {
                 } else {
                     self.functions.insert(f.name.clone(), vec![f.clone()]);
                 }
-                return match self.functions.get(&f.name) {
+                let f = match self.functions.get(&f.name) {
                     None => None,
                     Some(fs) => {
                         // We know it's the last one because we just put it there
-                        fs.last()
+                        match fs.last() {
+                            None => panic!("This should be impossible"),
+                            Some(f) => Some(f.clone()),
+                        }
                     }
-                };
+                }?;
+                return Some((self, f));
             }
         }
         None
     }
 
-    pub fn resolve_function(&'a mut self, function: &String, args: &[CType]) -> Option<&Function> {
+    pub fn resolve_function(
+        self,
+        function: &String,
+        args: &[CType],
+    ) -> Option<(Scope<'a>, Function)> {
         // We should prefer the "normal" function, if it matches, use it, otherwise try to go with
         // a generic function, if possible.
         // TODO: This boolean *shouldn't* be necessary, but I can't convince the borrow checker
         // otherwise
         let is_normal = self.resolve_normal_function(function, args).is_some();
         if is_normal {
-            self.resolve_normal_function(function, args)
+            match self.resolve_normal_function(function, args) {
+                None => None,
+                Some(f) => Some((self, f)),
+            }
         } else {
             match self.resolve_function_generic_args(function, args) {
                 Some(gs) => self.resolve_generic_function(function, &gs, args),
@@ -619,7 +640,7 @@ impl<'a> Scope<'a> {
         &'a self,
         function: &String,
         args: &[CType],
-    ) -> Option<&Function> {
+    ) -> Option<Function> {
         // Tries to find the specified function within the portion of the program accessible from
         // the current scope (so first checking the current scope, then all imports, then the root
         // scope). It checks against the args array to find a match. TODO: Go beyond exact matching
@@ -657,10 +678,10 @@ impl<'a> Scope<'a> {
                 };
             }
         }
-        for f in &fs {
+        for f in fs {
             // TODO: Handle this more generically, and in a way that allows users to write
             // variadic functions
-            match &f.kind {
+            match f.kind {
                 FnKind::DerivedVariadic => {
                     // The special path where the length doesn't matter as long as all of the
                     // actual args are the same type as the function's arg.
@@ -672,7 +693,7 @@ impl<'a> Scope<'a> {
                         }
                     }
                     if args_match {
-                        return Some(f);
+                        return Some(f.clone());
                     }
                 }
                 FnKind::Normal | FnKind::Bind(_) | FnKind::Derived | FnKind::Static => {
@@ -690,7 +711,7 @@ impl<'a> Scope<'a> {
                         }
                     }
                     if args_match {
-                        return Some(f);
+                        return Some(f.clone());
                     }
                 }
                 FnKind::Generic(_, _) | FnKind::BoundGeneric(_, _) => { /* Do nothing */ }
