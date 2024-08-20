@@ -530,10 +530,8 @@ impl<'a> Scope<'a> {
         // otherwise
         let is_normal = self.resolve_normal_function(function, args).is_some();
         if is_normal {
-            match self.resolve_normal_function(function, args) {
-                None => None,
-                Some(f) => Some((self, f)),
-            }
+            self.resolve_normal_function(function, args)
+                .map(|f| (self, f))
         } else {
             match self.resolve_function_generic_args(function, args) {
                 Some(gs) => self.resolve_generic_function(function, &gs, args),
