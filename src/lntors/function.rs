@@ -38,7 +38,10 @@ pub fn from_microstatement(
                     // TODO: Shouldn't always be mut
                     "mut ",
                     name,
-                    val,
+                    match val.strip_prefix("&mut ") {
+                        Some(s) => s,
+                        None => &val,
+                    }
                 )
                 .to_string(),
                 out,
@@ -675,10 +678,13 @@ pub fn from_microstatement(
                                 ));
                             }
                             CType::Either(ts) => {
-                                if argstrs.len() != 1 {
-                                    return Err(format!("Invalid arguments {} provided for Either constructor function, must be only one argument", argstrs.join(", ")).into());
+                                if argstrs.len() > 1 {
+                                    return Err(format!("Invalid arguments {} provided for Either constructor function, must be zero or one argument", argstrs.join(", ")).into());
                                 }
-                                let enum_type = &function.args[0].1.degroup();
+                                let enum_type = match &function.args.get(0) {
+                                    Some(t) => t.1.degroup(),
+                                    None => CType::Void,
+                                };
                                 let enum_name = match enum_type {
                                     CType::Field(n, _) => Ok(n.clone()),
                                     CType::Type(n, _) => Ok(n.clone()),

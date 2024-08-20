@@ -1923,6 +1923,7 @@ impl CType {
 
     pub fn from_ctype(mut scope: Scope, name: String, ctype: CType) -> Scope {
         scope.exports.insert(name.clone(), Export::Type);
+        println!("from_ctype scope path {}", scope.path);
         let (_, fs) = ctype.to_functions(name.clone());
         scope.types.insert(name, ctype.clone());
         scope.types.insert(ctype.to_callable_string(), ctype);

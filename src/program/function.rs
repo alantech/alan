@@ -1,5 +1,6 @@
 use super::ctype::{withtypeoperatorslist_to_ctype, CType};
 use super::microstatement::{statement_to_microstatements, Microstatement};
+use super::scope::merge;
 use super::Export;
 use super::FnKind;
 use super::Scope;
@@ -238,8 +239,7 @@ impl Function {
                     // In case there were any created functions (eg constructor or accessor
                     // functions) in that path, we need to merge the child's functions back up
                     // TODO: Why can't I box this up into a function?
-                    let Scope { functions, .. } = temp_scope;
-                    scope.merge_functions(functions);
+                    merge!(scope, temp_scope);
                     // The input type will be interpreted in many different ways:
                     // If it's a Group, unwrap it and continue. Ideally after that it's a Tuple
                     // type containing Field types, that's a "conventional" function

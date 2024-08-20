@@ -34,6 +34,13 @@ pub fn ctype_to_rtype(
                                 enum_type_strs.push(ctype_to_rtype(g, in_function_type)?);
                             }
                             CType::Void => enum_type_strs.push("void".to_string()),
+                            CType::Tuple(ts) => {
+                                let mut out = Vec::new();
+                                for t in ts {
+                                    out.push(ctype_to_rtype(t, in_function_type)?);
+                                }
+                                enum_type_strs.push(format!("({}", out.join(", ")));
+                            }
                             otherwise => {
                                 return Err(format!("TODO: What is this? {:?}", otherwise).into());
                             }
