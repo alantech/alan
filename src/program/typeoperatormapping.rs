@@ -23,11 +23,11 @@ pub enum TypeOperatorMapping {
 }
 
 impl TypeOperatorMapping {
-    pub fn from_ast(
-        scope: &mut Scope,
+    pub fn from_ast<'a>(
+        mut scope: Scope<'a>,
         typeoperatormapping_ast: &parse::TypeOperatorMapping,
         is_export: bool,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> Result<Scope<'a>, Box<dyn std::error::Error>> {
         let opmap = match typeoperatormapping_ast.fix {
             parse::Fix::Prefix(_) => TypeOperatorMapping::Prefix {
                 level: typeoperatormapping_ast
@@ -68,15 +68,15 @@ impl TypeOperatorMapping {
             // to the scope to cause compilation to crash *if* something tries to use this, and if
             // we don't get a boolean at all or we get multiple inner values in the generic call,
             // we bail out immediately because of a syntax error.
-            let generic_call = withtypeoperatorslist_to_ctype(&generics.typecalllist, scope)?;
+            let generic_call = withtypeoperatorslist_to_ctype(&generics.typecalllist, &scope)?;
             match generic_call {
                 CType::Bool(b) => match b {
-                    false => return Ok(()),
+                    false => return Ok(scope),
                     true => { /* Do nothing */ }
                 },
                 CType::Type(_, c) => match *c {
                     CType::Bool(b) => match b {
-                        false => return Ok(()),
+                        false => return Ok(scope),
                         true => { /* Do nothing */ }
                     },
                     _ => {
@@ -102,6 +102,6 @@ impl TypeOperatorMapping {
             scope.exports.insert(name.clone(), Export::TypeOpMap);
         }
         scope.typeoperatormappings.insert(name, opmap);
-        Ok(())
+        Ok(scope)
     }
 }

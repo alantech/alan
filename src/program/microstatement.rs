@@ -120,11 +120,11 @@ enum BaseChunk<'a> {
     Constant(&'a parse::Constants),
 }
 
-pub fn baseassignablelist_to_microstatements(
+pub fn baseassignablelist_to_microstatements<'a>(
     bal: &[parse::BaseAssignable],
-    scope: &mut Scope,
+    mut scope: Scope<'a>,
     mut microstatements: Vec<Microstatement>,
-) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
+) -> Result<(Scope<'a>, Vec<Microstatement>), Box<dyn std::error::Error>> {
     let mut i = 0;
     let mut prior_value: Option<Microstatement> = None;
     let l = bal.len();
@@ -368,12 +368,13 @@ pub fn baseassignablelist_to_microstatements(
                                     Some(c) => {
                                         // TODO: Confirm the specified typename matches the
                                         // actual typename of the value
-                                        let mut temp_scope = scope.child();
-                                        microstatements = withoperatorslist_to_microstatements(
+                                        let temp_scope = scope.child();
+                                        let res = withoperatorslist_to_microstatements(
                                             &c.assignables,
-                                            &mut temp_scope,
+                                            temp_scope,
                                             microstatements,
                                         )?;
+                                        microstatements = res.1;
                                         let cm = microstatements.pop().unwrap();
                                         let typen = match &cm {
                                             Microstatement::Value { typen, .. } | Microstatement::Array { typen, .. } => Ok(typen.clone()),
@@ -405,8 +406,9 @@ pub fn baseassignablelist_to_microstatements(
                 }
                 let mut array_vals = Vec::new();
                 for wol in &a.assignablelist {
-                    microstatements =
-                        withoperatorslist_to_microstatements(wol, scope, microstatements)?;
+                    let res = withoperatorslist_to_microstatements(wol, scope, microstatements)?;
+                    scope = res.0;
+                    microstatements = res.1;
                     array_vals.push(microstatements.pop().unwrap());
                 }
                 // TODO: Currently assuming all array values are the same type, should check that
@@ -417,7 +419,8 @@ pub fn baseassignablelist_to_microstatements(
                 let array_type = CType::Array(Box::new(inner_type));
                 let type_str = format!("type {} = {}[];", array_type_name, inner_type_str);
                 let parse_type = parse::types(&type_str);
-                CType::from_ast(scope, &parse_type.unwrap().1, false)?;
+                let res = CType::from_ast(scope, &parse_type.unwrap().1, false)?;
+                scope = res.0;
                 prior_value = Some(Microstatement::Array {
                     typen: array_type,
                     vals: array_vals,
@@ -429,11 +432,13 @@ pub fn baseassignablelist_to_microstatements(
                 if g.assignablelist.len() != 1 {
                     return Err("Anonymous tuple support not yet implemented".into());
                 }
-                microstatements = withoperatorslist_to_microstatements(
+                let res = withoperatorslist_to_microstatements(
                     &g.assignablelist[0],
                     scope,
                     microstatements,
                 )?;
+                scope = res.0;
+                microstatements = res.1;
                 prior_value = microstatements.pop();
             }
             BaseChunk::Function(f) => {
@@ -486,7 +491,8 @@ pub fn baseassignablelist_to_microstatements(
                             // This lets us partially resolve the function argument and return types
                             let mut temp_scope = inner_scope.child();
                             for g in gs {
-                                CType::from_ctype(&mut temp_scope, g.0.clone(), g.1.clone());
+                                temp_scope =
+                                    CType::from_ctype(temp_scope, g.0.clone(), g.1.clone());
                             }
                             let ctype =
                                 withtypeoperatorslist_to_ctype(typeassignable, &temp_scope)?;
@@ -531,7 +537,7 @@ pub fn baseassignablelist_to_microstatements(
                         }
                         _ => {
                             // TODO: Figure out how to drop this duplication
-                            let ctype = withtypeoperatorslist_to_ctype(typeassignable, scope)?;
+                            let ctype = withtypeoperatorslist_to_ctype(typeassignable, &scope)?;
                             // If the `ctype` is a Function type, we have both the input and output defined. If
                             // it's any other type, we presume it's only the input type defined
                             let (input_type, output_type) = match ctype {
@@ -578,7 +584,8 @@ pub fn baseassignablelist_to_microstatements(
                                             },
                                             optsemicolon: ";".to_string(),
                                         };
-                                        CType::from_ast(&mut inner_scope, &parse_type, false)?;
+                                        let res = CType::from_ast(inner_scope, &parse_type, false)?;
+                                        inner_scope = res.0;
                                     }
                                 }
                             }
@@ -620,8 +627,10 @@ pub fn baseassignablelist_to_microstatements(
                     });
                 }
                 for statement in &statements {
-                    microstatements =
-                        statement_to_microstatements(statement, &mut inner_scope, microstatements)?;
+                    let res =
+                        statement_to_microstatements(statement, inner_scope, microstatements)?;
+                    inner_scope = res.0;
+                    microstatements = res.1;
                 }
                 let ms = microstatements.split_off(original_len);
                 let function = Function {
@@ -641,11 +650,10 @@ pub fn baseassignablelist_to_microstatements(
                     let mut temp_scope = scope.child();
                     let mut array_accessor_microstatements = vec![prior.clone()];
                     for wol in &a.assignablelist {
-                        microstatements = withoperatorslist_to_microstatements(
-                            wol,
-                            &mut temp_scope,
-                            microstatements,
-                        )?;
+                        let res =
+                            withoperatorslist_to_microstatements(wol, temp_scope, microstatements)?;
+                        temp_scope = res.0;
+                        microstatements = res.1;
                         array_accessor_microstatements.push(microstatements.pop().unwrap());
                     }
                     let mut arg_types = Vec::new();
@@ -653,10 +661,12 @@ pub fn baseassignablelist_to_microstatements(
                         arg_types.push(m.get_type());
                     }
                     let function = {
-                        let mut temp_scope_2 = temp_scope.child();
-                        temp_scope_2
-                            .resolve_function(&"get".to_string(), &arg_types)
-                            .cloned()
+                        let temp_scope_2 = temp_scope.child();
+                        let res = temp_scope_2.resolve_function(&"get".to_string(), &arg_types);
+                        match res {
+                            Some(r) => Some(r.1),
+                            None => None,
+                        }
                     };
                     match function {
                         Some(f) => {
@@ -696,13 +706,15 @@ pub fn baseassignablelist_to_microstatements(
                         arg_types.push(m.get_type());
                         // In case the type constructor has not already been created
                         let t = m.get_type();
-                        CType::from_ctype(&mut temp_scope, t.to_callable_string(), t);
+                        temp_scope = CType::from_ctype(temp_scope, t.to_callable_string(), t);
                     }
                     let function = {
-                        let mut temp_scope_2 = temp_scope.child();
-                        temp_scope_2
-                            .resolve_function(&c.to_string(), &arg_types)
-                            .cloned()
+                        let temp_scope_2 = temp_scope.child();
+                        let res = temp_scope_2.resolve_function(&c.to_string(), &arg_types);
+                        match res {
+                            Some(r) => Some(r.1),
+                            None => None,
+                        }
                     };
                     match function {
                         Some(f) => {
@@ -745,8 +757,10 @@ pub fn baseassignablelist_to_microstatements(
                     None => {}
                     Some(fncall) => {
                         for arg in &fncall.assignablelist {
-                            microstatements =
+                            let res =
                                 withoperatorslist_to_microstatements(arg, scope, microstatements)?;
+                            scope = res.0;
+                            microstatements = res.1;
                             arg_microstatements.push(microstatements.pop().unwrap());
                         }
                     }
@@ -759,7 +773,7 @@ pub fn baseassignablelist_to_microstatements(
                 // name based on the CType tree with all non-`a-zA-Z0-9_` chars replaced with `-`
                 // TODO: Eliminate the duplication of CType generation logic by abstracting out the
                 // automatic function creation into a reusable component
-                let ctype = withtypeoperatorslist_to_ctype(&g.typecalllist, scope)?;
+                let ctype = withtypeoperatorslist_to_ctype(&g.typecalllist, &scope)?;
                 let name = ctype.to_callable_string();
                 let parse_type = parse::Types {
                     typen: "type".to_string(),
@@ -778,14 +792,19 @@ pub fn baseassignablelist_to_microstatements(
                     },
                     optsemicolon: ";".to_string(),
                 };
-                CType::from_ast(scope, &parse_type, false)?;
+                let res = CType::from_ast(scope, &parse_type, false)?;
+                scope = res.0;
                 let temp_scope = scope.child();
                 // Now we are sure the type and function exist, and we know the name for the
                 // function. It would be best if we could just pass it to ourselves and run the
                 // `FuncCall` logic below, but it's easier at the moment to duplicate :( TODO
                 let function = {
-                    let mut temp_scope_2 = temp_scope.child();
-                    temp_scope_2.resolve_function(&name, &arg_types).cloned()
+                    let temp_scope_2 = temp_scope.child();
+                    let res = temp_scope_2.resolve_function(&name, &arg_types);
+                    match res {
+                        Some(r) => Some(r.1),
+                        None => None,
+                    }
                 };
                 match function {
                     Some(f) => {
@@ -822,8 +841,10 @@ pub fn baseassignablelist_to_microstatements(
                     None => {}
                     Some(fncall) => {
                         for arg in &fncall.assignablelist {
-                            microstatements =
+                            let res =
                                 withoperatorslist_to_microstatements(arg, scope, microstatements)?;
+                            scope = res.0;
+                            microstatements = res.1;
                             arg_microstatements.push(microstatements.pop().unwrap());
                         }
                     }
@@ -896,10 +917,10 @@ pub fn baseassignablelist_to_microstatements(
                 } else {
                     // Now confirm that there's actually a function with this name that takes these
                     // types
-                    let mut temp_scope = scope.child();
-                    let func = temp_scope.resolve_function(f, &arg_types);
-                    match func {
-                        Some(fun) => {
+                    let temp_scope = scope.child();
+                    let res = temp_scope.resolve_function(f, &arg_types);
+                    match res {
+                        Some((_, fun)) => {
                             // Success! Let's emit this
                             // TODO: Do a better job at type rewriting here
                             #[allow(clippy::needless_range_loop)]
@@ -958,8 +979,10 @@ pub fn baseassignablelist_to_microstatements(
                     None => {}
                     Some(fncall) => {
                         for arg in &fncall.assignablelist {
-                            microstatements =
+                            let res =
                                 withoperatorslist_to_microstatements(arg, scope, microstatements)?;
+                            scope = res.0;
+                            microstatements = res.1;
                             arg_microstatements.push(microstatements.pop().unwrap());
                         }
                     }
@@ -1012,12 +1035,14 @@ pub fn baseassignablelist_to_microstatements(
                     generic_types.push(t);
                 }
                 let maybe_type = scope.resolve_type(f);
-                let mut temp_scope = scope.child();
+                let temp_scope = scope.child();
                 let maybe_generic_function = {
-                    let mut temp_scope_2 = temp_scope.child();
-                    temp_scope_2
-                        .resolve_generic_function(f, &generic_types, &arg_types)
-                        .cloned()
+                    let temp_scope_2 = temp_scope.child();
+                    let res = temp_scope_2.resolve_generic_function(f, &generic_types, &arg_types);
+                    match res {
+                        Some(r) => Some(r.1),
+                        None => None,
+                    }
                 };
                 match (maybe_type, maybe_generic_function) {
                     (None, None) => {
@@ -1071,22 +1096,23 @@ pub fn baseassignablelist_to_microstatements(
                             },
                             optsemicolon: ";".to_string(),
                         };
-                        let t = CType::from_ast(&mut temp_scope, &parse_type, false)?;
+                        let res = CType::from_ast(temp_scope, &parse_type, false)?;
+                        let temp_scope = res.0;
+                        let t = res.1;
                         let real_name = t.to_callable_string();
                         // Now we are sure the type and function exist, and we know the name for the
                         // function. It would be best if we could just pass it to ourselves and run the
                         // `FuncCall` logic below, but it's easier at the moment to duplicate :( TODO
-                        let mut temp_scope_2 = temp_scope.child();
-                        let function = temp_scope_2
-                            .resolve_function(&real_name, &arg_types)
-                            .cloned();
-                        match function {
-                            Some(func) => {
+                        let temp_scope_2 = temp_scope.child();
+                        let res = temp_scope_2.resolve_function(&real_name, &arg_types);
+                        match res {
+                            Some((_, func)) => {
                                 let Scope { mut functions, .. } = temp_scope;
                                 functions.insert(f.clone(), vec![func.clone()]);
                                 scope.merge_functions(functions);
-                                CType::from_ast(scope, &parse_type, false)?; // TODO: Remove this
-                                                                             // duplicate
+                                let res = CType::from_ast(scope, &parse_type, false)?; // TODO: Remove this
+                                                                                       // duplicate
+                                scope = res.0;
                                 prior_value = Some(Microstatement::FnCall {
                                     function: func.clone(), // TODO: Drop the clone?
                                     args: arg_microstatements,
@@ -1120,14 +1146,14 @@ pub fn baseassignablelist_to_microstatements(
     if let Some(prior) = prior_value {
         microstatements.push(prior);
     }
-    Ok(microstatements)
+    Ok((scope, microstatements))
 }
 
-pub fn withoperatorslist_to_microstatements(
+pub fn withoperatorslist_to_microstatements<'a>(
     withoperatorslist: &Vec<parse::WithOperators>,
-    scope: &mut Scope,
+    mut scope: Scope<'a>,
     mut microstatements: Vec<Microstatement>,
-) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
+) -> Result<(Scope<'a>, Vec<Microstatement>), Box<dyn std::error::Error>> {
     // To properly linearize the operations here, we need to scan through all of the operators,
     // determine which is the highest precedence, whether it is infix or prefix (or maybe postfix
     // in the future?) and then process them and whichever of the baseassignables surrounding them
@@ -1402,54 +1428,60 @@ pub fn withoperatorslist_to_microstatements(
                     withoperatorslist
                 )),
             }?;
-            microstatements =
+            let res =
                 baseassignablelist_to_microstatements(&baseassignablelist, scope, microstatements)?;
+            scope = res.0;
+            microstatements = res.1;
         }
     }
-    Ok(microstatements)
+    Ok((scope, microstatements))
 }
 
-pub fn assignablestatement_to_microstatements(
+pub fn assignablestatement_to_microstatements<'a>(
     assignable: &parse::AssignableStatement,
-    scope: &mut Scope,
-    mut microstatements: Vec<Microstatement>,
-) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
-    microstatements =
+    scope: Scope<'a>,
+    microstatements: Vec<Microstatement>,
+) -> Result<(Scope<'a>, Vec<Microstatement>), Box<dyn std::error::Error>> {
+    let res =
         withoperatorslist_to_microstatements(&assignable.assignables, scope, microstatements)?;
-    Ok(microstatements)
+    Ok(res)
 }
 
-pub fn returns_to_microstatements(
+pub fn returns_to_microstatements<'a>(
     returns: &parse::Returns,
-    scope: &mut Scope,
+    mut scope: Scope<'a>,
     mut microstatements: Vec<Microstatement>,
-) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
+) -> Result<(Scope<'a>, Vec<Microstatement>), Box<dyn std::error::Error>> {
     if let Some(retval) = &returns.retval {
         // We get all of the microstatements involved in the return statement, then we pop
         // off the last one, if any exists, to get the final return value. Then we shove
         // the other microstatements into the array and the new Return microstatement with
         // that last value attached to it.
-        microstatements =
+        let res =
             withoperatorslist_to_microstatements(&retval.assignables, scope, microstatements)?;
+        scope = res.0;
+        microstatements = res.1;
         let value = microstatements.pop().map(Box::new);
         microstatements.push(Microstatement::Return { value });
     } else {
         microstatements.push(Microstatement::Return { value: None });
     }
-    Ok(microstatements)
+    Ok((scope, microstatements))
 }
 
-pub fn declarations_to_microstatements(
+pub fn declarations_to_microstatements<'a>(
     declarations: &parse::Declarations,
-    scope: &mut Scope,
+    mut scope: Scope<'a>,
     mut microstatements: Vec<Microstatement>,
-) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
+) -> Result<(Scope<'a>, Vec<Microstatement>), Box<dyn std::error::Error>> {
     let (name, assignables, mutable) = match &declarations {
         parse::Declarations::Const(c) => (c.variable.clone(), &c.assignables, false),
         parse::Declarations::Let(l) => (l.variable.clone(), &l.assignables, true),
     };
     // Get all of the assignable microstatements generated
-    microstatements = withoperatorslist_to_microstatements(assignables, scope, microstatements)?;
+    let res = withoperatorslist_to_microstatements(assignables, scope, microstatements)?;
+    scope = res.0;
+    microstatements = res.1;
     let value = match microstatements.pop() {
         None => Err("An assignment without a value should be impossible."),
         Some(v) => Ok(Box::new(v)),
@@ -1459,17 +1491,17 @@ pub fn declarations_to_microstatements(
         value,
         mutable,
     });
-    Ok(microstatements)
+    Ok((scope, microstatements))
 }
 
-pub fn statement_to_microstatements(
+pub fn statement_to_microstatements<'a>(
     statement: &parse::Statement,
-    scope: &mut Scope,
+    mut scope: Scope<'a>,
     microstatements: Vec<Microstatement>,
-) -> Result<Vec<Microstatement>, Box<dyn std::error::Error>> {
+) -> Result<(Scope<'a>, Vec<Microstatement>), Box<dyn std::error::Error>> {
     match statement {
         // This is just whitespace, so we do nothing here
-        parse::Statement::A(_) => Ok(microstatements),
+        parse::Statement::A(_) => Ok((scope, microstatements)),
         parse::Statement::Declarations(declarations) => Ok(declarations_to_microstatements(
             declarations,
             scope,
@@ -1477,23 +1509,30 @@ pub fn statement_to_microstatements(
         )?),
         parse::Statement::ArrayAssignment(arrayassignment) => {
             let mut args = Vec::new();
-            let mut ms = baseassignablelist_to_microstatements(
+            let res = baseassignablelist_to_microstatements(
                 &[arrayassignment.name.clone()],
                 scope,
                 microstatements,
             )?;
+            scope = res.0;
+            let mut ms = res.1;
             args.push(ms.pop().unwrap());
             for arg in &arrayassignment.array.assignablelist {
-                ms = withoperatorslist_to_microstatements(arg, scope, ms)?;
+                let res = withoperatorslist_to_microstatements(arg, scope, ms)?;
+                scope = res.0;
+                ms = res.1;
                 args.push(ms.pop().unwrap());
             }
-            ms = withoperatorslist_to_microstatements(&arrayassignment.assignables, scope, ms)?;
+            let res =
+                withoperatorslist_to_microstatements(&arrayassignment.assignables, scope, ms)?;
+            scope = res.0;
+            ms = res.1;
             args.push(ms.pop().unwrap());
             let arg_types = args.iter().map(|a| a.get_type()).collect::<Vec<CType>>();
             let store_fn = {
-                let mut temp_scope = scope.child();
+                let temp_scope = scope.child();
                 match temp_scope.resolve_function(&"store".to_string(), &arg_types) {
-                    Some(f) => Ok(f.clone()),
+                    Some((_, f)) => Ok(f),
                     None => Err(format!(
                         "Could not find store function with arguments {}",
                         arg_types
@@ -1508,7 +1547,7 @@ pub fn statement_to_microstatements(
                 function: store_fn,
                 args,
             });
-            Ok(ms)
+            Ok((scope, ms))
         }
         parse::Statement::Assignables(assignable) => Ok(assignablestatement_to_microstatements(
             assignable,
