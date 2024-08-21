@@ -15,7 +15,7 @@ use crate::parse;
 
 #[derive(Clone, Debug)]
 pub struct Scope<'a> {
-    pub path: String, // Now necessary since we reference by path name :/
+    pub path: String,
     pub parent: Option<&'a Scope<'a>>,
     pub imports: OrderedHashMap<String, Import>,
     pub types: OrderedHashMap<String, CType>,
@@ -214,7 +214,27 @@ impl<'a> Scope<'a> {
         }
     }
 
-    pub fn merge_functions(&mut self, mut functions: OrderedHashMap<String, Vec<Function>>) {
+    // I hate the borrow checker
+    #[allow(clippy::too_many_arguments)]
+    pub fn merge(
+        &mut self,
+        mut imports: OrderedHashMap<String, Import>,
+        mut types: OrderedHashMap<String, CType>,
+        mut consts: OrderedHashMap<String, Const>,
+        mut functions: OrderedHashMap<String, Vec<Function>>,
+        mut operatormappings: OrderedHashMap<String, OperatorMapping>,
+        mut typeoperatormappings: OrderedHashMap<String, TypeOperatorMapping>,
+        mut exports: OrderedHashMap<String, Export>,
+    ) {
+        for (name, import) in imports.drain() {
+            self.imports.insert(name, import);
+        }
+        for (name, ctype) in types.drain() {
+            self.types.insert(name, ctype);
+        }
+        for (name, constn) in consts.drain() {
+            self.consts.insert(name, constn);
+        }
         for (name, fs) in functions.drain() {
             if self.functions.contains_key(&name) {
                 let func_vec = self.functions.get_mut(&name).unwrap();
@@ -224,6 +244,15 @@ impl<'a> Scope<'a> {
             } else {
                 self.functions.insert(name, fs);
             }
+        }
+        for (name, opmap) in operatormappings.drain() {
+            self.operatormappings.insert(name, opmap);
+        }
+        for (name, typeopmap) in typeoperatormappings.drain() {
+            self.typeoperatormappings.insert(name, typeopmap);
+        }
+        for (name, export) in exports.drain() {
+            self.exports.insert(name, export);
         }
     }
 
@@ -433,87 +462,76 @@ impl<'a> Scope<'a> {
                 }
             }
         }
-        // The following is insanity to deal with the borrow checker. It could have been done
-        // without the temporary vector or the child scopes, but using a mutable reference in a
-        // loop is a big no-no.
-        let mut temp_scopes = Vec::new();
-        for _ in &generic_fs {
-            temp_scopes.push(self.child());
-        }
-        let mut realized_fs = Vec::new();
-        for (i, temp_scope) in temp_scopes.clone().into_iter().enumerate() {
-            let f = generic_fs.get(i).unwrap();
-            match Function::from_generic_function(temp_scope, f, generic_types.to_vec()) {
-                Err(_) => { /* Do nothing */ }
-                Ok((_, f)) => realized_fs.push(f.clone()),
+        let mut possible_args_vec = Vec::new();
+        for f in &generic_fs {
+            match &f.kind {
+                FnKind::Normal
+                | FnKind::Bind(_)
+                | FnKind::Derived
+                | FnKind::DerivedVariadic
+                | FnKind::Static => {
+                    panic!("This should be impossible. If reached it would generate faulty code");
+                }
+                FnKind::BoundGeneric(gen_args, _) => {
+                    let args = f
+                        .args
+                        .iter()
+                        .map(|(name, argtype)| {
+                            (name.clone(), {
+                                let mut a = argtype.clone();
+                                for ((_, o), n) in gen_args.iter().zip(generic_types.iter()) {
+                                    a = a.swap_subtype(o, n);
+                                }
+                                a
+                            })
+                        })
+                        .collect::<Vec<(String, CType)>>();
+                    possible_args_vec.push(args);
+                }
+                FnKind::Generic(gen_args, _) => {
+                    let args = f
+                        .args
+                        .iter()
+                        .map(|(name, argtype)| {
+                            (name.clone(), {
+                                let mut a = argtype.clone();
+                                for ((_, o), n) in gen_args.iter().zip(generic_types.iter()) {
+                                    a = a.swap_subtype(o, n);
+                                }
+                                a
+                            })
+                        })
+                        .collect::<Vec<(String, CType)>>();
+                    possible_args_vec.push(args);
+                }
             }
         }
-        let mut funcs = Vec::new();
-        for temp_scope in temp_scopes {
-            let Scope { functions, .. } = temp_scope;
-            funcs.push(functions);
-        }
-        for functions in funcs {
-            self.merge_functions(functions);
-        }
-        for f in realized_fs {
+        let mut match_index = None;
+        for (i, possible_args) in possible_args_vec.iter().enumerate() {
             let mut args_match = true;
             for (i, arg) in args.iter().enumerate() {
                 // This is pretty cheap, but for now, a "non-strict" string representation
                 // of the CTypes is how we'll match the args against each other. TODO: Do
                 // this without constructing a string to compare against each other.
-                if !f.args[i].1.accepts(arg) {
+                if !possible_args[i].1.accepts(arg) {
                     args_match = false;
                     break;
                 }
-                // In case this function generated any new types, let's make sure the
-                // constructor and helper functions all exist, though we can assume this is
-                // true of the inputs, it's only the return type we need to double-check
-                let fun_name = f.rettype.to_callable_string();
-                let (_, fs) = f.rettype.to_functions(fun_name.clone());
-                self.types.insert(fun_name, f.rettype.clone());
-                if !fs.is_empty() {
-                    let mut name_fn_pairs = OrderedHashMap::new();
-                    for f in fs {
-                        if name_fn_pairs.contains_key(&f.name) {
-                            let v: &mut Vec<Function> = name_fn_pairs.get_mut(&f.name).unwrap();
-                            v.push(f.clone());
-                        } else {
-                            name_fn_pairs.insert(f.name.clone(), vec![f.clone()]);
-                        }
-                    }
-                    for (name, fns) in name_fn_pairs.drain() {
-                        if self.functions.contains_key(&name) {
-                            let func_vec = self.functions.get_mut(&name).unwrap();
-                            for f in fns {
-                                func_vec.push(f);
-                            }
-                        } else {
-                            self.functions.insert(name, fns);
-                        }
-                    }
-                }
             }
             if args_match {
-                // We want to keep this one around, so we copy this function to the correct
-                // scope
-                if self.functions.contains_key(&f.name) {
-                    let func_vec = self.functions.get_mut(&f.name).unwrap();
-                    func_vec.push(f.clone());
-                } else {
-                    self.functions.insert(f.name.clone(), vec![f.clone()]);
+                match_index = Some(i);
+                break;
+            }
+        }
+        if let Some(i) = match_index {
+            let generic_f = generic_fs.get(i).unwrap();
+            let temp_scope = self.child();
+            match Function::from_generic_function(temp_scope, generic_f, generic_types.to_vec()) {
+                Err(_) => return None, // TODO: Should this be a panic?
+                Ok((temp_scope, realized_f)) => {
+                    merge!(self, temp_scope);
+                    return Some((self, realized_f));
                 }
-                let f = match self.functions.get(&f.name) {
-                    None => None,
-                    Some(fs) => {
-                        // We know it's the last one because we just put it there
-                        match fs.last() {
-                            None => panic!("This should be impossible"),
-                            Some(f) => Some(f.clone()),
-                        }
-                    }
-                }?;
-                return Some((self, f));
             }
         }
         None
@@ -718,3 +736,29 @@ impl<'a> Scope<'a> {
         None
     }
 }
+
+macro_rules! merge {
+    ( $parent: expr, $child: expr $(,)?) => {
+        let Scope {
+            imports,
+            types,
+            consts,
+            functions,
+            operatormappings,
+            typeoperatormappings,
+            exports,
+            ..
+        } = $child;
+        $parent.merge(
+            imports,
+            types,
+            consts,
+            functions,
+            operatormappings,
+            typeoperatormappings,
+            exports,
+        );
+    };
+}
+
+pub(crate) use merge;

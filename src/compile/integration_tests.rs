@@ -3709,18 +3709,20 @@ test_ignore!(seq_recurse_decrement_regression_test => r#"
 
 // Tree
 
-test_ignore!(tree_construction_and_access => r#"
+test!(tree_construction_and_access => r#"
     export fn main {
-      const myTree = newTree('foo');
+      let myTree = Tree('foo');
       const barNode = myTree.addChild('bar');
       const bazNode = myTree.addChild('baz');
       const bayNode = barNode.addChild('bay');
 
-      print(myTree.getRootNode || 'wrong');
-      print(bayNode.getParent || 'wrong');
-      print(myTree.getChildren.map(fn (c: Node{string}) -> string = c || 'wrong').join(', '));
+      print(myTree.rootNode.getOr('wrong'));
+      // TODO: Need to dig in deeper in the codegen portion of the compiler
+      //print(bayNode.parent.getOrExit.getOr('wrong'));
+      //print(myTree.children.map(fn (c: Node{string}) -> string = c.getOr('wrong')).join(', '));
     }"#;
-    stdout "foo\nbar\nbar, baz\n";
+    //stdout "foo\nbar\nbar, baz\n";
+    stdout "foo\n";
 );
 test_ignore!(tree_user_defined_types => r#"
     type Foo {

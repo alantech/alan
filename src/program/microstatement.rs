@@ -1,6 +1,5 @@
-use ordered_hash_map::OrderedHashMap;
-
 use super::ctype::{withtypeoperatorslist_to_ctype, CType};
+use super::scope::merge;
 use super::FnKind;
 use super::Function;
 use super::OperatorMapping;
@@ -368,12 +367,13 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                     Some(c) => {
                                         // TODO: Confirm the specified typename matches the
                                         // actual typename of the value
-                                        let temp_scope = scope.child();
+                                        let mut temp_scope = scope.child();
                                         let res = withoperatorslist_to_microstatements(
                                             &c.assignables,
                                             temp_scope,
                                             microstatements,
                                         )?;
+                                        temp_scope = res.0;
                                         microstatements = res.1;
                                         let cm = microstatements.pop().unwrap();
                                         let typen = match &cm {
@@ -381,6 +381,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                             Microstatement::FnCall { function: _, args: _ } => Err("TODO: Support global constant function calls"),
                                             _ => Err("This should be impossible, a constant has to be a value, array, or fncall"),
                                         }?;
+                                        merge!(scope, temp_scope);
                                         microstatements.push(Microstatement::Assignment {
                                             mutable: false,
                                             name: v.clone(),
@@ -504,8 +505,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                             };
                             // In case there were any created functions (eg constructor or accessor
                             // functions) in that path, we need to merge the child's functions back up
-                            let Scope { functions, .. } = temp_scope;
-                            inner_scope.merge_functions(functions);
+                            merge!(inner_scope, temp_scope);
                             // The input type will be interpreted in many different ways:
                             // If it's a Group, unwrap it and continue. Ideally after that it's a Tuple
                             // type containing Field types, that's a "conventional" function
@@ -660,21 +660,13 @@ pub fn baseassignablelist_to_microstatements<'a>(
                     for m in &array_accessor_microstatements {
                         arg_types.push(m.get_type());
                     }
-                    let function = {
-                        let temp_scope_2 = temp_scope.child();
-                        let res = temp_scope_2.resolve_function(&"get".to_string(), &arg_types);
-                        match res {
-                            Some(r) => Some(r.1),
-                            None => None,
-                        }
-                    };
-                    match function {
-                        Some(f) => {
-                            let Scope { functions, .. } = temp_scope;
-                            scope.merge_functions(functions);
-                            let mut functions = OrderedHashMap::new();
-                            functions.insert("get".to_string(), vec![f.clone()]);
-                            scope.merge_functions(functions);
+                    let res = temp_scope.resolve_function(&"get".to_string(), &arg_types);
+                    match res {
+                        Some((mut temp_scope, f)) => {
+                            temp_scope
+                                .functions
+                                .insert("get".to_string(), vec![f.clone()]);
+                            merge!(scope, temp_scope);
                             prior_value = Some(Microstatement::FnCall {
                                 function: f,
                                 args: array_accessor_microstatements,
@@ -708,21 +700,11 @@ pub fn baseassignablelist_to_microstatements<'a>(
                         let t = m.get_type();
                         temp_scope = CType::from_ctype(temp_scope, t.to_callable_string(), t);
                     }
-                    let function = {
-                        let temp_scope_2 = temp_scope.child();
-                        let res = temp_scope_2.resolve_function(&c.to_string(), &arg_types);
-                        match res {
-                            Some(r) => Some(r.1),
-                            None => None,
-                        }
-                    };
-                    match function {
-                        Some(f) => {
-                            let Scope { functions, .. } = temp_scope;
-                            scope.merge_functions(functions);
-                            let mut functions = OrderedHashMap::new();
-                            functions.insert(c.to_string(), vec![f.clone()]);
-                            scope.merge_functions(functions);
+                    let res = temp_scope.resolve_function(&c.to_string(), &arg_types);
+                    match res {
+                        Some((mut temp_scope, f)) => {
+                            temp_scope.functions.insert(c.to_string(), vec![f.clone()]);
+                            merge!(scope, temp_scope);
                             prior_value = Some(Microstatement::FnCall {
                                 function: f,
                                 args: constant_accessor_microstatements,
@@ -798,19 +780,11 @@ pub fn baseassignablelist_to_microstatements<'a>(
                 // Now we are sure the type and function exist, and we know the name for the
                 // function. It would be best if we could just pass it to ourselves and run the
                 // `FuncCall` logic below, but it's easier at the moment to duplicate :( TODO
-                let function = {
-                    let temp_scope_2 = temp_scope.child();
-                    let res = temp_scope_2.resolve_function(&name, &arg_types);
-                    match res {
-                        Some(r) => Some(r.1),
-                        None => None,
-                    }
-                };
-                match function {
-                    Some(f) => {
-                        let Scope { mut functions, .. } = temp_scope;
-                        functions.insert(name.clone(), vec![f.clone()]);
-                        scope.merge_functions(functions);
+                let res = temp_scope.resolve_function(&name, &arg_types);
+                match res {
+                    Some((mut temp_scope, f)) => {
+                        temp_scope.functions.insert(name.clone(), vec![f.clone()]);
+                        merge!(scope, temp_scope);
                         prior_value = Some(Microstatement::FnCall {
                             function: f.clone(),
                             args: arg_microstatements,
@@ -920,7 +894,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                     let temp_scope = scope.child();
                     let res = temp_scope.resolve_function(f, &arg_types);
                     match res {
-                        Some((_, fun)) => {
+                        Some((temp_scope, fun)) => {
                             // Success! Let's emit this
                             // TODO: Do a better job at type rewriting here
                             #[allow(clippy::needless_range_loop)]
@@ -940,6 +914,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                     _ => { /* Do nothing */ }
                                 }
                             }
+                            merge!(scope, temp_scope);
 
                             prior_value = Some(Microstatement::FnCall {
                                 function: fun.clone(), // TODO: Drop the clone
@@ -1036,14 +1011,8 @@ pub fn baseassignablelist_to_microstatements<'a>(
                 }
                 let maybe_type = scope.resolve_type(f);
                 let temp_scope = scope.child();
-                let maybe_generic_function = {
-                    let temp_scope_2 = temp_scope.child();
-                    let res = temp_scope_2.resolve_generic_function(f, &generic_types, &arg_types);
-                    match res {
-                        Some(r) => Some(r.1),
-                        None => None,
-                    }
-                };
+                let maybe_generic_function =
+                    temp_scope.resolve_generic_function(f, &generic_types, &arg_types);
                 match (maybe_type, maybe_generic_function) {
                     (None, None) => {
                         return Err(format!(
@@ -1053,11 +1022,8 @@ pub fn baseassignablelist_to_microstatements<'a>(
                         )
                         .into());
                     }
-                    (_, Some(func)) => {
-                        // TODO: Do we need the merge here? It looks like it will happen later
-                        let mut functions = OrderedHashMap::new();
-                        functions.insert(f.clone(), vec![func.clone()]);
-                        scope.merge_functions(functions);
+                    (_, Some((temp_scope, func))) => {
+                        merge!(scope, temp_scope);
                         prior_value = Some(Microstatement::FnCall {
                             function: func.clone(), // TODO: Drop the clone
                             args: arg_microstatements,
@@ -1096,20 +1062,19 @@ pub fn baseassignablelist_to_microstatements<'a>(
                             },
                             optsemicolon: ";".to_string(),
                         };
-                        let res = CType::from_ast(temp_scope, &parse_type, false)?;
-                        let temp_scope = res.0;
+                        let res = CType::from_ast(scope, &parse_type, false)?;
+                        scope = res.0;
                         let t = res.1;
                         let real_name = t.to_callable_string();
                         // Now we are sure the type and function exist, and we know the name for the
                         // function. It would be best if we could just pass it to ourselves and run the
                         // `FuncCall` logic below, but it's easier at the moment to duplicate :( TODO
-                        let temp_scope_2 = temp_scope.child();
-                        let res = temp_scope_2.resolve_function(&real_name, &arg_types);
+                        let temp_scope = scope.child();
+                        let res = temp_scope.resolve_function(&real_name, &arg_types);
                         match res {
-                            Some((_, func)) => {
-                                let Scope { mut functions, .. } = temp_scope;
-                                functions.insert(f.clone(), vec![func.clone()]);
-                                scope.merge_functions(functions);
+                            Some((mut temp_scope, func)) => {
+                                temp_scope.functions.insert(f.clone(), vec![func.clone()]);
+                                merge!(scope, temp_scope);
                                 let res = CType::from_ast(scope, &parse_type, false)?; // TODO: Remove this
                                                                                        // duplicate
                                 scope = res.0;
@@ -1133,8 +1098,6 @@ pub fn baseassignablelist_to_microstatements<'a>(
                         }
                     }
                 }
-                /*let Scope { functions, .. } = temp_scope;
-                scope.merge_functions(functions);*/
             }
             BaseChunk::IIGE(_prior, _f, _g, _h) => {
                 // TODO: This may similarly be just some simple microstatement generation here
@@ -1530,6 +1493,7 @@ pub fn statement_to_microstatements<'a>(
             args.push(ms.pop().unwrap());
             let arg_types = args.iter().map(|a| a.get_type()).collect::<Vec<CType>>();
             let store_fn = {
+                // TODO: Do we really need this temp_scope?
                 let temp_scope = scope.child();
                 match temp_scope.resolve_function(&"store".to_string(), &arg_types) {
                     Some((_, f)) => Ok(f),
