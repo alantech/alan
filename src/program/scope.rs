@@ -215,6 +215,7 @@ impl<'a> Scope<'a> {
     }
 
     // I hate the borrow checker
+    #[allow(clippy::too_many_arguments)]
     pub fn merge(
         &mut self,
         mut imports: OrderedHashMap<String, Import>,

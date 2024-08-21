@@ -681,7 +681,7 @@ pub fn from_microstatement(
                                 if argstrs.len() > 1 {
                                     return Err(format!("Invalid arguments {} provided for Either constructor function, must be zero or one argument", argstrs.join(", ")).into());
                                 }
-                                let enum_type = match &function.args.get(0) {
+                                let enum_type = match &function.args.first() {
                                     Some(t) => t.1.degroup(),
                                     None => CType::Void,
                                 };
