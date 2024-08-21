@@ -440,7 +440,6 @@ impl<'a> Scope<'a> {
                 };
             }
         }
-        println!("fs for {} -> {:?}", function, fs);
         let mut generic_fs = Vec::new();
         for f in &fs {
             match &f.kind {
@@ -462,14 +461,6 @@ impl<'a> Scope<'a> {
                 }
             }
         }
-        println!("generic_fs for {} -> {:?}", function, generic_fs);
-        // The following is insanity to deal with the borrow checker. It could have been done
-        // without the temporary vector or the child scopes, but using a mutable reference in a
-        // loop is a big no-no.
-        /*let mut temp_scopes = Vec::new();
-        for _ in &generic_fs {
-            temp_scopes.push(self.child());
-        }*/
         let mut possible_args_vec = Vec::new();
         for f in &generic_fs {
             match &f.kind {
@@ -543,112 +534,6 @@ impl<'a> Scope<'a> {
             }
         }
         None
-        /*let mut realized_fs = Vec::new();
-        for (i, temp_scope) in temp_scopes.clone().into_iter().enumerate() {
-            let f = generic_fs.get(i).unwrap();
-            match Function::from_generic_function(temp_scope, f, generic_types.to_vec()) {
-                Err(_) => { /* Do nothing */ }
-                Ok((_, f)) => realized_fs.push(f.clone()),
-            }
-        }
-        println!("realized_fs for {} -> {:?}", function, realized_fs);
-        let mut detached = Vec::new();
-        for temp_scope in temp_scopes {
-            let Scope {
-                imports,
-                types,
-                consts,
-                functions,
-                operatormappings,
-                typeoperatormappings,
-                exports,
-                ..
-            } = temp_scope;
-            detached.push((
-                imports,
-                types,
-                consts,
-                functions,
-                operatormappings,
-                typeoperatormappings,
-                exports,
-            ));
-        }
-        for (imports, types, consts, functions, operatormappings, typeoperatormappings, exports) in
-            detached
-        {
-            self.merge(
-                imports,
-                types,
-                consts,
-                functions,
-                operatormappings,
-                typeoperatormappings,
-                exports,
-            );
-        }
-        for f in realized_fs {
-            println!("{} -> fargs {:?} args {:?}", function, f.args, args);
-            let mut args_match = true;
-            for (i, arg) in args.iter().enumerate() {
-                // This is pretty cheap, but for now, a "non-strict" string representation
-                // of the CTypes is how we'll match the args against each other. TODO: Do
-                // this without constructing a string to compare against each other.
-                if !f.args[i].1.accepts(arg) {
-                    args_match = false;
-                    break;
-                }
-                // In case this function generated any new types, let's make sure the
-                // constructor and helper functions all exist, though we can assume this is
-                // true of the inputs, it's only the return type we need to double-check
-                let fun_name = f.rettype.to_callable_string();
-                let (_, fs) = f.rettype.to_functions(fun_name.clone());
-                self.types.insert(fun_name, f.rettype.clone());
-                if !fs.is_empty() {
-                    let mut name_fn_pairs = OrderedHashMap::new();
-                    for f in fs {
-                        if name_fn_pairs.contains_key(&f.name) {
-                            let v: &mut Vec<Function> = name_fn_pairs.get_mut(&f.name).unwrap();
-                            v.push(f.clone());
-                        } else {
-                            name_fn_pairs.insert(f.name.clone(), vec![f.clone()]);
-                        }
-                    }
-                    for (name, fns) in name_fn_pairs.drain() {
-                        if self.functions.contains_key(&name) {
-                            let func_vec = self.functions.get_mut(&name).unwrap();
-                            for f in fns {
-                                func_vec.push(f);
-                            }
-                        } else {
-                            self.functions.insert(name, fns);
-                        }
-                    }
-                }
-            }
-            if args_match {
-                // We want to keep this one around, so we copy this function to the correct
-                // scope
-                if self.functions.contains_key(&f.name) {
-                    let func_vec = self.functions.get_mut(&f.name).unwrap();
-                    func_vec.push(f.clone());
-                } else {
-                    self.functions.insert(f.name.clone(), vec![f.clone()]);
-                }
-                let f = match self.functions.get(&f.name) {
-                    None => None,
-                    Some(fs) => {
-                        // We know it's the last one because we just put it there
-                        match fs.last() {
-                            None => panic!("This should be impossible"),
-                            Some(f) => Some(f.clone()),
-                        }
-                    }
-                }?;
-                return Some((self, f));
-            }
-        }
-        None*/
     }
 
     pub fn resolve_function(
@@ -660,31 +545,14 @@ impl<'a> Scope<'a> {
         // a generic function, if possible.
         // TODO: This boolean *shouldn't* be necessary, but I can't convince the borrow checker
         // otherwise
-        println!("resolve_function: function {:?} args {:?}", function, args);
         let is_normal = self.resolve_normal_function(function, args).is_some();
-        println!("is_normal {}", is_normal);
         if is_normal {
             self.resolve_normal_function(function, args)
                 .map(|f| (self, f))
         } else {
-            println!("resolve_function scope path {}", self.path);
-            println!(
-                "rfga {:?}",
-                self.resolve_function_generic_args(function, args)
-            );
             match self.resolve_function_generic_args(function, args) {
                 Some(gs) => self.resolve_generic_function(function, &gs, args),
-                None => {
-                    println!(
-                        "resolution for {}({}) failed",
-                        function,
-                        args.iter()
-                            .map(|c| c.to_strict_string(false))
-                            .collect::<Vec<String>>()
-                            .join(", ")
-                    );
-                    None
-                }
+                None => None,
             }
         }
     }
