@@ -1682,6 +1682,18 @@ export fn j(v: gvec2u) -> gu32 = v.y;
 export fn r(v: gvec2u) -> gu32 = v.x;
 export fn g(v: gvec2u) -> gu32 = v.y;
 
+fn gvec22u(v: gvec2u, a: string) -> gvec2u {
+  // TODO: Add some type safety on the kinds of strings you can pass in here
+  let varName = v.varName.concat(a);
+  return gvec2u(varName, v.statements, v.buffers);
+}
+export fn xy(v: gvec2u) -> gvec2u = gvec22u(v, '.xy');
+export fn yx(v: gvec2u) -> gvec2u = gvec22u(v, '.yx');
+export fn ij(v: gvec2u) -> gvec2u = v.xy;
+export fn ji(v: gvec2u) -> gvec2u = v.yx;
+export fn rg(v: gvec2u) -> gvec2u = v.xy;
+export fn gr(v: gvec2u) -> gvec2u = v.yx;
+
 export fn x(v: gvec2i) -> gi32 {
   let varName = v.varName.concat('.x');
   return gi32(varName, v.statements, v.buffers);
@@ -1694,6 +1706,18 @@ export fn i(v: gvec2i) -> gi32 = v.x;
 export fn j(v: gvec2i) -> gi32 = v.y;
 export fn r(v: gvec2i) -> gi32 = v.x;
 export fn g(v: gvec2i) -> gi32 = v.y;
+
+fn gvec22i(v: gvec2i, a: string) -> gvec2i {
+  // TODO: Add some type safety on the kinds of strings you can pass in here
+  let varName = v.varName.concat(a);
+  return gvec2i(varName, v.statements, v.buffers);
+}
+export fn xy(v: gvec2i) -> gvec2i = gvec22i(v, '.xy');
+export fn yx(v: gvec2i) -> gvec2i = gvec22i(v, '.yx');
+export fn ij(v: gvec2i) -> gvec2i = v.xy;
+export fn ji(v: gvec2i) -> gvec2i = v.yx;
+export fn rg(v: gvec2i) -> gvec2i = v.xy;
+export fn gr(v: gvec2i) -> gvec2i = v.yx;
 
 export fn x(v: gvec2f) -> gf32 {
   let varName = v.varName.concat('.x');
@@ -1708,6 +1732,18 @@ export fn j(v: gvec2f) -> gf32 = v.y;
 export fn r(v: gvec2f) -> gf32 = v.x;
 export fn g(v: gvec2f) -> gf32 = v.y;
 
+fn gvec22f(v: gvec2f, a: string) -> gvec2f {
+  // TODO: Add some type safety on the kinds of strings you can pass in here
+  let varName = v.varName.concat(a);
+  return gvec2f(varName, v.statements, v.buffers);
+}
+export fn xy(v: gvec2f) -> gvec2f = gvec22f(v, '.xy');
+export fn yx(v: gvec2f) -> gvec2f = gvec22f(v, '.yx');
+export fn ij(v: gvec2f) -> gvec2f = v.xy;
+export fn ji(v: gvec2f) -> gvec2f = v.yx;
+export fn rg(v: gvec2f) -> gvec2f = v.xy;
+export fn gr(v: gvec2f) -> gvec2f = v.yx;
+
 export fn x(v: gvec2b) -> gbool {
   let varName = v.varName.concat('.x');
   return gbool(varName, v.statements, v.buffers);
@@ -1720,6 +1756,18 @@ export fn i(v: gvec2b) -> gbool = v.x;
 export fn j(v: gvec2b) -> gbool = v.y;
 export fn r(v: gvec2b) -> gbool = v.x;
 export fn g(v: gvec2b) -> gbool = v.y;
+
+fn gvec22b(v: gvec2b, a: string) -> gvec2b {
+  // TODO: Add some type safety on the kinds of strings you can pass in here
+  let varName = v.varName.concat(a);
+  return gvec2b(varName, v.statements, v.buffers);
+}
+export fn xy(v: gvec2b) -> gvec2b = gvec22b(v, '.xy');
+export fn yx(v: gvec2b) -> gvec2b = gvec22b(v, '.yx');
+export fn ij(v: gvec2b) -> gvec2b = v.xy;
+export fn ji(v: gvec2b) -> gvec2b = v.yx;
+export fn rg(v: gvec2b) -> gvec2b = v.xy;
+export fn gr(v: gvec2b) -> gvec2b = v.yx;
 
 export fn x(v: gvec3u) -> gu32 {
   let varName = v.varName.concat('.x');
@@ -1764,6 +1812,30 @@ export fn br(v: gvec3u) -> gvec2u = v.zx;
 export fn gb(v: gvec3u) -> gvec2u = v.yz;
 export fn bg(v: gvec3u) -> gvec2u = v.zy;
 
+fn gvec33u(v: gvec3u, a: string) -> gvec3u {
+  // TODO: Add some type safety on the kinds of strings you can pass in here
+  let varName = v.varName.concat(a);
+  return gvec3u(varName, v.statements, v.buffers);
+}
+export fn xyz(v: gvec3u) -> gvec3u = gvec33u(v, '.xyz');
+export fn xzy(v: gvec3u) -> gvec3u = gvec33u(v, '.xzy');
+export fn yxz(v: gvec3u) -> gvec3u = gvec33u(v, '.yxz');
+export fn yzx(v: gvec3u) -> gvec3u = gvec33u(v, '.yzx');
+export fn zxy(v: gvec3u) -> gvec3u = gvec33u(v, '.zxy');
+export fn zyx(v: gvec3u) -> gvec3u = gvec33u(v, '.zyx');
+export fn ijk(v: gvec3u) -> gvec3u = v.xyz;
+export fn ikj(v: gvec3u) -> gvec3u = v.xzy;
+export fn jik(v: gvec3u) -> gvec3u = v.yxz;
+export fn jki(v: gvec3u) -> gvec3u = v.yzx;
+export fn kij(v: gvec3u) -> gvec3u = v.zxy;
+export fn kji(v: gvec3u) -> gvec3u = v.zyx;
+export fn rgb(v: gvec3u) -> gvec3u = v.xyz;
+export fn rbg(v: gvec3u) -> gvec3u = v.xzy;
+export fn grb(v: gvec3u) -> gvec3u = v.yxz;
+export fn gbr(v: gvec3u) -> gvec3u = v.yzx;
+export fn brg(v: gvec3u) -> gvec3u = v.zxy;
+export fn bgr(v: gvec3u) -> gvec3u = v.zyx;
+
 export fn x(v: gvec3i) -> gi32 {
   let varName = v.varName.concat('.x');
   return gi32(varName, v.statements, v.buffers);
@@ -1806,6 +1878,30 @@ export fn rb(v: gvec3i) -> gvec2i = v.xz;
 export fn br(v: gvec3i) -> gvec2i = v.zx;
 export fn gb(v: gvec3i) -> gvec2i = v.yz;
 export fn bg(v: gvec3i) -> gvec2i = v.zy;
+
+fn gvec33i(v: gvec3i, a: string) -> gvec3i {
+  // TODO: Add some type safety on the kinds of strings you can pass in here
+  let varName = v.varName.concat(a);
+  return gvec3i(varName, v.statements, v.buffers);
+}
+export fn xyz(v: gvec3i) -> gvec3i = gvec33i(v, '.xyz');
+export fn xzy(v: gvec3i) -> gvec3i = gvec33i(v, '.xzy');
+export fn yxz(v: gvec3i) -> gvec3i = gvec33i(v, '.yxz');
+export fn yzx(v: gvec3i) -> gvec3i = gvec33i(v, '.yzx');
+export fn zxy(v: gvec3i) -> gvec3i = gvec33i(v, '.zxy');
+export fn zyx(v: gvec3i) -> gvec3i = gvec33i(v, '.zyx');
+export fn ijk(v: gvec3i) -> gvec3i = v.xyz;
+export fn ikj(v: gvec3i) -> gvec3i = v.xzy;
+export fn jik(v: gvec3i) -> gvec3i = v.yxz;
+export fn jki(v: gvec3i) -> gvec3i = v.yzx;
+export fn kij(v: gvec3i) -> gvec3i = v.zxy;
+export fn kji(v: gvec3i) -> gvec3i = v.zyx;
+export fn rgb(v: gvec3i) -> gvec3i = v.xyz;
+export fn rbg(v: gvec3i) -> gvec3i = v.xzy;
+export fn grb(v: gvec3i) -> gvec3i = v.yxz;
+export fn gbr(v: gvec3i) -> gvec3i = v.yzx;
+export fn brg(v: gvec3i) -> gvec3i = v.zxy;
+export fn bgr(v: gvec3i) -> gvec3i = v.zyx;
 
 export fn x(v: gvec3f) -> gf32 {
   let varName = v.varName.concat('.x');
@@ -1850,6 +1946,30 @@ export fn br(v: gvec3f) -> gvec2f = v.zx;
 export fn gb(v: gvec3f) -> gvec2f = v.yz;
 export fn bg(v: gvec3f) -> gvec2f = v.zy;
 
+fn gvec33f(v: gvec3f, a: string) -> gvec3f {
+  // TODO: Add some type safety on the kinds of strings you can pass in here
+  let varName = v.varName.concat(a);
+  return gvec3f(varName, v.statements, v.buffers);
+}
+export fn xyz(v: gvec3f) -> gvec3f = gvec33f(v, '.xyz');
+export fn xzy(v: gvec3f) -> gvec3f = gvec33f(v, '.xzy');
+export fn yxz(v: gvec3f) -> gvec3f = gvec33f(v, '.yxz');
+export fn yzx(v: gvec3f) -> gvec3f = gvec33f(v, '.yzx');
+export fn zxy(v: gvec3f) -> gvec3f = gvec33f(v, '.zxy');
+export fn zyx(v: gvec3f) -> gvec3f = gvec33f(v, '.zyx');
+export fn ijk(v: gvec3f) -> gvec3f = v.xyz;
+export fn ikj(v: gvec3f) -> gvec3f = v.xzy;
+export fn jik(v: gvec3f) -> gvec3f = v.yxz;
+export fn jki(v: gvec3f) -> gvec3f = v.yzx;
+export fn kij(v: gvec3f) -> gvec3f = v.zxy;
+export fn kji(v: gvec3f) -> gvec3f = v.zyx;
+export fn rgb(v: gvec3f) -> gvec3f = v.xyz;
+export fn rbg(v: gvec3f) -> gvec3f = v.xzy;
+export fn grb(v: gvec3f) -> gvec3f = v.yxz;
+export fn gbr(v: gvec3f) -> gvec3f = v.yzx;
+export fn brg(v: gvec3f) -> gvec3f = v.zxy;
+export fn bgr(v: gvec3f) -> gvec3f = v.zyx;
+
 export fn x(v: gvec3b) -> gbool {
   let varName = v.varName.concat('.x');
   return gbool(varName, v.statements, v.buffers);
@@ -1892,6 +2012,30 @@ export fn rb(v: gvec3b) -> gvec2b = v.xz;
 export fn br(v: gvec3b) -> gvec2b = v.zx;
 export fn gb(v: gvec3b) -> gvec2b = v.yz;
 export fn bg(v: gvec3b) -> gvec2b = v.zy;
+
+fn gvec33b(v: gvec3b, a: string) -> gvec3b {
+  // TODO: Add some type safety on the kinds of strings you can pass in here
+  let varName = v.varName.concat(a);
+  return gvec3b(varName, v.statements, v.buffers);
+}
+export fn xyz(v: gvec3b) -> gvec3b = gvec33b(v, '.xyz');
+export fn xzy(v: gvec3b) -> gvec3b = gvec33b(v, '.xzy');
+export fn yxz(v: gvec3b) -> gvec3b = gvec33b(v, '.yxz');
+export fn yzx(v: gvec3b) -> gvec3b = gvec33b(v, '.yzx');
+export fn zxy(v: gvec3b) -> gvec3b = gvec33b(v, '.zxy');
+export fn zyx(v: gvec3b) -> gvec3b = gvec33b(v, '.zyx');
+export fn ijk(v: gvec3b) -> gvec3b = v.xyz;
+export fn ikj(v: gvec3b) -> gvec3b = v.xzy;
+export fn jik(v: gvec3b) -> gvec3b = v.yxz;
+export fn jki(v: gvec3b) -> gvec3b = v.yzx;
+export fn kij(v: gvec3b) -> gvec3b = v.zxy;
+export fn kji(v: gvec3b) -> gvec3b = v.zyx;
+export fn rgb(v: gvec3b) -> gvec3b = v.xyz;
+export fn rbg(v: gvec3b) -> gvec3b = v.xzy;
+export fn grb(v: gvec3b) -> gvec3b = v.yxz;
+export fn gbr(v: gvec3b) -> gvec3b = v.yzx;
+export fn brg(v: gvec3b) -> gvec3b = v.zxy;
+export fn bgr(v: gvec3b) -> gvec3b = v.zyx;
 
 export fn x(v: gvec4u) -> gu32 {
   let varName = v.varName.concat('.x');
@@ -2039,6 +2183,78 @@ export fn abg(v: gvec4u) -> gvec3u = v.wyz;
 export fn agr(v: gvec4u) -> gvec3u = v.wzx;
 export fn agb(v: gvec4u) -> gvec3u = v.wzy;
 
+fn gvec44u(v: gvec4u, a: string) -> gvec4u {
+  // TODO: Add some type safety on the kinds of strings you can pass in here
+  let varName = v.varName.concat(a);
+  return gvec4u(varName, v.statements, v.buffers);
+}
+export fn xyzw(v: gvec4u) -> gvec4u = gvec44u(v, '.xyzw'); // 1234
+export fn xywz(v: gvec4u) -> gvec4u = gvec44u(v, '.xywz'); // 1243
+export fn xzyw(v: gvec4u) -> gvec4u = gvec44u(v, '.xzyw'); // 1324
+export fn xzwy(v: gvec4u) -> gvec4u = gvec44u(v, '.xzwy'); // 1342
+export fn xwyz(v: gvec4u) -> gvec4u = gvec44u(v, '.xwyz'); // 1423
+export fn xwzy(v: gvec4u) -> gvec4u = gvec44u(v, '.xwzy'); // 1432
+export fn yxzw(v: gvec4u) -> gvec4u = gvec44u(v, '.yxzw'); // 2134
+export fn yxwz(v: gvec4u) -> gvec4u = gvec44u(v, '.yxwz'); // 2143
+export fn yzxw(v: gvec4u) -> gvec4u = gvec44u(v, '.yzxw'); // 2314
+export fn yzwx(v: gvec4u) -> gvec4u = gvec44u(v, '.yzwx'); // 2341
+export fn ywxz(v: gvec4u) -> gvec4u = gvec44u(v, '.ywxz'); // 2413
+export fn ywzx(v: gvec4u) -> gvec4u = gvec44u(v, '.ywzx'); // 2431
+export fn zxyw(v: gvec4u) -> gvec4u = gvec44u(v, '.zxyw'); // 3124
+export fn zxwy(v: gvec4u) -> gvec4u = gvec44u(v, '.zxwy'); // 3142
+export fn zyxw(v: gvec4u) -> gvec4u = gvec44u(v, '.zyxw'); // 3214
+export fn zywx(v: gvec4u) -> gvec4u = gvec44u(v, '.zywx'); // 3241
+export fn zwxy(v: gvec4u) -> gvec4u = gvec44u(v, '.zwxy'); // 3412
+export fn zwyx(v: gvec4u) -> gvec4u = gvec44u(v, '.zwyx'); // 3421
+export fn wxyz(v: gvec4u) -> gvec4u = gvec44u(v, '.wxyz'); // 4123
+export fn wxzy(v: gvec4u) -> gvec4u = gvec44u(v, '.wxzy'); // 4132
+export fn wyxz(v: gvec4u) -> gvec4u = gvec44u(v, '.wyxz'); // 4213
+export fn wyzx(v: gvec4u) -> gvec4u = gvec44u(v, '.wyzx'); // 4231
+export fn wzxy(v: gvec4u) -> gvec4u = gvec44u(v, '.wzxy'); // 4312
+export fn wzyx(v: gvec4u) -> gvec4u = gvec44u(v, '.wzyx'); // 4321
+export fn ijkl(v: gvec4u) -> gvec4u = v.xyzw;
+export fn ijlk(v: gvec4u) -> gvec4u = v.xywz;
+export fn ikjl(v: gvec4u) -> gvec4u = v.xzyw;
+export fn iklj(v: gvec4u) -> gvec4u = v.xzwy;
+export fn iljk(v: gvec4u) -> gvec4u = v.xwyz;
+export fn ilkj(v: gvec4u) -> gvec4u = v.xwzy;
+export fn jikl(v: gvec4u) -> gvec4u = v.yxzw;
+export fn jilk(v: gvec4u) -> gvec4u = v.yxwz;
+export fn jkil(v: gvec4u) -> gvec4u = v.yzxw;
+export fn jkli(v: gvec4u) -> gvec4u = v.yzwx;
+export fn jlik(v: gvec4u) -> gvec4u = v.ywxz;
+export fn jlki(v: gvec4u) -> gvec4u = v.ywzx;
+export fn kijl(v: gvec4u) -> gvec4u = v.zxyw;
+export fn kilj(v: gvec4u) -> gvec4u = v.zxwy;
+export fn kjil(v: gvec4u) -> gvec4u = v.zyxw;
+export fn kjli(v: gvec4u) -> gvec4u = v.zywx;
+export fn klij(v: gvec4u) -> gvec4u = v.zwxy;
+export fn klji(v: gvec4u) -> gvec4u = v.zwyx;
+export fn lijk(v: gvec4u) -> gvec4u = v.wxyz;
+export fn likj(v: gvec4u) -> gvec4u = v.wxzy;
+export fn ljik(v: gvec4u) -> gvec4u = v.wyxz;
+export fn ljki(v: gvec4u) -> gvec4u = v.wyzx;
+export fn lkij(v: gvec4u) -> gvec4u = v.wzxy;
+export fn lkji(v: gvec4u) -> gvec4u = v.wzyx;
+export fn rgba(v: gvec4u) -> gvec4u = v.xyzw;
+export fn rgab(v: gvec4u) -> gvec4u = v.xywz;
+export fn rbga(v: gvec4u) -> gvec4u = v.xzyw;
+export fn rbag(v: gvec4u) -> gvec4u = v.xzwy;
+export fn ragb(v: gvec4u) -> gvec4u = v.xwyz;
+export fn rabg(v: gvec4u) -> gvec4u = v.xwzy;
+export fn grba(v: gvec4u) -> gvec4u = v.yxzw;
+export fn grab(v: gvec4u) -> gvec4u = v.yxwz;
+export fn gbra(v: gvec4u) -> gvec4u = v.yzxw;
+export fn gbar(v: gvec4u) -> gvec4u = v.yzwx;
+export fn garb(v: gvec4u) -> gvec4u = v.ywxz;
+export fn gabr(v: gvec4u) -> gvec4u = v.ywzx;
+export fn argb(v: gvec4u) -> gvec4u = v.wxyz;
+export fn arbg(v: gvec4u) -> gvec4u = v.wxzy;
+export fn agrb(v: gvec4u) -> gvec4u = v.wyxz;
+export fn agbr(v: gvec4u) -> gvec4u = v.wyzx;
+export fn abrg(v: gvec4u) -> gvec4u = v.wzxy;
+export fn abgr(v: gvec4u) -> gvec4u = v.wzyx;
+
 export fn x(v: gvec4i) -> gi32 {
   let varName = v.varName.concat('.x');
   return gi32(varName, v.statements, v.buffers);
@@ -2184,6 +2400,78 @@ export fn abr(v: gvec4i) -> gvec3i = v.wyx;
 export fn abg(v: gvec4i) -> gvec3i = v.wyz;
 export fn agr(v: gvec4i) -> gvec3i = v.wzx;
 export fn agb(v: gvec4i) -> gvec3i = v.wzy;
+
+fn gvec44i(v: gvec4i, a: string) -> gvec4i {
+  // TODO: Add some type safety on the kinds of strings you can pass in here
+  let varName = v.varName.concat(a);
+  return gvec4i(varName, v.statements, v.buffers);
+}
+export fn xyzw(v: gvec4i) -> gvec4i = gvec44i(v, '.xyzw'); // 1234
+export fn xywz(v: gvec4i) -> gvec4i = gvec44i(v, '.xywz'); // 1243
+export fn xzyw(v: gvec4i) -> gvec4i = gvec44i(v, '.xzyw'); // 1324
+export fn xzwy(v: gvec4i) -> gvec4i = gvec44i(v, '.xzwy'); // 1342
+export fn xwyz(v: gvec4i) -> gvec4i = gvec44i(v, '.xwyz'); // 1423
+export fn xwzy(v: gvec4i) -> gvec4i = gvec44i(v, '.xwzy'); // 1432
+export fn yxzw(v: gvec4i) -> gvec4i = gvec44i(v, '.yxzw'); // 2134
+export fn yxwz(v: gvec4i) -> gvec4i = gvec44i(v, '.yxwz'); // 2143
+export fn yzxw(v: gvec4i) -> gvec4i = gvec44i(v, '.yzxw'); // 2314
+export fn yzwx(v: gvec4i) -> gvec4i = gvec44i(v, '.yzwx'); // 2341
+export fn ywxz(v: gvec4i) -> gvec4i = gvec44i(v, '.ywxz'); // 2413
+export fn ywzx(v: gvec4i) -> gvec4i = gvec44i(v, '.ywzx'); // 2431
+export fn zxyw(v: gvec4i) -> gvec4i = gvec44i(v, '.zxyw'); // 3124
+export fn zxwy(v: gvec4i) -> gvec4i = gvec44i(v, '.zxwy'); // 3142
+export fn zyxw(v: gvec4i) -> gvec4i = gvec44i(v, '.zyxw'); // 3214
+export fn zywx(v: gvec4i) -> gvec4i = gvec44i(v, '.zywx'); // 3241
+export fn zwxy(v: gvec4i) -> gvec4i = gvec44i(v, '.zwxy'); // 3412
+export fn zwyx(v: gvec4i) -> gvec4i = gvec44i(v, '.zwyx'); // 3421
+export fn wxyz(v: gvec4i) -> gvec4i = gvec44i(v, '.wxyz'); // 4123
+export fn wxzy(v: gvec4i) -> gvec4i = gvec44i(v, '.wxzy'); // 4132
+export fn wyxz(v: gvec4i) -> gvec4i = gvec44i(v, '.wyxz'); // 4213
+export fn wyzx(v: gvec4i) -> gvec4i = gvec44i(v, '.wyzx'); // 4231
+export fn wzxy(v: gvec4i) -> gvec4i = gvec44i(v, '.wzxy'); // 4312
+export fn wzyx(v: gvec4i) -> gvec4i = gvec44i(v, '.wzyx'); // 4321
+export fn ijkl(v: gvec4i) -> gvec4i = v.xyzw;
+export fn ijlk(v: gvec4i) -> gvec4i = v.xywz;
+export fn ikjl(v: gvec4i) -> gvec4i = v.xzyw;
+export fn iklj(v: gvec4i) -> gvec4i = v.xzwy;
+export fn iljk(v: gvec4i) -> gvec4i = v.xwyz;
+export fn ilkj(v: gvec4i) -> gvec4i = v.xwzy;
+export fn jikl(v: gvec4i) -> gvec4i = v.yxzw;
+export fn jilk(v: gvec4i) -> gvec4i = v.yxwz;
+export fn jkil(v: gvec4i) -> gvec4i = v.yzxw;
+export fn jkli(v: gvec4i) -> gvec4i = v.yzwx;
+export fn jlik(v: gvec4i) -> gvec4i = v.ywxz;
+export fn jlki(v: gvec4i) -> gvec4i = v.ywzx;
+export fn kijl(v: gvec4i) -> gvec4i = v.zxyw;
+export fn kilj(v: gvec4i) -> gvec4i = v.zxwy;
+export fn kjil(v: gvec4i) -> gvec4i = v.zyxw;
+export fn kjli(v: gvec4i) -> gvec4i = v.zywx;
+export fn klij(v: gvec4i) -> gvec4i = v.zwxy;
+export fn klji(v: gvec4i) -> gvec4i = v.zwyx;
+export fn lijk(v: gvec4i) -> gvec4i = v.wxyz;
+export fn likj(v: gvec4i) -> gvec4i = v.wxzy;
+export fn ljik(v: gvec4i) -> gvec4i = v.wyxz;
+export fn ljki(v: gvec4i) -> gvec4i = v.wyzx;
+export fn lkij(v: gvec4i) -> gvec4i = v.wzxy;
+export fn lkji(v: gvec4i) -> gvec4i = v.wzyx;
+export fn rgba(v: gvec4i) -> gvec4i = v.xyzw;
+export fn rgab(v: gvec4i) -> gvec4i = v.xywz;
+export fn rbga(v: gvec4i) -> gvec4i = v.xzyw;
+export fn rbag(v: gvec4i) -> gvec4i = v.xzwy;
+export fn ragb(v: gvec4i) -> gvec4i = v.xwyz;
+export fn rabg(v: gvec4i) -> gvec4i = v.xwzy;
+export fn grba(v: gvec4i) -> gvec4i = v.yxzw;
+export fn grab(v: gvec4i) -> gvec4i = v.yxwz;
+export fn gbra(v: gvec4i) -> gvec4i = v.yzxw;
+export fn gbar(v: gvec4i) -> gvec4i = v.yzwx;
+export fn garb(v: gvec4i) -> gvec4i = v.ywxz;
+export fn gabr(v: gvec4i) -> gvec4i = v.ywzx;
+export fn argb(v: gvec4i) -> gvec4i = v.wxyz;
+export fn arbg(v: gvec4i) -> gvec4i = v.wxzy;
+export fn agrb(v: gvec4i) -> gvec4i = v.wyxz;
+export fn agbr(v: gvec4i) -> gvec4i = v.wyzx;
+export fn abrg(v: gvec4i) -> gvec4i = v.wzxy;
+export fn abgr(v: gvec4i) -> gvec4i = v.wzyx;
 
 export fn x(v: gvec4f) -> gf32 {
   let varName = v.varName.concat('.x');
@@ -2331,6 +2619,78 @@ export fn abg(v: gvec4f) -> gvec3f = v.wyz;
 export fn agr(v: gvec4f) -> gvec3f = v.wzx;
 export fn agb(v: gvec4f) -> gvec3f = v.wzy;
 
+fn gvec44f(v: gvec4f, a: string) -> gvec4f {
+  // TODO: Add some type safety on the kinds of strings you can pass in here
+  let varName = v.varName.concat(a);
+  return gvec4f(varName, v.statements, v.buffers);
+}
+export fn xyzw(v: gvec4f) -> gvec4f = gvec44f(v, '.xyzw'); // 1234
+export fn xywz(v: gvec4f) -> gvec4f = gvec44f(v, '.xywz'); // 1243
+export fn xzyw(v: gvec4f) -> gvec4f = gvec44f(v, '.xzyw'); // 1324
+export fn xzwy(v: gvec4f) -> gvec4f = gvec44f(v, '.xzwy'); // 1342
+export fn xwyz(v: gvec4f) -> gvec4f = gvec44f(v, '.xwyz'); // 1423
+export fn xwzy(v: gvec4f) -> gvec4f = gvec44f(v, '.xwzy'); // 1432
+export fn yxzw(v: gvec4f) -> gvec4f = gvec44f(v, '.yxzw'); // 2134
+export fn yxwz(v: gvec4f) -> gvec4f = gvec44f(v, '.yxwz'); // 2143
+export fn yzxw(v: gvec4f) -> gvec4f = gvec44f(v, '.yzxw'); // 2314
+export fn yzwx(v: gvec4f) -> gvec4f = gvec44f(v, '.yzwx'); // 2341
+export fn ywxz(v: gvec4f) -> gvec4f = gvec44f(v, '.ywxz'); // 2413
+export fn ywzx(v: gvec4f) -> gvec4f = gvec44f(v, '.ywzx'); // 2431
+export fn zxyw(v: gvec4f) -> gvec4f = gvec44f(v, '.zxyw'); // 3124
+export fn zxwy(v: gvec4f) -> gvec4f = gvec44f(v, '.zxwy'); // 3142
+export fn zyxw(v: gvec4f) -> gvec4f = gvec44f(v, '.zyxw'); // 3214
+export fn zywx(v: gvec4f) -> gvec4f = gvec44f(v, '.zywx'); // 3241
+export fn zwxy(v: gvec4f) -> gvec4f = gvec44f(v, '.zwxy'); // 3412
+export fn zwyx(v: gvec4f) -> gvec4f = gvec44f(v, '.zwyx'); // 3421
+export fn wxyz(v: gvec4f) -> gvec4f = gvec44f(v, '.wxyz'); // 4123
+export fn wxzy(v: gvec4f) -> gvec4f = gvec44f(v, '.wxzy'); // 4132
+export fn wyxz(v: gvec4f) -> gvec4f = gvec44f(v, '.wyxz'); // 4213
+export fn wyzx(v: gvec4f) -> gvec4f = gvec44f(v, '.wyzx'); // 4231
+export fn wzxy(v: gvec4f) -> gvec4f = gvec44f(v, '.wzxy'); // 4312
+export fn wzyx(v: gvec4f) -> gvec4f = gvec44f(v, '.wzyx'); // 4321
+export fn ijkl(v: gvec4f) -> gvec4f = v.xyzw;
+export fn ijlk(v: gvec4f) -> gvec4f = v.xywz;
+export fn ikjl(v: gvec4f) -> gvec4f = v.xzyw;
+export fn iklj(v: gvec4f) -> gvec4f = v.xzwy;
+export fn iljk(v: gvec4f) -> gvec4f = v.xwyz;
+export fn ilkj(v: gvec4f) -> gvec4f = v.xwzy;
+export fn jikl(v: gvec4f) -> gvec4f = v.yxzw;
+export fn jilk(v: gvec4f) -> gvec4f = v.yxwz;
+export fn jkil(v: gvec4f) -> gvec4f = v.yzxw;
+export fn jkli(v: gvec4f) -> gvec4f = v.yzwx;
+export fn jlik(v: gvec4f) -> gvec4f = v.ywxz;
+export fn jlki(v: gvec4f) -> gvec4f = v.ywzx;
+export fn kijl(v: gvec4f) -> gvec4f = v.zxyw;
+export fn kilj(v: gvec4f) -> gvec4f = v.zxwy;
+export fn kjil(v: gvec4f) -> gvec4f = v.zyxw;
+export fn kjli(v: gvec4f) -> gvec4f = v.zywx;
+export fn klij(v: gvec4f) -> gvec4f = v.zwxy;
+export fn klji(v: gvec4f) -> gvec4f = v.zwyx;
+export fn lijk(v: gvec4f) -> gvec4f = v.wxyz;
+export fn likj(v: gvec4f) -> gvec4f = v.wxzy;
+export fn ljik(v: gvec4f) -> gvec4f = v.wyxz;
+export fn ljki(v: gvec4f) -> gvec4f = v.wyzx;
+export fn lkij(v: gvec4f) -> gvec4f = v.wzxy;
+export fn lkji(v: gvec4f) -> gvec4f = v.wzyx;
+export fn rgba(v: gvec4f) -> gvec4f = v.xyzw;
+export fn rgab(v: gvec4f) -> gvec4f = v.xywz;
+export fn rbga(v: gvec4f) -> gvec4f = v.xzyw;
+export fn rbag(v: gvec4f) -> gvec4f = v.xzwy;
+export fn ragb(v: gvec4f) -> gvec4f = v.xwyz;
+export fn rabg(v: gvec4f) -> gvec4f = v.xwzy;
+export fn grba(v: gvec4f) -> gvec4f = v.yxzw;
+export fn grab(v: gvec4f) -> gvec4f = v.yxwz;
+export fn gbra(v: gvec4f) -> gvec4f = v.yzxw;
+export fn gbar(v: gvec4f) -> gvec4f = v.yzwx;
+export fn garb(v: gvec4f) -> gvec4f = v.ywxz;
+export fn gabr(v: gvec4f) -> gvec4f = v.ywzx;
+export fn argb(v: gvec4f) -> gvec4f = v.wxyz;
+export fn arbg(v: gvec4f) -> gvec4f = v.wxzy;
+export fn agrb(v: gvec4f) -> gvec4f = v.wyxz;
+export fn agbr(v: gvec4f) -> gvec4f = v.wyzx;
+export fn abrg(v: gvec4f) -> gvec4f = v.wzxy;
+export fn abgr(v: gvec4f) -> gvec4f = v.wzyx;
+
 export fn x(v: gvec4b) -> gbool {
   let varName = v.varName.concat('.x');
   return gbool(varName, v.statements, v.buffers);
@@ -2476,6 +2836,78 @@ export fn abr(v: gvec4b) -> gvec3b = v.wyx;
 export fn abg(v: gvec4b) -> gvec3b = v.wyz;
 export fn agr(v: gvec4b) -> gvec3b = v.wzx;
 export fn agb(v: gvec4b) -> gvec3b = v.wzy;
+
+fn gvec44b(v: gvec4b, a: string) -> gvec4b {
+  // TODO: Add some type safety on the kinds of strings you can pass in here
+  let varName = v.varName.concat(a);
+  return gvec4b(varName, v.statements, v.buffers);
+}
+export fn xyzw(v: gvec4b) -> gvec4b = gvec44b(v, '.xyzw'); // 1234
+export fn xywz(v: gvec4b) -> gvec4b = gvec44b(v, '.xywz'); // 1243
+export fn xzyw(v: gvec4b) -> gvec4b = gvec44b(v, '.xzyw'); // 1324
+export fn xzwy(v: gvec4b) -> gvec4b = gvec44b(v, '.xzwy'); // 1342
+export fn xwyz(v: gvec4b) -> gvec4b = gvec44b(v, '.xwyz'); // 1423
+export fn xwzy(v: gvec4b) -> gvec4b = gvec44b(v, '.xwzy'); // 1432
+export fn yxzw(v: gvec4b) -> gvec4b = gvec44b(v, '.yxzw'); // 2134
+export fn yxwz(v: gvec4b) -> gvec4b = gvec44b(v, '.yxwz'); // 2143
+export fn yzxw(v: gvec4b) -> gvec4b = gvec44b(v, '.yzxw'); // 2314
+export fn yzwx(v: gvec4b) -> gvec4b = gvec44b(v, '.yzwx'); // 2341
+export fn ywxz(v: gvec4b) -> gvec4b = gvec44b(v, '.ywxz'); // 2413
+export fn ywzx(v: gvec4b) -> gvec4b = gvec44b(v, '.ywzx'); // 2431
+export fn zxyw(v: gvec4b) -> gvec4b = gvec44b(v, '.zxyw'); // 3124
+export fn zxwy(v: gvec4b) -> gvec4b = gvec44b(v, '.zxwy'); // 3142
+export fn zyxw(v: gvec4b) -> gvec4b = gvec44b(v, '.zyxw'); // 3214
+export fn zywx(v: gvec4b) -> gvec4b = gvec44b(v, '.zywx'); // 3241
+export fn zwxy(v: gvec4b) -> gvec4b = gvec44b(v, '.zwxy'); // 3412
+export fn zwyx(v: gvec4b) -> gvec4b = gvec44b(v, '.zwyx'); // 3421
+export fn wxyz(v: gvec4b) -> gvec4b = gvec44b(v, '.wxyz'); // 4123
+export fn wxzy(v: gvec4b) -> gvec4b = gvec44b(v, '.wxzy'); // 4132
+export fn wyxz(v: gvec4b) -> gvec4b = gvec44b(v, '.wyxz'); // 4213
+export fn wyzx(v: gvec4b) -> gvec4b = gvec44b(v, '.wyzx'); // 4231
+export fn wzxy(v: gvec4b) -> gvec4b = gvec44b(v, '.wzxy'); // 4312
+export fn wzyx(v: gvec4b) -> gvec4b = gvec44b(v, '.wzyx'); // 4321
+export fn ijkl(v: gvec4b) -> gvec4b = v.xyzw;
+export fn ijlk(v: gvec4b) -> gvec4b = v.xywz;
+export fn ikjl(v: gvec4b) -> gvec4b = v.xzyw;
+export fn iklj(v: gvec4b) -> gvec4b = v.xzwy;
+export fn iljk(v: gvec4b) -> gvec4b = v.xwyz;
+export fn ilkj(v: gvec4b) -> gvec4b = v.xwzy;
+export fn jikl(v: gvec4b) -> gvec4b = v.yxzw;
+export fn jilk(v: gvec4b) -> gvec4b = v.yxwz;
+export fn jkil(v: gvec4b) -> gvec4b = v.yzxw;
+export fn jkli(v: gvec4b) -> gvec4b = v.yzwx;
+export fn jlik(v: gvec4b) -> gvec4b = v.ywxz;
+export fn jlki(v: gvec4b) -> gvec4b = v.ywzx;
+export fn kijl(v: gvec4b) -> gvec4b = v.zxyw;
+export fn kilj(v: gvec4b) -> gvec4b = v.zxwy;
+export fn kjil(v: gvec4b) -> gvec4b = v.zyxw;
+export fn kjli(v: gvec4b) -> gvec4b = v.zywx;
+export fn klij(v: gvec4b) -> gvec4b = v.zwxy;
+export fn klji(v: gvec4b) -> gvec4b = v.zwyx;
+export fn lijk(v: gvec4b) -> gvec4b = v.wxyz;
+export fn likj(v: gvec4b) -> gvec4b = v.wxzy;
+export fn ljik(v: gvec4b) -> gvec4b = v.wyxz;
+export fn ljki(v: gvec4b) -> gvec4b = v.wyzx;
+export fn lkij(v: gvec4b) -> gvec4b = v.wzxy;
+export fn lkji(v: gvec4b) -> gvec4b = v.wzyx;
+export fn rgba(v: gvec4b) -> gvec4b = v.xyzw;
+export fn rgab(v: gvec4b) -> gvec4b = v.xywz;
+export fn rbga(v: gvec4b) -> gvec4b = v.xzyw;
+export fn rbag(v: gvec4b) -> gvec4b = v.xzwy;
+export fn ragb(v: gvec4b) -> gvec4b = v.xwyz;
+export fn rabg(v: gvec4b) -> gvec4b = v.xwzy;
+export fn grba(v: gvec4b) -> gvec4b = v.yxzw;
+export fn grab(v: gvec4b) -> gvec4b = v.yxwz;
+export fn gbra(v: gvec4b) -> gvec4b = v.yzxw;
+export fn gbar(v: gvec4b) -> gvec4b = v.yzwx;
+export fn garb(v: gvec4b) -> gvec4b = v.ywxz;
+export fn gabr(v: gvec4b) -> gvec4b = v.ywzx;
+export fn argb(v: gvec4b) -> gvec4b = v.wxyz;
+export fn arbg(v: gvec4b) -> gvec4b = v.wxzy;
+export fn agrb(v: gvec4b) -> gvec4b = v.wyxz;
+export fn agbr(v: gvec4b) -> gvec4b = v.wyzx;
+export fn abrg(v: gvec4b) -> gvec4b = v.wzxy;
+export fn abgr(v: gvec4b) -> gvec4b = v.wzyx;
 
 // TODO: Improve GBuffer to support other buffer types
 export fn get(gb: GBuffer, i: gu32) -> gi32 {
