@@ -2931,6 +2931,39 @@ export fn store(a: gi32, b: gi32) -> gi32 {
 
 // GPU Math
 
+export fn neg(v: gi32) -> gi32 {
+  let varName = '(-'.concat(v.varName).concat(')');
+  return gi32(varName, v.statements, v.buffers);
+}
+export fn neg(v: gf32) -> gf32 {
+  let varName = '(-'.concat(v.varName).concat(')');
+  return gf32(varName, v.statements, v.buffers);
+}
+export fn neg(v: gvec2i) -> gvec2i {
+  let varName = '(-'.concat(v.varName).concat(')');
+  return gvec2i(varName, v.statements, v.buffers);
+}
+export fn neg(v: gvec2f) -> gvec2f {
+  let varName = '(-'.concat(v.varName).concat(')');
+  return gvec2f(varName, v.statements, v.buffers);
+}
+export fn neg(v: gvec3i) -> gvec3i {
+  let varName = '(-'.concat(v.varName).concat(')');
+  return gvec3i(varName, v.statements, v.buffers);
+}
+export fn neg(v: gvec3f) -> gvec3f {
+  let varName = '(-'.concat(v.varName).concat(')');
+  return gvec3f(varName, v.statements, v.buffers);
+}
+export fn neg(v: gvec4i) -> gvec3i {
+  let varName = '(-'.concat(v.varName).concat(')');
+  return gvec4i(varName, v.statements, v.buffers);
+}
+export fn neg(v: gvec4f) -> gvec3f {
+  let varName = '(-'.concat(v.varName).concat(')');
+  return gvec4f(varName, v.statements, v.buffers);
+}
+
 export fn add(a: gu32, b: gu32) -> gu32 {
   let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
   let statements = a.statements.concat(b.statements);
@@ -2958,6 +2991,485 @@ export fn add(a: gf32, b: gf32) -> gf32 {
 export fn add{T}(a: gf32, b: T) -> gf32 = add(a, b.gf32);
 export fn add{T}(a: T, b: gf32) -> gf32 = add(a.gf32, b);
 
+export fn add(a: gvec2u, b: gvec2u) -> gvec2u {
+  let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2u(varName, statements, buffers);
+}
+export fn add(a: gvec2u, b: gu32) -> gvec2u {
+  let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2u(varName, statements, buffers);
+}
+export fn add(a: gu32, b: gvec2u) -> gvec2u {
+  let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2u(varName, statements, buffers);
+}
+
+export fn add(a: gvec2i, b: gvec2i) -> gvec2i {
+  let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2i(varName, statements, buffers);
+}
+export fn add(a: gvec2i, b: gi32) -> gvec2i {
+  let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2i(varName, statements, buffers);
+}
+export fn add(a: gi32, b: gvec2i) -> gvec2i {
+  let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2i(varName, statements, buffers);
+}
+
+export fn add(a: gvec2f, b: gvec2f) -> gvec2f {
+  let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2f(varName, statements, buffers);
+}
+export fn add(a: gvec2f, b: gf32) -> gvec2f {
+  let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2f(varName, statements, buffers);
+}
+export fn add(a: gf32, b: gvec2f) -> gvec2f {
+  let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2f(varName, statements, buffers);
+}
+
+export fn add(a: gvec3u, b: gvec3u) -> gvec3u {
+  let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3u(varName, statements, buffers);
+}
+export fn add(a: gvec3u, b: gu32) -> gvec3u {
+  let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3u(varName, statements, buffers);
+}
+export fn add(a: gu32, b: gvec3u) -> gvec3u {
+  let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3u(varName, statements, buffers);
+}
+
+export fn add(a: gvec3i, b: gvec3i) -> gvec3i {
+  let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3i(varName, statements, buffers);
+}
+export fn add(a: gvec3i, b: gi32) -> gvec3i {
+  let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3i(varName, statements, buffers);
+}
+export fn add(a: gi32, b: gvec3i) -> gvec3i {
+  let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3i(varName, statements, buffers);
+}
+
+export fn add(a: gvec3f, b: gvec3f) -> gvec3f {
+  let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3f(varName, statements, buffers);
+}
+export fn add(a: gvec3f, b: gf32) -> gvec3f {
+  let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3f(varName, statements, buffers);
+}
+export fn add(a: gf32, b: gvec3f) -> gvec3f {
+  let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3f(varName, statements, buffers);
+}
+
+export fn add(a: gvec4u, b: gvec4u) -> gvec4u {
+  let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4u(varName, statements, buffers);
+}
+export fn add(a: gvec4u, b: gu32) -> gvec4u {
+  let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4u(varName, statements, buffers);
+}
+export fn add(a: gu32, b: gvec4u) -> gvec4u {
+  let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4u(varName, statements, buffers);
+}
+
+export fn add(a: gvec4i, b: gvec4i) -> gvec4i {
+  let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4i(varName, statements, buffers);
+}
+export fn add(a: gvec4i, b: gi32) -> gvec4i {
+  let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4i(varName, statements, buffers);
+}
+export fn add(a: gi32, b: gvec4i) -> gvec4i {
+  let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4i(varName, statements, buffers);
+}
+
+export fn add(a: gvec4f, b: gvec4f) -> gvec4f {
+  let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4f(varName, statements, buffers);
+}
+export fn add(a: gvec4f, b: gf32) -> gvec4f {
+  let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4f(varName, statements, buffers);
+}
+export fn add(a: gf32, b: gvec4f) -> gvec4f {
+  let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4f(varName, statements, buffers);
+}
+
+export fn add(a: gmat2x2f, b: gmat2x2f) -> gmat2x2f {
+  let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat2x2f(varName, statements, buffers);
+}
+export fn add(a: gmat2x3f, b: gmat2x3f) -> gmat2x3f {
+  let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat2x3f(varName, statements, buffers);
+}
+export fn add(a: gmat2x4f, b: gmat2x4f) -> gmat2x4f {
+  let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat2x4f(varName, statements, buffers);
+}
+export fn add(a: gmat3x2f, b: gmat3x2f) -> gmat3x2f {
+  let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat3x2f(varName, statements, buffers);
+}
+export fn add(a: gmat3x3f, b: gmat3x3f) -> gmat3x3f {
+  let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat3x3f(varName, statements, buffers);
+}
+export fn add(a: gmat3x4f, b: gmat3x4f) -> gmat3x4f {
+  let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat3x4f(varName, statements, buffers);
+}
+export fn add(a: gmat4x2f, b: gmat4x2f) -> gmat4x2f {
+  let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat4x2f(varName, statements, buffers);
+}
+export fn add(a: gmat4x3f, b: gmat4x3f) -> gmat4x3f {
+  let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat4x3f(varName, statements, buffers);
+}
+export fn add(a: gmat4x4f, b: gmat4x4f) -> gmat4x4f {
+  let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat4x4f(varName, statements, buffers);
+}
+
+export fn sub(a: gu32, b: gu32) -> gu32 {
+  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gu32(varName, statements, buffers);
+}
+export fn sub{T}(a: gu32, b: T) -> gu32 = sub(a, b.gu32);
+export fn sub{T}(a: T, b: gu32) -> gu32 = sub(a.gu32, b);
+
+export fn sub(a: gi32, b: gi32) -> gi32 {
+  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gi32(varName, statements, buffers);
+}
+export fn sub{T}(a: gi32, b: T) -> gi32 = sub(a, b.gi32);
+export fn sub{T}(a: T, b: gi32) -> gi32 = sub(a.gi32, b);
+
+export fn sub(a: gf32, b: gf32) -> gf32 {
+  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gf32(varName, statements, buffers);
+}
+export fn sub{T}(a: gf32, b: T) -> gf32 = sub(a, b.gf32);
+export fn sub{T}(a: T, b: gf32) -> gf32 = sub(a.gf32, b);
+
+export fn sub(a: gvec2u, b: gvec2u) -> gvec2u {
+  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2u(varName, statements, buffers);
+}
+export fn sub(a: gvec2u, b: gu32) -> gvec2u {
+  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2u(varName, statements, buffers);
+}
+export fn sub(a: gu32, b: gvec2u) -> gvec2u {
+  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2u(varName, statements, buffers);
+}
+
+export fn sub(a: gvec2i, b: gvec2i) -> gvec2i {
+  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2i(varName, statements, buffers);
+}
+export fn sub(a: gvec2i, b: gi32) -> gvec2i {
+  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2i(varName, statements, buffers);
+}
+export fn sub(a: gi32, b: gvec2i) -> gvec2i {
+  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2i(varName, statements, buffers);
+}
+
+export fn sub(a: gvec2f, b: gvec2f) -> gvec2f {
+  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2f(varName, statements, buffers);
+}
+export fn sub(a: gvec2f, b: gf32) -> gvec2f {
+  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2f(varName, statements, buffers);
+}
+export fn sub(a: gf32, b: gvec2f) -> gvec2f {
+  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2f(varName, statements, buffers);
+}
+
+export fn sub(a: gvec3u, b: gvec3u) -> gvec3u {
+  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3u(varName, statements, buffers);
+}
+export fn sub(a: gvec3u, b: gu32) -> gvec3u {
+  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3u(varName, statements, buffers);
+}
+export fn sub(a: gu32, b: gvec3u) -> gvec3u {
+  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3u(varName, statements, buffers);
+}
+
+export fn sub(a: gvec3i, b: gvec3i) -> gvec3i {
+  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3i(varName, statements, buffers);
+}
+export fn sub(a: gvec3i, b: gi32) -> gvec3i {
+  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3i(varName, statements, buffers);
+}
+export fn sub(a: gi32, b: gvec3i) -> gvec3i {
+  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3i(varName, statements, buffers);
+}
+
+export fn sub(a: gvec3f, b: gvec3f) -> gvec3f {
+  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3f(varName, statements, buffers);
+}
+export fn sub(a: gvec3f, b: gf32) -> gvec3f {
+  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3f(varName, statements, buffers);
+}
+export fn sub(a: gf32, b: gvec3f) -> gvec3f {
+  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3f(varName, statements, buffers);
+}
+
+export fn sub(a: gvec4u, b: gvec4u) -> gvec4u {
+  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4u(varName, statements, buffers);
+}
+export fn sub(a: gvec4u, b: gu32) -> gvec4u {
+  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4u(varName, statements, buffers);
+}
+export fn sub(a: gu32, b: gvec4u) -> gvec4u {
+  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4u(varName, statements, buffers);
+}
+
+export fn sub(a: gvec4i, b: gvec4i) -> gvec4i {
+  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4i(varName, statements, buffers);
+}
+export fn sub(a: gvec4i, b: gi32) -> gvec4i {
+  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4i(varName, statements, buffers);
+}
+export fn sub(a: gi32, b: gvec4i) -> gvec4i {
+  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4i(varName, statements, buffers);
+}
+
+export fn sub(a: gvec4f, b: gvec4f) -> gvec4f {
+  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4f(varName, statements, buffers);
+}
+export fn sub(a: gvec4f, b: gf32) -> gvec4f {
+  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4f(varName, statements, buffers);
+}
+export fn sub(a: gf32, b: gvec4f) -> gvec4f {
+  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4f(varName, statements, buffers);
+}
+
+export fn sub(a: gmat2x2f, b: gmat2x2f) -> gmat2x2f {
+  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat2x2f(varName, statements, buffers);
+}
+export fn sub(a: gmat2x3f, b: gmat2x3f) -> gmat2x3f {
+  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat2x3f(varName, statements, buffers);
+}
+export fn sub(a: gmat2x4f, b: gmat2x4f) -> gmat2x4f {
+  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat2x4f(varName, statements, buffers);
+}
+export fn sub(a: gmat3x2f, b: gmat3x2f) -> gmat3x2f {
+  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat3x2f(varName, statements, buffers);
+}
+export fn sub(a: gmat3x3f, b: gmat3x3f) -> gmat3x3f {
+  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat3x3f(varName, statements, buffers);
+}
+export fn sub(a: gmat3x4f, b: gmat3x4f) -> gmat3x4f {
+  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat3x4f(varName, statements, buffers);
+}
+export fn sub(a: gmat4x2f, b: gmat4x2f) -> gmat4x2f {
+  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat4x2f(varName, statements, buffers);
+}
+export fn sub(a: gmat4x3f, b: gmat4x3f) -> gmat4x3f {
+  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat4x3f(varName, statements, buffers);
+}
+export fn sub(a: gmat4x4f, b: gmat4x4f) -> gmat4x4f {
+  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat4x4f(varName, statements, buffers);
+}
+
 export fn mul(a: gu32, b: gu32) -> gu32 {
   let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
   let statements = a.statements.concat(b.statements);
@@ -2984,6 +3496,960 @@ export fn mul(a: gf32, b: gf32) -> gf32 {
 }
 export fn mul{T}(a: gf32, b: T) -> gf32 = mul(a, b.gf32);
 export fn mul{T}(a: T, b: gf32) -> gf32 = mul(a.gf32, b);
+
+export fn mul(a: gvec2u, b: gvec2u) -> gvec2u {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2u(varName, statements, buffers);
+}
+export fn mul(a: gvec2u, b: gu32) -> gvec2u {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2u(varName, statements, buffers);
+}
+export fn mul(a: gu32, b: gvec2u) -> gvec2u {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2u(varName, statements, buffers);
+}
+
+export fn mul(a: gvec2i, b: gvec2i) -> gvec2i {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2i(varName, statements, buffers);
+}
+export fn mul(a: gvec2i, b: gi32) -> gvec2i {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2i(varName, statements, buffers);
+}
+export fn mul(a: gi32, b: gvec2i) -> gvec2i {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2i(varName, statements, buffers);
+}
+
+export fn mul(a: gvec2f, b: gvec2f) -> gvec2f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2f(varName, statements, buffers);
+}
+export fn mul(a: gvec2f, b: gf32) -> gvec2f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2f(varName, statements, buffers);
+}
+export fn mul(a: gf32, b: gvec2f) -> gvec2f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2f(varName, statements, buffers);
+}
+
+export fn mul(a: gvec3u, b: gvec3u) -> gvec3u {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3u(varName, statements, buffers);
+}
+export fn mul(a: gvec3u, b: gu32) -> gvec3u {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3u(varName, statements, buffers);
+}
+export fn mul(a: gu32, b: gvec3u) -> gvec3u {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3u(varName, statements, buffers);
+}
+
+export fn mul(a: gvec3i, b: gvec3i) -> gvec3i {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3i(varName, statements, buffers);
+}
+export fn mul(a: gvec3i, b: gi32) -> gvec3i {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3i(varName, statements, buffers);
+}
+export fn mul(a: gi32, b: gvec3i) -> gvec3i {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3i(varName, statements, buffers);
+}
+
+export fn mul(a: gvec3f, b: gvec3f) -> gvec3f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3f(varName, statements, buffers);
+}
+export fn mul(a: gvec3f, b: gf32) -> gvec3f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3f(varName, statements, buffers);
+}
+export fn mul(a: gf32, b: gvec3f) -> gvec3f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3f(varName, statements, buffers);
+}
+
+export fn mul(a: gvec4u, b: gvec4u) -> gvec4u {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4u(varName, statements, buffers);
+}
+export fn mul(a: gvec4u, b: gu32) -> gvec4u {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4u(varName, statements, buffers);
+}
+export fn mul(a: gu32, b: gvec4u) -> gvec4u {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4u(varName, statements, buffers);
+}
+
+export fn mul(a: gvec4i, b: gvec4i) -> gvec4i {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4i(varName, statements, buffers);
+}
+export fn mul(a: gvec4i, b: gi32) -> gvec4i {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4i(varName, statements, buffers);
+}
+export fn mul(a: gi32, b: gvec4i) -> gvec4i {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4i(varName, statements, buffers);
+}
+
+export fn mul(a: gvec4f, b: gvec4f) -> gvec4f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4f(varName, statements, buffers);
+}
+export fn mul(a: gvec4f, b: gf32) -> gvec4f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4f(varName, statements, buffers);
+}
+export fn mul(a: gf32, b: gvec4f) -> gvec4f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4f(varName, statements, buffers);
+}
+
+export fn mul(a: gmat2x2f, b: gf32) -> gmat2x2f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat2x2f(varName, statements, buffers);
+}
+export fn mul(a: gf32, b: gmat2x2f) -> gmat2x2f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat2x2f(varName, statements, buffers);
+}
+export fn mul(a: gmat2x2f, b: gvec2f) -> gvec2f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2f(varName, statements, buffers);
+}
+export fn mul(a: gvec2f, b: gmat2x2f) -> gvec2f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2f(varName, statements, buffers);
+}
+export fn mul(a: gmat2x2f, b: gmat2x2f) -> gmat2x2f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat2x2f(varName, statements, buffers);
+}
+export fn mul(a: gmat2x2f, b: gmat3x2f) -> gmat3x2f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat3x2f(varName, statements, buffers);
+}
+export fn mul(a: gmat2x2f, b: gmat4x2f) -> gmat4x2f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat4x2f(varName, statements, buffers);
+}
+
+export fn mul(a: gmat2x3f, b: gf32) -> gmat2x3f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat2x3f(varName, statements, buffers);
+}
+export fn mul(a: gf32, b: gmat2x3f) -> gmat2x3f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat2x3f(varName, statements, buffers);
+}
+export fn mul(a: gmat2x3f, b: gvec2f) -> gvec3f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3f(varName, statements, buffers);
+}
+export fn mul(a: gvec3f, b: gmat2x3f) -> gvec2f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2f(varName, statements, buffers);
+}
+export fn mul(a: gmat2x3f, b: gmat2x2f) -> gmat2x3f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat2x3f(varName, statements, buffers);
+}
+export fn mul(a: gmat2x3f, b: gmat3x2f) -> gmat3x3f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat3x3f(varName, statements, buffers);
+}
+export fn mul(a: gmat2x3f, b: gmat4x2f) -> gmat4x3f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat4x3f(varName, statements, buffers);
+}
+
+export fn mul(a: gmat2x4f, b: gf32) -> gmat2x4f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat2x4f(varName, statements, buffers);
+}
+export fn mul(a: gf32, b: gmat2x4f) -> gmat2x4f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat2x4f(varName, statements, buffers);
+}
+export fn mul(a: gmat2x4f, b: gvec2f) -> gvec4f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat2x4f(varName, statements, buffers);
+}
+export fn mul(a: gvec4f, b: gmat2x4f) -> gvec2f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat2x4f(varName, statements, buffers);
+}
+export fn mul(a: gmat2x4f, b: gmat2x2f) -> gmat2x4f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat2x4f(varName, statements, buffers);
+}
+export fn mul(a: gmat2x4f, b: gmat3x2f) -> gmat3x4f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat2x4f(varName, statements, buffers);
+}
+export fn mul(a: gmat2x4f, b: gmat4x2f) -> gmat4x4f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat2x4f(varName, statements, buffers);
+}
+
+export fn mul(a: gmat3x2f, b: gf32) -> gmat3x2f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat3x2f(varName, statements, buffers);
+}
+export fn mul(a: gf32, b: gmat3x2f) -> gmat3x2f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat3x2f(varName, statements, buffers);
+}
+export fn mul(a: gmat3x2f, b: gvec3f) -> gvec2f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2f(varName, statements, buffers);
+}
+export fn mul(a: gvec2f, b: gmat3x2f) -> gvec3f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3f(varName, statements, buffers);
+}
+export fn mul(a: gmat3x2f, b: gmat2x3f) -> gmat2x2f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat2x2f(varName, statements, buffers);
+}
+export fn mul(a: gmat3x2f, b: gmat3x3f) -> gmat3x2f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat3x2f(varName, statements, buffers);
+}
+export fn mul(a: gmat3x2f, b: gmat4x3f) -> gmat4x2f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat4x2f(varName, statements, buffers);
+}
+
+export fn mul(a: gmat3x3f, b: gf32) -> gmat3x3f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat3x3f(varName, statements, buffers);
+}
+export fn mul(a: gf32, b: gmat3x3f) -> gmat3x3f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat3x3f(varName, statements, buffers);
+}
+export fn mul(a: gmat3x3f, b: gvec3f) -> gvec3f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3f(varName, statements, buffers);
+}
+export fn mul(a: gvec3f, b: gmat3x3f) -> gvec3f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3f(varName, statements, buffers);
+}
+export fn mul(a: gmat3x3f, b: gmat2x3f) -> gmat2x3f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat2x3f(varName, statements, buffers);
+}
+export fn mul(a: gmat3x3f, b: gmat3x3f) -> gmat3x3f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat3x3f(varName, statements, buffers);
+}
+export fn mul(a: gmat3x3f, b: gmat4x3f) -> gmat4x3f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat4x3f(varName, statements, buffers);
+}
+
+export fn mul(a: gmat3x4f, b: gf32) -> gmat3x4f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat3x4f(varName, statements, buffers);
+}
+export fn mul(a: gf32, b: gmat3x4f) -> gmat3x4f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat3x4f(varName, statements, buffers);
+}
+export fn mul(a: gmat3x4f, b: gvec3f) -> gvec4f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4f(varName, statements, buffers);
+}
+export fn mul(a: gvec4f, b: gmat3x4f) -> gvec3f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3f(varName, statements, buffers);
+}
+export fn mul(a: gmat3x4f, b: gmat2x3f) -> gmat2x4f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat2x4f(varName, statements, buffers);
+}
+export fn mul(a: gmat3x4f, b: gmat3x3f) -> gmat3x4f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat3x4f(varName, statements, buffers);
+}
+export fn mul(a: gmat3x4f, b: gmat4x3f) -> gmat4x4f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat4x4f(varName, statements, buffers);
+}
+
+export fn mul(a: gmat4x2f, b: gf32) -> gmat4x2f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat4x2f(varName, statements, buffers);
+}
+export fn mul(a: gf32, b: gmat4x2f) -> gmat4x2f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat4x2f(varName, statements, buffers);
+}
+export fn mul(a: gmat4x2f, b: gvec4f) -> gvec2f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2f(varName, statements, buffers);
+}
+export fn mul(a: gvec2f, b: gmat4x2f) -> gvec4f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat4x2f(varName, statements, buffers);
+}
+export fn mul(a: gmat4x2f, b: gmat2x4f) -> gmat2x2f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat2x2f(varName, statements, buffers);
+}
+export fn mul(a: gmat4x2f, b: gmat3x4f) -> gmat3x2f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat3x2f(varName, statements, buffers);
+}
+export fn mul(a: gmat4x2f, b: gmat4x4f) -> gmat4x2f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat4x2f(varName, statements, buffers);
+}
+
+export fn mul(a: gmat4x3f, b: gf32) -> gmat4x3f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat4x3f(varName, statements, buffers);
+}
+export fn mul(a: gf32, b: gmat4x3f) -> gmat4x3f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat4x3f(varName, statements, buffers);
+}
+export fn mul(a: gmat4x3f, b: gvec4f) -> gvec3f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3f(varName, statements, buffers);
+}
+export fn mul(a: gvec3f, b: gmat4x3f) -> gvec4f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4f(varName, statements, buffers);
+}
+export fn mul(a: gmat4x3f, b: gmat2x4f) -> gmat2x3f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat2x3f(varName, statements, buffers);
+}
+export fn mul(a: gmat4x3f, b: gmat3x4f) -> gmat3x3f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat3x3f(varName, statements, buffers);
+}
+export fn mul(a: gmat4x3f, b: gmat4x4f) -> gmat4x3f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat4x3f(varName, statements, buffers);
+}
+
+export fn mul(a: gmat4x4f, b: gf32) -> gmat4x4f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat4x4f(varName, statements, buffers);
+}
+export fn mul(a: gf32, b: gmat4x4f) -> gmat4x4f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat4x4f(varName, statements, buffers);
+}
+export fn mul(a: gmat4x4f, b: gvec4f) -> gvec4f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4f(varName, statements, buffers);
+}
+export fn mul(a: gvec4f, b: gmat4x4f) -> gvec4f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4f(varName, statements, buffers);
+}
+export fn mul(a: gmat4x4f, b: gmat2x4f) -> gmat2x4f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat2x4f(varName, statements, buffers);
+}
+export fn mul(a: gmat4x4f, b: gmat3x4f) -> gmat3x4f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat3x4f(varName, statements, buffers);
+}
+export fn mul(a: gmat4x4f, b: gmat4x4f) -> gmat4x4f {
+  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gmat4x4f(varName, statements, buffers);
+}
+
+export fn div(a: gu32, b: gu32) -> gu32 {
+  let varName = '('.concat(a.varName).concat(' / ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gu32(varName, statements, buffers);
+}
+export fn div{T}(a: gu32, b: T) -> gu32 = div(a, b.gu32);
+export fn div{T}(a: T, b: gu32) -> gu32 = div(a.gu32, b);
+
+export fn div(a: gi32, b: gi32) -> gi32 {
+  let varName = '('.concat(a.varName).concat(' / ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gi32(varName, statements, buffers);
+}
+export fn div{T}(a: gi32, b: T) -> gi32 = div(a, b.gi32);
+export fn div{T}(a: T, b: gi32) -> gi32 = div(a.gi32, b);
+
+export fn div(a: gf32, b: gf32) -> gf32 {
+  let varName = '('.concat(a.varName).concat(' / ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gf32(varName, statements, buffers);
+}
+export fn div{T}(a: gf32, b: T) -> gf32 = div(a, b.gf32);
+export fn div{T}(a: T, b: gf32) -> gf32 = div(a.gf32, b);
+
+export fn div(a: gvec2u, b: gvec2u) -> gvec2u {
+  let varName = '('.concat(a.varName).concat(' / ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2u(varName, statements, buffers);
+}
+export fn div(a: gvec2u, b: gu32) -> gvec2u {
+  let varName = '('.concat(a.varName).concat(' / ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2u(varName, statements, buffers);
+}
+export fn div(a: gu32, b: gvec2u) -> gvec2u {
+  let varName = '('.concat(a.varName).concat(' / ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2u(varName, statements, buffers);
+}
+
+export fn div(a: gvec2i, b: gvec2i) -> gvec2i {
+  let varName = '('.concat(a.varName).concat(' / ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2i(varName, statements, buffers);
+}
+export fn div(a: gvec2i, b: gi32) -> gvec2i {
+  let varName = '('.concat(a.varName).concat(' / ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2i(varName, statements, buffers);
+}
+export fn div(a: gi32, b: gvec2i) -> gvec2i {
+  let varName = '('.concat(a.varName).concat(' / ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2i(varName, statements, buffers);
+}
+
+export fn div(a: gvec2f, b: gvec2f) -> gvec2f {
+  let varName = '('.concat(a.varName).concat(' / ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2f(varName, statements, buffers);
+}
+export fn div(a: gvec2f, b: gf32) -> gvec2f {
+  let varName = '('.concat(a.varName).concat(' / ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2f(varName, statements, buffers);
+}
+export fn div(a: gf32, b: gvec2f) -> gvec2f {
+  let varName = '('.concat(a.varName).concat(' / ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2f(varName, statements, buffers);
+}
+
+export fn div(a: gvec3u, b: gvec3u) -> gvec3u {
+  let varName = '('.concat(a.varName).concat(' / ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3u(varName, statements, buffers);
+}
+export fn div(a: gvec3u, b: gu32) -> gvec3u {
+  let varName = '('.concat(a.varName).concat(' / ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3u(varName, statements, buffers);
+}
+export fn div(a: gu32, b: gvec3u) -> gvec3u {
+  let varName = '('.concat(a.varName).concat(' / ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3u(varName, statements, buffers);
+}
+
+export fn div(a: gvec3i, b: gvec3i) -> gvec3i {
+  let varName = '('.concat(a.varName).concat(' / ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3i(varName, statements, buffers);
+}
+export fn div(a: gvec3i, b: gi32) -> gvec3i {
+  let varName = '('.concat(a.varName).concat(' / ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3i(varName, statements, buffers);
+}
+export fn div(a: gi32, b: gvec3i) -> gvec3i {
+  let varName = '('.concat(a.varName).concat(' / ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3i(varName, statements, buffers);
+}
+
+export fn div(a: gvec3f, b: gvec3f) -> gvec3f {
+  let varName = '('.concat(a.varName).concat(' / ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3f(varName, statements, buffers);
+}
+export fn div(a: gvec3f, b: gf32) -> gvec3f {
+  let varName = '('.concat(a.varName).concat(' / ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3f(varName, statements, buffers);
+}
+export fn div(a: gf32, b: gvec3f) -> gvec3f {
+  let varName = '('.concat(a.varName).concat(' / ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3f(varName, statements, buffers);
+}
+
+export fn div(a: gvec4u, b: gvec4u) -> gvec4u {
+  let varName = '('.concat(a.varName).concat(' / ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4u(varName, statements, buffers);
+}
+export fn div(a: gvec4u, b: gu32) -> gvec4u {
+  let varName = '('.concat(a.varName).concat(' / ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4u(varName, statements, buffers);
+}
+export fn div(a: gu32, b: gvec4u) -> gvec4u {
+  let varName = '('.concat(a.varName).concat(' / ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4u(varName, statements, buffers);
+}
+
+export fn div(a: gvec4i, b: gvec4i) -> gvec4i {
+  let varName = '('.concat(a.varName).concat(' / ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4i(varName, statements, buffers);
+}
+export fn div(a: gvec4i, b: gi32) -> gvec4i {
+  let varName = '('.concat(a.varName).concat(' / ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4i(varName, statements, buffers);
+}
+export fn div(a: gi32, b: gvec4i) -> gvec4i {
+  let varName = '('.concat(a.varName).concat(' / ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4i(varName, statements, buffers);
+}
+
+export fn div(a: gvec4f, b: gvec4f) -> gvec4f {
+  let varName = '('.concat(a.varName).concat(' / ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4f(varName, statements, buffers);
+}
+export fn div(a: gvec4f, b: gf32) -> gvec4f {
+  let varName = '('.concat(a.varName).concat(' / ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4f(varName, statements, buffers);
+}
+export fn div(a: gf32, b: gvec4f) -> gvec4f {
+  let varName = '('.concat(a.varName).concat(' / ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4f(varName, statements, buffers);
+}
+
+export fn mod(a: gu32, b: gu32) -> gu32 {
+  let varName = '('.concat(a.varName).concat(' % ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gu32(varName, statements, buffers);
+}
+export fn mod{T}(a: gu32, b: T) -> gu32 = mod(a, b.gu32);
+export fn mod{T}(a: T, b: gu32) -> gu32 = mod(a.gu32, b);
+
+export fn mod(a: gi32, b: gi32) -> gi32 {
+  let varName = '('.concat(a.varName).concat(' % ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gi32(varName, statements, buffers);
+}
+export fn mod{T}(a: gi32, b: T) -> gi32 = mod(a, b.gi32);
+export fn mod{T}(a: T, b: gi32) -> gi32 = mod(a.gi32, b);
+
+export fn mod(a: gf32, b: gf32) -> gf32 {
+  let varName = '('.concat(a.varName).concat(' % ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gf32(varName, statements, buffers);
+}
+export fn mod{T}(a: gf32, b: T) -> gf32 = mod(a, b.gf32);
+export fn mod{T}(a: T, b: gf32) -> gf32 = mod(a.gf32, b);
+
+export fn mod(a: gvec2u, b: gvec2u) -> gvec2u {
+  let varName = '('.concat(a.varName).concat(' % ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2u(varName, statements, buffers);
+}
+export fn mod(a: gvec2u, b: gu32) -> gvec2u {
+  let varName = '('.concat(a.varName).concat(' % ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2u(varName, statements, buffers);
+}
+export fn mod(a: gu32, b: gvec2u) -> gvec2u {
+  let varName = '('.concat(a.varName).concat(' % ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2u(varName, statements, buffers);
+}
+
+export fn mod(a: gvec2i, b: gvec2i) -> gvec2i {
+  let varName = '('.concat(a.varName).concat(' % ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2i(varName, statements, buffers);
+}
+export fn mod(a: gvec2i, b: gi32) -> gvec2i {
+  let varName = '('.concat(a.varName).concat(' % ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2i(varName, statements, buffers);
+}
+export fn mod(a: gi32, b: gvec2i) -> gvec2i {
+  let varName = '('.concat(a.varName).concat(' % ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2i(varName, statements, buffers);
+}
+
+export fn mod(a: gvec2f, b: gvec2f) -> gvec2f {
+  let varName = '('.concat(a.varName).concat(' % ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2f(varName, statements, buffers);
+}
+export fn mod(a: gvec2f, b: gf32) -> gvec2f {
+  let varName = '('.concat(a.varName).concat(' % ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2f(varName, statements, buffers);
+}
+export fn mod(a: gf32, b: gvec2f) -> gvec2f {
+  let varName = '('.concat(a.varName).concat(' % ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec2f(varName, statements, buffers);
+}
+
+export fn mod(a: gvec3u, b: gvec3u) -> gvec3u {
+  let varName = '('.concat(a.varName).concat(' % ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3u(varName, statements, buffers);
+}
+export fn mod(a: gvec3u, b: gu32) -> gvec3u {
+  let varName = '('.concat(a.varName).concat(' % ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3u(varName, statements, buffers);
+}
+export fn mod(a: gu32, b: gvec3u) -> gvec3u {
+  let varName = '('.concat(a.varName).concat(' % ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3u(varName, statements, buffers);
+}
+
+export fn mod(a: gvec3i, b: gvec3i) -> gvec3i {
+  let varName = '('.concat(a.varName).concat(' % ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3i(varName, statements, buffers);
+}
+export fn mod(a: gvec3i, b: gi32) -> gvec3i {
+  let varName = '('.concat(a.varName).concat(' % ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3i(varName, statements, buffers);
+}
+export fn mod(a: gi32, b: gvec3i) -> gvec3i {
+  let varName = '('.concat(a.varName).concat(' % ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3i(varName, statements, buffers);
+}
+
+export fn mod(a: gvec3f, b: gvec3f) -> gvec3f {
+  let varName = '('.concat(a.varName).concat(' % ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3f(varName, statements, buffers);
+}
+export fn mod(a: gvec3f, b: gf32) -> gvec3f {
+  let varName = '('.concat(a.varName).concat(' % ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3f(varName, statements, buffers);
+}
+export fn mod(a: gf32, b: gvec3f) -> gvec3f {
+  let varName = '('.concat(a.varName).concat(' % ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3f(varName, statements, buffers);
+}
+
+export fn mod(a: gvec4u, b: gvec4u) -> gvec4u {
+  let varName = '('.concat(a.varName).concat(' % ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4u(varName, statements, buffers);
+}
+export fn mod(a: gvec4u, b: gu32) -> gvec4u {
+  let varName = '('.concat(a.varName).concat(' % ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4u(varName, statements, buffers);
+}
+export fn mod(a: gu32, b: gvec4u) -> gvec4u {
+  let varName = '('.concat(a.varName).concat(' % ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4u(varName, statements, buffers);
+}
+
+export fn mod(a: gvec4i, b: gvec4i) -> gvec4i {
+  let varName = '('.concat(a.varName).concat(' % ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4i(varName, statements, buffers);
+}
+export fn mod(a: gvec4i, b: gi32) -> gvec4i {
+  let varName = '('.concat(a.varName).concat(' % ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4i(varName, statements, buffers);
+}
+export fn mod(a: gi32, b: gvec4i) -> gvec4i {
+  let varName = '('.concat(a.varName).concat(' % ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4i(varName, statements, buffers);
+}
+
+export fn mod(a: gvec4f, b: gvec4f) -> gvec4f {
+  let varName = '('.concat(a.varName).concat(' % ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4f(varName, statements, buffers);
+}
+export fn mod(a: gvec4f, b: gf32) -> gvec4f {
+  let varName = '('.concat(a.varName).concat(' % ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4f(varName, statements, buffers);
+}
+export fn mod(a: gf32, b: gvec4f) -> gvec4f {
+  let varName = '('.concat(a.varName).concat(' % ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec4f(varName, statements, buffers);
+}
 
 // GBuffer methods
 
