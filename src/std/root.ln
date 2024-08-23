@@ -895,100 +895,41 @@ export fn build{N}(ret: N) -> GPGPU {
   return GPGPU(wgsl, buffers, maxGlobalId);
 }
 
+fn gPrimitiveConvert{I, O}(i: I, typename: string) -> O { // TODO: Get the typename from {O}
+  let varName = typename.concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = "var "
+    .concat(varName)
+    .concat(" = ")
+    .concat(typename)
+    .concat('(')
+    .concat(i.varName)
+    .concat(')');
+  let statements = i.statements.clone().concat(Dict(varName, statement));
+  let buffers = i.buffers.clone();
+  return {O}(varName, statements, buffers);
+}
 export fn gu32(u: u32) -> gu32 = gu32(u.string, Dict{string, string}(), Set{GBuffer}());
-export fn gu32(gi: gi32) -> gu32 {
-  let varName = "u32_".concat(uuid().string.replace('-', '_'));
-  let statement = "var ".concat(varName).concat(" = u32(").concat(gi.varName).concat(")");
-  let statements = gi.statements.clone().concat(Dict(varName, statement));
-  let buffers = gi.buffers.clone();
-  return gu32(varName, statements, buffers);
-}
-export fn gu32(gf: gf32) -> gu32 {
-  let varName = "u32_".concat(uuid().string.replace('-', '_'));
-  let statement = "var ".concat(varName).concat(" = u32(").concat(gf.varName).concat(")");
-  let statements = gf.statements.clone().concat(Dict(varName, statement));
-  let buffers = gf.buffers.clone();
-  return gu32(varName, statements, buffers);
-}
-export fn gu32(gb: gbool) -> gu32 {
-  let varName = "u32_".concat(uuid().string.replace('-', '_'));
-  let statement = "var ".concat(varName).concat(" = u32(").concat(gb.varName).concat(")");
-  let statements = gb.statements.clone().concat(Dict(varName, statement));
-  let buffers = gb.buffers.clone();
-  return gu32(varName, statements, buffers);
-}
+export fn gu32(gi: gi32) -> gu32 = gPrimitiveConvert{gi32, gu32}(gi, "u32");
+export fn gu32(gf: gf32) -> gu32 = gPrimitiveConvert{gf32, gu32}(gf, "u32");
+export fn gu32(gb: gbool) -> gu32 = gPrimitiveConvert{gbool, gu32}(gb, "u32");
 export fn gu32{T}(u: T) -> gu32 = gu32(u.u32);
 
 export fn gi32(i: i32) -> gi32 = gi32(i.string, Dict{string, string}(), Set{GBuffer}());
-export fn gi32(gu: gu32) -> gi32 {
-  let varName = "i32_".concat(uuid().string.replace('-', '_'));
-  let statement = "var ".concat(varName).concat(" = i32(").concat(gu.varName).concat(")");
-  let statements = gu.statements.clone().concat(Dict(varName, statement));
-  let buffers = gu.buffers.clone();
-  return gi32(varName, statements, buffers);
-}
-export fn gi32(gf: gf32) -> gi32 {
-  let varName = "i32_".concat(uuid().string.replace('-', '_'));
-  let statement = "var ".concat(varName).concat(" = i32(").concat(gf.varName).concat(")");
-  let statements = gf.statements.clone().concat(Dict(varName, statement));
-  let buffers = gf.buffers.clone();
-  return gi32(varName, statements, buffers);
-}
-export fn gi32(gb: gbool) -> gi32 {
-  let varName = "i32_".concat(uuid().string.replace('-', '_'));
-  let statement = "var ".concat(varName).concat(" = i32(").concat(gb.varName).concat(")");
-  let statements = gb.statements.clone().concat(Dict(varName, statement));
-  let buffers = gb.buffers.clone();
-  return gi32(varName, statements, buffers);
-}
+export fn gi32(gu: gu32) -> gi32 = gPrimitiveConvert{gu32, gi32}(gu, "i32");
+export fn gi32(gf: gf32) -> gi32 = gPrimitiveConvert{gf32, gi32}(gf, "i32");
+export fn gi32(gb: gbool) -> gi32 = gPrimitiveConvert{gbool, gi32}(gb, "i32");
 export fn gi32{T}(i: T) -> gi32 = gi32(i.i32);
 
 export fn gf32(f: f32) -> gf32 = gf32(f.string, Dict{string, string}(), Set{GBuffer}());
-export fn gf32(gu: gu32) -> gf32 {
-  let varName = "f32_".concat(uuid().string.replace('-', '_'));
-  let statement = "var ".concat(varName).concat(" = f32(").concat(gu.varName).concat(")");
-  let statements = gu.statements.clone().concat(Dict(varName, statement));
-  let buffers = gu.buffers.clone();
-  return gf32(varName, statements, buffers);
-}
-export fn gf32(gi: gi32) -> gf32 {
-  let varName = "f32_".concat(uuid().string.replace('-', '_'));
-  let statement = "var ".concat(varName).concat(" = f32(").concat(gi.varName).concat(")");
-  let statements = gi.statements.clone().concat(Dict(varName, statement));
-  let buffers = gi.buffers.clone();
-  return gf32(varName, statements, buffers);
-}
-export fn gf32(gb: gbool) -> gf32 {
-  let varName = "f32_".concat(uuid().string.replace('-', '_'));
-  let statement = "var ".concat(varName).concat(" = f32(").concat(gb.varName).concat(")");
-  let statements = gb.statements.clone().concat(Dict(varName, statement));
-  let buffers = gb.buffers.clone();
-  return gf32(varName, statements, buffers);
-}
+export fn gf32(gu: gu32) -> gf32 = gPrimitiveConvert{gu32, gf32}(gu, "f32");
+export fn gf32(gi: gi32) -> gf32 = gPrimitiveConvert{gi32, gf32}(gi, "f32");
+export fn gf32(gb: gbool) -> gf32 = gPrimitiveConvert{gbool, gf32}(gb, "f32");
 export fn gf32{T}(f: T) -> gf32 = gf32(f.f32);
 
 export fn gbool(b: bool) -> gbool = gbool(b.string, Dict{string, string}(), Set{GBuffer}());
-export fn gbool(gu: gu32) -> gbool {
-  let varName = "bool_".concat(uuid().string.replace('-', '_'));
-  let statement = "var ".concat(varName).concat(" = bool(").concat(gu.varName).concat(")");
-  let statements = gu.statements.clone().concat(Dict(varName, statement));
-  let buffers = gu.buffers.clone();
-  return gbool(varName, statements, buffers);
-}
-export fn gbool(gi: gi32) -> gbool {
-  let varName = "bool_".concat(uuid().string.replace('-', '_'));
-  let statement = "var ".concat(varName).concat(" = bool(").concat(gi.varName).concat(")");
-  let statements = gi.statements.clone().concat(Dict(varName, statement));
-  let buffers = gi.buffers.clone();
-  return gbool(varName, statements, buffers);
-}
-export fn gbool(gf: gf32) -> gbool {
-  let varName = "bool_".concat(uuid().string.replace('-', '_'));
-  let statement = "var ".concat(varName).concat(" = bool(").concat(gf.varName).concat(")");
-  let statements = gf.statements.clone().concat(Dict(varName, statement));
-  let buffers = gf.buffers.clone();
-  return gbool(varName, statements, buffers);
-}
+export fn gbool(gu: gu32) -> gbool = gPrimitiveConvert{gu32, gbool}(gu, "bool");
+export fn gbool(gi: gi32) -> gbool = gPrimitiveConvert{gi32, gbool}(gi, "bool");
+export fn gbool(gf: gf32) -> gbool = gPrimitiveConvert{gf32, gbool}(gf, "bool");
 export fn gbool{T}(b: T) -> gbool = gbool(b.bool);
 
 // Vector types and constructors
@@ -1005,112 +946,102 @@ export type gvec4i = WgpuType{"vec4i"};
 export type gvec4f = WgpuType{"vec4f"};
 export type gvec4b = WgpuType{"vec4<bool>"};
 
-export fn gvec2u() -> gvec2u = gvec2u("vec2u()", Dict{string, string}(), Set{GBuffer}());
-export fn gvec2u(a: gu32, b: gu32) -> gvec2u {
-  let statement = "vec2u(".concat(a.varName).concat(", ").concat(b.varName).concat(")");
+fn gvec2Primitive{I, O}(a: I, b: I, typename: string) -> O { // TODO: Get the typename from {O}
+  let statement = typename
+    .concat('(')
+    .concat(a.varName)
+    .concat(', ')
+    .concat(b.varName)
+    .concat(')');
   let statements = a.statements.concat(b.statements);
   let buffers = a.buffers.union(b.buffers);
-  return gvec2u(statement, statements, buffers);
+  return {O}(statement, statements, buffers);
 }
+
+export fn gvec2u() -> gvec2u = gvec2u("vec2u()", Dict{string, string}(), Set{GBuffer}());
+export fn gvec2u(a: gu32, b: gu32) -> gvec2u = gvec2Primitive{gu32, gvec2u}(a, b, "vec2u");
 export fn gvec2u{T}(a: T, b: T) -> gvec2u = gvec2u(a.gu32, b.gu32);
 
 export fn gvec2i() -> gvec2i = gvec2i("vec2i()", Dict{string, string}(), Set{GBuffer}());
-export fn gvec2i(a: gi32, b: gi32) -> gvec2i {
-  let statement = "vec2i(".concat(a.varName).concat(", ").concat(b.varName).concat(")");
-  let statements = a.statements.concat(b.statements);
-  let buffers = a.buffers.union(b.buffers);
-  return gvec2i(statement, statements, buffers);
-}
+export fn gvec2i(a: gi32, b: gi32) -> gvec2i = gvec2Primitive{gi32, gvec2i}(a, b, "vec2i");
 export fn gvec2i{T}(a: T, b: T) -> gvec2i = gvec2i(a.gi32, b.gi32);
 
 export fn gvec2f() -> gvec2f = gvec2f("vec2f()", Dict{string, string}(), Set{GBuffer}());
-export fn gvec2f(a: gf32, b: gf32) -> gvec2f {
-  let statement = "vec2f(".concat(a.varName).concat(", ").concat(b.varName).concat(")");
-  let statements = a.statements.concat(b.statements);
-  let buffers = a.buffers.union(b.buffers);
-  return gvec2f(statement, statements, buffers);
-}
+export fn gvec2f(a: gf32, b: gf32) -> gvec2f = gvec2Primitive{gf32, gvec2f}(a, b, "vec2f");
 export fn gvec2f{T}(a: T, b: T) -> gvec2f = gvec2f(a.gf32, b.gf32);
 
 export fn gvec2b() -> gvec2b = gvec2b("vec2<bool>()", Dict{string, string}(), Set{GBuffer}());
-export fn gvec2b(a: gbool, b: gbool) -> gvec2b {
-  let statement = "vec2<bool>(".concat(a.varName).concat(", ").concat(b.varName).concat(")");
-  let statements = a.statements.concat(b.statements);
-  let buffers = a.buffers.union(b.buffers);
-  return gvec2b(statement, statements, buffers);
-}
+export fn gvec2b(a: gbool, b: gbool) -> gvec2b = gvec2Primitive{gbool, gvec2b}(a, b, "vec2<bool>");
 export fn gvec2b{T}(a: T, b: T) -> gvec2b = gvec2b(a.gbool, b.gbool);
 
-export fn gvec3u() -> gvec3u = gvec3u("vec3u()", Dict{string, string}(), Set{GBuffer}());
-export fn gvec3u(a: gu32, b: gu32, c: gu32) -> gvec3u {
-  let statement = "vec3u(".concat(a.varName).concat(", ").concat(b.varName).concat(", ").concat(c.varName).concat(")");
+fn gvec3Primitive{I, O}(a: I, b: I, c: I, typename: string) -> O { // TODO: Get typename from {O}
+  let statement = typename
+    .concat('(')
+    .concat(a.varName)
+    .concat(', ')
+    .concat(b.varName)
+    .concat(', ')
+    .concat(c.varName)
+    .concat(')');
   let statements = a.statements.concat(b.statements).concat(c.statements);
   let buffers = a.buffers.union(b.buffers).union(c.buffers);
-  return gvec3u(statement, statements, buffers);
+  return {O}(statement, statements, buffers);
 }
+
+export fn gvec3u() -> gvec3u = gvec3u("vec3u()", Dict{string, string}(), Set{GBuffer}());
+export fn gvec3u(a: gu32, b: gu32, c: gu32) -> gvec3u = gvec3Primitive{gu32, gvec3u}(a, b, c, "vec3u");
 export fn gvec3u{T}(a: T, b: T, c: T) -> gvec3u = gvec3u(a.gu32, b.gu32, c.gu32);
 
 export fn gvec3i() -> gvec3i = gvec3i("vec3i()", Dict{string, string}(), Set{GBuffer}());
-export fn gvec3i(a: gi32, b: gi32, c: gi32) -> gvec3i {
-  let statement = "vec3i(".concat(a.varName).concat(", ").concat(b.varName).concat(", ").concat(c.varName).concat(")");
-  let statements = a.statements.concat(b.statements).concat(c.statements);
-  let buffers = a.buffers.union(b.buffers).union(c.buffers);
-  return gvec3i(statement, statements, buffers);
-}
+export fn gvec3i(a: gi32, b: gi32, c: gi32) -> gvec3i = gvec3Primitive{gi32, gvec3i}(a, b, c, "vec3i");
 export fn gvec3i{T}(a: T, b: T, c: T) -> gvec3i = gvec3i(a.gi32, b.gi32, c.gi32);
 
 export fn gvec3f() -> gvec3f = gvec3f("vec3f()", Dict{string, string}(), Set{GBuffer}());
-export fn gvec3f(a: gf32, b: gf32, c: gf32) -> gvec3f {
-  let statement = "vec3f(".concat(a.varName).concat(", ").concat(b.varName).concat(", ").concat(c.varName).concat(")");
-  let statements = a.statements.concat(b.statements).concat(c.statements);
-  let buffers = a.buffers.union(b.buffers).union(c.buffers);
-  return gvec3f(statement, statements, buffers);
-}
+export fn gvec3f(a: gf32, b: gf32, c: gf32) -> gvec3f = gvec3Primitive{gf32, gvec3f}(a, b, c, "vec3f");
 export fn gvec3f{T}(a: T, b: T, c: T) -> gvec3f = gvec3f(a.gf32, b.gf32, c.gf32);
 
 export fn gvec3b() -> gvec3b = gvec3b("vec3<bool>()", Dict{string, string}(), Set{GBuffer}());
-export fn gvec3b(a: gbool, b: gbool, c: gbool) -> gvec3b {
-  let statement = "vec3<bool>(".concat(a.varName).concat(", ").concat(b.varName).concat(", ").concat(c.varName).concat(")");
-  let statements = a.statements.concat(b.statements).concat(c.statements);
-  let buffers = a.buffers.union(b.buffers).union(c.buffers);
-  return gvec3b(statement, statements, buffers);
-}
+export fn gvec3b(a: gbool, b: gbool, c: gbool) -> gvec3b = gvec3Primitive{gbool, gvec3b}(a, b, c, "vec3<bool>");
 export fn gvec3b{T}(a: T, b: T, c: T) -> gvec3b = gvec3b(a.gbool, b.gbool, c.gbool);
 
-export fn gvec4u() -> gvec4u = gvec4u("vec4u()", Dict{string, string}(), Set{GBuffer}());
-export fn gvec4u(a: gu32, b: gu32, c: gu32, d: gu32) -> gvec4u {
-  let statement = "vec4u(".concat(a.varName).concat(", ").concat(b.varName).concat(", ").concat(c.varName).concat(", ").concat(d.varName).concat(")");
+fn gvec4Primitive{I, O}(a: I, b: I, c: I, d: I, typename: string) -> O { // TODO: typename from {O}
+  let statement = typename
+    .concat('(')
+    .concat(a.varName)
+    .concat(', ')
+    .concat(b.varName)
+    .concat(', ')
+    .concat(c.varName)
+    .concat(', ')
+    .concat(d.varName)
+    .concat(')');
   let statements = a.statements.concat(b.statements).concat(c.statements).concat(d.statements);
   let buffers = a.buffers.union(b.buffers).union(c.buffers).union(d.buffers);
-  return gvec4u(statement, statements, buffers);
+  return {O}(statement, statements, buffers);
 }
+
+export fn gvec4u() -> gvec4u = gvec4u("vec4u()", Dict{string, string}(), Set{GBuffer}());
+export fn gvec4u(a: gu32, b: gu32, c: gu32, d: gu32) -> gvec4u = gvec4Primitive{gu32, gvec4u}(
+  a, b, c, d, "vec4u"
+);
 export fn gvec4u{T}(a: T, b: T, c: T, d: T) -> gvec4u = gvec4u(a.gu32, b.gu32, c.gu32, d.gu32);
 
 export fn gvec4i() -> gvec4i = gvec4i("vec4i()", Dict{string, string}(), Set{GBuffer}());
-export fn gvec4i(a: gi32, b: gi32, c: gi32, d: gi32) -> gvec4i {
-  let statement = "vec4i(".concat(a.varName).concat(", ").concat(b.varName).concat(", ").concat(c.varName).concat(", ").concat(d.varName).concat(")");
-  let statements = a.statements.concat(b.statements).concat(c.statements).concat(d.statements);
-  let buffers = a.buffers.union(b.buffers).union(c.buffers).union(d.buffers);
-  return gvec4i(statement, statements, buffers);
-}
+export fn gvec4i(a: gi32, b: gi32, c: gi32, d: gi32) -> gvec4i = gvec4Primitive{gi32, gvec4i}(
+  a, b, c, d, "vec4i"
+);
 export fn gvec4i{T}(a: T, b: T, c: T, d: T) -> gvec4i = gvec4i(a.gi32, b.gi32, c.gi32, d.gi32);
 
 export fn gvec4f() -> gvec4f = gvec4f("vec4f()", Dict{string, string}(), Set{GBuffer}());
-export fn gvec4f(a: gf32, b: gf32, c: gf32, d: gf32) -> gvec4f {
-  let statement = "vec4f(".concat(a.varName).concat(", ").concat(b.varName).concat(", ").concat(c.varName).concat(", ").concat(d.varName).concat(")");
-  let statements = a.statements.concat(b.statements).concat(c.statements).concat(d.statements);
-  let buffers = a.buffers.union(b.buffers).union(c.buffers).union(d.buffers);
-  return gvec4f(statement, statements, buffers);
-}
+export fn gvec4f(a: gf32, b: gf32, c: gf32, d: gf32) -> gvec4f = gvec4Primitive{gf32, gvec4f}(
+  a, b, c, d, "vec4f"
+);
 export fn gvec4f{T}(a: T, b: T, c: T, d: T) -> gvec4f = gvec4f(a.gf32, b.gf32, c.gf32, d.gf32);
 
 export fn gvec4b() -> gvec4b = gvec4b("vec4<bool>()", Dict{string, string}(), Set{GBuffer}());
-export fn gvec4b(a: gbool, b: gbool, c: gbool, d: gbool) -> gvec4b {
-  let statement = "vec4<bool>(".concat(a.varName).concat(", ").concat(b.varName).concat(", ").concat(c.varName).concat(", ").concat(d.varName).concat(")");
-  let statements = a.statements.concat(b.statements).concat(c.statements).concat(d.statements);
-  let buffers = a.buffers.union(b.buffers).union(c.buffers).union(d.buffers);
-  return gvec4b(statement, statements, buffers);
-}
+export fn gvec4b(a: gbool, b: gbool, c: gbool, d: gbool) -> gvec4b = gvec4Primitive{gbool, gvec4b}(
+  a, b, c, d, "vec4<bool>"
+);
 export fn gvec4b{T}(a: T, b: T, c: T, d: T) -> gvec4b = gvec4b(a.gbool, b.gbool, c.gbool, d.gbool);
 
 // The global_invocation_id; the entry value to a compute shader, and it's constructor, a
