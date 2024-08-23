@@ -796,6 +796,18 @@ test!(gpu_map => r#"
     stdout "[3, 4, 5, 6]\n";
 );
 
+test!(gpu_if => r#"
+    export fn main {
+        let b = GBuffer([1, 2, 3, 4]);
+        let out = b.map(fn (val: gi32, i: gu32) -> gi32 = if(
+            i % 2 == 0,
+            val * i.gi32,
+            val - i.gi32));
+        out.read{i32}.print;
+    }"#;
+    stdout "[0, 1, 6, 1]\n";
+);
+
 // Bitwise Math
 
 test!(i8_bitwise => r#"

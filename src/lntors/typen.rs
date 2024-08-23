@@ -97,7 +97,16 @@ pub fn ctype_to_rtype(
             } else {
                 Ok(format!(
                     "impl Fn(&{}) -> {}",
-                    ctype_to_rtype(i, true)?,
+                    match &**i {
+                        CType::Tuple(ts) => {
+                            let mut out = Vec::new();
+                            for t in ts {
+                                out.push(ctype_to_rtype(t, true)?);
+                            }
+                            out.join(", &")
+                        },
+                        otherwise => ctype_to_rtype(otherwise, true)?,
+                    },
                     ctype_to_rtype(o, true)?
                 ))
             }

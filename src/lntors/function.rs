@@ -63,7 +63,7 @@ pub fn from_microstatement(
                 format!(
                     "|{}| {{\n        {};\n    }}",
                     arg_names.join(", "),
-                    inner_statements.join(";\n        ")
+                    inner_statements.join(";\n        "),
                 ),
                 out,
             ))
@@ -209,9 +209,18 @@ pub fn from_microstatement(
                     // Static functions just replace the function call with their static value
                     // calculated at compile time.
                     match &function.microstatements[0] {
-                        Microstatement::Value { representation, .. } => {
-                            Ok((representation.clone(), out))
-                        }
+                        Microstatement::Value {
+                            representation,
+                            typen,
+                        } => match &typen {
+                            CType::Type(n, _) if n == "string" => {
+                                Ok((format!("{}.to_string()", representation).to_string(), out))
+                            }
+                            CType::Binds(a) if a == "String" => {
+                                Ok((format!("{}.to_string()", representation).to_string(), out))
+                            }
+                            _ => Ok((representation.clone(), out)),
+                        },
                         _ => unreachable!(),
                     }
                 }
