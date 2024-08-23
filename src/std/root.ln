@@ -566,7 +566,9 @@ export fn xnor(a: bool, b: bool) -> bool binds xnorbool;
 export fn eq(a: bool, b: bool) -> bool binds eqbool;
 export fn neq(a: bool, b: bool) -> bool binds neqbool;
 export fn if{T}(c: bool, t: () -> T, f: () -> T) -> T binds ifbool;
-export fn if{T}(c: bool, t: () -> T) -> Maybe{T} = if(c, fn = Maybe{T}(t()), fn = Maybe{T}());
+export fn if{T}(c: bool, t: () -> T) -> Maybe{T} = if(c, fn () -> Maybe{T} = Maybe{T}(t()), fn () -> Maybe{T} = Maybe{T}());
+export fn if{T}(c: bool, t: T, f: T) -> T = if(c, fn () -> T = t, fn () -> T = f);
+export fn if{T}(c: bool, t: T) -> Maybe{T} = if(c, fn () -> Maybe{T} = Maybe{T}(t), fn () -> Maybe{T} = Maybe{T}());
 
 /// Array related bindings
 export fn get{T}(a: T[], i: i64) -> Maybe{T} binds getarray;
