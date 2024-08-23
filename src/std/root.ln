@@ -596,30 +596,20 @@ export fn index{T}(a: Array{T}, v: T) -> Maybe{i64} = a.reduce(
   Maybe{i64}(),
   fn (out: Maybe{i64}, val: T, idx: i64) -> Maybe{i64} = if(
     out.exists,
-    fn () -> Maybe{i64} = out,
-    fn () -> Maybe{i64} = if(
-      val.eq(v),
-      fn () -> Maybe{i64} = Maybe(idx),
-      fn () -> Maybe{i64} = out
-    )
-  )
-);
+    out,
+    if(val.eq(v), Maybe(idx), out)));
 export fn index{T}(a: Array{T}, f: (T) -> bool) -> Maybe{i64} = a.reduce(
   Maybe{i64}(),
   fn (out: Maybe{i64}, val: T, idx: i64) -> Maybe{i64} = if(
     out.exists,
-    fn () -> Maybe{i64} = out,
-    fn () -> Maybe{i64} = if(
-      f(val),
-      fn () -> i64 = idx)));
+    out,
+    if(f(val), idx)));
 export fn index{T}(a: Array{T}, f: (T, i64) -> bool) -> Maybe{i64} = a.reduce(
   Maybe{i64}(),
   fn (out: Maybe{i64}, val: T, idx: i64) -> Maybe{i64} = if(
     out.exists,
-    fn () -> Maybe{i64} = out,
-    fn () -> Maybe{i64} = if(
-      f(val, idx),
-      fn () -> i64 = idx)));
+    out,
+    if(f(val, idx), idx)));
 export fn every{T}(a: Array{T}, f: (T) -> bool) -> bool binds everyarray;
 export fn some{T}(a: Array{T}, f: (T) -> bool) -> bool binds somearray;
 export fn repeat{T}(a: Array{T}, c: i64) -> Array{T} binds repeatarray;
@@ -741,9 +731,9 @@ export fn Node{T}(t: Tree{T}, i: i64) -> Maybe{Node{T}} = if(
 export fn parent{T}(n: Node{T}) -> Maybe{Node{T}} {
   let parentId = n.tree.parents[n.id];
   return if(parentId.exists,
-    fn () -> Maybe{Node{T}} = if(parentId.getOrExit.exists,
+    if(parentId.getOrExit.exists,
       fn () -> Node{T} = Node{T}(parentId.getOrExit.getOrExit, n.tree)),
-    fn () -> Maybe{Node{T}} = Maybe{Node{T}}());
+    Maybe{Node{T}}());
 }
 
 export fn children{T}(n: Node{T}) -> Array{Node{T}} = if(
