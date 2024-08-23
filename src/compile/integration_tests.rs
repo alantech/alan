@@ -3728,6 +3728,11 @@ test!(tree_construction_and_access => r#"
       const bazNode = myTree.addChild('baz');
       const bayNode = barNode.addChild('bay');
 
+      let secondTree = Tree('second');
+      const secondNode = secondTree.addChild('node');
+
+      bayNode.addChild(secondTree);
+
       print(myTree.rootNode.getOr('wrong'));
       // TODO: Need to dig in deeper in the codegen portion of the compiler
       //print(bayNode.parent.getOrExit.getOr('wrong'));

@@ -585,6 +585,7 @@ export fn reduce{T}(a: Array{T}, f: (T, T, i64) -> T) -> Maybe{T} binds reduce_s
 export fn reduce{T, U}(a: Array{T}, i: U, f: (U, T) -> U) -> U binds reduce_difftype;
 export fn reduce{T, U}(a: Array{T}, i: U, f: (U, T, i64) -> U) -> U binds reduce_difftype_idx;
 export fn concat{T}(a: Array{T}, b: Array{T}) -> Array{T} binds concat;
+export fn append{T}(a: Array{T}, b: Array{T}) -> void binds append;
 export fn filled{T}(v: T, l: i64) -> Array{T} binds filled;
 export fn has{T}(a: Array{T}, v: T) -> bool binds hasarray;
 export fn has{T}(a: Array{T}, f: (T) -> bool) -> bool binds hasfnarray;
@@ -765,9 +766,24 @@ export fn addChild{T}(n: Node{T}, val: T) -> Node{T} {
   n.tree.children.push(Array{i64}());
   return Node{T}(idx, n.tree);
 }
+export fn addChild{T}(n: Node{T}, t: Tree{T}) -> Node{T} {
+  let idxOffset = n.tree.len;
+  let idx = idxOffset.clone(); // TODO: Lower stage of compiler should be doing this
+  let parentIdx = n.id;
+  n.tree.vals.append(t.vals);
+  n.tree.parents.append(t.parents.map(fn (pId: Maybe{i64}) -> Maybe{i64} = if(pId.exists,
+    fn () -> Maybe{i64} = Maybe{i64}(pId.getOrExit + idxOffset),
+    fn () -> Maybe{i64} = Maybe{i64}(idx))));
+  n.tree.children.append(
+    t.children.map(
+      fn (ids: Array{i64}) -> Array{i64} = ids.map(
+        fn (id: i64) -> i64 = id + idxOffset)));
+  return Node{T}(idx, n.tree);
+}
 export fn addChild{T}(t: Tree{T}, val: T) -> Node{T} = t.rootNode.addChild(val);
 
-// TODO: Implement `addChild` when the child is itself a `Node{T}` or a `Tree{T}`
+
+// TODO: Implement `addChild` when the child is itself a `Node{T}`
 
 // TODO: Implement `prune` to pull a node out of the tree and re-attach its children to its own
 // parent.

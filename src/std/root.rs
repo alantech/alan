@@ -2869,6 +2869,14 @@ fn concat<A: std::clone::Clone>(a: &Vec<A>, b: &Vec<A>) -> Vec<A> {
     out
 }
 
+/// `append` mutates the first vector copying the second vector into it
+#[inline(always)]
+fn append<A: std::clone::Clone>(a: &mut Vec<A>, b: &Vec<A>) {
+    for i in 0..b.len() {
+        a.push(b[i].clone());
+    }
+}
+
 /// `hasarray` returns true if the specified value exists anywhere in the vector
 #[inline(always)]
 fn hasarray<T: std::cmp::PartialEq>(a: &Vec<T>, v: &T) -> bool {
