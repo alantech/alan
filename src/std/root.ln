@@ -4591,6 +4591,135 @@ fn if{T}(c: gbool, t: T, f: T) -> T {
 }
 fn if{T}(c: gbool, t: () -> T, f: () -> T) -> T = if(c, t(), f());
 
+// GPU Boolean and Bitwise methods
+
+fn gnot{I}(a: I) -> I {
+  let varName = '(!'.concat(a.varName).concat(')');
+  let statements = a.statements.clone();
+  let buffers = a.buffers.clone();
+  return {I}(varName, statements, buffers);
+}
+export fn not(a: gu32) -> gu32 = gnot(a);
+export fn not(a: gi32) -> gi32 = gnot(a);
+export fn not(a: gbool) -> gbool = gnot(a);
+export fn not(a: gvec2u) -> gvec2u = gnot(a);
+export fn not(a: gvec2i) -> gvec2i = gnot(a);
+export fn not(a: gvec2b) -> gvec2b = gnot(a);
+export fn not(a: gvec3u) -> gvec3u = gnot(a);
+export fn not(a: gvec3i) -> gvec3i = gnot(a);
+export fn not(a: gvec3b) -> gvec3b = gnot(a);
+export fn not(a: gvec4u) -> gvec4u = gnot(a);
+export fn not(a: gvec4i) -> gvec4i = gnot(a);
+export fn not(a: gvec4b) -> gvec4b = gnot(a);
+
+fn gor{I}(a: I, b: I) -> I {
+  let varName = '('.concat(a.varName).concat(' | ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return {O}(varName, statements, buffers);
+}
+export fn or(a: gu32, b: gu32) -> gu32 = gor(a, b);
+export fn or{T}(a: gu32, b: T) -> gu32 = gor(a, b.gu32);
+export fn or{T}(a: T, b: gu32) -> gu32 = gor(a.gu32, b);
+export fn or(a: gi32, b: gi32) -> gi32 = gor(a, b);
+export fn or{T}(a: gi32, b: T) -> gi32 = gor(a, b.gi32);
+export fn or{T}(a: T, b: gi32) -> gi32 = gor(a.gi32, b);
+export fn or(a: gbool, b: gbool) -> gbool = gor(a, b);
+export fn or{T}(a: gbool, b: T) -> gbool = gor(a, b.gbool);
+export fn or{T}(a: T, b: gbool) -> gbool = gor(a.gbool, b);
+export fn or(a: gvec2u, b: gvec2u) -> gvec2u = gor(a, b);
+export fn or(a: gvec2i, b: gvec2i) -> gvec2i = gor(a, b);
+export fn or(a: gvec2b, b: gvec2b) -> gvec2b = gor(a, b);
+export fn or(a: gvec3u, b: gvec3u) -> gvec3u = gor(a, b);
+export fn or(a: gvec3i, b: gvec3i) -> gvec3i = gor(a, b);
+export fn or(a: gvec3b, b: gvec3b) -> gvec3b = gor(a, b);
+export fn or(a: gvec4u, b: gvec4u) -> gvec4u = gor(a, b);
+export fn or(a: gvec4i, b: gvec4i) -> gvec4i = gor(a, b);
+export fn or(a: gvec4b, b: gvec4b) -> gvec4b = gor(a, b);
+
+fn gand{I}(a: I, b: I) -> I {
+  let varName = '('.concat(a.varName).concat(' & ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return {O}(varName, statements, buffers);
+}
+export fn and(a: gu32, b: gu32) -> gu32 = gand(a, b);
+export fn and{T}(a: gu32, b: T) -> gu32 = gand(a, b.gu32);
+export fn and{T}(a: T, b: gu32) -> gu32 = gand(a.gu32, b);
+export fn and(a: gi32, b: gi32) -> gi32 = gand(a, b);
+export fn and{T}(a: gi32, b: T) -> gi32 = gand(a, b.gi32);
+export fn and{T}(a: T, b: gi32) -> gi32 = gand(a.gi32, b);
+export fn and(a: gbool, b: gbool) -> gbool = gand(a, b);
+export fn and{T}(a: gbool, b: T) -> gbool = gand(a, b.gbool);
+export fn and{T}(a: T, b: gbool) -> gbool = gand(a.gbool, b);
+export fn and(a: gvec2u, b: gvec2u) -> gvec2u = gand(a, b);
+export fn and(a: gvec2i, b: gvec2i) -> gvec2i = gand(a, b);
+export fn and(a: gvec2b, b: gvec2b) -> gvec2b = gand(a, b);
+export fn and(a: gvec3u, b: gvec3u) -> gvec3u = gand(a, b);
+export fn and(a: gvec3i, b: gvec3i) -> gvec3i = gand(a, b);
+export fn and(a: gvec3b, b: gvec3b) -> gvec3b = gand(a, b);
+export fn and(a: gvec4u, b: gvec4u) -> gvec4u = gand(a, b);
+export fn and(a: gvec4i, b: gvec4i) -> gvec4i = gand(a, b);
+export fn and(a: gvec4b, b: gvec4b) -> gvec4b = gand(a, b);
+
+// There's no xor for bools in wgsl. Do I patch that over or leave it as an exercise to the reader?
+fn gxor{I}(a: I, b: I) -> I {
+  let varName = '('.concat(a.varName).concat(' ^ ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return {O}(varName, statements, buffers);
+}
+export fn and(a: gu32, b: gu32) -> gu32 = gand(a, b);
+export fn and{T}(a: gu32, b: T) -> gu32 = gand(a, b.gu32);
+export fn and{T}(a: T, b: gu32) -> gu32 = gand(a.gu32, b);
+export fn and(a: gi32, b: gi32) -> gi32 = gand(a, b);
+export fn and{T}(a: gi32, b: T) -> gi32 = gand(a, b.gi32);
+export fn and{T}(a: T, b: gi32) -> gi32 = gand(a.gi32, b);
+export fn and(a: gvec2u, b: gvec2u) -> gvec2u = gand(a, b);
+export fn and(a: gvec2i, b: gvec2i) -> gvec2i = gand(a, b);
+export fn and(a: gvec3u, b: gvec3u) -> gvec3u = gand(a, b);
+export fn and(a: gvec3i, b: gvec3i) -> gvec3i = gand(a, b);
+export fn and(a: gvec4u, b: gvec4u) -> gvec4u = gand(a, b);
+export fn and(a: gvec4i, b: gvec4i) -> gvec4i = gand(a, b);
+
+fn gshl{I}(a: I, b: I) -> I {
+  let varName = '('.concat(a.varName).concat(' << ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return {O}(varName, statements, buffers);
+}
+export fn shl(a: gu32, b: gu32) -> gu32 = gshl(a, b);
+export fn shl{T}(a: gu32, b: T) -> gu32 = gshl(a, b.gu32);
+export fn shl{T}(a: T, b: gu32) -> gu32 = gshl(a.gu32, b);
+export fn shl(a: gi32, b: gi32) -> gi32 = gshl(a, b);
+export fn shl{T}(a: gi32, b: T) -> gi32 = gshl(a, b.gi32);
+export fn shl{T}(a: T, b: gi32) -> gi32 = gshl(a.gi32, b);
+export fn shl(a: gvec2u, b: gvec2u) -> gvec2u = gshl(a, b);
+export fn shl(a: gvec2i, b: gvec2i) -> gvec2i = gshl(a, b);
+export fn shl(a: gvec3u, b: gvec3u) -> gvec3u = gshl(a, b);
+export fn shl(a: gvec3i, b: gvec3i) -> gvec3i = gshl(a, b);
+export fn shl(a: gvec4u, b: gvec4u) -> gvec4u = gshl(a, b);
+export fn shl(a: gvec4i, b: gvec4i) -> gvec4i = gshl(a, b);
+
+fn gshr{I}(a: I, b: I) -> I {
+  let varName = '('.concat(a.varName).concat(' >> ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return {O}(varName, statements, buffers);
+}
+export fn shr(a: gu32, b: gu32) -> gu32 = gshr(a, b);
+export fn shr{T}(a: gu32, b: T) -> gu32 = gshr(a, b.gu32);
+export fn shr{T}(a: T, b: gu32) -> gu32 = gshr(a.gu32, b);
+export fn shr(a: gi32, b: gi32) -> gi32 = gshr(a, b);
+export fn shr{T}(a: gi32, b: T) -> gi32 = gshr(a, b.gi32);
+export fn shr{T}(a: T, b: gi32) -> gi32 = gshr(a.gi32, b);
+export fn shr(a: gvec2u, b: gvec2u) -> gvec2u = gshr(a, b);
+export fn shr(a: gvec2i, b: gvec2i) -> gvec2i = gshr(a, b);
+export fn shr(a: gvec3u, b: gvec3u) -> gvec3u = gshr(a, b);
+export fn shr(a: gvec3i, b: gvec3i) -> gvec3i = gshr(a, b);
+export fn shr(a: gvec4u, b: gvec4u) -> gvec4u = gshr(a, b);
+export fn shr(a: gvec4i, b: gvec4i) -> gvec4i = gshr(a, b);
+
 // GBuffer methods
 
 // TODO: Support more than i32 for GBuffer
