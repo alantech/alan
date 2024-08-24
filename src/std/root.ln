@@ -4720,6 +4720,51 @@ export fn shr(a: gvec3i, b: gvec3i) -> gvec3i = gshr(a, b);
 export fn shr(a: gvec4u, b: gvec4u) -> gvec4u = gshr(a, b);
 export fn shr(a: gvec4i, b: gvec4i) -> gvec4i = gshr(a, b);
 
+// Bitcasting methods (TODO: Is there a better naming scheme possible?)
+
+fn gbitcast{I, O}(v: I, typename: string) -> O {
+  let varName = 'bitcast<'.concat(typename).concat('>(').concat(v.varName).concat(')');
+  let statements = v.statements.clone;
+  let buffers = v.buffers.clone;
+  return {O}(varName, statements, buffers);
+}
+export fn asU32(v: gu32) -> gu32 = v;
+export fn asU32(v: gi32) -> gu32 = gbitcast{gi32, gu32}(v, "u32");
+export fn asU32(v: gf32) -> gu32 = gbitcast{gf32, gu32}(v, "u32");
+export fn asI32(v: gu32) -> gi32 = gbitcast{gu32, gi32}(v, "i32");
+export fn asI32(v: gi32) -> gi32 = v;
+export fn asI32(v: gf32) -> gi32 = gbitcast{gf32, gi32}(v, "i32");
+export fn asF32(v: gu32) -> gf32 = gbitcast{gu32, gf32}(v, "f32");
+export fn asF32(v: gi32) -> gi32 = gbitcast{gi32, gf32}(v, "f32");
+export fn asF32(v: gf32) -> gf32 = v;
+export fn asVec2u(v: gvec2u) -> gvec2u = v;
+export fn asVec2u(v: gvec2i) -> gvec2u = gbitcast{gvec2i, gvec2u}(v, "vec2u");
+export fn asVec2u(v: gvec2f) -> gvec2u = gbitcast{gvec2f, gvec2u}(v, "vec2u");
+export fn asVec2i(v: gvec2u) -> gvec2i = gbitcast{gvec2u, gvec2i}(v, "vec2i");
+export fn asVec2i(v: gvec2i) -> gvec2i = v;
+export fn asVec2i(v: gvec2f) -> gvec2i = gbitcast{gvec2f, gvec2i}(v, "vec2i");
+export fn asVec2f(v: gvec2u) -> gvec2f = gbitcast{gvec2u, gvec2f}(v, "vec2f");
+export fn asVec2f(v: gvec2i) -> gvec2f = gbitcast{gvec2i, gvec2f}(v, "vec2f");
+export fn asVec2f(v: gvec2f) -> gvec2f = v;
+export fn asVec3u(v: gvec3u) -> gvec3u = v;
+export fn asVec3u(v: gvec3i) -> gvec3u = gbitcast{gvec3i, gvec3u}(v, "vec3u");
+export fn asVec3u(v: gvec3f) -> gvec3u = gbitcast{gvec3f, gvec3u}(v, "vec3u");
+export fn asVec3i(v: gvec3u) -> gvec3i = gbitcast{gvec3u, gvec3i}(v, "vec3i");
+export fn asVec3i(v: gvec3i) -> gvec3i = v;
+export fn asVec3i(v: gvec3f) -> gvec3i = gbitcast{gvec3f, gvec3i}(v, "vec3i");
+export fn asVec3f(v: gvec3u) -> gvec3f = gbitcast{gvec3u, gvec3f}(v, "vec3f");
+export fn asVec3f(v: gvec3i) -> gvec3f = gbitcast{gvec3i, gvec3f}(v, "vec3f");
+export fn asVec3f(v: gvec3f) -> gvec3f = v;
+export fn asVec4u(v: gvec4u) -> gvec4u = v;
+export fn asVec4u(v: gvec4i) -> gvec4u = gbitcast{gvec4i, gvec4u}(v, "vec4u");
+export fn asVec4u(v: gvec4f) -> gvec4u = gbitcast{gvec4f, gvec4u}(v, "vec4u");
+export fn asVec4i(v: gvec4u) -> gvec4i = gbitcast{gvec4u, gvec4i}(v, "vec4i");
+export fn asVec4i(v: gvec4i) -> gvec4i = v;
+export fn asVec4i(v: gvec4f) -> gvec4i = gbitcast{gvec4f, gvec4i}(v, "vec4i");
+export fn asVec4f(v: gvec4u) -> gvec4f = gbitcast{gvec4u, gvec4f}(v, "vec4f");
+export fn asVec4f(v: gvec4i) -> gvec4f = gbitcast{gvec4i, gvec4f}(v, "vec4f");
+export fn asVec4f(v: gvec4f) -> gvec4f = v;
+
 // GBuffer methods
 
 // TODO: Support more than i32 for GBuffer
