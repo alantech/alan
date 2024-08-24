@@ -4590,6 +4590,18 @@ fn if{T}(c: gbool, t: T, f: T) -> T {
   return {T}(varName, statements, buffers);
 }
 fn if{T}(c: gbool, t: () -> T, f: () -> T) -> T = if(c, t(), f());
+fn if{T}(c: gbool, t: T, f: T) -> T {
+  let varName = "select("
+    .concat(f.varName)
+    .concat(', ')
+    .concat(t.varName)
+    .concat(', ')
+    .concat(c.varName)
+    .concat(')');
+  let statements = f.statements.concat(t.statements).concat(c.statements);
+  let buffers = f.buffers.union(t.buffers).union(c.buffers);
+  return {T}(varName, statements, buffers);
+}
 
 // GPU Boolean and Bitwise methods
 
@@ -4764,6 +4776,53 @@ export fn asVec4i(v: gvec4f) -> gvec4i = gbitcast{gvec4f, gvec4i}(v, "vec4i");
 export fn asVec4f(v: gvec4u) -> gvec4f = gbitcast{gvec4u, gvec4f}(v, "vec4f");
 export fn asVec4f(v: gvec4i) -> gvec4f = gbitcast{gvec4i, gvec4f}(v, "vec4f");
 export fn asVec4f(v: gvec4f) -> gvec4f = v;
+
+// GPU Vector functions
+
+fn gevery{I}(v: I) -> gbool {
+  let varName = 'all('.concat(v.varName).concat(')');
+  let statements = v.statements.clone;
+  let buffers = v.buffers.clone;
+  return gbool(varName, statements, buffers);
+}
+export fn every(v: gvec2b) -> gbool = gevery(v);
+export fn every(v: gvec3b) -> gbool = gevery(v);
+export fn every(v: gvec4b) -> gbool = gevery(v);
+
+fn gsome{I}(v: I) -> gbool {
+  let varName = 'any('.concat(v.varName).concat(')');
+  let statements = v.statements.clone;
+  let buffers = v.buffers.clone;
+  return gbool(varName, statements, buffers);
+}
+export fn some(v: gvec2b) -> gbool = gsome(v);
+export fn some(v: gvec3b) -> gbool = gsome(v);
+export fn some(v: gvec4b) -> gbool = gsome(v);
+
+fn piecewiseIf{C, T}(c: C, t: T, f: T) -> T {
+  let varName = "select("
+    .concat(f.varName)
+    .concat(', ')
+    .concat(t.varName)
+    .concat(', ')
+    .concat(c.varName)
+    .concat(')');
+  let statements = f.statements.concat(t.statements).concat(c.statements);
+  let buffers = f.buffers.union(t.buffers).union(c.buffers);
+  return {T}(varName, statements, buffers);
+}
+export fn if(c: gvec2b, t: gvec2u, f: gvec2u) -> gvec2u = piecewiseIf{gvec2b, gvec2u}(c, t, f);
+export fn if(c: gvec2b, t: gvec2i, f: gvec2i) -> gvec2i = piecewiseIf{gvec2b, gvec2i}(c, t, f);
+export fn if(c: gvec2b, t: gvec2f, f: gvec2f) -> gvec2f = piecewiseIf{gvec2b, gvec2f}(c, t, f);
+export fn if(c: gvec2b, t: gvec2b, f: gvec2b) -> gvec2b = piecewiseIf{gvec2b, gvec2b}(c, t, f);
+export fn if(c: gvec3b, t: gvec3u, f: gvec3u) -> gvec3u = piecewiseIf{gvec3b, gvec3u}(c, t, f);
+export fn if(c: gvec3b, t: gvec3i, f: gvec3i) -> gvec3i = piecewiseIf{gvec3b, gvec3i}(c, t, f);
+export fn if(c: gvec3b, t: gvec3f, f: gvec3f) -> gvec3f = piecewiseIf{gvec3b, gvec3f}(c, t, f);
+export fn if(c: gvec3b, t: gvec3b, f: gvec3b) -> gvec3b = piecewiseIf{gvec3b, gvec3b}(c, t, f);
+export fn if(c: gvec4b, t: gvec4u, f: gvec4u) -> gvec4u = piecewiseIf{gvec4b, gvec4u}(c, t, f);
+export fn if(c: gvec4b, t: gvec4i, f: gvec4i) -> gvec4i = piecewiseIf{gvec4b, gvec4i}(c, t, f);
+export fn if(c: gvec4b, t: gvec4f, f: gvec4f) -> gvec4f = piecewiseIf{gvec4b, gvec4f}(c, t, f);
+export fn if(c: gvec4b, t: gvec4b, f: gvec4b) -> gvec4b = piecewiseIf{gvec4b, gvec4b}(c, t, f);
 
 // GBuffer methods
 
