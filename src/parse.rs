@@ -911,7 +911,6 @@ named_or!(typebase: TypeBase =>
     GnCall: GnCall as gncall,
     TypeGroup: TypeGroup as typegroup,
     Constants: Constants as constants,
-    MethodSep: String as and!(optwhitespace, dot, optwhitespace),
     Variable: String as variable,
 );
 impl TypeBase {
@@ -929,7 +928,6 @@ impl TypeBase {
             )
             .to_string(),
             TypeBase::Variable(v) => v.clone(),
-            TypeBase::MethodSep(_) => ".".to_string(),
             TypeBase::Constants(c) => c.to_string(),
         }
     }
