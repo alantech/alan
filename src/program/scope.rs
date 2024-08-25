@@ -95,7 +95,7 @@ impl<'a> Scope<'a> {
                                 "Type" | "Generic" | "Int" | "Float" | "Bool" | "String" => { /* Do nothing for the 'structural' types */ }
                                 g @ ("Binds" | "Group" | "Array" | "Fail" | "Neg" | "Len" | "Size" | "FileStr"
                                 | "Env" | "EnvExists" | "Not") => s = CType::from_generic(s, g, 1),
-                                g @ ("Function" | "Field" | "Buffer" | "Add"
+                                g @ ("Function" | "Field" | "Prop" | "Buffer" | "Add"
                                 | "Sub" | "Mul" | "Div" | "Mod" | "Pow" | "Min" | "Max" | "If" | "And" | "Or"
                                 | "Xor" | "Nand" | "Nor" | "Xnor" | "Eq" | "Neq" | "Lt" | "Lte"
                                 | "Gt" | "Gte") => s = CType::from_generic(s, g, 2),
@@ -416,7 +416,7 @@ impl<'a> Scope<'a> {
     }
 
     pub fn resolve_generic_function(
-        mut self,
+        self,
         function: &String,
         generic_types: &[CType],
         args: &[CType],
@@ -528,8 +528,7 @@ impl<'a> Scope<'a> {
             let temp_scope = self.child();
             match Function::from_generic_function(temp_scope, generic_f, generic_types.to_vec()) {
                 Err(_) => return None, // TODO: Should this be a panic?
-                Ok((temp_scope, realized_f)) => {
-                    merge!(self, temp_scope);
+                Ok((_, realized_f)) => {
                     return Some((self, realized_f));
                 }
             }

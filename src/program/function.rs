@@ -425,6 +425,10 @@ impl Function {
                         })
                     })
                     .collect::<Vec<(String, CType)>>();
+                // Make sure all argument types exist within the generic function call scope
+                for (_, arg) in &args {
+                    scope = CType::from_ctype(scope, arg.to_callable_string(), arg.clone());
+                }
                 let rettype = {
                     let mut a = generic_function.rettype.clone();
                     for ((_, o), n) in gen_args.iter().zip(generic_types.iter()) {
@@ -486,6 +490,10 @@ impl Function {
                         })
                     })
                     .collect::<Vec<(String, CType)>>();
+                // Make sure all argument types exist within the generic function call scope
+                for (_, arg) in &args {
+                    scope = CType::from_ctype(scope, arg.to_callable_string(), arg.clone());
+                }
                 let rettype = {
                     let mut a = generic_function.rettype.clone();
                     for ((_, o), n) in gen_args.iter().zip(generic_types.iter()) {

@@ -19,6 +19,7 @@ export ctype Function{I, O}; // A function type, indicating the input and output
 export ctype Tuple{A, B}; // A tuple of two (or more) types in a single compound type
 export ctype Field{L, V}; // Labeling a type with a property name. Useful to turn tuples into structs
 export ctype Either{A, B}; // An either type, allowing the value to be from *one* of the specified types, kinda like Rust enums
+export ctype Prop{T, P}; // Extracts the inner type from the outer type by the property name or number
 export ctype AnyOf{A, B}; // The AnyOf type is kinda like a Tuple, in that all sub-types are present, but it only *resolves* into one of these types above it. Useful for choosing the "best" integer, or a particular function by name.
 export ctype Buffer{T, S}; // A buffer type, a pre-allocated, fixed-length array of the specified type the specified amount
 export ctype Array{T}; // An array type, a variable-length array of the specified type the specified amount. This would usually be an stdlib type built in the language itself, but we're just going to re-use the one in the platform language
@@ -70,6 +71,7 @@ export type infix Function as -> precedence 3; // I -> O, where I is the input a
 export type infix Tuple as , precedence 0; // A, B, C, ... The tuple type combines with other tuple types to become a larger tuple type. To have a tuple of tuples, you need to `Group` the inner tuple, eg `(a, b), c`
 export type infix Field as : precedence 1; // Foo: Bar, let's you specify a property access label for the type, useful for syntactic sugar on a tuple type and the Either type (eventually).
 export type infix Either as | precedence 0; // A | B, the type has a singular value from only one of the types at once. `Result` is just `Either{T, Error}` and `Option` is just `Either{T, ()}` (or `Either{T, void}`, however we want to represent it, also might go with `Fallible` and `Maybe` instead of `Result` and `Option` as those feel more descriptive of what they are.
+export type infix Prop as . precedence 5; // A.B, returns the sub-type within A referenced by property B. Allows an inverse of a Tuple or Either type, accessed by either the Field name or an integer index
 export type infix AnyOf as & precedence 0; // A & B, which can be passed to a function that takes A or B as necessary.
 export type infix Buffer as [ precedence 1; // Technically allows `Foo[3` by itself to be valid syntax, but...
 export type postfix Group as ] precedence 1; // Technically not necessary, but allows for `Foo[3]` to do the "right thing" and become a buffer of size 3, with a singular useless Group being wrapped around it (and then unwrapped on type generation). The only "bad" thing here is `Group` gets special behavior, matching the `(...)` syntax, so there's two ways to invoke a Group via symbols.
@@ -901,7 +903,8 @@ export fn build{N}(ret: N) -> GPGPU {
   return GPGPU(wgsl, buffers, maxGlobalId);
 }
 
-fn gPrimitiveConvert{I, O}(i: I, typename: string) -> O { // TODO: Get the typename from {O}
+fn gPrimitiveConvert{I, O}(i: I) -> O {
+  let typename = {O.typeName}();
   let varName = typename.concat('_').concat(uuid().string.replace('-', '_'));
   let statement = "var "
     .concat(varName)
@@ -915,27 +918,27 @@ fn gPrimitiveConvert{I, O}(i: I, typename: string) -> O { // TODO: Get the typen
   return {O}(varName, statements, buffers);
 }
 export fn gu32(u: u32) -> gu32 = gu32(u.string, Dict{string, string}(), Set{GBuffer}());
-export fn gu32(gi: gi32) -> gu32 = gPrimitiveConvert{gi32, gu32}(gi, "u32");
-export fn gu32(gf: gf32) -> gu32 = gPrimitiveConvert{gf32, gu32}(gf, "u32");
-export fn gu32(gb: gbool) -> gu32 = gPrimitiveConvert{gbool, gu32}(gb, "u32");
+export fn gu32(gi: gi32) -> gu32 = gPrimitiveConvert{gi32, gu32}(gi);
+export fn gu32(gf: gf32) -> gu32 = gPrimitiveConvert{gf32, gu32}(gf);
+export fn gu32(gb: gbool) -> gu32 = gPrimitiveConvert{gbool, gu32}(gb);
 export fn gu32{T}(u: T) -> gu32 = gu32(u.u32);
 
 export fn gi32(i: i32) -> gi32 = gi32(i.string, Dict{string, string}(), Set{GBuffer}());
-export fn gi32(gu: gu32) -> gi32 = gPrimitiveConvert{gu32, gi32}(gu, "i32");
-export fn gi32(gf: gf32) -> gi32 = gPrimitiveConvert{gf32, gi32}(gf, "i32");
-export fn gi32(gb: gbool) -> gi32 = gPrimitiveConvert{gbool, gi32}(gb, "i32");
+export fn gi32(gu: gu32) -> gi32 = gPrimitiveConvert{gu32, gi32}(gu);
+export fn gi32(gf: gf32) -> gi32 = gPrimitiveConvert{gf32, gi32}(gf);
+export fn gi32(gb: gbool) -> gi32 = gPrimitiveConvert{gbool, gi32}(gb);
 export fn gi32{T}(i: T) -> gi32 = gi32(i.i32);
 
 export fn gf32(f: f32) -> gf32 = gf32(f.string, Dict{string, string}(), Set{GBuffer}());
-export fn gf32(gu: gu32) -> gf32 = gPrimitiveConvert{gu32, gf32}(gu, "f32");
-export fn gf32(gi: gi32) -> gf32 = gPrimitiveConvert{gi32, gf32}(gi, "f32");
-export fn gf32(gb: gbool) -> gf32 = gPrimitiveConvert{gbool, gf32}(gb, "f32");
+export fn gf32(gu: gu32) -> gf32 = gPrimitiveConvert{gu32, gf32}(gu);
+export fn gf32(gi: gi32) -> gf32 = gPrimitiveConvert{gi32, gf32}(gi);
+export fn gf32(gb: gbool) -> gf32 = gPrimitiveConvert{gbool, gf32}(gb);
 export fn gf32{T}(f: T) -> gf32 = gf32(f.f32);
 
 export fn gbool(b: bool) -> gbool = gbool(b.string, Dict{string, string}(), Set{GBuffer}());
-export fn gbool(gu: gu32) -> gbool = gPrimitiveConvert{gu32, gbool}(gu, "bool");
-export fn gbool(gi: gi32) -> gbool = gPrimitiveConvert{gi32, gbool}(gi, "bool");
-export fn gbool(gf: gf32) -> gbool = gPrimitiveConvert{gf32, gbool}(gf, "bool");
+export fn gbool(gu: gu32) -> gbool = gPrimitiveConvert{gu32, gbool}(gu);
+export fn gbool(gi: gi32) -> gbool = gPrimitiveConvert{gi32, gbool}(gi);
+export fn gbool(gf: gf32) -> gbool = gPrimitiveConvert{gf32, gbool}(gf);
 export fn gbool{T}(b: T) -> gbool = gbool(b.bool);
 
 // Vector types and constructors
@@ -952,7 +955,8 @@ export type gvec4i = WgpuType{"vec4i"};
 export type gvec4f = WgpuType{"vec4f"};
 export type gvec4b = WgpuType{"vec4<bool>"};
 
-fn gvec2Primitive{I, O}(a: I, b: I, typename: string) -> O { // TODO: Get the typename from {O}
+fn gvec2Primitive{I, O}(a: I, b: I) -> O {
+  let typename = {O.typeName}();
   let statement = typename
     .concat('(')
     .concat(a.varName)
@@ -965,22 +969,23 @@ fn gvec2Primitive{I, O}(a: I, b: I, typename: string) -> O { // TODO: Get the ty
 }
 
 export fn gvec2u() -> gvec2u = gvec2u("vec2u()", Dict{string, string}(), Set{GBuffer}());
-export fn gvec2u(a: gu32, b: gu32) -> gvec2u = gvec2Primitive{gu32, gvec2u}(a, b, "vec2u");
+export fn gvec2u(a: gu32, b: gu32) -> gvec2u = gvec2Primitive{gu32, gvec2u}(a, b);
 export fn gvec2u{T}(a: T, b: T) -> gvec2u = gvec2u(a.gu32, b.gu32);
 
 export fn gvec2i() -> gvec2i = gvec2i("vec2i()", Dict{string, string}(), Set{GBuffer}());
-export fn gvec2i(a: gi32, b: gi32) -> gvec2i = gvec2Primitive{gi32, gvec2i}(a, b, "vec2i");
+export fn gvec2i(a: gi32, b: gi32) -> gvec2i = gvec2Primitive{gi32, gvec2i}(a, b);
 export fn gvec2i{T}(a: T, b: T) -> gvec2i = gvec2i(a.gi32, b.gi32);
 
 export fn gvec2f() -> gvec2f = gvec2f("vec2f()", Dict{string, string}(), Set{GBuffer}());
-export fn gvec2f(a: gf32, b: gf32) -> gvec2f = gvec2Primitive{gf32, gvec2f}(a, b, "vec2f");
+export fn gvec2f(a: gf32, b: gf32) -> gvec2f = gvec2Primitive{gf32, gvec2f}(a, b);
 export fn gvec2f{T}(a: T, b: T) -> gvec2f = gvec2f(a.gf32, b.gf32);
 
 export fn gvec2b() -> gvec2b = gvec2b("vec2<bool>()", Dict{string, string}(), Set{GBuffer}());
-export fn gvec2b(a: gbool, b: gbool) -> gvec2b = gvec2Primitive{gbool, gvec2b}(a, b, "vec2<bool>");
+export fn gvec2b(a: gbool, b: gbool) -> gvec2b = gvec2Primitive{gbool, gvec2b}(a, b);
 export fn gvec2b{T}(a: T, b: T) -> gvec2b = gvec2b(a.gbool, b.gbool);
 
-fn gvec3Primitive{I, O}(a: I, b: I, c: I, typename: string) -> O { // TODO: Get typename from {O}
+fn gvec3Primitive{I, O}(a: I, b: I, c: I) -> O {
+  let typename = {O.typeName}();
   let statement = typename
     .concat('(')
     .concat(a.varName)
@@ -995,22 +1000,23 @@ fn gvec3Primitive{I, O}(a: I, b: I, c: I, typename: string) -> O { // TODO: Get 
 }
 
 export fn gvec3u() -> gvec3u = gvec3u("vec3u()", Dict{string, string}(), Set{GBuffer}());
-export fn gvec3u(a: gu32, b: gu32, c: gu32) -> gvec3u = gvec3Primitive{gu32, gvec3u}(a, b, c, "vec3u");
+export fn gvec3u(a: gu32, b: gu32, c: gu32) -> gvec3u = gvec3Primitive{gu32, gvec3u}(a, b, c);
 export fn gvec3u{T}(a: T, b: T, c: T) -> gvec3u = gvec3u(a.gu32, b.gu32, c.gu32);
 
 export fn gvec3i() -> gvec3i = gvec3i("vec3i()", Dict{string, string}(), Set{GBuffer}());
-export fn gvec3i(a: gi32, b: gi32, c: gi32) -> gvec3i = gvec3Primitive{gi32, gvec3i}(a, b, c, "vec3i");
+export fn gvec3i(a: gi32, b: gi32, c: gi32) -> gvec3i = gvec3Primitive{gi32, gvec3i}(a, b, c);
 export fn gvec3i{T}(a: T, b: T, c: T) -> gvec3i = gvec3i(a.gi32, b.gi32, c.gi32);
 
 export fn gvec3f() -> gvec3f = gvec3f("vec3f()", Dict{string, string}(), Set{GBuffer}());
-export fn gvec3f(a: gf32, b: gf32, c: gf32) -> gvec3f = gvec3Primitive{gf32, gvec3f}(a, b, c, "vec3f");
+export fn gvec3f(a: gf32, b: gf32, c: gf32) -> gvec3f = gvec3Primitive{gf32, gvec3f}(a, b, c);
 export fn gvec3f{T}(a: T, b: T, c: T) -> gvec3f = gvec3f(a.gf32, b.gf32, c.gf32);
 
 export fn gvec3b() -> gvec3b = gvec3b("vec3<bool>()", Dict{string, string}(), Set{GBuffer}());
-export fn gvec3b(a: gbool, b: gbool, c: gbool) -> gvec3b = gvec3Primitive{gbool, gvec3b}(a, b, c, "vec3<bool>");
+export fn gvec3b(a: gbool, b: gbool, c: gbool) -> gvec3b = gvec3Primitive{gbool, gvec3b}(a, b, c);
 export fn gvec3b{T}(a: T, b: T, c: T) -> gvec3b = gvec3b(a.gbool, b.gbool, c.gbool);
 
-fn gvec4Primitive{I, O}(a: I, b: I, c: I, d: I, typename: string) -> O { // TODO: typename from {O}
+fn gvec4Primitive{I, O}(a: I, b: I, c: I, d: I) -> O {
+  let typename = {O.typeName}();
   let statement = typename
     .concat('(')
     .concat(a.varName)
@@ -1028,25 +1034,25 @@ fn gvec4Primitive{I, O}(a: I, b: I, c: I, d: I, typename: string) -> O { // TODO
 
 export fn gvec4u() -> gvec4u = gvec4u("vec4u()", Dict{string, string}(), Set{GBuffer}());
 export fn gvec4u(a: gu32, b: gu32, c: gu32, d: gu32) -> gvec4u = gvec4Primitive{gu32, gvec4u}(
-  a, b, c, d, "vec4u"
+  a, b, c, d
 );
 export fn gvec4u{T}(a: T, b: T, c: T, d: T) -> gvec4u = gvec4u(a.gu32, b.gu32, c.gu32, d.gu32);
 
 export fn gvec4i() -> gvec4i = gvec4i("vec4i()", Dict{string, string}(), Set{GBuffer}());
 export fn gvec4i(a: gi32, b: gi32, c: gi32, d: gi32) -> gvec4i = gvec4Primitive{gi32, gvec4i}(
-  a, b, c, d, "vec4i"
+  a, b, c, d
 );
 export fn gvec4i{T}(a: T, b: T, c: T, d: T) -> gvec4i = gvec4i(a.gi32, b.gi32, c.gi32, d.gi32);
 
 export fn gvec4f() -> gvec4f = gvec4f("vec4f()", Dict{string, string}(), Set{GBuffer}());
 export fn gvec4f(a: gf32, b: gf32, c: gf32, d: gf32) -> gvec4f = gvec4Primitive{gf32, gvec4f}(
-  a, b, c, d, "vec4f"
+  a, b, c, d
 );
 export fn gvec4f{T}(a: T, b: T, c: T, d: T) -> gvec4f = gvec4f(a.gf32, b.gf32, c.gf32, d.gf32);
 
 export fn gvec4b() -> gvec4b = gvec4b("vec4<bool>()", Dict{string, string}(), Set{GBuffer}());
 export fn gvec4b(a: gbool, b: gbool, c: gbool, d: gbool) -> gvec4b = gvec4Primitive{gbool, gvec4b}(
-  a, b, c, d, "vec4<bool>"
+  a, b, c, d
 );
 export fn gvec4b{T}(a: T, b: T, c: T, d: T) -> gvec4b = gvec4b(a.gbool, b.gbool, c.gbool, d.gbool);
 
@@ -4628,7 +4634,7 @@ fn gor{I}(a: I, b: I) -> I {
   let varName = '('.concat(a.varName).concat(' | ').concat(b.varName).concat(')');
   let statements = a.statements.concat(b.statements);
   let buffers = a.buffers.union(b.buffers);
-  return {O}(varName, statements, buffers);
+  return {I}(varName, statements, buffers);
 }
 export fn or(a: gu32, b: gu32) -> gu32 = gor(a, b);
 export fn or{T}(a: gu32, b: T) -> gu32 = gor(a, b.gu32);
@@ -4653,7 +4659,7 @@ fn gand{I}(a: I, b: I) -> I {
   let varName = '('.concat(a.varName).concat(' & ').concat(b.varName).concat(')');
   let statements = a.statements.concat(b.statements);
   let buffers = a.buffers.union(b.buffers);
-  return {O}(varName, statements, buffers);
+  return {I}(varName, statements, buffers);
 }
 export fn and(a: gu32, b: gu32) -> gu32 = gand(a, b);
 export fn and{T}(a: gu32, b: T) -> gu32 = gand(a, b.gu32);
@@ -4679,7 +4685,7 @@ fn gxor{I}(a: I, b: I) -> I {
   let varName = '('.concat(a.varName).concat(' ^ ').concat(b.varName).concat(')');
   let statements = a.statements.concat(b.statements);
   let buffers = a.buffers.union(b.buffers);
-  return {O}(varName, statements, buffers);
+  return {I}(varName, statements, buffers);
 }
 export fn and(a: gu32, b: gu32) -> gu32 = gand(a, b);
 export fn and{T}(a: gu32, b: T) -> gu32 = gand(a, b.gu32);
@@ -4698,7 +4704,7 @@ fn gshl{I}(a: I, b: I) -> I {
   let varName = '('.concat(a.varName).concat(' << ').concat(b.varName).concat(')');
   let statements = a.statements.concat(b.statements);
   let buffers = a.buffers.union(b.buffers);
-  return {O}(varName, statements, buffers);
+  return {I}(varName, statements, buffers);
 }
 export fn shl(a: gu32, b: gu32) -> gu32 = gshl(a, b);
 export fn shl{T}(a: gu32, b: T) -> gu32 = gshl(a, b.gu32);
@@ -4717,7 +4723,7 @@ fn gshr{I}(a: I, b: I) -> I {
   let varName = '('.concat(a.varName).concat(' >> ').concat(b.varName).concat(')');
   let statements = a.statements.concat(b.statements);
   let buffers = a.buffers.union(b.buffers);
-  return {O}(varName, statements, buffers);
+  return {I}(varName, statements, buffers);
 }
 export fn shr(a: gu32, b: gu32) -> gu32 = gshr(a, b);
 export fn shr{T}(a: gu32, b: T) -> gu32 = gshr(a, b.gu32);
@@ -4734,47 +4740,47 @@ export fn shr(a: gvec4i, b: gvec4i) -> gvec4i = gshr(a, b);
 
 // Bitcasting methods (TODO: Is there a better naming scheme possible?)
 
-fn gbitcast{I, O}(v: I, typename: string) -> O {
-  let varName = 'bitcast<'.concat(typename).concat('>(').concat(v.varName).concat(')');
+fn gbitcast{I, O}(v: I) -> O {
+  let varName = 'bitcast<'.concat({O.typeName}()).concat('>(').concat(v.varName).concat(')');
   let statements = v.statements.clone;
   let buffers = v.buffers.clone;
   return {O}(varName, statements, buffers);
 }
 export fn asU32(v: gu32) -> gu32 = v;
-export fn asU32(v: gi32) -> gu32 = gbitcast{gi32, gu32}(v, "u32");
-export fn asU32(v: gf32) -> gu32 = gbitcast{gf32, gu32}(v, "u32");
-export fn asI32(v: gu32) -> gi32 = gbitcast{gu32, gi32}(v, "i32");
+export fn asU32(v: gi32) -> gu32 = gbitcast{gi32, gu32}(v);
+export fn asU32(v: gf32) -> gu32 = gbitcast{gf32, gu32}(v);
+export fn asI32(v: gu32) -> gi32 = gbitcast{gu32, gi32}(v);
 export fn asI32(v: gi32) -> gi32 = v;
-export fn asI32(v: gf32) -> gi32 = gbitcast{gf32, gi32}(v, "i32");
-export fn asF32(v: gu32) -> gf32 = gbitcast{gu32, gf32}(v, "f32");
-export fn asF32(v: gi32) -> gi32 = gbitcast{gi32, gf32}(v, "f32");
+export fn asI32(v: gf32) -> gi32 = gbitcast{gf32, gi32}(v);
+export fn asF32(v: gu32) -> gf32 = gbitcast{gu32, gf32}(v);
+export fn asF32(v: gi32) -> gi32 = gbitcast{gi32, gf32}(v);
 export fn asF32(v: gf32) -> gf32 = v;
 export fn asVec2u(v: gvec2u) -> gvec2u = v;
-export fn asVec2u(v: gvec2i) -> gvec2u = gbitcast{gvec2i, gvec2u}(v, "vec2u");
-export fn asVec2u(v: gvec2f) -> gvec2u = gbitcast{gvec2f, gvec2u}(v, "vec2u");
-export fn asVec2i(v: gvec2u) -> gvec2i = gbitcast{gvec2u, gvec2i}(v, "vec2i");
+export fn asVec2u(v: gvec2i) -> gvec2u = gbitcast{gvec2i, gvec2u}(v);
+export fn asVec2u(v: gvec2f) -> gvec2u = gbitcast{gvec2f, gvec2u}(v);
+export fn asVec2i(v: gvec2u) -> gvec2i = gbitcast{gvec2u, gvec2i}(v);
 export fn asVec2i(v: gvec2i) -> gvec2i = v;
-export fn asVec2i(v: gvec2f) -> gvec2i = gbitcast{gvec2f, gvec2i}(v, "vec2i");
-export fn asVec2f(v: gvec2u) -> gvec2f = gbitcast{gvec2u, gvec2f}(v, "vec2f");
-export fn asVec2f(v: gvec2i) -> gvec2f = gbitcast{gvec2i, gvec2f}(v, "vec2f");
+export fn asVec2i(v: gvec2f) -> gvec2i = gbitcast{gvec2f, gvec2i}(v);
+export fn asVec2f(v: gvec2u) -> gvec2f = gbitcast{gvec2u, gvec2f}(v);
+export fn asVec2f(v: gvec2i) -> gvec2f = gbitcast{gvec2i, gvec2f}(v);
 export fn asVec2f(v: gvec2f) -> gvec2f = v;
 export fn asVec3u(v: gvec3u) -> gvec3u = v;
-export fn asVec3u(v: gvec3i) -> gvec3u = gbitcast{gvec3i, gvec3u}(v, "vec3u");
-export fn asVec3u(v: gvec3f) -> gvec3u = gbitcast{gvec3f, gvec3u}(v, "vec3u");
-export fn asVec3i(v: gvec3u) -> gvec3i = gbitcast{gvec3u, gvec3i}(v, "vec3i");
+export fn asVec3u(v: gvec3i) -> gvec3u = gbitcast{gvec3i, gvec3u}(v);
+export fn asVec3u(v: gvec3f) -> gvec3u = gbitcast{gvec3f, gvec3u}(v);
+export fn asVec3i(v: gvec3u) -> gvec3i = gbitcast{gvec3u, gvec3i}(v);
 export fn asVec3i(v: gvec3i) -> gvec3i = v;
-export fn asVec3i(v: gvec3f) -> gvec3i = gbitcast{gvec3f, gvec3i}(v, "vec3i");
-export fn asVec3f(v: gvec3u) -> gvec3f = gbitcast{gvec3u, gvec3f}(v, "vec3f");
-export fn asVec3f(v: gvec3i) -> gvec3f = gbitcast{gvec3i, gvec3f}(v, "vec3f");
+export fn asVec3i(v: gvec3f) -> gvec3i = gbitcast{gvec3f, gvec3i}(v);
+export fn asVec3f(v: gvec3u) -> gvec3f = gbitcast{gvec3u, gvec3f}(v);
+export fn asVec3f(v: gvec3i) -> gvec3f = gbitcast{gvec3i, gvec3f}(v);
 export fn asVec3f(v: gvec3f) -> gvec3f = v;
 export fn asVec4u(v: gvec4u) -> gvec4u = v;
-export fn asVec4u(v: gvec4i) -> gvec4u = gbitcast{gvec4i, gvec4u}(v, "vec4u");
-export fn asVec4u(v: gvec4f) -> gvec4u = gbitcast{gvec4f, gvec4u}(v, "vec4u");
-export fn asVec4i(v: gvec4u) -> gvec4i = gbitcast{gvec4u, gvec4i}(v, "vec4i");
+export fn asVec4u(v: gvec4i) -> gvec4u = gbitcast{gvec4i, gvec4u}(v);
+export fn asVec4u(v: gvec4f) -> gvec4u = gbitcast{gvec4f, gvec4u}(v);
+export fn asVec4i(v: gvec4u) -> gvec4i = gbitcast{gvec4u, gvec4i}(v);
 export fn asVec4i(v: gvec4i) -> gvec4i = v;
-export fn asVec4i(v: gvec4f) -> gvec4i = gbitcast{gvec4f, gvec4i}(v, "vec4i");
-export fn asVec4f(v: gvec4u) -> gvec4f = gbitcast{gvec4u, gvec4f}(v, "vec4f");
-export fn asVec4f(v: gvec4i) -> gvec4f = gbitcast{gvec4i, gvec4f}(v, "vec4f");
+export fn asVec4i(v: gvec4f) -> gvec4i = gbitcast{gvec4f, gvec4i}(v);
+export fn asVec4f(v: gvec4u) -> gvec4f = gbitcast{gvec4u, gvec4f}(v);
+export fn asVec4f(v: gvec4i) -> gvec4f = gbitcast{gvec4i, gvec4f}(v);
 export fn asVec4f(v: gvec4f) -> gvec4f = v;
 
 // GPU Vector functions

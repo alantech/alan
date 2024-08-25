@@ -26,6 +26,7 @@ pub enum CType {
     Tuple(Vec<CType>),
     Field(String, Box<CType>),
     Either(Vec<CType>),
+    Prop(Box<CType>, Box<CType>),
     AnyOf(Vec<CType>),
     Buffer(Box<CType>, Box<CType>),
     Array(Box<CType>),
@@ -121,6 +122,11 @@ impl CType {
                 .map(|t| t.to_strict_string(strict))
                 .collect::<Vec<String>>()
                 .join(" | "),
+            CType::Prop(t, p) => format!(
+                "{}.{}",
+                t.to_strict_string(strict),
+                p.to_strict_string(strict)
+            ),
             CType::AnyOf(ts) => ts
                 .iter()
                 .map(|t| t.to_strict_string(strict))
@@ -311,6 +317,11 @@ impl CType {
                     .map(|t| t.to_functional_string())
                     .collect::<Vec<String>>()
                     .join(", ")
+            ),
+            CType::Prop(t, p) => format!(
+                "Prop{{{}, {}}}",
+                t.to_functional_string(),
+                p.to_functional_string()
             ),
             CType::AnyOf(ts) => format!(
                 "AnyOf{{{}}}",
@@ -536,6 +547,7 @@ impl CType {
             CType::Either(ts) => {
                 CType::Either(ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>())
             }
+            CType::Prop(t, p) => CType::Prop(Box::new(t.degroup()), Box::new(p.degroup())),
             CType::AnyOf(ts) => {
                 CType::AnyOf(ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>())
             }
@@ -1789,6 +1801,37 @@ impl CType {
                     kind: FnKind::Normal,
                 });
             }
+            CType::Bool(b) => {
+                fs.push(Function {
+                    name: constructor_fn_name.clone(),
+                    args: Vec::new(),
+                    rettype: CType::Binds("bool".to_string()),
+                    microstatements: vec![Microstatement::Return {
+                        value: Some(Box::new(Microstatement::Value {
+                            typen: CType::Binds("bool".to_string()),
+                            representation: match b {
+                                true => "true".to_string(),
+                                false => "false".to_string(),
+                            },
+                        })),
+                    }],
+                    kind: FnKind::Normal,
+                });
+            }
+            CType::TString(s) => {
+                fs.push(Function {
+                    name: constructor_fn_name.clone(),
+                    args: Vec::new(),
+                    rettype: CType::Binds("String".to_string()),
+                    microstatements: vec![Microstatement::Return {
+                        value: Some(Box::new(Microstatement::Value {
+                            typen: CType::Binds("String".to_string()),
+                            representation: format!("\"{}\"", s.replace("\"", "\\\"")),
+                        })),
+                    }],
+                    kind: FnKind::Normal,
+                });
+            }
             _ => {} // Don't do anything for other types
         }
         (t, fs)
@@ -1929,6 +1972,18 @@ impl CType {
         if !fs.is_empty() {
             let mut name_fn_pairs = HashMap::new();
             for f in fs {
+                // We need to similarly load all of the return types from the functions created by
+                // this from_ctype call if they don't already exist
+                let mut contains_rettype = false;
+                for t in scope.types.values() {
+                    if f.rettype.to_callable_string() == t.to_callable_string() {
+                        contains_rettype = true;
+                    }
+                }
+                if !contains_rettype {
+                    scope =
+                        CType::from_ctype(scope, f.rettype.to_callable_string(), f.rettype.clone());
+                }
                 if name_fn_pairs.contains_key(&f.name) {
                     let v: &mut Vec<Function> = name_fn_pairs.get_mut(&f.name).unwrap();
                     v.push(f.clone());
@@ -2002,6 +2057,10 @@ impl CType {
                 ts.iter()
                     .map(|t| t.swap_subtype(old_type, new_type))
                     .collect::<Vec<CType>>(),
+            ),
+            CType::Prop(t, p) => CType::Prop(
+                Box::new(t.swap_subtype(old_type, new_type)),
+                Box::new(p.swap_subtype(old_type, new_type)),
             ),
             CType::AnyOf(ts) => CType::AnyOf(
                 ts.iter()
@@ -2204,6 +2263,90 @@ impl CType {
         }
         CType::Either(out_vec)
     }
+    pub fn prop(t: CType, p: CType) -> CType {
+        // Checking the p property type first if it's to be inferred because short-circuiting on
+        // that will simplify follow-up logic
+        if let CType::Infer(..) = &p {
+            return CType::Prop(Box::new(t), Box::new(p));
+        }
+        match t.clone() {
+            CType::Infer(..) => CType::Prop(Box::new(t), Box::new(p)),
+            CType::Type(_, t) => CType::prop(*t, p),
+            CType::Group(t) => CType::prop(*t, p),
+            CType::Field(n, f) => match p {
+                CType::TString(s) => {
+                    if n == s {
+                        *f.clone()
+                    } else {
+                        CType::fail(&format!("Property {} not found on type {:?}", s, &t))
+                    }
+                }
+                otherwise => CType::fail(&format!(
+                    "The property must be a name when directly applied to a field, not {:?}",
+                    otherwise,
+                )),
+            },
+            CType::Tuple(ts) | CType::Either(ts) => match p {
+                CType::TString(s) => {
+                    for inner in ts {
+                        if let CType::Field(n, f) = inner {
+                            if n == s {
+                                return *f.clone();
+                            }
+                        }
+                    }
+                    CType::fail(&format!("Property {} not found on type {:?}", s, t))
+                }
+                CType::Int(i) => {
+                    if (0..ts.len()).contains(&(i as usize)) {
+                        ts[i as usize].clone()
+                    } else {
+                        CType::fail(&format!("{} is out of bounds for type {:?}", i, t))
+                    }
+                }
+                otherwise => CType::fail(&format!(
+                    "Properties must be a name or integer location, not {:?}",
+                    otherwise,
+                )),
+            },
+            CType::TIf(_, tf) => {
+                match p {
+                    CType::TString(s) => {
+                        // TODO: Is this path reachable?
+                        if s == "true" {
+                            tf[0].clone()
+                        } else if s == "false" {
+                            tf[1].clone()
+                        } else {
+                            CType::fail("Only true or false (or 1 or 0) are valid for accessing the types from an If{C, A, B} type")
+                        }
+                    }
+                    CType::Bool(b) => {
+                        if b {
+                            tf[0].clone()
+                        } else {
+                            tf[1].clone()
+                        }
+                    }
+                    CType::Int(i) => {
+                        if (0..2).contains(&i) {
+                            tf[i as usize].clone()
+                        } else {
+                            CType::fail("Only true or false (or 1 or 0) are valid for accessing the types from an If{C, A, B} type")
+                        }
+                    }
+                    otherwise => CType::fail(&format!(
+                        "Properties must be a name or integer location, not {:?}",
+                        otherwise,
+                    )),
+                }
+            }
+            otherwise => CType::fail(&format!(
+                "Properties cannot be accessed from type {:?}",
+                otherwise
+            )),
+        }
+    }
     pub fn anyof(args: Vec<CType>) -> CType {
         let mut out_vec = Vec::new();
         for arg in args {
@@ -2218,8 +2361,6 @@ impl CType {
         }
         CType::Either(out_vec)
     }
-    // Special implementation for the field type, too. Right now for easier parsing the key needs
-    // to be quoted. TODO: remove this restriction
     pub fn field(mut args: Vec<CType>) -> CType {
         if args.len() != 2 {
             CType::fail("Field{K, V} only accepts two sub-types")
@@ -2914,70 +3055,6 @@ pub fn typebaselist_to_ctype(
         let typebase = &typebaselist[i];
         let nexttypebase = typebaselist.get(i + 1);
         match typebase {
-            parse::TypeBase::MethodSep(_) => {
-                // The `MethodSep` symbol doesn't do anything on its own, it only validates that
-                // the syntax before and after it is sane
-                if prior_value.is_none() {
-                    return Err(format!(
-                        "Cannot start a statement with a property access: {}",
-                        typebaselist
-                            .iter()
-                            .map(|tb| tb.to_string())
-                            .collect::<Vec<String>>()
-                            .join("")
-                    )
-                    .into());
-                }
-                match nexttypebase {
-                    None => {
-                        return Err(format!(
-                            "Cannot end a statement with a property access: {}",
-                            typebaselist
-                                .iter()
-                                .map(|tb| tb.to_string())
-                                .collect::<Vec<String>>()
-                                .join("")
-                        )
-                        .into());
-                    }
-                    Some(next) => match next {
-                        parse::TypeBase::GnCall(_) => {
-                            return Err(format!(
-                                "A generic function call is not a property: {}",
-                                typebaselist
-                                    .iter()
-                                    .map(|tb| tb.to_string())
-                                    .collect::<Vec<String>>()
-                                    .join("")
-                            )
-                            .into());
-                        }
-                        parse::TypeBase::TypeGroup(_) => {
-                            return Err(format!(
-                                "A parenthetical grouping is not a property: {}",
-                                typebaselist
-                                    .iter()
-                                    .map(|tb| tb.to_string())
-                                    .collect::<Vec<String>>()
-                                    .join("")
-                            )
-                            .into());
-                        }
-                        parse::TypeBase::MethodSep(_) => {
-                            return Err(format!(
-                                "Too many `.` symbols for the method access: {}",
-                                typebaselist
-                                    .iter()
-                                    .map(|tb| tb.to_string())
-                                    .collect::<Vec<String>>()
-                                    .join("")
-                            )
-                            .into());
-                        }
-                        _ => {}
-                    },
-                }
-            }
             parse::TypeBase::Constants(c) => {
                 // With constants, there are a few situations where they are allowed:
                 // 1) When they're used within a `GnCall` as the sole value passed in
@@ -2990,10 +3067,6 @@ pub fn typebaselist_to_ctype(
                 // function type, it returns the input or output type (function types could
                 // internally have been a struct-like type with two fields, but they're special for
                 // now)
-                // Similarly, the only thing that can follow a constant value is a `MethodSep` to
-                // be used for a method-syntax function call and all others are errors. The
-                // "default" path is for a typebaselist with a length of one containing only the
-                // constant.
                 if let Some(next) = nexttypebase {
                     match next {
                         parse::TypeBase::Variable(_) => {
@@ -3008,7 +3081,6 @@ pub fn typebaselist_to_ctype(
                         parse::TypeBase::Constants(_) => {
                             return Err(format!("A constant cannot be directly before another constant without an operator between them: {}", typebaselist.iter().map(|tb| tb.to_string()).collect::<Vec<String>>().join("")).into());
                         }
-                        parse::TypeBase::MethodSep(_) => {} // The only allowed follow-up
                     }
                 }
                 if prior_value.is_none() {
@@ -3131,6 +3203,34 @@ pub fn typebaselist_to_ctype(
                         // to `Field` as a `Label` and turn this logic into something regularized
                         // For now, we're just special-casing the `Field` built-in generic type.
                         match &t {
+                            CType::IntrinsicGeneric(p, 2) if p == "Prop" => {
+                                match nexttypebase {
+                                    None => {},
+                                    Some(next) => match next {
+                                        parse::TypeBase::GnCall(g) => {
+                                            // There should be only two args, the first arg is
+                                            // coerced from a variable to a string, the second arg
+                                            // is treated like normal
+                                            if g.typecalllist.len() != 3 {
+                                                CType::fail("The Field generic type accepts only two parameters");
+                                            }
+                                            args.push(withtypeoperatorslist_to_ctype(&vec![g.typecalllist[0].clone()], scope)?);
+                                            match g.typecalllist[0].to_string().parse::<i128>() {
+                                                Ok(i) => args.push(CType::Int(i)),
+                                                Err(_) => {
+                                                    let argstr = g.typecalllist[2].to_string();
+                                                    match argstr.as_str() {
+                                                        "true" => args.push(CType::Bool(true)),
+                                                        "false" => args.push(CType::Bool(false)),
+                                                        _ => args.push(CType::TString(argstr))
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        _ => CType::fail("Cannot follow method style syntax without an operator in between"),
+                                    }
+                                }
+                            }
                             CType::IntrinsicGeneric(f, 2) if f == "Field" => {
                                 match nexttypebase {
                                     None => {},
@@ -3145,7 +3245,6 @@ pub fn typebaselist_to_ctype(
                                             args.push(CType::TString(g.typecalllist[0].to_string()));
                                             args.push(withtypeoperatorslist_to_ctype(&vec![g.typecalllist[2].clone()], scope)?);
                                         }
-                                        parse::TypeBase::MethodSep(_) => {},
                                         _ => CType::fail("Cannot follow method style syntax without an operator in between"),
                                     }
                                 }
@@ -3179,7 +3278,6 @@ pub fn typebaselist_to_ctype(
                                                 args.push(withtypeoperatorslist_to_ctype(&arg_block, scope)?);
                                             }
                                         }
-                                        parse::TypeBase::MethodSep(_) => {},
                                         _ => CType::fail("Cannot follow method style syntax without an operator in between"),
                                     }
                                 }
@@ -3232,10 +3330,9 @@ pub fn typebaselist_to_ctype(
                                             Box::new(args[1].clone()),
                                         ),
                                         "Tuple" => CType::tuple(args.clone()),
-                                        // TODO: Field should ideally not require string
-                                        // quoting
                                         "Field" => CType::field(args.clone()),
                                         "Either" => CType::either(args.clone()),
+                                        "Prop" => CType::prop(args[0].clone(), args[1].clone()),
                                         "AnyOf" => CType::anyof(args.clone()),
                                         "Buffer" => CType::buffer(args.clone()),
                                         "Array" => CType::Array(Box::new(args[0].clone())),
@@ -3275,16 +3372,6 @@ pub fn typebaselist_to_ctype(
                                     }
                                 }
                             }
-                            /*CType::BoundGeneric(name, argstrs, binding) => {
-                                // We turn this into a `ResolvedBoundGeneric` for the lower layer
-                                // of the compiler to make sense of
-                                CType::ResolvedBoundGeneric(
-                                    name.clone(),
-                                    argstrs.clone(),
-                                    args,
-                                    binding.clone(),
-                                )
-                            }*/
                             others => {
                                 // If we hit this branch, then the `args` vector needs to have a
                                 // length of zero, and then we just bubble up the type as-is
