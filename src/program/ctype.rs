@@ -2281,8 +2281,13 @@ impl CType {
                         CType::fail(&format!("Property {} not found on type {:?}", s, &t))
                     }
                 }
+                CType::Int(i) => match i {
+                    0 => CType::TString(n.to_string()),
+                    1 => *f.clone(),
+                    _ => CType::fail("Only 0 or 1 are valid integer accesses on a field"),
+                },
                 otherwise => CType::fail(&format!(
-                    "The property must be a name when directly applied to a field, not {:?}",
+                    "Properties must be a name or integer location, not {:?}",
                     otherwise,
                 )),
             },
