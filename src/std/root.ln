@@ -4634,7 +4634,7 @@ fn gor{I}(a: I, b: I) -> I {
   let varName = '('.concat(a.varName).concat(' | ').concat(b.varName).concat(')');
   let statements = a.statements.concat(b.statements);
   let buffers = a.buffers.union(b.buffers);
-  return {O}(varName, statements, buffers);
+  return {I}(varName, statements, buffers);
 }
 export fn or(a: gu32, b: gu32) -> gu32 = gor(a, b);
 export fn or{T}(a: gu32, b: T) -> gu32 = gor(a, b.gu32);
@@ -4659,7 +4659,7 @@ fn gand{I}(a: I, b: I) -> I {
   let varName = '('.concat(a.varName).concat(' & ').concat(b.varName).concat(')');
   let statements = a.statements.concat(b.statements);
   let buffers = a.buffers.union(b.buffers);
-  return {O}(varName, statements, buffers);
+  return {I}(varName, statements, buffers);
 }
 export fn and(a: gu32, b: gu32) -> gu32 = gand(a, b);
 export fn and{T}(a: gu32, b: T) -> gu32 = gand(a, b.gu32);
@@ -4685,7 +4685,7 @@ fn gxor{I}(a: I, b: I) -> I {
   let varName = '('.concat(a.varName).concat(' ^ ').concat(b.varName).concat(')');
   let statements = a.statements.concat(b.statements);
   let buffers = a.buffers.union(b.buffers);
-  return {O}(varName, statements, buffers);
+  return {I}(varName, statements, buffers);
 }
 export fn and(a: gu32, b: gu32) -> gu32 = gand(a, b);
 export fn and{T}(a: gu32, b: T) -> gu32 = gand(a, b.gu32);
@@ -4704,7 +4704,7 @@ fn gshl{I}(a: I, b: I) -> I {
   let varName = '('.concat(a.varName).concat(' << ').concat(b.varName).concat(')');
   let statements = a.statements.concat(b.statements);
   let buffers = a.buffers.union(b.buffers);
-  return {O}(varName, statements, buffers);
+  return {I}(varName, statements, buffers);
 }
 export fn shl(a: gu32, b: gu32) -> gu32 = gshl(a, b);
 export fn shl{T}(a: gu32, b: T) -> gu32 = gshl(a, b.gu32);
@@ -4723,7 +4723,7 @@ fn gshr{I}(a: I, b: I) -> I {
   let varName = '('.concat(a.varName).concat(' >> ').concat(b.varName).concat(')');
   let statements = a.statements.concat(b.statements);
   let buffers = a.buffers.union(b.buffers);
-  return {O}(varName, statements, buffers);
+  return {I}(varName, statements, buffers);
 }
 export fn shr(a: gu32, b: gu32) -> gu32 = gshr(a, b);
 export fn shr{T}(a: gu32, b: T) -> gu32 = gshr(a, b.gu32);

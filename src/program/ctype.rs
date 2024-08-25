@@ -1972,6 +1972,18 @@ impl CType {
         if !fs.is_empty() {
             let mut name_fn_pairs = HashMap::new();
             for f in fs {
+                // We need to similarly load all of the return types from the functions created by
+                // this from_ctype call if they don't already exist
+                let mut contains_rettype = false;
+                for t in scope.types.values() {
+                    if f.rettype.to_callable_string() == t.to_callable_string() {
+                        contains_rettype = true;
+                    }
+                }
+                if !contains_rettype {
+                    scope =
+                        CType::from_ctype(scope, f.rettype.to_callable_string(), f.rettype.clone());
+                }
                 if name_fn_pairs.contains_key(&f.name) {
                     let v: &mut Vec<Function> = name_fn_pairs.get_mut(&f.name).unwrap();
                     v.push(f.clone());

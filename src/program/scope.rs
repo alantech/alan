@@ -416,7 +416,7 @@ impl<'a> Scope<'a> {
     }
 
     pub fn resolve_generic_function(
-        mut self,
+        self,
         function: &String,
         generic_types: &[CType],
         args: &[CType],
@@ -528,8 +528,7 @@ impl<'a> Scope<'a> {
             let temp_scope = self.child();
             match Function::from_generic_function(temp_scope, generic_f, generic_types.to_vec()) {
                 Err(_) => return None, // TODO: Should this be a panic?
-                Ok((temp_scope, realized_f)) => {
-                    merge!(self, temp_scope);
+                Ok((_, realized_f)) => {
                     return Some((self, realized_f));
                 }
             }
