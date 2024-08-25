@@ -2289,19 +2289,16 @@ impl CType {
             CType::Tuple(ts) | CType::Either(ts) => match p {
                 CType::TString(s) => {
                     for inner in ts {
-                        match inner {
-                            CType::Field(n, f) => {
-                                if n == s {
-                                    return *f.clone();
-                                }
+                        if let CType::Field(n, f) = inner {
+                            if n == s {
+                                return *f.clone();
                             }
-                            _ => {}
                         }
                     }
                     CType::fail(&format!("Property {} not found on type {:?}", s, t))
                 }
                 CType::Int(i) => {
-                    if (i as usize) < ts.len() && i >= 0 {
+                    if (0..ts.len()).contains(&(i as usize)) {
                         ts[i as usize].clone()
                     } else {
                         CType::fail(&format!("{} is out of bounds for type {:?}", i, t))
@@ -2332,7 +2329,7 @@ impl CType {
                         }
                     }
                     CType::Int(i) => {
-                        if i >= 0 && i < 2 {
+                        if (0..2).contains(&i) {
                             tf[i as usize].clone()
                         } else {
                             CType::fail("Only true or false (or 1 or 0) are valid for accessing the types from an If{C, A, B} type")
