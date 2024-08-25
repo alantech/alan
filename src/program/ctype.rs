@@ -2284,9 +2284,7 @@ impl CType {
                 CType::Int(i) => match i {
                     0 => CType::TString(n.to_string()),
                     1 => *f.clone(),
-                    _ => CType::fail(
-                        &"Only 0 or 1 are valid integer accesses on a field".to_string(),
-                    ),
+                    _ => CType::fail("Only 0 or 1 are valid integer accesses on a field"),
                 },
                 otherwise => CType::fail(&format!(
                     "Properties must be a name or integer location, not {:?}",
