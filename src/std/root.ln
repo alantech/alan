@@ -69,7 +69,7 @@ export type Debug = Eq{Env{"ALAN_TARGET"}, "debug"};
 
 // Defining the operators in the type system
 export type infix Function as -> precedence 3; // I -> O, where I is the input and O is the output. With Tuples and Fields you can reconstruct arguments for functions.
-export type infix Call as :: precedence 2; // N :: F, where N is the native function (or method) and F is the function type 
+export type infix Call as :: precedence 0; // N :: F, where N is the native function (or method) and F is the function type 
 export type infix Tuple as , precedence 0; // A, B, C, ... The tuple type combines with other tuple types to become a larger tuple type. To have a tuple of tuples, you need to `Group` the inner tuple, eg `(a, b), c`
 export type infix Field as : precedence 1; // Foo: Bar, let's you specify a property access label for the type, useful for syntactic sugar on a tuple type and the Either type (eventually).
 export type infix Either as | precedence 0; // A | B, the type has a singular value from only one of the types at once.
@@ -136,26 +136,26 @@ export type Dict{K, V} = BindsGeneric{"OrderedHashMap", K, V};
 export type Set{V} = BindsGeneric{"std::collections::HashSet", V};
 
 /// Functions for (potentially) every type
-export fn clone{T}(v: T) -> T binds clone;
+export fn clone{T} "clone" :: T -> T;
 // TODO: The "proper" way to hash this consistently for all types is to decompose the input type
 // into the various primitive types of Alan and then have hashing rules for each of them, which
 // may themselves decompose, etc. This might be doable in Alan code on top of specialized hashing
 // functions in Rust (as partially implemented here) or it might be better done as a special `hash`
 // function created by the compiler for the specific type *if* ever actually used, walking the
 // CType tree to determine the correct code to run. In either case, this is "good enough" for now.
-export fn hash{T}(v: T[]) -> i64 binds hasharray;
-export fn hash(v: string) -> i64 binds hashstring;
-export fn hash{T}(v: T) -> i64 binds hash;
+export fn hash{T} "hasharray" :: T[] -> i64;
+export fn hash "hashstring" :: string -> i64;
+export fn hash{T} "hash" :: T -> i64;
 export fn void{T}(v: T) -> void {}
 export fn void() -> void {}
-export fn store{T}(a: T, b: T) -> T binds storeswap;
+export fn store{T} "storeswap" :: (T, T) -> T;
 
 /// Fallible, Maybe, and Either functions
-export fn getOr{T}(v: T?, d: T) -> T binds maybe_get_or;
-export fn getOr{T}(v: T!, d: T) -> T binds fallible_get_or;
-export fn Error{T}(m: string) -> T! binds fallible_error;
-export fn Error(m: string) -> Error binds bare_error;
-export fn exists{T}(v: T?) -> bool binds maybe_exists;
+export fn getOr{T} "maybe_get_or" :: (T?, T) -> T;
+export fn getOr{T} "fallible_get_or" :: (T!, T) -> T;
+export fn Error{T} "fallible_error" :: string -> T!;
+export fn Error "bare_error" :: string -> Error;
+export fn exists{T} "maybe_exists" :: T? -> bool;
 
 /// Signed Integer-related functions and function bindings
 export fn i8(i: i8) -> i8 = i;
@@ -569,32 +569,31 @@ export fn nor "norbool" :: (bool, bool) -> bool;
 export fn xnor "xnorbool" :: (bool, bool) -> bool;
 export fn eq "eqbool" :: (bool, bool) -> bool;
 export fn neq "neqbool" :: (bool, bool) -> bool;
-//export fn if{T}(c: bool, t: () -> T, f: () -> T) -> T = {"ifbool" :: (bool, () -> T, () -> T) -> T}(c, t, f);
-export fn if{T}(c: bool, t: () -> T, f: () -> T) -> T binds ifbool;
+export fn if{T} "ifbool" :: (bool, () -> T, () -> T) -> T;
 export fn if{T}(c: bool, t: () -> T) -> Maybe{T} = if(c, fn () -> Maybe{T} = Maybe{T}(t()), fn () -> Maybe{T} = Maybe{T}());
 export fn if{T}(c: bool, t: T, f: T) -> T = if(c, fn () -> T = t, fn () -> T = f);
 export fn if{T}(c: bool, t: T) -> Maybe{T} = if(c, fn () -> Maybe{T} = Maybe{T}(t), fn () -> Maybe{T} = Maybe{T}());
 
 /// Array related bindings
-export fn get{T}(a: T[], i: i64) -> Maybe{T} binds getarray;
-export fn len{T}(a: T[]) -> i64 binds lenarray;
-export fn push{T}(a: Array{T}, v: T) -> () binds pusharray;
-export fn pop{T}(a: T[]) -> Maybe{T} binds poparray;
-export fn map{T, U}(a: Array{T}, m: T -> U) -> Array{U} binds map_onearg;
-export fn map{T, U}(a: Array{T}, m: (T, i64) -> U) -> Array{U} binds map_twoarg;
-export fn parmap{T, U}(a: Array{T}, m: T -> U) -> Array{U} binds parmap_onearg;
-export fn filter{T}(a: Array{T}, f: T -> bool) -> Array{T} binds filter_onearg;
-export fn filter{T}(a: Array{T}, f: (T, i64) -> bool) -> Array{T} binds filter_twoarg;
-export fn reduce{T}(a: Array{T}, f: (T, T) -> T) -> Maybe{T} binds reduce_sametype;
-export fn reduce{T}(a: Array{T}, f: (T, T, i64) -> T) -> Maybe{T} binds reduce_sametype_idx;
-export fn reduce{T, U}(a: Array{T}, i: U, f: (U, T) -> U) -> U binds reduce_difftype;
-export fn reduce{T, U}(a: Array{T}, i: U, f: (U, T, i64) -> U) -> U binds reduce_difftype_idx;
-export fn concat{T}(a: Array{T}, b: Array{T}) -> Array{T} binds concat;
-export fn append{T}(a: Array{T}, b: Array{T}) -> void binds append;
-export fn filled{T}(v: T, l: i64) -> Array{T} binds filled;
-export fn has{T}(a: Array{T}, v: T) -> bool binds hasarray;
-export fn has{T}(a: Array{T}, f: (T) -> bool) -> bool binds hasfnarray;
-export fn find{T}(a: Array{T}, f: (T) -> bool) -> Maybe{T} binds findarray;
+export fn get{T} "getarray" :: (T[], i64) -> T?;
+export fn len{T} "lenarray" :: T[] -> i64;
+export fn push{T} "pusharray" :: (T[], T);
+export fn pop{T} "poparray" :: T[] -> T?;
+export fn map{T, U} "map_onearg" :: (T[], T -> U) -> U[];
+export fn map{T, U} "map_twoarg" :: (T[], (T, i64) -> U) -> U[];
+export fn parmap{T, U} "parmap_onearg" :: (T[], T -> U) -> U[];
+export fn filter{T} "filter_onearg" :: (T[], T -> bool) -> T[];
+export fn filter{T} "filter_twoarg" :: (T[], (T, i64) -> bool) -> T[];
+export fn reduce{T} "reduce_sametype" :: (T[], (T, T) -> T) -> T?;
+export fn reduce{T} "reduce_sametype_idx" :: (T[], (T, T, i64) -> T) -> T?;
+export fn reduce{T, U} "reduce_difftype" :: (T[], U, (U, T) -> U) -> U;
+export fn reduce{T, U} "reduce_difftype_idx" :: (T[], U, (U, T, i64) -> U) -> U;
+export fn concat{T} "concat" :: (T[], T[]) -> T[];
+export fn append{T} "append" :: (T[], T[]);
+export fn filled{T} "filled" :: (T, i64) -> T[];
+export fn has{T} "hasarray" :: (T[], T) -> bool;
+export fn has{T} "hasfnarray" :: (T[], T -> bool) -> bool;
+export fn find{T} "findarray" :: (T[], T -> bool) -> T?;
 // TODO: The `if` syntactic sugar will make these `if` calls much nicer (though so would return
 // type inference, to be honest)
 export fn index{T}(a: Array{T}, v: T) -> Maybe{i64} = a.reduce(
@@ -615,24 +614,25 @@ export fn index{T}(a: Array{T}, f: (T, i64) -> bool) -> Maybe{i64} = a.reduce(
     out.exists,
     out,
     if(f(val, idx), idx)));
-export fn every{T}(a: Array{T}, f: (T) -> bool) -> bool binds everyarray;
-export fn some{T}(a: Array{T}, f: (T) -> bool) -> bool binds somearray;
-export fn repeat{T}(a: Array{T}, c: i64) -> Array{T} binds repeatarray;
-export fn store{T}(a: Array{T}, i: i64, v: T) -> Fallible{void} binds storearray;
-export fn delete{T}(a: Array{T}, i: i64) -> Fallible{T} binds deletearray;
+export fn every{T} "everyarray" :: (T[], T -> bool) -> bool;
+export fn some{T} "somearray" :: (T[], T -> bool) -> bool;
+export fn repeat{T} "repeatarray" :: (T[], i64) -> T[];
+export fn store{T} "storearray" :: (T[], i64, T) -> void!;
+export fn delete{T} "deletearray" :: (T[], i64) -> T!;
 
 /// Buffer related bindings
-export fn get{T, S}(b: T[S], i: i64) -> Maybe{T} binds getbuffer;
+export fn get{T, S} "getbuffer" :: (T[S], i64) -> T?;
 export fn len{T, S}(T[S]) -> i64 = {S}();
-export fn map{T, S, U}(a: Buffer{T, S}, m: T -> U) -> Buffer{U, S} binds mapbuffer_onearg;
-export fn map{T, S, U}(a: Buffer{T, S}, m: (T, i64) -> U) -> Buffer{U, S} binds mapbuffer_twoarg;
-export fn reduce{T, S}(a: Buffer{T, S}, f: (T, T) -> T) -> Maybe{T} binds reducebuffer_sametype;
-export fn reduce{T, S, U}(a: Buffer{T, S}, i: U, f: (U, T) -> U) -> U binds reducebuffer_difftype;
-export fn has{T, S}(a: Buffer{T, S}, v: T) -> bool binds hasbuffer;
-export fn has{T, S}(a: Buffer{T, S}, f: (T) -> bool) -> bool binds hasfnbuffer;
-export fn find{T, S}(a: Buffer{T, S}, f: (T) -> bool) -> Maybe{T} binds findbuffer;
-export fn every{T, S}(a: Buffer{T, S}, f: (T) -> bool) -> bool binds everybuffer;
-fn concatInner{T, S, N}(o: Buffer{T, S + N}, a: Buffer{T, S}, b: Buffer{T, N}) -> void binds concatbuffer;
+// TODO: Still something weird with the buffer symbolic syntax, skipping it for map
+export fn map{T, S, U} "mapbuffer_onearg" :: (Buffer{T, S}, T -> U) -> Buffer{U, S};
+export fn map{T, S, U} "mapbuffer_twoarg" :: (Buffer{T, S}, (T, i64) -> U) -> Buffer{U, S};
+export fn reduce{T, S} "reducebuffer_sametype" :: (T[S], (T, T) -> T) -> T?;
+export fn reduce{T, S, U} "reducebuffer_difftype" :: (T[S], U, (U, T) -> U) -> U;
+export fn has{T, S} "hasbuffer" :: (T[S], T) -> bool;
+export fn has{T, S} "hasfnbuffer" :: (T[S], T -> bool) -> bool;
+export fn find{T, S} "findbuffer" :: (T[S], T -> bool) -> T?;
+export fn every{T, S} "everybuffer" :: (T[S], T -> bool) -> bool;
+fn concatInner{T, S, N} "concatbuffer" :: (T[S + N], T[S], T[N]);
 export fn concat{T, S, N}(a: Buffer{T, S}, b: Buffer{T, N}) -> Buffer{T, S + N} {
   // I can't bind directly into Rust because Rust can't add const integer type parameters together.
   // It's *theoretically* possible to generate a new Rust function in each case with the required
@@ -644,11 +644,11 @@ export fn concat{T, S, N}(a: Buffer{T, S}, b: Buffer{T, N}) -> Buffer{T, S + N} 
 }
 // TODO: Be able to resolve explicit integer constant values as the integer type so it can be
 // grabbed by the type inference system. For now, repeat for buffers outputs an array, instead.
-export fn repeat{T, S}(b: Buffer{T, S}, c: i64) -> Array{T} binds repeatbuffertoarray;
-export fn store{T, S}(b: Buffer{T, S}, i: i64, v: T) -> Fallible{T} binds storebuffer;
+export fn repeat{T, S} "repeatbuffertoarray" :: (T[S], i64) -> T[];
+export fn store{T, S} "storebuffer" :: (T[S], i64, T) -> T!;
 
 /// Dictionary-related bindings
-export fn Dict{K, V}() -> Dict{K, V} binds newdict;
+export fn Dict{K, V} "newdict" :: () -> Dict{K, V};
 export fn Dict{K, V}(k: K, v: V) -> Dict{K, V} {
   let out = Dict{K, V}();
   out.store(k, v);
@@ -658,17 +658,17 @@ export fn Dict{K, V}(a: Array{(K, V)}) -> Dict{K, V} = a.reduce(Dict{K, V}(), fn
   d.store(v.0, v.1);
   return d;
 });
-export fn store{K, V}(d: Dict{K, V}, k: K, v: V) -> void binds storedict;
-export fn get{K, V}(d: Dict{K, V}, k: K) -> Maybe{V} binds getdict;
-export fn has{K, V}(d: Dict{K, V}, k: K) -> bool binds hasdict;
-export fn len{K, V}(d: Dict{K, V}) -> i64 binds lendict;
-export fn keys{K, V}(d: Dict{K, V}) -> Array{K} binds keysdict;
-export fn vals{K, V}(d: Dict{K, V}) -> Array{V} binds valsdict;
-export fn Array{K, V}(d: Dict{K, V}) -> Array{(K, V)} binds arraydict;
-export fn concat{K, V}(a: Dict{K, V}, b: Dict{K, V}) -> Dict{K, V} binds concatdict;
+export fn store{K, V} "storedict" :: (Dict{K, V}, K, V);
+export fn get{K, V} "getdict" :: (Dict{K, V}, K) -> V?;
+export fn has{K, V} "hasdict" :: (Dict{K, V}, K) -> bool;
+export fn len{K, V} "lendict" :: Dict{K, V} -> i64;
+export fn keys{K, V} "keysdict" :: Dict{K, V} -> K[];
+export fn vals{K, V} "valsdict" :: Dict{K, V} -> V[];
+export fn Array{K, V} "arraydict" :: Dict{K, V} -> (K, V)[];
+export fn concat{K, V} "concatdict" :: (Dict{K, V}, Dict{K, V}) -> Dict{K, V};
 
 /// Set-related bindings
-export fn Set{V}() -> Set{V} binds newset;
+export fn Set{V} "newset" :: () -> Set{V};
 export fn Set{V}(a: Array{V}) -> Set{V} = a.reduce(Set{V}(), fn (s: Set{V}, v: V) -> Set{V} {
   s.store(v);
   return s;
@@ -678,19 +678,19 @@ export fn Set{V}(v: V) -> Set{V} {
   out.store(v);
   return out;
 }
-export fn store{V}(s: Set{V}, v: V) -> void binds storeset;
-export fn has{V}(s: Set{V}, v: V) -> bool binds hasset;
-export fn len{V}(s: Set{V}) -> i64 binds lenset;
-export fn Array{V}(s: Set{V}) -> Array{V} binds arrayset;
-export fn union{V}(a: Set{V}, b: Set{V}) -> Set{V} binds unionset;
+export fn store{V} "storeset" :: (Set{V}, V);
+export fn has{V} "hasset" :: (Set{V}, V) -> bool;
+export fn len{V} "lenset" :: Set{V} -> i64;
+export fn Array{V} "arrayset" :: Set{V} -> V[];
+export fn union{V} "unionset" :: (Set{V}, Set{V}) -> Set{V};
 export fn or{V}(a: Set{V}, b: Set{V}) -> Set{V} = union(a, b);
-export fn intersect{V}(a: Set{V}, b: Set{V}) -> Set{V} binds intersectset;
+export fn intersect{V} "intersectset" :: (Set{V}, Set{V}) -> Set{V};
 export fn and{V}(a: Set{V}, b: Set{V}) -> Set{V} = intersect(a, b);
-export fn difference{V}(a: Set{V}, b: Set{V}) -> Set{V} binds differenceset;
+export fn difference{V} "differenceset" :: (Set{V}, Set{V}) -> Set{V};
 export fn div{V}(a: Set{V}, b: Set{V}) -> Set{V} = difference(a, b);
-export fn symmetricDifference{V}(a: Set{V}, b: Set{V}) -> Set{V} binds symmetric_differenceset;
+export fn symmetricDifference{V} "symmetric_differenceset" :: (Set{V}, Set{V}) -> Set{V};
 export fn xor{V}(a: Set{V}, b: Set{V}) -> Set{V} = symmetricDifference(a, b);
-export fn product{V}(a: Set{V}, b: Set{V}) -> Set{(V, V)} binds productset;
+export fn product{V} "productset" :: (Set{V}, Set{V}) -> Set{(V, V)};
 export fn mul{V}(a: Set{V}, b: Set{V}) -> Set{(V, V)} = product(a, b);
 
 /// Tree implementation
@@ -812,7 +812,7 @@ export fn reduce{T, U}(t: Tree{T}, i: U, f: (U, Node{T}, i64) -> U) -> U = t.Arr
 export fn find{T}(t: Tree{T}, f: (T) -> bool) -> Maybe{Node{T}} = t.Array.find(f);
 
 /// Process exit-related bindings
-export fn ExitCode(e: u8) -> ExitCode binds to_exit_code;
+export fn ExitCode "to_exit_code" :: u8 -> ExitCode;
 export fn ExitCode(e: u16) -> ExitCode = ExitCode(e.u8);
 export fn ExitCode(e: u32) -> ExitCode = ExitCode(e.u8);
 export fn ExitCode(e: u64) -> ExitCode = ExitCode(e.u8);
@@ -820,19 +820,19 @@ export fn ExitCode(e: i8) -> ExitCode = ExitCode(e.u8);
 export fn ExitCode(e: i16) -> ExitCode = ExitCode(e.u8);
 export fn ExitCode(e: i32) -> ExitCode = ExitCode(e.u8);
 export fn ExitCode(e: i64) -> ExitCode = ExitCode(e.u8);
-export fn getOrExit{T}(a: Fallible{T}) -> T binds get_or_exit;
-export fn getOrExit{T}(a: T?) -> T binds get_or_maybe_exit;
+export fn getOrExit{T} "get_or_exit" :: T! -> T;
+export fn getOrExit{T} "get_or_maybe_exit" :: T? -> T;
 
 /// Thread-related bindings
-export fn wait(t: i64) binds wait;
+export fn wait "wait" :: i64;
 
 /// Time-related bindings
-export fn now() -> Instant binds now;
-export fn elapsed(i: Instant) -> Duration binds elapsed;
+export fn now "now" :: () -> Instant;
+export fn elapsed "elapsed":: Instant -> Duration;
 
 /// Uuid-related bindings
-export fn uuid() -> uuid binds uuid::Uuid::new_v4;
-export fn string(uuid) -> string binds uuidstring;
+export fn uuid "uuid::Uuid::new_v4" :: () -> uuid;
+export fn string "uuidstring" :: uuid -> string;
 
 /// GPU-related bindings
 
@@ -841,19 +841,19 @@ export fn string(uuid) -> string binds uuidstring;
 export type BufferUsages = Binds{"wgpu::BufferUsages"};
 export type GBuffer = Binds{"GBuffer"};
 export type GPGPU = Binds{"GPGPU"};
-export fn mapReadBuffer() -> BufferUsages binds map_read_buffer_type;
-export fn storageBuffer() -> BufferUsages binds storage_buffer_type;
-export fn GBuffer(usage: BufferUsages, vals: Array{i32}) -> GBuffer binds create_buffer_init;
-export fn GBuffer(usage: BufferUsages, size: i64) -> GBuffer binds create_empty_buffer;
-export fn GBuffer(vals: Array{i32}) -> GBuffer = GBuffer(storageBuffer(), vals);
-export fn GBuffer{T}(vals: Array{T}) -> GBuffer = GBuffer(storageBuffer(), vals.map(fn (v: T) -> i32 = v.i32));
+export fn mapReadBuffer "map_read_buffer_type" :: () -> BufferUsages;
+export fn storageBuffer "storage_buffer_type" :: () -> BufferUsages;
+export fn GBuffer "create_buffer_init" :: (BufferUsages, i32[]) -> GBuffer;
+export fn GBuffer "create_empty_buffer" :: (BufferUsages, i64) -> GBuffer;
+export fn GBuffer(vals: i32[]) -> GBuffer = GBuffer(storageBuffer(), vals);
+export fn GBuffer{T}(vals: T[]) -> GBuffer = GBuffer(storageBuffer(), vals.map(fn (v: T) -> i32 = v.i32));
 export fn GBuffer(size: i64) -> GBuffer = GBuffer(storageBuffer(), size);
-export fn len(gb: GBuffer) -> i64 binds bufferlen;
-export fn id(b: GBuffer) -> string binds buffer_id;
-export fn GPGPU(source: string, buffers: Array{Array{GBuffer}}, maxGlobalId: i64[3]) -> GPGPU binds GPGPU_new;
-export fn GPGPU(source: string, buffer: GBuffer) -> GPGPU binds GPGPU_new_easy;
-export fn run(gg: GPGPU) binds gpu_run;
-export fn read{T}(b: GBuffer) -> Array{T} binds read_buffer;
+export fn len "bufferlen" :: GBuffer -> i64;
+export fn id "buffer_id" :: GBuffer -> string;
+export fn GPGPU "GPGPU_new" :: (string, Array{Array{GBuffer}}, i64[3]) -> GPGPU;
+export fn GPGPU "GPGPU_new_easy" :: (string, GBuffer) -> GPGPU;
+export fn run "gpu_run" :: GPGPU;
+export fn read{T} "read_buffer" :: GBuffer -> T[];
 
 // The WgpuType provides a mechanism to build up the logic for a compute shader with normal-looking
 // Alan code, not requiring to think in two different languages at the same time. All of the GPU
@@ -4856,17 +4856,17 @@ export fn map(gb: GBuffer, f: (gi32, gu32) -> gi32) -> GBuffer {
 
 /// Stdout/stderr-related bindings
 // TODO: Rework this to just print anything that can be converted to `string` via interfaces
-export fn print(d: Duration) binds print_duration;
-export fn print{T}(v: Fallible{T}) binds println_result;
-export fn print{T}(v: Maybe{T}) binds println_maybe;
-export fn print{T}(v: Array{T}) binds print_vec;
-export fn print{T, N}(v: Buffer{T, N}) binds print_buffer;
-export fn print{T}(v: Array{Fallible{T}}) binds print_vec_result;
-export fn print(v: void) binds println_void;
-export fn print{T}(v: T) binds println;
-export fn eprint{T}(v: Fallible{T}) binds eprintln_result;
-export fn eprint{T}(v: Maybe{T}) binds eprintln_maybe;
-export fn eprint{T}(v: T) binds eprintln;
+export fn print "print_duration" :: Duration;
+export fn print{T} "println_result" :: T!;
+export fn print{T} "println_maybe" :: T?;
+export fn print{T} "print_vec" :: T[];
+export fn print{T, N} "print_buffer" :: T[N];
+export fn print{T} "print_vec_result" :: Array{T!};
+export fn print "println_void" :: void;
+export fn print{T} "println" :: T;
+export fn eprint{T} "eprintln_result" :: T!;
+export fn eprint{T} "eprintln_maybe" :: T?;
+export fn eprint{T} "eprintln" :: T;
 
 // TODO: Function resolution is effectively backwards at the moment. This is the fallback `getOr`,
 // but it needs to be defined last instead of first.

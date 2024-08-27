@@ -1452,6 +1452,7 @@ impl CType {
                             (args, *o.clone())
                         }
                         CType::Field(n, f) => (vec![(n.clone(), *f.clone())], *o.clone()),
+                        CType::Void => (Vec::new(), *o.clone()),
                         otherwise => (vec![("arg0".to_string(), otherwise.clone())], *o.clone()),
                     },
                     CType::Tuple(ts) => {
