@@ -93,13 +93,13 @@ impl<'a> Scope<'a> {
                             // to construct their own types.
                             match c.name.as_str() {
                                 "Type" | "Generic" | "Int" | "Float" | "Bool" | "String" => { /* Do nothing for the 'structural' types */ }
-                                g @ ("Binds" | "Group" | "Array" | "Fail" | "Neg" | "Len" | "Size" | "FileStr"
+                                g @ ("Group" | "Array" | "Fail" | "Neg" | "Len" | "Size" | "FileStr"
                                 | "Env" | "EnvExists" | "Not") => s = CType::from_generic(s, g, 1),
                                 g @ ("Function" | "Call" | "Field" | "Prop" | "Buffer" | "Add"
                                 | "Sub" | "Mul" | "Div" | "Mod" | "Pow" | "Min" | "Max" | "If" | "And" | "Or"
                                 | "Xor" | "Nand" | "Nor" | "Xnor" | "Eq" | "Neq" | "Lt" | "Lte"
                                 | "Gt" | "Gte") => s = CType::from_generic(s, g, 2),
-                                g @ ("BindsGeneric" | "Tuple" | "Either" | "AnyOf") => s = CType::from_generic(s, g, 0), // Not kosher in Rust land, but 0 means "as many as we want"
+                                g @ ("Binds" | "Tuple" | "Either" | "AnyOf") => s = CType::from_generic(s, g, 0), // Not kosher in Rust land, but 0 means "as many as we want"
                                 // TODO: Also add support for three arg `If` and `Env` with a
                                 // default property via overloading types
                                 unknown => {

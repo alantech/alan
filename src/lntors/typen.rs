@@ -67,18 +67,31 @@ pub fn ctype_to_rtype(
                     }
                     Ok(format!("({})", out.join(", ")))
                 }
-                CType::Binds(n) => Ok(n.clone()),
+                CType::Binds(name, args) => {
+                    let mut out_args = Vec::new();
+                    for arg in args {
+                        out_args.push(ctype_to_rtype(arg, in_function_type)?);
+                    }
+                    if out_args.is_empty() {
+                        Ok(name.clone())
+                    } else {
+                        Ok(format!("{}<{}>", name, out_args.join(", ")))
+                    }
+                }
                 _ => Ok("".to_string()), // TODO: Is this correct?
             }
         }
         CType::Generic(name, args, _) => Ok(format!("{}<{}>", name, args.join(", "))),
-        CType::Binds(name) => Ok(name.clone()),
-        CType::BindsGeneric(name, args) => {
+        CType::Binds(name, args) => {
             let mut out_args = Vec::new();
             for arg in args {
                 out_args.push(ctype_to_rtype(arg, in_function_type)?);
             }
-            Ok(format!("{}<{}>", name, out_args.join(", ")))
+            if out_args.is_empty() {
+                Ok(name.clone())
+            } else {
+                Ok(format!("{}<{}>", name, out_args.join(", ")))
+            }
         }
         CType::IntrinsicGeneric(name, _) => Ok(name.clone()), // How would this even be reached?
         CType::Int(i) => Ok(i.to_string()),
@@ -138,8 +151,8 @@ pub fn ctype_to_rtype(
             if ts.len() == 2 {
                 match &ts[1] {
                     CType::Void => Ok(format!("Option<{}>", ctype_to_rtype(&ts[0], in_function_type)?)),
-                    CType::Binds(rustname) if rustname == "AlanError" => Ok(format!("Result<{}, {}>", ctype_to_rtype(&ts[0], in_function_type)?, rustname)),
-                    CType::Type(_, t) if matches!(&**t, CType::Binds(rustname) if rustname == "AlanError") => Ok(format!("Result<{}, {}>", ctype_to_rtype(&ts[0], in_function_type)?, "AlanError")),
+                    CType::Binds(rustname, _) if rustname == "AlanError" => Ok(format!("Result<{}, {}>", ctype_to_rtype(&ts[0], in_function_type)?, rustname)),
+                    CType::Type(_, t) if matches!(&**t, CType::Binds(rustname, _) if rustname == "AlanError") => Ok(format!("Result<{}, {}>", ctype_to_rtype(&ts[0], in_function_type)?, "AlanError")),
                     _ => Ok(CType::Either(ts.clone()).to_callable_string()),
                 }
             } else {
@@ -172,7 +185,17 @@ pub fn generate(
         // assuming no bugs in the standard library) so they do not alter the generated source
         // output, while the `Structlike` type requires a new struct to be created and inserted
         // into the source definition, potentially inserting inner types as needed
-        CType::Binds(rtype) => Ok((rtype.clone(), out)),
+        CType::Binds(n, ts) => {
+            let mut genargs = Vec::new();
+            for t in ts {
+                genargs.push(ctype_to_rtype(t, false)?);
+            }
+            if genargs.is_empty() {
+                Ok((n.clone(), out))
+            } else {
+                Ok((format!("{}<{}>", n, genargs.join(", ")), out))
+            }
+        }
         // TODO: The complexity of this function indicates more fundamental issues in the type
         // generation. This needs a rethink and rewrite.
         CType::Type(name, t) => match &**t {

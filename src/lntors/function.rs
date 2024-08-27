@@ -75,7 +75,7 @@ pub fn from_microstatement(
             CType::Type(n, _) if n == "string" => {
                 Ok((format!("{}.to_string()", representation).to_string(), out))
             }
-            CType::Binds(a) if a == "String" => {
+            CType::Binds(a, _) if a == "String" => {
                 Ok((format!("{}.to_string()", representation).to_string(), out))
             }
             CType::Function(..) => {
@@ -216,7 +216,7 @@ pub fn from_microstatement(
                             CType::Type(n, _) if n == "string" => {
                                 Ok((format!("{}.to_string()", representation).to_string(), out))
                             }
-                            CType::Binds(a) if a == "String" => {
+                            CType::Binds(a, _) if a == "String" => {
                                 Ok((format!("{}.to_string()", representation).to_string(), out))
                             }
                             _ => Ok((representation.clone(), out)),
@@ -850,81 +850,7 @@ pub fn from_microstatement(
                                                 out,
                                             ));
                                         }
-                                        CType::Binds(n) if *n == enum_name => {
-                                            // Special-casing for Option and Result mapping. TODO:
-                                            // Make this more centralized
-                                            if ts.len() == 2 {
-                                                if let CType::Void = &ts[1] {
-                                                    if let CType::Void = t {
-                                                        return Ok(("None".to_string(), out));
-                                                    } else {
-                                                        return Ok((
-                                                            format!(
-                                                                "Some({})",
-                                                                match argstrs[0]
-                                                                    .strip_prefix("&mut ")
-                                                                {
-                                                                    Some(s) => s,
-                                                                    None => &argstrs[0],
-                                                                }
-                                                            ),
-                                                            out,
-                                                        ));
-                                                    }
-                                                } else if let CType::Type(name, _) = &ts[1] {
-                                                    if name == "Error" {
-                                                        let okrustname =
-                                                            typen::ctype_to_rtype(&ts[0], true)?;
-                                                        let errrustname =
-                                                            typen::ctype_to_rtype(&ts[1], true)?;
-                                                        if let CType::Binds(..) = t {
-                                                            return Ok((
-                                                                format!(
-                                                                    "Err::<{}, {}>({})",
-                                                                    okrustname,
-                                                                    errrustname,
-                                                                    match argstrs[0]
-                                                                        .strip_prefix("&mut ")
-                                                                    {
-                                                                        Some(s) => s,
-                                                                        None => &argstrs[0],
-                                                                    }
-                                                                ),
-                                                                out,
-                                                            ));
-                                                        } else {
-                                                            return Ok((
-                                                                format!(
-                                                                    "Ok::<{}, {}>({})",
-                                                                    okrustname,
-                                                                    errrustname,
-                                                                    match argstrs[0]
-                                                                        .strip_prefix("&mut ")
-                                                                    {
-                                                                        Some(s) => s,
-                                                                        None => &argstrs[0],
-                                                                    }
-                                                                ),
-                                                                out,
-                                                            ));
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                            return Ok((
-                                                format!(
-                                                    "{}::{}({})",
-                                                    function.name,
-                                                    enum_name,
-                                                    match argstrs[0].strip_prefix("&mut ") {
-                                                        Some(s) => s,
-                                                        None => &argstrs[0],
-                                                    },
-                                                ),
-                                                out,
-                                            ));
-                                        }
-                                        CType::BindsGeneric(n, ..) if *n == enum_name => {
+                                        CType::Binds(n, ..) if *n == enum_name => {
                                             // Special-casing for Option and Result mapping. TODO:
                                             // Make this more centralized
                                             if ts.len() == 2 {
@@ -1075,7 +1001,7 @@ pub fn from_microstatement(
                                     out,
                                 ));
                             }
-                            CType::Binds(_) => {
+                            CType::Binds(..) => {
                                 return Ok((argstrs.join(", "), out));
                             }
                             otherwise => {

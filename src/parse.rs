@@ -965,7 +965,7 @@ named_and!(types: Types =>
 test!(types =>
     pass "type Foo = bar: string;";
     pass "type Foo = Bar";
-    pass "type Result{T, Error} = BindsGeneric{'Result', T, Error};";
+    pass "type Result{T, Error} = Binds{'Result', T, Error};";
     pass "type ExitCode = Binds{'std::process::ExitCode'};";
     pass "type{Windows} Path = driveLetter: string, pathsegments: Array{string};";
 );
