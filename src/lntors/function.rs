@@ -5,20 +5,19 @@ use ordered_hash_map::OrderedHashMap;
 use crate::lntors::typen;
 use crate::program::{CType, FnKind, Function, Microstatement, Scope};
 
-pub fn from_microstatement<'a>(
+pub fn from_microstatement(
     microstatement: &Microstatement,
-    mut scope: Scope<'a>,
+    scope: &Scope,
     mut out: OrderedHashMap<String, String>,
-) -> Result<(Scope<'a>, String, OrderedHashMap<String, String>), Box<dyn std::error::Error>> {
+) -> Result<(String, OrderedHashMap<String, String>), Box<dyn std::error::Error>> {
     match microstatement {
         Microstatement::Arg { name, typen } => {
             // TODO: Update the serialization logic to understand values vs references so we can
             // eliminate this useless (and harmful for mutable references) clone
-            if let CType::Function(..) = typen {
-                Ok((scope, "".to_string(), out))
+            if let CType::Function { .. } = typen {
+                Ok(("".to_string(), out))
             } else {
                 Ok((
-                    scope,
                     format!("let mut {} = {}.clone()", name, name), // TODO: not always mutable
                     out,
                 ))
@@ -29,12 +28,11 @@ pub fn from_microstatement<'a>(
             value,
             mutable: _,
         } => {
-            let (scope, val, o) = from_microstatement(value, scope, out)?;
+            let (val, o) = from_microstatement(value, scope, out)?;
             // I wish I didn't have to write the following line because you can't re-assign a
             // variable in a let destructuring, afaict
             out = o;
             Ok((
-                scope,
                 format!(
                     "let {}{} = {}",
                     // TODO: Shouldn't always be mut
@@ -57,13 +55,11 @@ pub fn from_microstatement<'a>(
                 .collect::<Vec<String>>();
             let mut inner_statements = Vec::new();
             for ms in &function.microstatements {
-                let (s, val, o) = from_microstatement(ms, scope, out)?;
+                let (val, o) = from_microstatement(ms, scope, out)?;
                 out = o;
-                scope = s;
                 inner_statements.push(val);
             }
             Ok((
-                scope,
                 format!(
                     "|{}| {{\n        {};\n    }}",
                     arg_names.join(", "),
@@ -76,34 +72,21 @@ pub fn from_microstatement<'a>(
             typen,
             representation,
         } => match &typen {
-            CType::Type(n, _) if n == "string" => Ok((
-                scope,
-                format!("{}.to_string()", representation).to_string(),
-                out,
-            )),
-            CType::Binds(a) if a == "String" => Ok((
-                scope,
-                format!("{}.to_string()", representation).to_string(),
-                out,
-            )),
+            CType::Type(n, _) if n == "string" => {
+                Ok((format!("{}.to_string()", representation).to_string(), out))
+            }
+            CType::Binds(a) if a == "String" => {
+                Ok((format!("{}.to_string()", representation).to_string(), out))
+            }
             CType::Function(..) => {
                 // We need to make sure this function we're referencing exists
-                let f = scope
-                    .resolve_function_by_type(representation, typen)
-                    .cloned();
-                match &f {
-                    None => {
-                        // Let's assume the function name is right for now.
-                        // TODO: Figure out what's up with closure function resolution in this
-                        // layer of the compiler and fix it
-                        Ok((scope, representation.clone(), out))
-                    }
-                    /*Err(format!(
-                        "Somehow can't find a definition for function {} {}",
-                        representation,
-                        typen.to_strict_string(false),
+                let f = scope.resolve_function_by_type(representation, typen);
+                match f {
+                    None => Err(format!(
+                        "Somehow can't find a definition for function {}",
+                        representation
                     )
-                    .into()),*/
+                    .into()),
                     Some(fun) => {
                         match &fun.kind {
                             FnKind::Normal
@@ -119,33 +102,27 @@ pub fn from_microstatement<'a>(
                                 // duplicate function names that are allowed in Alan
                                 let rustname =
                                     format!("{}_{}", fun.name, arg_strs.join("_")).to_string();
-                                // Make the function we need, but with the name we're expecting
-                                if !out.contains_key(&rustname) {
-                                    let (s, o) = generate(rustname.clone(), fun, scope, out)?;
-                                    scope = s;
-                                    out = o;
-                                }
-                                Ok((scope, rustname, out))
+                                // Make the function we need, but with the name we're
+                                out = generate(rustname.clone(), fun, scope, out)?;
+                                Ok((rustname, out))
                             }
                             FnKind::Bind(rustname) | FnKind::BoundGeneric(_, rustname) => {
-                                Ok((scope, rustname.clone(), out))
+                                Ok((rustname.clone(), out))
                             }
                         }
                     }
                 }
             }
-            _ => Ok((scope, representation.clone(), out)),
+            _ => Ok((representation.clone(), out)),
         },
         Microstatement::Array { vals, .. } => {
             let mut val_representations = Vec::new();
             for val in vals {
-                let (s, rep, o) = from_microstatement(val, scope, out)?;
+                let (rep, o) = from_microstatement(val, scope, out)?;
                 val_representations.push(rep);
                 out = o;
-                scope = s;
             }
             Ok((
-                scope,
                 format!("vec![{}]", val_representations.join(", ")).to_string(),
                 out,
             ))
@@ -181,17 +158,12 @@ pub fn from_microstatement<'a>(
                     // duplicate function names that are allowed in Alan
                     let rustname = format!("{}_{}", function.name, arg_strs.join("_")).to_string();
                     // Make the function we need, but with the name we're
-                    if !out.contains_key(&rustname) {
-                        let (s, o) = generate(rustname.clone(), function, scope, out)?;
-                        out = o;
-                        scope = s;
-                    }
+                    out = generate(rustname.clone(), function, scope, out)?;
                     // Now call this function
                     let mut argstrs = Vec::new();
                     for arg in args {
-                        let (s, a, o) = from_microstatement(arg, scope, out)?;
+                        let (a, o) = from_microstatement(arg, scope, out)?;
                         out = o;
-                        scope = s;
                         // If the argument is itself a function, this is the only place in Rust
                         // where you can't pass by reference, so we check the type and change
                         // the argument output accordingly.
@@ -206,7 +178,6 @@ pub fn from_microstatement<'a>(
                         }
                     }
                     Ok((
-                        scope,
                         format!("{}({})", rustname, argstrs.join(", ")).to_string(),
                         out,
                     ))
@@ -214,9 +185,8 @@ pub fn from_microstatement<'a>(
                 FnKind::Bind(rustname) => {
                     let mut argstrs = Vec::new();
                     for arg in args {
-                        let (s, a, o) = from_microstatement(arg, scope, out)?;
+                        let (a, o) = from_microstatement(arg, scope, out)?;
                         out = o;
-                        scope = s;
                         // If the argument is itself a function, this is the only place in Rust
                         // where you can't pass by reference, so we check the type and change
                         // the argument output accordingly.
@@ -231,7 +201,6 @@ pub fn from_microstatement<'a>(
                         }
                     }
                     Ok((
-                        scope,
                         format!("{}({})", rustname, argstrs.join(", ")).to_string(),
                         out,
                     ))
@@ -244,17 +213,13 @@ pub fn from_microstatement<'a>(
                             representation,
                             typen,
                         } => match &typen {
-                            CType::Type(n, _) if n == "string" => Ok((
-                                scope,
-                                format!("{}.to_string()", representation).to_string(),
-                                out,
-                            )),
-                            CType::Binds(a) if a == "String" => Ok((
-                                scope,
-                                format!("{}.to_string()", representation).to_string(),
-                                out,
-                            )),
-                            _ => Ok((scope, representation.clone(), out)),
+                            CType::Type(n, _) if n == "string" => {
+                                Ok((format!("{}.to_string()", representation).to_string(), out))
+                            }
+                            CType::Binds(a) if a == "String" => {
+                                Ok((format!("{}.to_string()", representation).to_string(), out))
+                            }
+                            _ => Ok((representation.clone(), out)),
                         },
                         _ => unreachable!(),
                     }
@@ -266,9 +231,8 @@ pub fn from_microstatement<'a>(
                     out = o;
                     let mut argstrs = Vec::new();
                     for arg in args {
-                        let (s, a, o) = from_microstatement(arg, scope, out)?;
+                        let (a, o) = from_microstatement(arg, scope, out)?;
                         out = o;
-                        scope = s;
                         // If the argument is itself a function, this is the only place in Rust
                         // where you can't pass by reference, so we check the type and change
                         // the argument output accordingly.
@@ -329,7 +293,7 @@ pub fn from_microstatement<'a>(
                                 // Short-circuit for direct `<N>` function calls (which can only be
                                 // generated by the internals of the compiler)
                                 if let Ok(i) = function.name.parse::<i64>() {
-                                    return Ok((scope, format!("{}.{}", argstrs[0], i), out));
+                                    return Ok((format!("{}.{}", argstrs[0], i), out));
                                 }
                                 let accessor_field = ts
                                     .iter()
@@ -353,11 +317,11 @@ pub fn from_microstatement<'a>(
                                         _ => false,
                                     });
                                 if let Some((i, _)) = accessor_field {
-                                    return Ok((scope, format!("{}.{}", argstrs[0], i), out));
+                                    return Ok((format!("{}.{}", argstrs[0], i), out));
                                 }
                             }
                             CType::Field(..) => {
-                                return Ok((scope, format!("{}.0", argstrs[0]), out));
+                                return Ok((format!("{}.0", argstrs[0]), out));
                             }
                             CType::Either(ts) => {
                                 // The kinds of types allowed here are `Type`, `Bound`, and
@@ -385,19 +349,18 @@ pub fn from_microstatement<'a>(
                                     // Make this more centralized
                                     if ts.len() == 2 {
                                         if let CType::Void = &ts[1] {
-                                            return Ok((scope, argstrs[0].clone(), out));
+                                            return Ok((argstrs[0].clone(), out));
                                         } else if let CType::Type(name, _) = &ts[1] {
                                             if name == "Error" {
                                                 if function.name == "Error" {
-                                                    return Ok((scope, format!("(match {} {{ Err(e) => Some(e.clone()), _ => None }})", argstrs[0]), out));
+                                                    return Ok((format!("(match {} {{ Err(e) => Some(e.clone()), _ => None }})", argstrs[0]), out));
                                                 } else {
-                                                    return Ok((scope, format!("(match {} {{ Ok(v) => Some(v.clone()), _ => None }})", argstrs[0]), out));
+                                                    return Ok((format!("(match {} {{ Ok(v) => Some(v.clone()), _ => None }})", argstrs[0]), out));
                                                 }
                                             }
                                         }
                                     }
                                     return Ok((
-                                        scope,
                                         format!(
                                             "(match {} {{ {}::{}(v) => Some(v.clone()), _ => None }})",
                                             argstrs[0], enum_name, function.name
@@ -415,7 +378,7 @@ pub fn from_microstatement<'a>(
                             t => t.clone(),
                         };
                         if let CType::Either(_) = inner_ret_type {
-                            return Ok((scope, "None".to_string(), out));
+                            return Ok(("None".to_string(), out));
                         }
                     }
                     let ret_type = &function.rettype.degroup();
@@ -447,7 +410,6 @@ pub fn from_microstatement<'a>(
                                                 if let CType::Void = &ts[1] {
                                                     if let CType::Void = t {
                                                         return Ok((
-                                                            scope,
                                                             format!(
                                                                 "{} = None",
                                                                 match argstrs[0]
@@ -461,7 +423,6 @@ pub fn from_microstatement<'a>(
                                                         ));
                                                     } else {
                                                         return Ok((
-                                                            scope,
                                                             format!(
                                                                 "{} = Some({})",
                                                                 match argstrs[0]
@@ -488,7 +449,6 @@ pub fn from_microstatement<'a>(
                                                             typen::ctype_to_rtype(&ts[1], true)?;
                                                         if let CType::Binds(..) = t {
                                                             return Ok((
-                                                                scope,
                                                                 format!(
                                                                     "{} = Err::<{}, {}>({})",
                                                                     match argstrs[0]
@@ -510,7 +470,6 @@ pub fn from_microstatement<'a>(
                                                             ));
                                                         } else {
                                                             return Ok((
-                                                                scope,
                                                                 format!(
                                                                     "{} = Ok::<{}, {}>({})",
                                                                     match argstrs[0]
@@ -535,7 +494,6 @@ pub fn from_microstatement<'a>(
                                                 }
                                             }
                                             return Ok((
-                                                scope,
                                                 format!(
                                                     "{} = {}::{}({})",
                                                     match argstrs[0].strip_prefix("&mut ") {
@@ -559,7 +517,6 @@ pub fn from_microstatement<'a>(
                                                 if let CType::Void = &ts[1] {
                                                     if let CType::Void = t {
                                                         return Ok((
-                                                            scope,
                                                             format!(
                                                                 "{} = None",
                                                                 match argstrs[0]
@@ -573,7 +530,6 @@ pub fn from_microstatement<'a>(
                                                         ));
                                                     } else {
                                                         return Ok((
-                                                            scope,
                                                             format!(
                                                                 "{} = Some({})",
                                                                 match argstrs[0]
@@ -600,7 +556,6 @@ pub fn from_microstatement<'a>(
                                                             typen::ctype_to_rtype(&ts[1], true)?;
                                                         if let CType::Binds(..) = t {
                                                             return Ok((
-                                                                scope,
                                                                 format!(
                                                                     "{} = Err::<{}, {}>({})",
                                                                     match argstrs[0]
@@ -622,7 +577,6 @@ pub fn from_microstatement<'a>(
                                                             ));
                                                         } else {
                                                             return Ok((
-                                                                scope,
                                                                 format!(
                                                                     "{} = Ok::<{}, {}>({})",
                                                                     match argstrs[0]
@@ -647,7 +601,6 @@ pub fn from_microstatement<'a>(
                                                 }
                                             }
                                             return Ok((
-                                                scope,
                                                 format!(
                                                     "{} = {}::{}({})",
                                                     match argstrs[0].strip_prefix("&mut ") {
@@ -688,7 +641,6 @@ pub fn from_microstatement<'a>(
                                 }?;
                                 if argstrs.len() == size {
                                     return Ok((
-                                        scope,
                                         format!(
                                             "[{}]",
                                             argstrs
@@ -704,7 +656,6 @@ pub fn from_microstatement<'a>(
                                     ));
                                 } else if argstrs.len() == 1 {
                                     return Ok((
-                                        scope,
                                         format!(
                                             "[{};{}]",
                                             match argstrs[0].strip_prefix("&mut ") {
@@ -721,7 +672,6 @@ pub fn from_microstatement<'a>(
                             }
                             CType::Array(_) => {
                                 return Ok((
-                                    scope,
                                     format!(
                                         "vec![{}]",
                                         argstrs
@@ -758,14 +708,9 @@ pub fn from_microstatement<'a>(
                                             if ts.len() == 2 {
                                                 if let CType::Void = &ts[1] {
                                                     if let CType::Void = t {
-                                                        return Ok((
-                                                            scope,
-                                                            "None".to_string(),
-                                                            out,
-                                                        ));
+                                                        return Ok(("None".to_string(), out));
                                                     } else {
                                                         return Ok((
-                                                            scope,
                                                             format!(
                                                                 "Some({})",
                                                                 match argstrs[0]
@@ -786,7 +731,6 @@ pub fn from_microstatement<'a>(
                                                             typen::ctype_to_rtype(&ts[1], true)?;
                                                         if let CType::Binds(..) = t {
                                                             return Ok((
-                                                                scope,
                                                                 format!(
                                                                     "Err::<{}, {}>({})",
                                                                     okrustname,
@@ -802,7 +746,6 @@ pub fn from_microstatement<'a>(
                                                             ));
                                                         } else {
                                                             return Ok((
-                                                                scope,
                                                                 format!(
                                                                     "Ok::<{}, {}>({})",
                                                                     okrustname,
@@ -821,7 +764,6 @@ pub fn from_microstatement<'a>(
                                                 }
                                             }
                                             return Ok((
-                                                scope,
                                                 format!(
                                                     "{}::{}({})",
                                                     function.name,
@@ -840,14 +782,9 @@ pub fn from_microstatement<'a>(
                                             if ts.len() == 2 {
                                                 if let CType::Void = &ts[1] {
                                                     if let CType::Void = t {
-                                                        return Ok((
-                                                            scope,
-                                                            "None".to_string(),
-                                                            out,
-                                                        ));
+                                                        return Ok(("None".to_string(), out));
                                                     } else {
                                                         return Ok((
-                                                            scope,
                                                             format!(
                                                                 "Some({})",
                                                                 match argstrs[0]
@@ -868,7 +805,6 @@ pub fn from_microstatement<'a>(
                                                             typen::ctype_to_rtype(&ts[1], true)?;
                                                         if let CType::Binds(..) = t {
                                                             return Ok((
-                                                                scope,
                                                                 format!(
                                                                     "Err::<{}, {}>({})",
                                                                     okrustname,
@@ -884,7 +820,6 @@ pub fn from_microstatement<'a>(
                                                             ));
                                                         } else {
                                                             return Ok((
-                                                                scope,
                                                                 format!(
                                                                     "Ok::<{}, {}>({})",
                                                                     okrustname,
@@ -903,7 +838,6 @@ pub fn from_microstatement<'a>(
                                                 }
                                             }
                                             return Ok((
-                                                scope,
                                                 format!(
                                                     "{}::{}({})",
                                                     function.name,
@@ -922,14 +856,9 @@ pub fn from_microstatement<'a>(
                                             if ts.len() == 2 {
                                                 if let CType::Void = &ts[1] {
                                                     if let CType::Void = t {
-                                                        return Ok((
-                                                            scope,
-                                                            "None".to_string(),
-                                                            out,
-                                                        ));
+                                                        return Ok(("None".to_string(), out));
                                                     } else {
                                                         return Ok((
-                                                            scope,
                                                             format!(
                                                                 "Some({})",
                                                                 match argstrs[0]
@@ -950,7 +879,6 @@ pub fn from_microstatement<'a>(
                                                             typen::ctype_to_rtype(&ts[1], true)?;
                                                         if let CType::Binds(..) = t {
                                                             return Ok((
-                                                                scope,
                                                                 format!(
                                                                     "Err::<{}, {}>({})",
                                                                     okrustname,
@@ -966,7 +894,6 @@ pub fn from_microstatement<'a>(
                                                             ));
                                                         } else {
                                                             return Ok((
-                                                                scope,
                                                                 format!(
                                                                     "Ok::<{}, {}>({})",
                                                                     okrustname,
@@ -985,7 +912,6 @@ pub fn from_microstatement<'a>(
                                                 }
                                             }
                                             return Ok((
-                                                scope,
                                                 format!(
                                                     "{}::{}({})",
                                                     function.name,
@@ -1004,14 +930,9 @@ pub fn from_microstatement<'a>(
                                             if ts.len() == 2 {
                                                 if let CType::Void = &ts[1] {
                                                     if let CType::Void = t {
-                                                        return Ok((
-                                                            scope,
-                                                            "None".to_string(),
-                                                            out,
-                                                        ));
+                                                        return Ok(("None".to_string(), out));
                                                     } else {
                                                         return Ok((
-                                                            scope,
                                                             format!(
                                                                 "Some({})",
                                                                 match argstrs[0]
@@ -1032,7 +953,6 @@ pub fn from_microstatement<'a>(
                                                             typen::ctype_to_rtype(&ts[1], true)?;
                                                         if let CType::Binds(..) = t {
                                                             return Ok((
-                                                                scope,
                                                                 format!(
                                                                     "Err::<{}, {}>({})",
                                                                     okrustname,
@@ -1048,7 +968,6 @@ pub fn from_microstatement<'a>(
                                                             ));
                                                         } else {
                                                             return Ok((
-                                                                scope,
                                                                 format!(
                                                                     "Ok::<{}, {}>({})",
                                                                     okrustname,
@@ -1067,7 +986,6 @@ pub fn from_microstatement<'a>(
                                                 }
                                             }
                                             return Ok((
-                                                scope,
                                                 format!(
                                                     "{}::{}({})",
                                                     function.name,
@@ -1110,7 +1028,6 @@ pub fn from_microstatement<'a>(
                                 {
                                     if argstrs.len() == 1 {
                                         return Ok((
-                                            scope,
                                             format!(
                                                 "({},)",
                                                 match argstrs[0].strip_prefix("&mut ") {
@@ -1122,7 +1039,6 @@ pub fn from_microstatement<'a>(
                                         ));
                                     } else {
                                         return Ok((
-                                            scope,
                                             format!(
                                                 "({})",
                                                 argstrs
@@ -1149,7 +1065,6 @@ pub fn from_microstatement<'a>(
                             }
                             CType::Field(..) => {
                                 return Ok((
-                                    scope,
                                     format!(
                                         "({},)",
                                         match argstrs[0].strip_prefix("&mut ") {
@@ -1161,7 +1076,7 @@ pub fn from_microstatement<'a>(
                                 ));
                             }
                             CType::Binds(_) => {
-                                return Ok((scope, argstrs.join(", "), out));
+                                return Ok((argstrs.join(", "), out));
                             }
                             otherwise => {
                                 return Err(format!("How did you get here? Trying to create a constructor function {:?} for {:?}", function, otherwise).into());
@@ -1179,9 +1094,8 @@ pub fn from_microstatement<'a>(
         Microstatement::VarCall { name, args, .. } => {
             let mut argstrs = Vec::new();
             for arg in args {
-                let (s, a, o) = from_microstatement(arg, scope, out)?;
+                let (a, o) = from_microstatement(arg, scope, out)?;
                 out = o;
-                scope = s;
                 // If the argument is itself a function, this is the only place in Rust
                 // where you can't pass by reference, so we check the type and change
                 // the argument output accordingly.
@@ -1195,18 +1109,13 @@ pub fn from_microstatement<'a>(
                     }),
                 }
             }
-            Ok((
-                scope,
-                format!("{}({})", name, argstrs.join(", ")).to_string(),
-                out,
-            ))
+            Ok((format!("{}({})", name, argstrs.join(", ")).to_string(), out))
         }
         Microstatement::Return { value } => match value {
             Some(val) => {
-                let (scope, retval, o) = from_microstatement(val, scope, out)?;
+                let (retval, o) = from_microstatement(val, scope, out)?;
                 out = o;
                 Ok((
-                    scope,
                     format!(
                         "return {}",
                         match retval.strip_prefix("&mut ") {
@@ -1218,17 +1127,17 @@ pub fn from_microstatement<'a>(
                     out,
                 ))
             }
-            None => Ok((scope, "return".to_string(), out)),
+            None => Ok(("return".to_string(), out)),
         },
     }
 }
 
-pub fn generate<'a>(
+pub fn generate(
     rustname: String,
     function: &Function,
-    mut scope: Scope<'a>,
+    scope: &Scope,
     mut out: OrderedHashMap<String, String>,
-) -> Result<(Scope<'a>, OrderedHashMap<String, String>), Box<dyn std::error::Error>> {
+) -> Result<OrderedHashMap<String, String>, Box<dyn std::error::Error>> {
     let mut fn_string = "".to_string();
     // First make sure all of the function argument types are defined
     let mut arg_strs = Vec::new();
@@ -1272,12 +1181,11 @@ pub fn generate<'a>(
     )
     .to_string();
     for microstatement in &function.microstatements {
-        let (s, stmt, o) = from_microstatement(microstatement, scope, out)?;
+        let (stmt, o) = from_microstatement(microstatement, scope, out)?;
         out = o;
-        scope = s;
         fn_string = format!("{}    {};\n", fn_string, stmt);
     }
     fn_string = format!("{}}}", fn_string);
     out.insert(rustname, fn_string);
-    Ok((scope, out))
+    Ok(out)
 }
