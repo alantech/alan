@@ -83,30 +83,30 @@ impl Microstatement {
 enum BaseChunk<'a> {
     #[allow(clippy::upper_case_acronyms)]
     IIGE(
-        &'a Option<Microstatement>,
+        Option<&'a Microstatement>,
         &'a parse::Functions,
         &'a parse::GnCall,
         Option<&'a parse::FnCall>,
     ),
     GFuncCall(
-        &'a Option<Microstatement>,
+        Option<&'a Microstatement>,
         &'a String,
         &'a parse::GnCall,
         Option<&'a parse::FnCall>,
     ),
     #[allow(clippy::upper_case_acronyms)]
     IIFE(
-        &'a Option<Microstatement>,
+        Option<&'a Microstatement>,
         &'a parse::Functions,
         Option<&'a parse::FnCall>,
     ),
     FuncCall(
-        &'a Option<Microstatement>,
+        Option<&'a Microstatement>,
         &'a String,
         Option<&'a parse::FnCall>,
     ),
     TypeCall(
-        &'a Option<Microstatement>,
+        Option<&'a Microstatement>,
         &'a parse::GnCall,
         Option<&'a parse::FnCall>,
     ),
@@ -134,117 +134,117 @@ pub fn baseassignablelist_to_microstatements<'a>(
         // will buy me much for this little bit of parsing logic, and I am still not satisfied with
         // the lack of metadata tracking with my usage of `nom`.
         let (chunk, inc) = match (
-            prior_value.clone(),
+            &prior_value,
             bal.get(i),
             bal.get(i + 1),
             bal.get(i + 2),
             bal.get(i + 3),
         ) {
             (
-                Some(_),
+                Some(p),
                 Some(parse::BaseAssignable::MethodSep(_)),
                 Some(parse::BaseAssignable::Functions(f)),
                 Some(parse::BaseAssignable::GnCall(g)),
                 Some(parse::BaseAssignable::FnCall(h)),
-            ) => (BaseChunk::IIGE(&prior_value, f, g, Some(h)), 4),
+            ) => (BaseChunk::IIGE(Some(p), f, g, Some(h)), 4),
             (
-                Some(_),
+                Some(p),
                 Some(parse::BaseAssignable::MethodSep(_)),
                 Some(parse::BaseAssignable::Variable(f)),
                 Some(parse::BaseAssignable::GnCall(g)),
                 Some(parse::BaseAssignable::FnCall(h)),
-            ) => (BaseChunk::GFuncCall(&prior_value, f, g, Some(h)), 4),
+            ) => (BaseChunk::GFuncCall(Some(p), f, g, Some(h)), 4),
             (
                 None,
                 Some(parse::BaseAssignable::Functions(f)),
                 Some(parse::BaseAssignable::GnCall(g)),
                 Some(parse::BaseAssignable::FnCall(h)),
                 _,
-            ) => (BaseChunk::IIGE(&prior_value, f, g, Some(h)), 3),
+            ) => (BaseChunk::IIGE(None, f, g, Some(h)), 3),
             (
                 None,
                 Some(parse::BaseAssignable::Variable(f)),
                 Some(parse::BaseAssignable::GnCall(g)),
                 Some(parse::BaseAssignable::FnCall(h)),
                 _,
-            ) => (BaseChunk::GFuncCall(&prior_value, f, g, Some(h)), 3),
+            ) => (BaseChunk::GFuncCall(None, f, g, Some(h)), 3),
             (
-                Some(_),
+                Some(p),
                 Some(parse::BaseAssignable::MethodSep(_)),
                 Some(parse::BaseAssignable::Functions(f)),
                 Some(parse::BaseAssignable::GnCall(g)),
                 _,
-            ) => (BaseChunk::IIGE(&prior_value, f, g, None), 3),
+            ) => (BaseChunk::IIGE(Some(p), f, g, None), 3),
             (
-                Some(_),
+                Some(p),
                 Some(parse::BaseAssignable::MethodSep(_)),
                 Some(parse::BaseAssignable::Variable(f)),
                 Some(parse::BaseAssignable::GnCall(g)),
                 _,
-            ) => (BaseChunk::GFuncCall(&prior_value, f, g, None), 3),
+            ) => (BaseChunk::GFuncCall(Some(p), f, g, None), 3),
             (
-                Some(_),
+                Some(p),
                 Some(parse::BaseAssignable::MethodSep(_)),
                 Some(parse::BaseAssignable::Functions(f)),
                 Some(parse::BaseAssignable::FnCall(g)),
                 _,
-            ) => (BaseChunk::IIFE(&prior_value, f, Some(g)), 3),
+            ) => (BaseChunk::IIFE(Some(p), f, Some(g)), 3),
             (
-                Some(_),
+                Some(p),
                 Some(parse::BaseAssignable::MethodSep(_)),
                 Some(parse::BaseAssignable::Variable(f)),
                 Some(parse::BaseAssignable::FnCall(g)),
                 _,
-            ) => (BaseChunk::FuncCall(&prior_value, f, Some(g)), 3),
+            ) => (BaseChunk::FuncCall(Some(p), f, Some(g)), 3),
             (
-                Some(_),
+                Some(p),
                 Some(parse::BaseAssignable::MethodSep(_)),
                 Some(parse::BaseAssignable::GnCall(t)),
                 Some(parse::BaseAssignable::FnCall(g)),
                 _,
-            ) => (BaseChunk::TypeCall(&prior_value, t, Some(g)), 3),
+            ) => (BaseChunk::TypeCall(Some(p), t, Some(g)), 3),
             (
                 None,
                 Some(parse::BaseAssignable::Functions(f)),
                 Some(parse::BaseAssignable::FnCall(g)),
                 _,
                 _,
-            ) => (BaseChunk::IIFE(&prior_value, f, Some(g)), 2),
+            ) => (BaseChunk::IIFE(None, f, Some(g)), 2),
             (
                 None,
                 Some(parse::BaseAssignable::Variable(f)),
                 Some(parse::BaseAssignable::FnCall(g)),
                 _,
                 _,
-            ) => (BaseChunk::FuncCall(&prior_value, f, Some(g)), 2),
+            ) => (BaseChunk::FuncCall(None, f, Some(g)), 2),
             (
                 None,
                 Some(parse::BaseAssignable::GnCall(t)),
                 Some(parse::BaseAssignable::FnCall(g)),
                 _,
                 _,
-            ) => (BaseChunk::TypeCall(&prior_value, t, Some(g)), 2),
+            ) => (BaseChunk::TypeCall(None, t, Some(g)), 2),
             (
-                Some(_),
+                Some(p),
                 Some(parse::BaseAssignable::MethodSep(_)),
                 Some(parse::BaseAssignable::Functions(f)),
                 _,
                 _,
-            ) => (BaseChunk::IIFE(&prior_value, f, None), 2),
+            ) => (BaseChunk::IIFE(Some(p), f, None), 2),
             (
-                Some(_),
+                Some(p),
                 Some(parse::BaseAssignable::MethodSep(_)),
                 Some(parse::BaseAssignable::Variable(f)),
                 _,
                 _,
-            ) => (BaseChunk::FuncCall(&prior_value, f, None), 2),
+            ) => (BaseChunk::FuncCall(Some(p), f, None), 2),
             (
-                Some(_),
+                Some(p),
                 Some(parse::BaseAssignable::MethodSep(_)),
                 Some(parse::BaseAssignable::GnCall(t)),
                 _,
                 _,
-            ) => (BaseChunk::TypeCall(&prior_value, t, None), 2),
+            ) => (BaseChunk::TypeCall(Some(p), t, None), 2),
             (
                 Some(_),
                 Some(parse::BaseAssignable::MethodSep(_)),
@@ -461,6 +461,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                 let mut inner_scope = scope.child();
                 let original_len = microstatements.len();
                 let statements = match &f.fullfunctionbody {
+                    parse::FullFunctionBody::DecOnly(_) => Vec::new(), // TODO: Explode instead?
                     parse::FullFunctionBody::FunctionBody(body) => body.statements.clone(),
                     parse::FullFunctionBody::AssignFunction(assign) => {
                         vec![parse::Statement::Returns(parse::Returns {

@@ -23,6 +23,7 @@ pub enum CType {
     TString(String),
     Group(Box<CType>),
     Function(Box<CType>, Box<CType>),
+    Call(Box<CType>, Box<CType>),
     Tuple(Vec<CType>),
     Field(String, Box<CType>),
     Either(Vec<CType>),
@@ -107,6 +108,11 @@ impl CType {
                 "{} -> {}",
                 i.to_strict_string(strict),
                 o.to_strict_string(strict)
+            ),
+            CType::Call(n, f) => format!(
+                "{} :: {}",
+                n.to_strict_string(strict),
+                f.to_strict_string(strict)
             ),
             CType::Tuple(ts) => ts
                 .iter()
@@ -302,6 +308,11 @@ impl CType {
                 "Function{{{}, {}}}",
                 i.to_functional_string(),
                 o.to_functional_string()
+            ),
+            CType::Call(n, f) => format!(
+                "Call{{{}, {}}}",
+                n.to_functional_string(),
+                f.to_functional_string()
             ),
             CType::Tuple(ts) => format!(
                 "Tuple{{{}}}",
@@ -540,6 +551,7 @@ impl CType {
             CType::Function(i, o) => {
                 CType::Function(Box::new((*i).degroup()), Box::new((*o).degroup()))
             }
+            CType::Call(n, f) => CType::Call(Box::new((*n).degroup()), Box::new((*f).degroup())),
             CType::Tuple(ts) => {
                 CType::Tuple(ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>())
             }
@@ -719,6 +731,12 @@ impl CType {
                         arg.push(o1);
                         input.push(i2);
                         input.push(o2);
+                    }
+                    (Some(CType::Call(n1, f1)), Some(CType::Call(n2, f2))) => {
+                        arg.push(n1);
+                        arg.push(f1);
+                        input.push(n2);
+                        input.push(f2);
                     }
                     (Some(CType::Tuple(ts1)), Some(CType::Tuple(ts2))) => {
                         if ts1.len() != ts2.len() {
@@ -1416,6 +1434,59 @@ impl CType {
         let constructor_fn_name = t.to_callable_string();
         let mut fs = Vec::new();
         match self {
+            CType::Call(n, f) => {
+                let (args, rettype) = match &f.degroup() {
+                    CType::Function(i, o) => match &**i {
+                        CType::Tuple(ts) => {
+                            let mut args = Vec::new();
+                            for (i, arg) in ts.iter().enumerate() {
+                                match arg {
+                                    CType::Field(n, f) => {
+                                        args.push((n.clone(), *f.clone()));
+                                    }
+                                    otherwise => {
+                                        args.push((format!("arg{}", i), otherwise.clone()));
+                                    }
+                                }
+                            }
+                            (args, *o.clone())
+                        }
+                        CType::Field(n, f) => (vec![(n.clone(), *f.clone())], *o.clone()),
+                        otherwise => (vec![("arg0".to_string(), otherwise.clone())], *o.clone()),
+                    },
+                    CType::Tuple(ts) => {
+                        let mut args = Vec::new();
+                        for (i, arg) in ts.iter().enumerate() {
+                            match arg {
+                                CType::Field(n, f) => {
+                                    args.push((n.clone(), *f.clone()));
+                                }
+                                otherwise => {
+                                    args.push((format!("arg{}", i), otherwise.clone()));
+                                }
+                            }
+                        }
+                        (args, CType::Void)
+                    }
+                    CType::Field(n, f) => (vec![(n.clone(), *f.clone())], CType::Void),
+                    otherwise => (vec![("arg0".to_string(), otherwise.clone())], CType::Void),
+                };
+                // TODO: Add support for generics, methods, generic methods, properties, and
+                // operators
+                fs.push(Function {
+                    name: constructor_fn_name.clone(),
+                    args,
+                    rettype,
+                    microstatements: Vec::new(),
+                    kind: FnKind::Bind(match &**n {
+                        CType::TString(s) => s.clone(),
+                        otherwise => CType::fail(&format!(
+                            "Unsupported native function declaration {:?}",
+                            otherwise
+                        )),
+                    }),
+                });
+            }
             CType::Type(n, _) => {
                 // This is just an alias
                 fs.push(Function {
@@ -2044,6 +2115,10 @@ impl CType {
             CType::Function(i, o) => CType::Function(
                 Box::new(i.swap_subtype(old_type, new_type)),
                 Box::new(o.swap_subtype(old_type, new_type)),
+            ),
+            CType::Call(n, f) => CType::Call(
+                Box::new(n.swap_subtype(old_type, new_type)),
+                Box::new(f.swap_subtype(old_type, new_type)),
             ),
             CType::Tuple(ts) => CType::Tuple(
                 ts.iter()
@@ -2962,7 +3037,7 @@ pub fn withtypeoperatorslist_to_ctype(
                 }? {
                     parse::WithTypeOperators::TypeBaseList(typebaselist) => Ok(typebaselist),
                     parse::WithTypeOperators::Operators(o) => Err(format!(
-                        "Operator {} is an prefix operator but followed by another operator {}",
+                        "Operator {} is a prefix operator but followed by another operator {}",
                         operatorname, o.op
                     )),
                 }?;
@@ -3331,6 +3406,10 @@ pub fn typebaselist_to_ctype(
                                         "BindsGeneric" => CType::binds_generic(args.clone()),
                                         "Group" => CType::Group(Box::new(args[0].clone())),
                                         "Function" => CType::Function(
+                                            Box::new(args[0].clone()),
+                                            Box::new(args[1].clone()),
+                                        ),
+                                        "Call" => CType::Call(
                                             Box::new(args[0].clone()),
                                             Box::new(args[1].clone()),
                                         ),

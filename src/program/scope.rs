@@ -95,7 +95,7 @@ impl<'a> Scope<'a> {
                                 "Type" | "Generic" | "Int" | "Float" | "Bool" | "String" => { /* Do nothing for the 'structural' types */ }
                                 g @ ("Binds" | "Group" | "Array" | "Fail" | "Neg" | "Len" | "Size" | "FileStr"
                                 | "Env" | "EnvExists" | "Not") => s = CType::from_generic(s, g, 1),
-                                g @ ("Function" | "Field" | "Prop" | "Buffer" | "Add"
+                                g @ ("Function" | "Call" | "Field" | "Prop" | "Buffer" | "Add"
                                 | "Sub" | "Mul" | "Div" | "Mod" | "Pow" | "Min" | "Max" | "If" | "And" | "Or"
                                 | "Xor" | "Nand" | "Nor" | "Xnor" | "Eq" | "Neq" | "Lt" | "Lte"
                                 | "Gt" | "Gte") => s = CType::from_generic(s, g, 2),

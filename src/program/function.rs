@@ -37,6 +37,27 @@ impl Function {
         is_export: bool,
         name: String,
     ) -> Result<Scope<'a>, Box<dyn std::error::Error>> {
+        if let parse::FullFunctionBody::DecOnly(_) = &function_ast.fullfunctionbody {
+            // TODO: Support DecOnly for generic functions
+            if let Some(fntype) = &function_ast.opttype {
+                let ctype = withtypeoperatorslist_to_ctype(fntype, &scope)?;
+                println!("name {} ctype {:?}", name, ctype);
+                if scope.functions.contains_key(&name) {
+                    scope
+                        .functions
+                        .get_mut(&name)
+                        .unwrap()
+                        .append(&mut ctype.to_functions(name.clone()).1);
+                } else {
+                    scope
+                        .functions
+                        .insert(name.clone(), ctype.to_functions(name.clone()).1);
+                }
+                return Ok(scope);
+            } else {
+                return Err("Declaration-only functions must have a declared function type".into());
+            }
+        }
         if let Some(generics) = &function_ast.opttypegenerics {
             // We are going to conditionally compile this type declaration. If the we get true, we
             // continue, if we get false, we don't compile and return a Fail type that isn't added
@@ -87,8 +108,10 @@ impl Function {
                 })]
             }
             parse::FullFunctionBody::BindFunction(_) => Vec::new(),
+            parse::FullFunctionBody::DecOnly(_) => unreachable!(),
         };
         let kind = match (&function_ast.fullfunctionbody, &function_ast.optgenerics) {
+            (parse::FullFunctionBody::DecOnly(_), _) => unreachable!(),
             (parse::FullFunctionBody::BindFunction(b), None) => FnKind::Bind(b.rustfunc.clone()),
             (parse::FullFunctionBody::BindFunction(b), Some(g)) => {
                 let mut generics = Vec::new();

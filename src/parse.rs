@@ -1177,6 +1177,7 @@ named_or!(fullfunctionbody: FullFunctionBody =>
     FunctionBody: FunctionBody as functionbody,
     AssignFunction: AssignFunction as assignfunction,
     BindFunction: BindFunction as bindfunction,
+    DecOnly: String as semicolon,
 );
 named_and!(functions: Functions =>
     fnn: String as fnn,
