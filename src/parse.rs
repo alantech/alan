@@ -373,7 +373,6 @@ build!(closearr, token!("]"));
 build!(comma, token!(","));
 build!(semicolon, token!(";"));
 build!(optsemicolon, zero_or_one!(semicolon));
-build!(notsemicolon, one_or_more!(not!(";")));
 build!(at, token!("@"));
 build!(slash, token!("/"));
 // Validating charset
