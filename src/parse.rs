@@ -481,7 +481,7 @@ build!(
             one_or_more!(or!(under, lower, upper)),
             zero_or_more!(or!(under, lower, upper, base10))
         ),
-        or!(booln, binds),
+        booln,
     )
 );
 test!(variable =>
@@ -578,7 +578,6 @@ build!(typen, token!("type"));
 build!(import, token!("import"));
 build!(from, token!("from"));
 build!(fnn, token!("fn"));
-build!(binds, token!("binds"));
 build!(quote, token!("'"));
 build!(doublequote, token!("\""));
 build!(escapequote, token!("\\'"));
@@ -1167,16 +1166,9 @@ named_and!(assignfunction: AssignFunction =>
     assignables: Vec<WithOperators> as assignables,
     b: String as optsemicolon,
 );
-named_and!(bindfunction: BindFunction =>
-    binds: String as binds,
-    a: String as blank,
-    rustfunc: String as notsemicolon,
-    b: String as optsemicolon,
-);
 named_or!(fullfunctionbody: FullFunctionBody =>
     FunctionBody: FunctionBody as functionbody,
     AssignFunction: AssignFunction as assignfunction,
-    BindFunction: BindFunction as bindfunction,
     DecOnly: String as semicolon,
 );
 named_and!(functions: Functions =>
@@ -1193,9 +1185,9 @@ named_and!(functions: Functions =>
     fullfunctionbody: FullFunctionBody as fullfunctionbody,
 );
 test!(functions =>
-    pass "fn foo binds foo;" => "";
-    pass "fn print(val: String) binds println!;" => "";
-    pass "fn{Test} foo binds foo_test;" => "";
+    pass "fn foo 'foo' :: () -> ();" => "";
+    pass "fn print 'println!' :: string;" => "";
+    pass "fn{Test} foo 'foo_test' :: () -> ();" => "";
     pass "fn newHashMap(firstKey: Hashable, firstVal: any) -> HashMap{Hashable, any} { // TODO: Rust-like fn::<typeA, typeB> syntax?\n  let hm = HashMap{Hashable, any}(Array{KeyVal{Hashable, any}}(), Array{Array{int64}}(Array{int64}()) * 128 // 1KB of space\n);\n  return hm.set(firstKey, firstVal);\n}" => "";
     pass "fn cast{T, U}(t: T) -> U = U(t);" => "";
 );

@@ -247,73 +247,10 @@ impl Function {
                     semicolon: ";".to_string(),
                 })]
             }
-            parse::FullFunctionBody::BindFunction(_) => Vec::new(),
             parse::FullFunctionBody::DecOnly(_) => unreachable!(),
         };
         let kind = match (&function_ast.fullfunctionbody, &function_ast.optgenerics) {
             (parse::FullFunctionBody::DecOnly(_), _) => unreachable!(),
-            (parse::FullFunctionBody::BindFunction(b), None) => FnKind::Bind(b.rustfunc.clone()),
-            (parse::FullFunctionBody::BindFunction(b), Some(g)) => {
-                let mut generics = Vec::new();
-                // TODO: The semantics in here are different, so we may want to make a new parser
-                // type here, but for now, just do some manual parsing and blow up if we encounter
-                // something unexpected
-                let mut i = 0;
-                while i < g.typecalllist.len() {
-                    match (
-                        g.typecalllist.get(i),
-                        g.typecalllist.get(i + 1),
-                        g.typecalllist.get(i + 2),
-                        g.typecalllist.get(i + 3),
-                    ) {
-                        (Some(t1), Some(t2), Some(t3), Some(t4))
-                            if t2.to_string().trim() == ":" && t4.to_string().trim() == "," =>
-                        {
-                            // TODO: This should be an interface type, instead
-                            generics.push((
-                                t1.to_string().trim().to_string(),
-                                CType::Infer(
-                                    t1.to_string().trim().to_string(),
-                                    t3.to_string().trim().to_string(),
-                                ),
-                            ));
-                            i += 4;
-                        }
-                        (Some(t1), Some(t2), Some(t3), None) if t2.to_string().trim() == ":" => {
-                            // TODO: This should be an interface type, instead
-                            generics.push((
-                                t1.to_string().trim().to_string(),
-                                CType::Infer(
-                                    t1.to_string().trim().to_string(),
-                                    t3.to_string().trim().to_string(),
-                                ),
-                            ));
-                            i += 3; // This should exit the loop
-                        }
-                        (Some(t1), Some(t2), _, _) if t2.to_string().trim() == "," => {
-                            // TODO: This should be an interface type, instead
-                            generics.push((
-                                t1.to_string().trim().to_string(),
-                                CType::Infer(t1.to_string().trim().to_string(), "Any".to_string()),
-                            ));
-                            i += 2;
-                        }
-                        (Some(t1), None, None, None) => {
-                            // TODO: This should be an interface type, instead
-                            generics.push((
-                                t1.to_string().trim().to_string(),
-                                CType::Infer(t1.to_string().trim().to_string(), "Any".to_string()),
-                            ));
-                            i += 1;
-                        }
-                        (a, b, c, d) => {
-                            // Any other patterns are invalid
-                            return Err(format!("Unexpected generic type definition, failure to parse at {:?} {:?} {:?} {:?}", a, b, c, d).into());
-                        }
-                    }
-                }
-                FnKind::BoundGeneric(generics, b.rustfunc.clone())
-            }
             (_, Some(g)) => {
                 let mut generics = Vec::new();
                 // TODO: The semantics in here are different, so we may want to make a new parser

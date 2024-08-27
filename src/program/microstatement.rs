@@ -453,9 +453,6 @@ pub fn baseassignablelist_to_microstatements<'a>(
                 if f.optgenerics.is_some() {
                     return Err("Generics not supported for closure functions".into());
                 }
-                if let parse::FullFunctionBody::BindFunction(_) = &f.fullfunctionbody {
-                    return Err("'binds' functions not supported as closure functions".into());
-                }
                 // If we got here, we know we're making a "normal" function
                 let kind = FnKind::Normal;
                 let mut inner_scope = scope.child();
@@ -474,7 +471,6 @@ pub fn baseassignablelist_to_microstatements<'a>(
                             semicolon: ";".to_string(),
                         })]
                     }
-                    parse::FullFunctionBody::BindFunction(_) => Vec::new(),
                 };
                 // TODO: A big blob of crap copied from Function that should really live there
                 // *and* needs refactoring
