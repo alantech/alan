@@ -8,8 +8,7 @@
 // Declaration of the types the compiler-time type system is built on
 export ctype Type; // Any kind of concrete type
 export ctype Generic; // Any type that is a generic type (not yet realized into a concrete type)
-export ctype Binds{T}; // A direct reference into the platform language's type system equivalen to a concrete type
-export ctype BindsGeneric{T, N}; // A direct reference into the platform language's generic type system
+export ctype Binds{T}; // A direct reference into the platform language's type system
 export ctype Int; // An integer used *to define a type*, like the length of a fixed array
 export ctype Float; // A float used to define a type. I have no idea why you'd want this, yet
 export ctype Bool; // A bool used to define a type. Heavily used for conditional compilation
@@ -132,8 +131,8 @@ export type Duration = Binds{"std::time::Duration"};
 export type uuid = Binds{"uuid::Uuid"};
 
 // Binding the Dict and Set types
-export type Dict{K, V} = BindsGeneric{"OrderedHashMap", K, V};
-export type Set{V} = BindsGeneric{"std::collections::HashSet", V};
+export type Dict{K, V} = Binds{"OrderedHashMap", K, V};
+export type Set{V} = Binds{"std::collections::HashSet", V};
 
 /// Functions for (potentially) every type
 export fn clone{T} "clone" :: T -> T;

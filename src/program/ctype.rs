@@ -14,8 +14,7 @@ pub enum CType {
     Infer(String, String), // TODO: Switch to an Interface here once they exist
     Type(String, Box<CType>),
     Generic(String, Vec<String>, Box<CType>),
-    Binds(String),
-    BindsGeneric(String, Vec<CType>),
+    Binds(String, Vec<CType>),
     IntrinsicGeneric(String, usize),
     Int(i128),
     Float(f64),
@@ -76,12 +75,12 @@ impl CType {
                 false => t.to_strict_string(strict),
             },
             CType::Generic(n, a, _) => format!("{}{{{}}}", n, a.join(", ")),
-            CType::Binds(s) => s.to_string(),
-            CType::BindsGeneric(s, a) => format!(
-                "{}{{{}}}",
-                s,
-                a.iter()
-                    .map(|b| b.to_strict_string(strict))
+            CType::Binds(n, ts) => format!(
+                "Binds{{{}{}{}}}",
+                n,
+                if ts.is_empty() { "" } else { ", " },
+                ts.iter()
+                    .map(|t| t.to_strict_string(strict))
                     .collect::<Vec<String>>()
                     .join(", ")
             ),
@@ -278,10 +277,10 @@ impl CType {
             CType::Infer(s, _) => s.clone(), // TODO: What to do here?
             CType::Type(_, t) => t.to_functional_string(),
             CType::Generic(n, gs, _) => format!("{}{{{}}}", n, gs.join(", ")),
-            CType::Binds(n) => n.clone(),
-            CType::BindsGeneric(n, ts) => format!(
-                "{}{{{}}}",
+            CType::Binds(n, ts) => format!(
+                "Binds{{{}{}{}}}",
                 n,
+                if ts.is_empty() { "" } else { ", " },
                 ts.iter()
                     .map(|t| t.to_functional_string())
                     .collect::<Vec<String>>()
@@ -517,7 +516,7 @@ impl CType {
             CType::Int(_) | CType::Float(_) => format!("_{}", self.to_functional_string()),
             CType::Type(n, t) => match **t {
                 CType::Int(_) | CType::Float(_) => format!("_{}", self.to_functional_string()),
-                CType::Binds(_) => n.clone(),
+                CType::Binds(..) => n.clone(),
                 _ => self.to_functional_string(),
             },
             _ => self.to_functional_string(),
@@ -537,8 +536,7 @@ impl CType {
             CType::Infer(s, i) => CType::Infer(s.clone(), i.clone()),
             CType::Type(n, t) => CType::Type(n.clone(), Box::new((*t).degroup())),
             CType::Generic(n, gs, wtos) => CType::Generic(n.clone(), gs.clone(), wtos.clone()),
-            CType::Binds(n) => CType::Binds(n.clone()),
-            CType::BindsGeneric(n, ts) => CType::BindsGeneric(
+            CType::Binds(n, ts) => CType::Binds(
                 n.clone(),
                 ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>(),
             ),
@@ -633,11 +631,11 @@ impl CType {
                         arg.push(t1);
                         input.push(t2);
                     }
-                    (Some(CType::Type(_, t1)), Some(b)) if !matches!(&**t1, CType::Binds(_)) => {
+                    (Some(CType::Type(_, t1)), Some(b)) if !matches!(&**t1, CType::Binds(..)) => {
                         arg.push(t1);
                         input.push(b);
                     }
-                    (Some(a), Some(CType::Type(_, t2))) if !matches!(&**t2, CType::Binds(_)) => {
+                    (Some(a), Some(CType::Type(_, t2))) if !matches!(&**t2, CType::Binds(..)) => {
                         arg.push(a);
                         input.push(t2);
                     }
@@ -648,16 +646,7 @@ impl CType {
                         )
                         .into());
                     }
-                    (Some(CType::Binds(n1)), Some(CType::Binds(n2))) => {
-                        if n1 != n2 {
-                            return Err(format!(
-                                "Mismatched bound types {} and {} during inference",
-                                n1, n2
-                            )
-                            .into());
-                        }
-                    }
-                    (Some(CType::BindsGeneric(n1, ts1)), Some(CType::BindsGeneric(n2, ts2))) => {
+                    (Some(CType::Binds(n1, ts1)), Some(CType::Binds(n2, ts2))) => {
                         if !(n1 == n2 && ts1.len() == ts2.len()) {
                             // TODO: Better generic arg matching
                             return Err(format!("Mismatched resolved bound generic types {}{{{}}} and {}{{{}}} during inference", n1, ts1.iter().map(|t| t.to_strict_string(false)).collect::<Vec<String>>().join(", "), n2, ts2.iter().map(|t| t.to_strict_string(false)).collect::<Vec<String>>().join(", ")).into());
@@ -1522,7 +1511,7 @@ impl CType {
                                     // will return this value as a string.
                                     let string = CType::Type(
                                         "string".to_string(),
-                                        Box::new(CType::Binds("String".to_string())),
+                                        Box::new(CType::Binds("String".to_string(), Vec::new())),
                                     );
                                     fs.push(Function {
                                         name: n.clone(),
@@ -1542,7 +1531,7 @@ impl CType {
                                     // Create an accessor function for this value, but do not add
                                     // it to the args array to construct it. The accessor function
                                     // will return this value as an i64.
-                                    let int64 = CType::Binds("i64".to_string());
+                                    let int64 = CType::Binds("i64".to_string(), Vec::new());
                                     fs.push(Function {
                                         name: n.clone(),
                                         args: vec![("arg0".to_string(), t.clone())],
@@ -1558,7 +1547,7 @@ impl CType {
                                     // Create an accessor function for this value, but do not add
                                     // it to the args array to construct it. The accessor function
                                     // will return this value as an f64.
-                                    let float64 = CType::Binds("f64".to_string());
+                                    let float64 = CType::Binds("f64".to_string(), Vec::new());
                                     fs.push(Function {
                                         name: n.clone(),
                                         args: vec![("arg0".to_string(), t.clone())],
@@ -1574,7 +1563,7 @@ impl CType {
                                     // Create an accessor function for this value, but do not add
                                     // it to the args array to construct it. The accessor function
                                     // will return this value as a bool.
-                                    let booln = CType::Binds("bool".to_string());
+                                    let booln = CType::Binds("bool".to_string(), Vec::new());
                                     fs.push(Function {
                                         name: n.clone(),
                                         args: vec![("arg0".to_string(), t.clone())],
@@ -1656,7 +1645,7 @@ impl CType {
                         // will return this value as a string.
                         let string = CType::Type(
                             "string".to_string(),
-                            Box::new(CType::Binds("String".to_string())),
+                            Box::new(CType::Binds("String".to_string(), Vec::new())),
                         );
                         fs.push(Function {
                             name: n.clone(),
@@ -1673,7 +1662,7 @@ impl CType {
                         // Create an accessor function for this value, but do not add
                         // it to the args array to construct it. The accessor function
                         // will return this value as an i64.
-                        let int64 = CType::Binds("i64".to_string());
+                        let int64 = CType::Binds("i64".to_string(), Vec::new());
                         fs.push(Function {
                             name: n.clone(),
                             args: vec![("arg0".to_string(), t.clone())],
@@ -1689,7 +1678,7 @@ impl CType {
                         // Create an accessor function for this value, but do not add
                         // it to the args array to construct it. The accessor function
                         // will return this value as an f64.
-                        let float64 = CType::Binds("f64".to_string());
+                        let float64 = CType::Binds("f64".to_string(), Vec::new());
                         fs.push(Function {
                             name: n.clone(),
                             args: vec![("arg0".to_string(), t.clone())],
@@ -1705,7 +1694,7 @@ impl CType {
                         // Create an accessor function for this value, but do not add
                         // it to the args array to construct it. The accessor function
                         // will return this value as a bool.
-                        let booln = CType::Binds("bool".to_string());
+                        let booln = CType::Binds("bool".to_string(), Vec::new());
                         fs.push(Function {
                             name: n.clone(),
                             args: vec![("arg0".to_string(), t.clone())],
@@ -1848,10 +1837,10 @@ impl CType {
                 fs.push(Function {
                     name: constructor_fn_name.clone(),
                     args: Vec::new(),
-                    rettype: CType::Binds("i64".to_string()),
+                    rettype: CType::Binds("i64".to_string(), Vec::new()),
                     microstatements: vec![Microstatement::Return {
                         value: Some(Box::new(Microstatement::Value {
-                            typen: CType::Binds("i64".to_string()),
+                            typen: CType::Binds("i64".to_string(), Vec::new()),
                             representation: format!("{}", i),
                         })),
                     }],
@@ -1863,10 +1852,10 @@ impl CType {
                 fs.push(Function {
                     name: constructor_fn_name.clone(),
                     args: Vec::new(),
-                    rettype: CType::Binds("f64".to_string()),
+                    rettype: CType::Binds("f64".to_string(), Vec::new()),
                     microstatements: vec![Microstatement::Return {
                         value: Some(Box::new(Microstatement::Value {
-                            typen: CType::Binds("f64".to_string()),
+                            typen: CType::Binds("f64".to_string(), Vec::new()),
                             representation: format!("{}", f),
                         })),
                     }],
@@ -1877,10 +1866,10 @@ impl CType {
                 fs.push(Function {
                     name: constructor_fn_name.clone(),
                     args: Vec::new(),
-                    rettype: CType::Binds("bool".to_string()),
+                    rettype: CType::Binds("bool".to_string(), Vec::new()),
                     microstatements: vec![Microstatement::Return {
                         value: Some(Box::new(Microstatement::Value {
-                            typen: CType::Binds("bool".to_string()),
+                            typen: CType::Binds("bool".to_string(), Vec::new()),
                             representation: match b {
                                 true => "true".to_string(),
                                 false => "false".to_string(),
@@ -1894,10 +1883,10 @@ impl CType {
                 fs.push(Function {
                     name: constructor_fn_name.clone(),
                     args: Vec::new(),
-                    rettype: CType::Binds("String".to_string()),
+                    rettype: CType::Binds("String".to_string(), Vec::new()),
                     microstatements: vec![Microstatement::Return {
                         value: Some(Box::new(Microstatement::Value {
-                            typen: CType::Binds("String".to_string()),
+                            typen: CType::Binds("String".to_string(), Vec::new()),
                             representation: format!("\"{}\"", s.replace("\"", "\\\"")),
                         })),
                     }],
@@ -2095,7 +2084,6 @@ impl CType {
             CType::Void
             | CType::Infer(..)
             | CType::Generic(..)
-            | CType::Binds(..)
             | CType::IntrinsicGeneric(..)
             | CType::Int(_)
             | CType::Float(_)
@@ -2105,7 +2093,7 @@ impl CType {
             CType::Type(name, ct) => {
                 CType::Type(name.clone(), Box::new(ct.swap_subtype(old_type, new_type)))
             }
-            CType::BindsGeneric(name, gen_type_resolved) => CType::BindsGeneric(
+            CType::Binds(name, gen_type_resolved) => CType::Binds(
                 name.clone(),
                 gen_type_resolved
                     .iter()
@@ -2287,16 +2275,6 @@ impl CType {
         }
     }
     pub fn binds(args: Vec<CType>) -> CType {
-        if args.len() != 1 {
-            CType::fail("Binds{T} takes only one argument, the string representation of the target-language type being bound")
-        } else {
-            match &args[0] {
-                CType::TString(s) => CType::Binds(s.clone()),
-                _ => CType::fail("Binds{T} accepts only strings"),
-            }
-        }
-    }
-    pub fn binds_generic(args: Vec<CType>) -> CType {
         let base_type = args[0].clone();
         if let CType::TString(base) = base_type {
             let mut out_vec = Vec::new();
@@ -2304,9 +2282,9 @@ impl CType {
             for i in 1..args.len() {
                 out_vec.push(args[i].clone());
             }
-            CType::BindsGeneric(base.clone(), out_vec)
+            CType::Binds(base.clone(), out_vec)
         } else {
-            CType::fail("BindsGeneric{T, ...} must be given a string for the base type to bind");
+            CType::fail("Binds{T, ...} must be given a string for the base type to bind");
         }
     }
     // Special implementation for the tuple and either types since they *are* CTypes, but if one of
@@ -3404,7 +3382,6 @@ pub fn typebaselist_to_ctype(
                                     // TODO: Is there a better way to do this?
                                     match name.as_str() {
                                         "Binds" => CType::binds(args.clone()),
-                                        "BindsGeneric" => CType::binds_generic(args.clone()),
                                         "Group" => CType::Group(Box::new(args[0].clone())),
                                         "Function" => CType::Function(
                                             Box::new(args[0].clone()),
