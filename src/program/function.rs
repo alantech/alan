@@ -73,6 +73,167 @@ impl Function {
                 }
             }
         }
+        if let parse::FullFunctionBody::DecOnly(_) = &function_ast.fullfunctionbody {
+            if let Some(fntype) = &function_ast.opttype {
+                if let Some(g) = &function_ast.optgenerics {
+                    let mut generics = Vec::new();
+                    // TODO: The semantics in here are different, so we may want to make a new parser
+                    // type here, but for now, just do some manual parsing and blow up if we encounter
+                    // something unexpected
+                    let mut i = 0;
+                    while i < g.typecalllist.len() {
+                        match (
+                            g.typecalllist.get(i),
+                            g.typecalllist.get(i + 1),
+                            g.typecalllist.get(i + 2),
+                            g.typecalllist.get(i + 3),
+                        ) {
+                            (Some(t1), Some(t2), Some(t3), Some(t4))
+                                if t2.to_string().trim() == ":" && t4.to_string().trim() == "," =>
+                            {
+                                // TODO: This should be an interface type, instead
+                                generics.push((
+                                    t1.to_string().trim().to_string(),
+                                    CType::Infer(
+                                        t1.to_string().trim().to_string(),
+                                        t3.to_string().trim().to_string(),
+                                    ),
+                                ));
+                                i += 4;
+                            }
+                            (Some(t1), Some(t2), Some(t3), None)
+                                if t2.to_string().trim() == ":" =>
+                            {
+                                // TODO: This should be an interface type, instead
+                                generics.push((
+                                    t1.to_string().trim().to_string(),
+                                    CType::Infer(
+                                        t1.to_string().trim().to_string(),
+                                        t3.to_string().trim().to_string(),
+                                    ),
+                                ));
+                                i += 3; // This should exit the loop
+                            }
+                            (Some(t1), Some(t2), _, _) if t2.to_string().trim() == "," => {
+                                // TODO: This should be an interface type, instead
+                                generics.push((
+                                    t1.to_string().trim().to_string(),
+                                    CType::Infer(
+                                        t1.to_string().trim().to_string(),
+                                        "Any".to_string(),
+                                    ),
+                                ));
+                                i += 2;
+                            }
+                            (Some(t1), None, None, None) => {
+                                // TODO: This should be an interface type, instead
+                                generics.push((
+                                    t1.to_string().trim().to_string(),
+                                    CType::Infer(
+                                        t1.to_string().trim().to_string(),
+                                        "Any".to_string(),
+                                    ),
+                                ));
+                                i += 1;
+                            }
+                            (a, b, c, d) => {
+                                // Any other patterns are invalid
+                                return Err(format!("Unexpected generic type definition, failure to parse at {:?} {:?} {:?} {:?}", a, b, c, d).into());
+                            }
+                        }
+                    }
+                    let mut temp_scope = scope.child();
+                    // This lets us partially resolve the function argument and return types
+                    for g in &generics {
+                        temp_scope = CType::from_ctype(temp_scope, g.0.clone(), g.1.clone());
+                    }
+                    let ctype = withtypeoperatorslist_to_ctype(fntype, &temp_scope)?;
+                    // If the `ctype` is a Function type, we have both the input and output defined. If
+                    // it's any other type, we presume it's only the input type defined
+                    let (rustfunc, input_type, rettype) = match ctype {
+                        CType::Call(n, f) => match &*n {
+                            CType::TString(s) => {
+                                match &*f {
+                                    CType::Function(i, o) => (s.clone(), *i.clone(), *o.clone()),
+                                    otherwise => (s.clone(), otherwise.clone(), CType::Void), // TODO: Type inference signaling?
+                                }
+                            }
+                            _ => CType::fail("TODO: Support more than bare function calls for generic function binding"),
+                        },
+                        otherwise => CType::fail(&format!("A declaration-only function must be a binding Call{{N, F}}: {:?}", otherwise)),
+                    };
+                    // In case there were any created functions (eg constructor or accessor
+                    // functions) in that path, we need to merge the child's functions back up
+                    // TODO: Why can't I box this up into a function?
+                    merge!(scope, temp_scope);
+                    // The input type will be interpreted in many different ways:
+                    // If it's a Group, unwrap it and continue. Ideally after that it's a Tuple
+                    // type containing Field types, that's a "conventional" function
+                    // definition, where the label becomes an argument name and the type is the
+                    // type. If the tuple doesn't have Fields inside of it, we auto-generate
+                    // argument names, eg `arg0`, `arg1`, etc. If it is not a Tuple type but is
+                    // a Field type, we have a single argument function with a specified
+                    // variable name. If it's any other type, we just label it `arg0`
+                    let degrouped_input = input_type.degroup();
+                    let mut args = Vec::new();
+                    match degrouped_input {
+                        CType::Tuple(ts) => {
+                            for (i, t) in ts.iter().enumerate() {
+                                args.push(match t {
+                                    CType::Field(argname, t) => (argname.clone(), *t.clone()),
+                                    otherwise => (format!("arg{}", i), otherwise.clone()),
+                                });
+                            }
+                        }
+                        CType::Field(argname, t) => args.push((argname.clone(), *t.clone())),
+                        CType::Void => {} // Do nothing so an empty set is properly
+                        otherwise => args.push(("arg0".to_string(), otherwise.clone())),
+                    }
+                    let function = Function {
+                        name,
+                        args,
+                        rettype,
+                        microstatements: Vec::new(),
+                        kind: FnKind::BoundGeneric(generics, rustfunc.clone()),
+                    };
+                    if is_export {
+                        scope
+                            .exports
+                            .insert(function.name.clone(), Export::Function);
+                    }
+                    if scope.functions.contains_key(&function.name) {
+                        let func_vec = scope.functions.get_mut(&function.name).unwrap();
+                        func_vec.push(function);
+                    } else {
+                        scope
+                            .functions
+                            .insert(function.name.clone(), vec![function]);
+                    }
+                    // TODO: This is a hack, I shouldn't be digging into the `fntype` to get the
+                    // function name
+                    //FnKind::BoundGeneric(generics, b.rustfunc.clone())
+                } else {
+                    let ctype = withtypeoperatorslist_to_ctype(fntype, &scope)?;
+                    if is_export {
+                        scope.exports.insert(name.clone(), Export::Function);
+                    }
+                    if scope.functions.contains_key(&name) {
+                        scope
+                            .functions
+                            .get_mut(&name)
+                            .unwrap()
+                            .append(&mut ctype.to_functions(name.clone()).1);
+                    } else {
+                        scope
+                            .functions
+                            .insert(name.clone(), ctype.to_functions(name.clone()).1);
+                    }
+                }
+                return Ok(scope);
+            } else {
+                return Err("Declaration-only functions must have a declared function type".into());
+            }
+        }
         let statements = match &function_ast.fullfunctionbody {
             parse::FullFunctionBody::FunctionBody(body) => body.statements.clone(),
             parse::FullFunctionBody::AssignFunction(assign) => {
@@ -86,71 +247,10 @@ impl Function {
                     semicolon: ";".to_string(),
                 })]
             }
-            parse::FullFunctionBody::BindFunction(_) => Vec::new(),
+            parse::FullFunctionBody::DecOnly(_) => unreachable!(),
         };
         let kind = match (&function_ast.fullfunctionbody, &function_ast.optgenerics) {
-            (parse::FullFunctionBody::BindFunction(b), None) => FnKind::Bind(b.rustfunc.clone()),
-            (parse::FullFunctionBody::BindFunction(b), Some(g)) => {
-                let mut generics = Vec::new();
-                // TODO: The semantics in here are different, so we may want to make a new parser
-                // type here, but for now, just do some manual parsing and blow up if we encounter
-                // something unexpected
-                let mut i = 0;
-                while i < g.typecalllist.len() {
-                    match (
-                        g.typecalllist.get(i),
-                        g.typecalllist.get(i + 1),
-                        g.typecalllist.get(i + 2),
-                        g.typecalllist.get(i + 3),
-                    ) {
-                        (Some(t1), Some(t2), Some(t3), Some(t4))
-                            if t2.to_string().trim() == ":" && t4.to_string().trim() == "," =>
-                        {
-                            // TODO: This should be an interface type, instead
-                            generics.push((
-                                t1.to_string().trim().to_string(),
-                                CType::Infer(
-                                    t1.to_string().trim().to_string(),
-                                    t3.to_string().trim().to_string(),
-                                ),
-                            ));
-                            i += 4;
-                        }
-                        (Some(t1), Some(t2), Some(t3), None) if t2.to_string().trim() == ":" => {
-                            // TODO: This should be an interface type, instead
-                            generics.push((
-                                t1.to_string().trim().to_string(),
-                                CType::Infer(
-                                    t1.to_string().trim().to_string(),
-                                    t3.to_string().trim().to_string(),
-                                ),
-                            ));
-                            i += 3; // This should exit the loop
-                        }
-                        (Some(t1), Some(t2), _, _) if t2.to_string().trim() == "," => {
-                            // TODO: This should be an interface type, instead
-                            generics.push((
-                                t1.to_string().trim().to_string(),
-                                CType::Infer(t1.to_string().trim().to_string(), "Any".to_string()),
-                            ));
-                            i += 2;
-                        }
-                        (Some(t1), None, None, None) => {
-                            // TODO: This should be an interface type, instead
-                            generics.push((
-                                t1.to_string().trim().to_string(),
-                                CType::Infer(t1.to_string().trim().to_string(), "Any".to_string()),
-                            ));
-                            i += 1;
-                        }
-                        (a, b, c, d) => {
-                            // Any other patterns are invalid
-                            return Err(format!("Unexpected generic type definition, failure to parse at {:?} {:?} {:?} {:?}", a, b, c, d).into());
-                        }
-                    }
-                }
-                FnKind::BoundGeneric(generics, b.rustfunc.clone())
-            }
+            (parse::FullFunctionBody::DecOnly(_), _) => unreachable!(),
             (_, Some(g)) => {
                 let mut generics = Vec::new();
                 // TODO: The semantics in here are different, so we may want to make a new parser
