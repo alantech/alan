@@ -25,6 +25,8 @@ pub enum CType {
     Call(Box<CType>, Box<CType>),
     Infix(Box<CType>),
     Prefix(Box<CType>),
+    Method(Box<CType>),
+    Cast(Box<CType>),
     Tuple(Vec<CType>),
     Field(String, Box<CType>),
     Either(Vec<CType>),
@@ -117,6 +119,8 @@ impl CType {
             ),
             CType::Infix(o) => format!("Infix{{{}}}", o.to_strict_string(strict)),
             CType::Prefix(o) => format!("Prefix{{{}}}", o.to_strict_string(strict)),
+            CType::Method(f) => format!("Method{{{}}}", f.to_strict_string(strict)),
+            CType::Cast(t) => format!("Cast{{{}}}", t.to_strict_string(strict)),
             CType::Tuple(ts) => ts
                 .iter()
                 .map(|t| t.to_strict_string(strict))
@@ -319,6 +323,8 @@ impl CType {
             ),
             CType::Infix(o) => format!("Infix{{{}}}", o.to_functional_string()),
             CType::Prefix(o) => format!("Prefix{{{}}}", o.to_functional_string()),
+            CType::Method(f) => format!("Method{{{}}}", f.to_functional_string()),
+            CType::Cast(t) => format!("Cast{{{}}}", t.to_functional_string()),
             CType::Tuple(ts) => format!(
                 "Tuple{{{}}}",
                 ts.iter()
@@ -563,6 +569,8 @@ impl CType {
             CType::Call(n, f) => CType::Call(Box::new((*n).degroup()), Box::new((*f).degroup())),
             CType::Infix(o) => CType::Infix(Box::new((*o).degroup())),
             CType::Prefix(o) => CType::Prefix(Box::new((*o).degroup())),
+            CType::Method(f) => CType::Method(Box::new((*f).degroup())),
+            CType::Cast(t) => CType::Cast(Box::new((*t).degroup())),
             CType::Tuple(ts) => {
                 CType::Tuple(ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>())
             }
@@ -747,6 +755,14 @@ impl CType {
                     (Some(CType::Prefix(o1)), Some(CType::Prefix(o2))) => {
                         arg.push(o1);
                         input.push(o2);
+                    }
+                    (Some(CType::Method(f1)), Some(CType::Method(f2))) => {
+                        arg.push(f1);
+                        input.push(f2);
+                    }
+                    (Some(CType::Cast(t1)), Some(CType::Cast(t2))) => {
+                        arg.push(t1);
+                        input.push(t2);
                     }
                     (Some(CType::Tuple(ts1)), Some(CType::Tuple(ts2))) => {
                         if ts1.len() != ts2.len() {
@@ -1482,7 +1498,7 @@ impl CType {
                     CType::Field(n, f) => (vec![(n.clone(), *f.clone())], CType::Void),
                     otherwise => (vec![("arg0".to_string(), otherwise.clone())], CType::Void),
                 };
-                // TODO: Add support for generics, methods, generic methods, and properties
+                // TODO: Add support for generics, generic methods, and properties
                 match &**n {
                     CType::TString(s) => {
                         fs.push(Function {
@@ -1522,7 +1538,7 @@ impl CType {
                     CType::Prefix(o) => match &**o {
                         CType::TString(s) => {
                             if args.len() != 1 {
-                                CType::fail("Native prefix operators may only be bound with two input arguments");
+                                CType::fail("Native prefix operators may only be bound with one input argument");
                             }
                             fs.push(Function {
                                 name: constructor_fn_name.clone(),
@@ -1539,6 +1555,64 @@ impl CType {
                         }
                         otherwise => CType::fail(&format!(
                             "Unsupported native operator declaration {:?}",
+                            otherwise
+                        )),
+                    },
+                    CType::Method(f) => match &**f {
+                        CType::TString(s) => {
+                            let arg_car = args[0].clone();
+                            let arg_cdr = args.clone().split_off(1);
+                            fs.push(Function {
+                                name: constructor_fn_name.clone(),
+                                args: args.clone(),
+                                rettype: rettype.clone(),
+                                microstatements: vec![Microstatement::Return {
+                                    value: Some(Box::new(Microstatement::Value {
+                                        typen: rettype,
+                                        representation: format!(
+                                            "{}.{}({})",
+                                            arg_car.0,
+                                            s,
+                                            arg_cdr
+                                                .into_iter()
+                                                // TODO: Don't hardwire the dereferencing
+                                                .map(|a| format!("*{}", a.0))
+                                                .collect::<Vec<String>>()
+                                                .join(", ")
+                                        ),
+                                    })),
+                                }],
+                                kind: FnKind::Normal,
+                            });
+                        }
+                        otherwise => CType::fail(&format!(
+                            "Unsupported native operator declaration {:?}",
+                            otherwise
+                        )),
+                    },
+                    CType::Cast(t) => match &**t {
+                        CType::TString(s) => {
+                            if args.len() != 1 {
+                                CType::fail(
+                                    "Native casting may only be bound with one input argument",
+                                );
+                            }
+                            fs.push(Function {
+                                name: constructor_fn_name.clone(),
+                                args: args.clone(),
+                                rettype: rettype.clone(),
+                                microstatements: vec![Microstatement::Return {
+                                    value: Some(Box::new(Microstatement::Value {
+                                        typen: rettype,
+                                        // TODO: Don't hardwire the dereferencing
+                                        representation: format!("(*{} as {})", args[0].0, s),
+                                    })),
+                                }],
+                                kind: FnKind::Normal,
+                            });
+                        }
+                        otherwise => CType::fail(&format!(
+                            "Unsupported native cast declaration {:?}",
                             otherwise
                         )),
                     },
@@ -2182,6 +2256,8 @@ impl CType {
             ),
             CType::Infix(o) => CType::Infix(Box::new(o.swap_subtype(old_type, new_type))),
             CType::Prefix(o) => CType::Prefix(Box::new(o.swap_subtype(old_type, new_type))),
+            CType::Method(f) => CType::Method(Box::new(f.swap_subtype(old_type, new_type))),
+            CType::Cast(t) => CType::Cast(Box::new(t.swap_subtype(old_type, new_type))),
             CType::Tuple(ts) => CType::Tuple(
                 ts.iter()
                     .map(|t| t.swap_subtype(old_type, new_type))
@@ -3466,6 +3542,8 @@ pub fn typebaselist_to_ctype(
                                         ),
                                         "Infix" => CType::Infix(Box::new(args[0].clone())),
                                         "Prefix" => CType::Prefix(Box::new(args[0].clone())),
+                                        "Method" => CType::Method(Box::new(args[0].clone())),
+                                        "Cast" => CType::Cast(Box::new(args[0].clone())),
                                         "Tuple" => CType::tuple(args.clone()),
                                         "Field" => CType::field(args.clone()),
                                         "Either" => CType::either(args.clone()),
