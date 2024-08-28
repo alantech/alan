@@ -1026,12 +1026,6 @@ fn productset<V: std::clone::Clone + std::hash::Hash + Eq>(
 
 /// Process exit-related bindings
 
-/// `to_exit_code` converts an u8 into an exit code
-#[inline(always)]
-fn to_exit_code(i: &u8) -> std::process::ExitCode {
-    (*i).into()
-}
-
 /// `get_or_exit` is basically an alias to `unwrap`, but as a function instead of a method
 #[inline(always)]
 fn get_or_exit<A: Clone>(a: &Result<A, AlanError>) -> A {
@@ -1049,28 +1043,6 @@ fn get_or_maybe_exit<A: Clone>(a: &Option<A>) -> A {
         Some(v) => v.clone(),
         None => panic!("Expected value did not exist"), // TODO: Better error message somehow?
     }
-}
-
-/// Thread-related functions
-
-/// `wait` is a function that sleeps the current thread for the specified number of milliseconds
-#[inline(always)]
-fn wait(t: &i64) {
-    std::thread::sleep(std::time::Duration::from_millis(*t as u64));
-}
-
-/// Time-related functions
-
-/// `now` is a function that returns std::time::Instant for right now
-#[inline(always)]
-fn now() -> std::time::Instant {
-    std::time::Instant::now()
-}
-
-/// `elapsed` gets the duration since the instant was created TODO: Borrow these values instead
-#[inline(always)]
-fn elapsed(i: &std::time::Instant) -> std::time::Duration {
-    i.elapsed()
 }
 
 /// Uuid-related functions

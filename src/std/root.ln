@@ -830,7 +830,7 @@ export fn reduce{T, U}(t: Tree{T}, i: U, f: (U, Node{T}, i64) -> U) -> U = t.Arr
 export fn find{T}(t: Tree{T}, f: (T) -> bool) -> Maybe{Node{T}} = t.Array.find(f);
 
 /// Process exit-related bindings
-export fn ExitCode "to_exit_code" :: u8 -> ExitCode;
+export fn ExitCode "std::process::ExitCode::from" :: Own{u8} -> ExitCode;
 export fn ExitCode(e: u16) -> ExitCode = ExitCode(e.u8);
 export fn ExitCode(e: u32) -> ExitCode = ExitCode(e.u8);
 export fn ExitCode(e: u64) -> ExitCode = ExitCode(e.u8);
@@ -842,11 +842,13 @@ export fn getOrExit{T} "get_or_exit" :: T! -> T;
 export fn getOrExit{T} "get_or_maybe_exit" :: T? -> T;
 
 /// Thread-related bindings
-export fn wait "wait" :: i64;
+export fn wait (t: i64) = {"std::thread::sleep" :: Own{Duration}}(
+  {"std::time::Duration::from_millis" :: Own{u64} -> Duration}(t.u64)
+);
 
 /// Time-related bindings
-export fn now "now" :: () -> Instant;
-export fn elapsed "elapsed":: Instant -> Duration;
+export fn now "std::time::Instant::now" :: () -> Instant;
+export fn elapsed Method{"elapsed"} :: Instant -> Duration;
 
 /// Uuid-related bindings
 export fn uuid "uuid::Uuid::new_v4" :: () -> uuid;
