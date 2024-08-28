@@ -248,36 +248,6 @@ fn maxi8(a: &i8, b: &i8) -> i8 {
     }
 }
 
-/// `negi8` negates the `i8` provided
-#[inline(always)]
-fn negi8(a: &i8) -> i8 {
-    -(*a)
-}
-
-/// `andi8` performs a bitwise `and`
-#[inline(always)]
-fn andi8(a: &i8, b: &i8) -> i8 {
-    *a & *b
-}
-
-/// `ori8` performs a bitwise `or`
-#[inline(always)]
-fn ori8(a: &i8, b: &i8) -> i8 {
-    *a | *b
-}
-
-/// `xori8` performs a bitwise `xor`
-#[inline(always)]
-fn xori8(a: &i8, b: &i8) -> i8 {
-    *a ^ *b
-}
-
-/// `noti8` performs a bitwise `not`
-#[inline(always)]
-fn noti8(a: &i8) -> i8 {
-    !*a
-}
-
 /// `nandi8` performs a bitwise `nand` (considering how computers are built, why is this not a
 /// built-in operator?)
 #[inline(always)]
@@ -295,42 +265,6 @@ fn nori8(a: &i8, b: &i8) -> i8 {
 #[inline(always)]
 fn xnori8(a: &i8, b: &i8) -> i8 {
     !(*a ^ *b)
-}
-
-/// `eqi8` compares two i8s and returns if they are equal
-#[inline(always)]
-fn eqi8(a: &i8, b: &i8) -> bool {
-    *a == *b
-}
-
-/// `neqi8` compares two i8s and returns if they are not equal
-#[inline(always)]
-fn neqi8(a: &i8, b: &i8) -> bool {
-    *a != *b
-}
-
-/// `lti8` compares two i8s and returns if the first is smaller than the second
-#[inline(always)]
-fn lti8(a: &i8, b: &i8) -> bool {
-    *a < *b
-}
-
-/// `ltei8` compares two i8s and returns if the first is smaller than or equal to the second
-#[inline(always)]
-fn ltei8(a: &i8, b: &i8) -> bool {
-    *a <= *b
-}
-
-/// `gti8` compares two i8s and returns if the first is larger than the second
-#[inline(always)]
-fn gti8(a: &i8, b: &i8) -> bool {
-    *a > *b
-}
-
-/// `gtei8` compares two i8s and returns if the first is larger than or equal to the second
-#[inline(always)]
-fn gtei8(a: &i8, b: &i8) -> bool {
-    *a >= *b
 }
 
 /// `shli8` shifts the bits of the i8 to the left and truncates any overage (a cheap way to
