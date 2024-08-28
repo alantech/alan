@@ -16,6 +16,8 @@ export ctype String; // A string used to define a type. Useful for conditional i
 export ctype Group{G}; // A grouping of type statements `()`. Useful to allow for tuples of tuples
 export ctype Function{I, O}; // A function type, indicating the input and output of the function
 export ctype Call{N, F}; // A reference to a function call (or method, etc) in the platform language
+export ctype Infix{O}; // A reference to a native infix operation in the platform language
+export ctype Prefix{O}; // A reference to a native prefix operation in the platform language
 export ctype Tuple{A, B}; // A tuple of two (or more) types in a single compound type
 export ctype Field{L, V}; // Labeling a type with a property name. Useful to turn tuples into structs
 export ctype Either{A, B}; // An either type, allowing the value to be from *one* of the specified types, kinda like Rust enums
@@ -176,20 +178,20 @@ export fn mod "modi8" :: (i8, i8) -> i8;
 export fn pow "powi8" :: (i8, i8) -> i8;
 export fn min "mini8" :: (i8, i8) -> i8;
 export fn max "maxi8" :: (i8, i8) -> i8;
-export fn neg "negi8" :: i8 -> i8;
-export fn and "andi8" :: (i8, i8) -> i8;
-export fn or "ori8" :: (i8, i8) -> i8;
-export fn xor "xori8" :: (i8, i8) -> i8;
-export fn not "noti8" :: i8 -> i8;
+export fn neg Prefix{"-"} :: i8 -> i8;
+export fn and Infix{"&"} :: (i8, i8) -> i8;
+export fn or Infix{"|"} :: (i8, i8) -> i8;
+export fn xor Infix{"^"} :: (i8, i8) -> i8;
+export fn not Prefix{"!"} :: i8 -> i8;
 export fn nand "nandi8" :: (i8, i8) -> i8;
 export fn nor "nori8" :: (i8, i8) -> i8;
 export fn xnor "xnori8" :: (i8, i8) -> i8;
-export fn eq "eqi8" :: (i8, i8) -> bool;
-export fn neq "neqi8" :: (i8, i8) -> bool;
-export fn lt "lti8" :: (i8, i8) -> bool;
-export fn lte "ltei8" :: (i8, i8) -> bool;
-export fn gt "gti8" :: (i8, i8) -> bool;
-export fn gte "gtei8" :: (i8, i8) -> bool;
+export fn eq Infix{"=="} :: (i8, i8) -> bool;
+export fn neq Infix{"!="} :: (i8, i8) -> bool;
+export fn lt Infix{"<"} :: (i8, i8) -> bool;
+export fn lte Infix{"<="} :: (i8, i8) -> bool;
+export fn gt Infix{">"} :: (i8, i8) -> bool;
+export fn gte Infix{">="} :: (i8, i8) -> bool;
 export fn shl "shli8" :: (i8, i8) -> i8;
 export fn shr "shri8" :: (i8, i8) -> i8;
 export fn wrl "wrli8" :: (i8, i8) -> i8;

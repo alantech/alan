@@ -23,6 +23,8 @@ pub enum CType {
     Group(Box<CType>),
     Function(Box<CType>, Box<CType>),
     Call(Box<CType>, Box<CType>),
+    Infix(Box<CType>),
+    Prefix(Box<CType>),
     Tuple(Vec<CType>),
     Field(String, Box<CType>),
     Either(Vec<CType>),
@@ -113,6 +115,8 @@ impl CType {
                 n.to_strict_string(strict),
                 f.to_strict_string(strict)
             ),
+            CType::Infix(o) => format!("Infix{{{}}}", o.to_strict_string(strict)),
+            CType::Prefix(o) => format!("Prefix{{{}}}", o.to_strict_string(strict)),
             CType::Tuple(ts) => ts
                 .iter()
                 .map(|t| t.to_strict_string(strict))
@@ -313,6 +317,8 @@ impl CType {
                 n.to_functional_string(),
                 f.to_functional_string()
             ),
+            CType::Infix(o) => format!("Infix{{{}}}", o.to_functional_string()),
+            CType::Prefix(o) => format!("Prefix{{{}}}", o.to_functional_string()),
             CType::Tuple(ts) => format!(
                 "Tuple{{{}}}",
                 ts.iter()
@@ -526,6 +532,11 @@ impl CType {
             '0'..='9' => c,
             'a'..='z' => c,
             'A'..='Z' => c,
+            '!'..='/' => ((c as u8) + 32) as char, // Move to A..=O
+            ':'..='@' => ((c as u8) + 22) as char, // Move to P..=W
+            '['..='`' => ((c as u8) + 6) as char,  // Move to a..=g
+            '|' => 'z',
+            '~' => 'y',
             _ => '_',
         })
         .collect::<String>()
@@ -550,6 +561,8 @@ impl CType {
                 CType::Function(Box::new((*i).degroup()), Box::new((*o).degroup()))
             }
             CType::Call(n, f) => CType::Call(Box::new((*n).degroup()), Box::new((*f).degroup())),
+            CType::Infix(o) => CType::Infix(Box::new((*o).degroup())),
+            CType::Prefix(o) => CType::Prefix(Box::new((*o).degroup())),
             CType::Tuple(ts) => {
                 CType::Tuple(ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>())
             }
@@ -726,6 +739,14 @@ impl CType {
                         arg.push(f1);
                         input.push(n2);
                         input.push(f2);
+                    }
+                    (Some(CType::Infix(o1)), Some(CType::Infix(o2))) => {
+                        arg.push(o1);
+                        input.push(o2);
+                    }
+                    (Some(CType::Prefix(o1)), Some(CType::Prefix(o2))) => {
+                        arg.push(o1);
+                        input.push(o2);
                     }
                     (Some(CType::Tuple(ts1)), Some(CType::Tuple(ts2))) => {
                         if ts1.len() != ts2.len() {
@@ -1463,19 +1484,70 @@ impl CType {
                 };
                 // TODO: Add support for generics, methods, generic methods, properties, and
                 // operators
-                fs.push(Function {
-                    name: constructor_fn_name.clone(),
-                    args,
-                    rettype,
-                    microstatements: Vec::new(),
-                    kind: FnKind::Bind(match &**n {
-                        CType::TString(s) => s.clone(),
+                match &**n {
+                    CType::TString(s) => {
+                        fs.push(Function {
+                            name: constructor_fn_name.clone(),
+                            args,
+                            rettype,
+                            microstatements: Vec::new(),
+                            kind: FnKind::Bind(s.clone()),
+                        });
+                    }
+                    CType::Infix(o) => match &**o {
+                        CType::TString(s) => {
+                            if args.len() != 2 {
+                                CType::fail("Native infix operators may only be bound with two input arguments");
+                            }
+                            fs.push(Function {
+                                name: constructor_fn_name.clone(),
+                                args: args.clone(),
+                                rettype: rettype.clone(),
+                                microstatements: vec![Microstatement::Return {
+                                    value: Some(Box::new(Microstatement::Value {
+                                        typen: rettype,
+                                        representation: format!(
+                                            "({} {} {})",
+                                            args[0].0, s, args[1].0
+                                        ),
+                                    })),
+                                }],
+                                kind: FnKind::Normal,
+                            });
+                        }
                         otherwise => CType::fail(&format!(
-                            "Unsupported native function declaration {:?}",
+                            "Unsupported native operator declaration {:?}",
                             otherwise
                         )),
-                    }),
-                });
+                    },
+                    CType::Prefix(o) => match &**o {
+                        CType::TString(s) => {
+                            if args.len() != 1 {
+                                CType::fail("Native prefix operators may only be bound with two input arguments");
+                            }
+                            fs.push(Function {
+                                name: constructor_fn_name.clone(),
+                                args: args.clone(),
+                                rettype: rettype.clone(),
+                                microstatements: vec![Microstatement::Return {
+                                    value: Some(Box::new(Microstatement::Value {
+                                        typen: rettype,
+                                        representation: format!("({} {})", s, args[0].0),
+                                    })),
+                                }],
+                                kind: FnKind::Normal,
+                            });
+                        }
+                        otherwise => CType::fail(&format!(
+                            "Unsupported native operator declaration {:?}",
+                            otherwise
+                        )),
+                    },
+                    otherwise => CType::fail(&format!(
+                        "Unsupported native function declaration {:?}",
+                        otherwise
+                    )),
+                }
             }
             CType::Type(n, _) => {
                 // This is just an alias
@@ -2109,6 +2181,8 @@ impl CType {
                 Box::new(n.swap_subtype(old_type, new_type)),
                 Box::new(f.swap_subtype(old_type, new_type)),
             ),
+            CType::Infix(o) => CType::Infix(Box::new(o.swap_subtype(old_type, new_type))),
+            CType::Prefix(o) => CType::Prefix(Box::new(o.swap_subtype(old_type, new_type))),
             CType::Tuple(ts) => CType::Tuple(
                 ts.iter()
                     .map(|t| t.swap_subtype(old_type, new_type))
@@ -3391,6 +3465,8 @@ pub fn typebaselist_to_ctype(
                                             Box::new(args[0].clone()),
                                             Box::new(args[1].clone()),
                                         ),
+                                        "Infix" => CType::Infix(Box::new(args[0].clone())),
+                                        "Prefix" => CType::Prefix(Box::new(args[0].clone())),
                                         "Tuple" => CType::tuple(args.clone()),
                                         "Field" => CType::field(args.clone()),
                                         "Either" => CType::either(args.clone()),

@@ -93,7 +93,7 @@ impl<'a> Scope<'a> {
                             // to construct their own types.
                             match c.name.as_str() {
                                 "Type" | "Generic" | "Int" | "Float" | "Bool" | "String" => { /* Do nothing for the 'structural' types */ }
-                                g @ ("Group" | "Array" | "Fail" | "Neg" | "Len" | "Size" | "FileStr"
+                                g @ ("Group" | "Infix" | "Prefix" | "Array" | "Fail" | "Neg" | "Len" | "Size" | "FileStr"
                                 | "Env" | "EnvExists" | "Not") => s = CType::from_generic(s, g, 1),
                                 g @ ("Function" | "Call" | "Field" | "Prop" | "Buffer" | "Add"
                                 | "Sub" | "Mul" | "Div" | "Mod" | "Pow" | "Min" | "Max" | "If" | "And" | "Or"
