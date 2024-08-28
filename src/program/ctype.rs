@@ -1860,7 +1860,7 @@ impl CType {
                                         s,
                                         arg_cdr
                                             .into_iter()
-                                            .map(|a| format!("{}", a.0))
+                                            .map(|a| a.0.clone())
                                             .collect::<Vec<String>>()
                                             .join(", ")
                                     ),
