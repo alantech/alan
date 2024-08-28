@@ -1482,8 +1482,7 @@ impl CType {
                     CType::Field(n, f) => (vec![(n.clone(), *f.clone())], CType::Void),
                     otherwise => (vec![("arg0".to_string(), otherwise.clone())], CType::Void),
                 };
-                // TODO: Add support for generics, methods, generic methods, properties, and
-                // operators
+                // TODO: Add support for generics, methods, generic methods, and properties
                 match &**n {
                     CType::TString(s) => {
                         fs.push(Function {
