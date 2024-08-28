@@ -18,6 +18,8 @@ export ctype Function{I, O}; // A function type, indicating the input and output
 export ctype Call{N, F}; // A reference to a function call (or method, etc) in the platform language
 export ctype Infix{O}; // A reference to a native infix operation in the platform language
 export ctype Prefix{O}; // A reference to a native prefix operation in the platform language
+export ctype Method{F}; // A reference to a native method in the platform language
+export ctype Cast{T}; // A reference to a native type in the platform language to cast to
 export ctype Tuple{A, B}; // A tuple of two (or more) types in a single compound type
 export ctype Field{L, V}; // Labeling a type with a property name. Useful to turn tuples into structs
 export ctype Either{A, B}; // An either type, allowing the value to be from *one* of the specified types, kinda like Rust enums
@@ -158,44 +160,75 @@ export fn Error{T} "fallible_error" :: string -> T!;
 export fn Error "bare_error" :: string -> Error;
 export fn exists{T} "maybe_exists" :: T? -> bool;
 
+/// Boolean related bindings
+export fn bool "i8tobool" :: i8 -> bool;
+export fn bool "i16tobool" :: i16 -> bool;
+export fn bool "i32tobool" :: i32 -> bool;
+export fn bool "i64tobool" :: i64 -> bool;
+export fn bool "u8tobool" :: u8 -> bool;
+export fn bool "u16tobool" :: u16 -> bool;
+export fn bool "u32tobool" :: u32 -> bool;
+export fn bool "u64tobool" :: u64 -> bool;
+export fn bool "f32tobool" :: f32 -> bool;
+export fn bool "f64tobool" :: f64 -> bool;
+export fn bool "stringtobool" :: string -> bool;
+export fn bool(b: bool) -> bool = b;
+export fn and "andbool" :: (bool, bool) -> bool;
+export fn or "orbool" :: (bool, bool) -> bool;
+export fn xor "xorbool" :: (bool, bool) -> bool;
+export fn not "notbool" :: bool -> bool;
+export fn nand "nandbool" :: (bool, bool) -> bool;
+export fn nor "norbool" :: (bool, bool) -> bool;
+export fn xnor "xnorbool" :: (bool, bool) -> bool;
+export fn eq "eqbool" :: (bool, bool) -> bool;
+export fn neq "neqbool" :: (bool, bool) -> bool;
+export fn if{T} "ifbool" :: (bool, () -> T, () -> T) -> T;
+export fn if{T}(c: bool, t: () -> T) -> Maybe{T} = if(c, fn () -> Maybe{T} = Maybe{T}(t()), fn () -> Maybe{T} = Maybe{T}());
+export fn if{T}(c: bool, t: T, f: T) -> T = if(c, fn () -> T = t, fn () -> T = f);
+export fn if{T}(c: bool, t: T) -> Maybe{T} = if(c, fn () -> Maybe{T} = Maybe{T}(t), fn () -> Maybe{T} = Maybe{T}());
+
 /// Signed Integer-related functions and function bindings
 export fn i8(i: i8) -> i8 = i;
-export fn i8 "i16toi8" :: i16 -> i8;
-export fn i8 "i32toi8" :: i32 -> i8;
-export fn i8 "i64toi8" :: i64 -> i8;
-export fn i8 "u8toi8" :: u8 -> i8;
-export fn i8 "u16toi8" :: u16 -> i8;
-export fn i8 "u32toi8" :: u32 -> i8;
-export fn i8 "u64toi8" :: u64 -> i8;
-export fn i8 "f32toi8" :: f32 -> i8;
-export fn i8 "f64toi8" :: f64 -> i8;
+export fn i8 Cast{"i8"} :: i16 -> i8;
+export fn i8 Cast{"i8"} :: i32 -> i8;
+export fn i8 Cast{"i8"} :: i64 -> i8;
+export fn i8 Cast{"i8"} :: u8 -> i8;
+export fn i8 Cast{"i8"} :: u16 -> i8;
+export fn i8 Cast{"i8"} :: u32 -> i8;
+export fn i8 Cast{"i8"} :: u64 -> i8;
+export fn i8 Cast{"i8"} :: f32 -> i8;
+export fn i8 Cast{"i8"} :: f64 -> i8;
 export fn i8 "stringtoi8" :: string -> i8!;
-export fn add "addi8" :: (i8, i8) -> i8;
-export fn sub "subi8" :: (i8, i8) -> i8;
-export fn mul "muli8" :: (i8, i8) -> i8;
-export fn div "divi8" :: (i8, i8) -> i8;
-export fn mod "modi8" :: (i8, i8) -> i8;
-export fn pow "powi8" :: (i8, i8) -> i8;
-export fn min "mini8" :: (i8, i8) -> i8;
-export fn max "maxi8" :: (i8, i8) -> i8;
+export fn add Method{"wrapping_add"} :: (i8, i8) -> i8;
+export fn sub Method{"wrapping_sub"} :: (i8, i8) -> i8;
+export fn mul Method{"wrapping_mul"} :: (i8, i8) -> i8;
+export fn div Method{"wrapping_div"} :: (i8, i8) -> i8;
+export fn mod Method{"wrapping_rem"} :: (i8, i8) -> i8;
+export fn pow (a: i8, b: i8) -> i8 = {Method{"wrapping_pow"} :: (i8, u32) -> i8}(a, {Cast{"u32"} :: i8 -> u32}(b));
 export fn neg Prefix{"-"} :: i8 -> i8;
 export fn and Infix{"&"} :: (i8, i8) -> i8;
 export fn or Infix{"|"} :: (i8, i8) -> i8;
 export fn xor Infix{"^"} :: (i8, i8) -> i8;
 export fn not Prefix{"!"} :: i8 -> i8;
-export fn nand "nandi8" :: (i8, i8) -> i8;
-export fn nor "nori8" :: (i8, i8) -> i8;
-export fn xnor "xnori8" :: (i8, i8) -> i8;
+export fn nand (a: i8, b: i8) -> i8 = a.and(b).not;
+//export fn nand "nandi8" :: (i8, i8) -> i8;
+export fn nor (a: i8, b: i8) -> i8 = a.or(b).not;
+//export fn nor "nori8" :: (i8, i8) -> i8;
+export fn xnor (a: i8, b: i8) -> i8 = a.xor(b).not;
+//export fn xnor "xnori8" :: (i8, i8) -> i8;
 export fn eq Infix{"=="} :: (i8, i8) -> bool;
 export fn neq Infix{"!="} :: (i8, i8) -> bool;
 export fn lt Infix{"<"} :: (i8, i8) -> bool;
 export fn lte Infix{"<="} :: (i8, i8) -> bool;
 export fn gt Infix{">"} :: (i8, i8) -> bool;
 export fn gte Infix{">="} :: (i8, i8) -> bool;
-export fn shl "shli8" :: (i8, i8) -> i8;
-export fn shr "shri8" :: (i8, i8) -> i8;
-export fn wrl "wrli8" :: (i8, i8) -> i8;
-export fn wrr "wrri8" :: (i8, i8) -> i8;
+export fn min (a: i8, b: i8) -> i8 = if(a.lte(b), a, b);
+export fn max (a: i8, b: i8) -> i8 = if(a.gte(b), a, b);
+// TODO: Move the casting functions to the top so they can be used here?
+export fn shl (a: i8, b: i8) -> i8 = {Method{"wrapping_shl"} :: (i8, u32) -> i8}(a, {Cast{"u32"} :: i8 -> u32}(b));
+export fn shr (a: i8, b: i8) -> i8 = {Method{"wrapping_shr"} :: (i8, u32) -> i8}(a, {Cast{"u32"} :: i8 -> u32}(b));
+export fn wrl (a: i8, b: i8) -> i8 = {Method{"rotate_left"} :: (i8, u32) -> i8}(a, {Cast{"u32"} :: i8 -> u32}(b));
+export fn wrr (a: i8, b: i8) -> i8 = {Method{"rotate_right"} :: (i8, u32) -> i8}(a, {Cast{"u32"} :: i8 -> u32}(b));
 
 export fn i16 "i8toi16" :: i8 -> i16;
 export fn i16(i: i16) -> i16 = i;
@@ -547,33 +580,6 @@ export fn gte "gtestring" :: (string, string) -> bool;
 export fn join "joinstring" :: (string[], string) -> string;
 // TODO: There's something odd with the Buffer symbolic syntax that needs fixing
 export fn join{S}(a: Buffer{string, S}, s: string) -> string = {"bufferjoinstring" :: (Buffer{string, S}, string) -> string}(a, s);
-
-/// Boolean related bindings
-export fn bool "i8tobool" :: i8 -> bool;
-export fn bool "i16tobool" :: i16 -> bool;
-export fn bool "i32tobool" :: i32 -> bool;
-export fn bool "i64tobool" :: i64 -> bool;
-export fn bool "u8tobool" :: u8 -> bool;
-export fn bool "u16tobool" :: u16 -> bool;
-export fn bool "u32tobool" :: u32 -> bool;
-export fn bool "u64tobool" :: u64 -> bool;
-export fn bool "f32tobool" :: f32 -> bool;
-export fn bool "f64tobool" :: f64 -> bool;
-export fn bool "stringtobool" :: string -> bool;
-export fn bool(b: bool) -> bool = b;
-export fn and "andbool" :: (bool, bool) -> bool;
-export fn or "orbool" :: (bool, bool) -> bool;
-export fn xor "xorbool" :: (bool, bool) -> bool;
-export fn not "notbool" :: bool -> bool;
-export fn nand "nandbool" :: (bool, bool) -> bool;
-export fn nor "norbool" :: (bool, bool) -> bool;
-export fn xnor "xnorbool" :: (bool, bool) -> bool;
-export fn eq "eqbool" :: (bool, bool) -> bool;
-export fn neq "neqbool" :: (bool, bool) -> bool;
-export fn if{T} "ifbool" :: (bool, () -> T, () -> T) -> T;
-export fn if{T}(c: bool, t: () -> T) -> Maybe{T} = if(c, fn () -> Maybe{T} = Maybe{T}(t()), fn () -> Maybe{T} = Maybe{T}());
-export fn if{T}(c: bool, t: T, f: T) -> T = if(c, fn () -> T = t, fn () -> T = f);
-export fn if{T}(c: bool, t: T) -> Maybe{T} = if(c, fn () -> Maybe{T} = Maybe{T}(t), fn () -> Maybe{T} = Maybe{T}());
 
 /// Array related bindings
 export fn get{T} "getarray" :: (T[], i64) -> T?;
