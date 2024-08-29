@@ -29,6 +29,7 @@ pub enum CType {
     Cast(Box<CType>),
     Own(Box<CType>),
     Deref(Box<CType>),
+    Mut(Box<CType>),
     Tuple(Vec<CType>),
     Field(String, Box<CType>),
     Either(Vec<CType>),
@@ -125,6 +126,7 @@ impl CType {
             CType::Cast(t) => format!("Cast{{{}}}", t.to_strict_string(strict)),
             CType::Own(t) => format!("Own{{{}}}", t.to_strict_string(strict)),
             CType::Deref(t) => format!("Deref{{{}}}", t.to_strict_string(strict)),
+            CType::Mut(t) => format!("Mut{{{}}}", t.to_strict_string(strict)),
             CType::Tuple(ts) => ts
                 .iter()
                 .map(|t| t.to_strict_string(strict))
@@ -331,6 +333,7 @@ impl CType {
             CType::Cast(t) => format!("Cast{{{}}}", t.to_functional_string()),
             CType::Own(t) => format!("Own{{{}}}", t.to_functional_string()),
             CType::Deref(t) => format!("Deref{{{}}}", t.to_functional_string()),
+            CType::Mut(t) => format!("Mut{{{}}}", t.to_functional_string()),
             CType::Tuple(ts) => format!(
                 "Tuple{{{}}}",
                 ts.iter()
@@ -579,6 +582,7 @@ impl CType {
             CType::Cast(t) => CType::Cast(Box::new((*t).degroup())),
             CType::Own(t) => CType::Own(Box::new((*t).degroup())),
             CType::Deref(t) => CType::Deref(Box::new((*t).degroup())),
+            CType::Mut(t) => CType::Mut(Box::new((*t).degroup())),
             CType::Tuple(ts) => {
                 CType::Tuple(ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>())
             }
@@ -777,6 +781,10 @@ impl CType {
                         input.push(t2);
                     }
                     (Some(CType::Deref(t1)), Some(CType::Deref(t2))) => {
+                        arg.push(t1);
+                        input.push(t2);
+                    }
+                    (Some(CType::Mut(t1)), Some(CType::Mut(t2))) => {
                         arg.push(t1);
                         input.push(t2);
                     }
@@ -1482,6 +1490,7 @@ impl CType {
                     Ref,
                     Own,
                     Deref,
+                    Mut,
                 }
                 let (args, arg_kinds, rettype) = match &f.degroup() {
                     CType::Function(i, o) => match &**i {
@@ -1499,6 +1508,10 @@ impl CType {
                                             arg_kinds.push(ArgKinds::Deref);
                                             args.push((n.clone(), *t.clone()));
                                         }
+                                        CType::Mut(t) => {
+                                            arg_kinds.push(ArgKinds::Mut);
+                                            args.push((n.clone(), *t.clone()));
+                                        }
                                         otherwise => {
                                             arg_kinds.push(ArgKinds::Ref);
                                             args.push((n.clone(), otherwise.clone()));
@@ -1510,6 +1523,10 @@ impl CType {
                                     }
                                     CType::Deref(t) => {
                                         arg_kinds.push(ArgKinds::Deref);
+                                        args.push((format!("arg{}", i), *t.clone()));
+                                    }
+                                    CType::Mut(t) => {
+                                        arg_kinds.push(ArgKinds::Mut);
                                         args.push((format!("arg{}", i), *t.clone()));
                                     }
                                     otherwise => {
@@ -1531,6 +1548,11 @@ impl CType {
                                 vec![ArgKinds::Deref],
                                 *o.clone(),
                             ),
+                            CType::Mut(t) => (
+                                vec![(n.clone(), *t.clone())],
+                                vec![ArgKinds::Mut],
+                                *o.clone(),
+                            ),
                             otherwise => (
                                 vec![(n.clone(), otherwise.clone())],
                                 vec![ArgKinds::Ref],
@@ -1546,6 +1568,11 @@ impl CType {
                         CType::Deref(t) => (
                             vec![("arg0".to_string(), *t.clone())],
                             vec![ArgKinds::Deref],
+                            *o.clone(),
+                        ),
+                        CType::Mut(t) => (
+                            vec![("arg0".to_string(), *t.clone())],
+                            vec![ArgKinds::Mut],
                             *o.clone(),
                         ),
                         otherwise => (
@@ -1568,6 +1595,10 @@ impl CType {
                                         arg_kinds.push(ArgKinds::Deref);
                                         args.push((n.clone(), *t.clone()));
                                     }
+                                    CType::Mut(t) => {
+                                        arg_kinds.push(ArgKinds::Mut);
+                                        args.push((n.clone(), *t.clone()));
+                                    }
                                     otherwise => {
                                         arg_kinds.push(ArgKinds::Ref);
                                         args.push((n.clone(), otherwise.clone()));
@@ -1579,6 +1610,10 @@ impl CType {
                                 }
                                 CType::Deref(t) => {
                                     arg_kinds.push(ArgKinds::Deref);
+                                    args.push((format!("arg{}", i), *t.clone()));
+                                }
+                                CType::Mut(t) => {
+                                    arg_kinds.push(ArgKinds::Mut);
                                     args.push((format!("arg{}", i), *t.clone()));
                                 }
                                 otherwise => {
@@ -1600,6 +1635,11 @@ impl CType {
                             vec![ArgKinds::Deref],
                             CType::Void,
                         ),
+                        CType::Mut(t) => (
+                            vec![(n.clone(), *t.clone())],
+                            vec![ArgKinds::Mut],
+                            CType::Void,
+                        ),
                         otherwise => (
                             vec![(n.clone(), otherwise.clone())],
                             vec![ArgKinds::Ref],
@@ -1617,6 +1657,11 @@ impl CType {
                         vec![ArgKinds::Deref],
                         CType::Void,
                     ),
+                    CType::Mut(t) => (
+                        vec![("arg0".to_string(), *t.clone())],
+                        vec![ArgKinds::Mut],
+                        CType::Void,
+                    ),
                     otherwise => (
                         vec![("arg0".to_string(), otherwise.clone())],
                         vec![ArgKinds::Ref],
@@ -1626,7 +1671,17 @@ impl CType {
                 // TODO: Add support for generics, generic methods, and properties
                 match &**n {
                     CType::TString(s) => {
-                        if !arg_kinds.iter().all(|k| matches!(k, ArgKinds::Ref)) {
+                        if (!arg_kinds.iter().all(|k| matches!(k, ArgKinds::Ref)))
+                            || args.iter().any(|a| {
+                                matches!(
+                                    a.1,
+                                    CType::Int(_)
+                                        | CType::Float(_)
+                                        | CType::Bool(_)
+                                        | CType::TString(_)
+                                )
+                            })
+                        {
                             // We need to create a wrapper function to give the native function an
                             // owned value
                             let mut microstatements = Vec::new();
@@ -1652,6 +1707,16 @@ impl CType {
                                             }),
                                         })
                                     }
+                                    ArgKinds::Mut => {
+                                        microstatements.push(Microstatement::Assignment {
+                                            mutable: true, // TODO: Determine this correctly
+                                            name: args[i].0.clone(),
+                                            value: Box::new(Microstatement::Value {
+                                                typen: args[i].1.clone(),
+                                                representation: format!("&mut {}", args[i].0),
+                                            }),
+                                        })
+                                    }
                                     ArgKinds::Ref => {}
                                 }
                             }
@@ -1662,7 +1727,20 @@ impl CType {
                                         "{}({})",
                                         s,
                                         args.iter()
-                                            .map(|a| a.0.clone())
+                                            .map(|a| {
+                                                match &a.1 {
+                                                    CType::Int(i) => format!("{}", i),
+                                                    CType::Float(f) => format!("{}", f),
+                                                    CType::Bool(b) => match b {
+                                                        true => "true".to_string(),
+                                                        false => "false".to_string(),
+                                                    },
+                                                    CType::TString(s) => {
+                                                        format!("\"{}\"", s.replace("\"", "\\\""))
+                                                    }
+                                                    _ => a.0.clone(),
+                                                }
+                                            })
                                             .collect::<Vec<String>>()
                                             .join(", ")
                                     ),
@@ -1670,7 +1748,18 @@ impl CType {
                             });
                             fs.push(Function {
                                 name: constructor_fn_name.clone(),
-                                args,
+                                args: args
+                                    .into_iter()
+                                    .filter(|a| {
+                                        !matches!(
+                                            &a.1,
+                                            CType::Int(_)
+                                                | CType::Float(_)
+                                                | CType::Bool(_)
+                                                | CType::TString(_)
+                                        )
+                                    })
+                                    .collect::<Vec<(String, CType)>>(),
                                 rettype,
                                 microstatements,
                                 kind: FnKind::Normal,
@@ -1717,6 +1806,16 @@ impl CType {
                                                 }),
                                             })
                                         }
+                                        ArgKinds::Mut => {
+                                            microstatements.push(Microstatement::Assignment {
+                                                mutable: true, // TODO: Determine this correctly
+                                                name: args[i].0.clone(),
+                                                value: Box::new(Microstatement::Value {
+                                                    typen: args[i].1.clone(),
+                                                    representation: format!("&mut {}", args[i].0),
+                                                }),
+                                            })
+                                        }
                                         ArgKinds::Ref => {}
                                     }
                                 }
@@ -1725,13 +1824,48 @@ impl CType {
                                         typen: rettype.clone(),
                                         representation: format!(
                                             "({} {} {})",
-                                            args[0].0, s, args[1].0
+                                            match &args[0].1 {
+                                                CType::Int(i) => format!("{}", i),
+                                                CType::Float(f) => format!("{}", f),
+                                                CType::Bool(b) => match b {
+                                                    true => "true".to_string(),
+                                                    false => "false".to_string(),
+                                                },
+                                                CType::TString(s) => {
+                                                    format!("\"{}\"", s.replace("\"", "\\\""))
+                                                }
+                                                _ => args[0].0.clone(),
+                                            },
+                                            s,
+                                            match &args[1].1 {
+                                                CType::Int(i) => format!("{}", i),
+                                                CType::Float(f) => format!("{}", f),
+                                                CType::Bool(b) => match b {
+                                                    true => "true".to_string(),
+                                                    false => "false".to_string(),
+                                                },
+                                                CType::TString(s) => {
+                                                    format!("\"{}\"", s.replace("\"", "\\\""))
+                                                }
+                                                _ => args[1].0.clone(),
+                                            },
                                         ),
                                     })),
                                 });
                                 fs.push(Function {
                                     name: constructor_fn_name.clone(),
-                                    args,
+                                    args: args
+                                        .into_iter()
+                                        .filter(|a| {
+                                            !matches!(
+                                                &a.1,
+                                                CType::Int(_)
+                                                    | CType::Float(_)
+                                                    | CType::Bool(_)
+                                                    | CType::TString(_)
+                                            )
+                                        })
+                                        .collect::<Vec<(String, CType)>>(),
                                     rettype,
                                     microstatements,
                                     kind: FnKind::Normal,
@@ -1742,13 +1876,48 @@ impl CType {
                                         typen: rettype.clone(),
                                         representation: format!(
                                             "({} {} {})",
-                                            args[0].0, s, args[1].0
+                                            match &args[0].1 {
+                                                CType::Int(i) => format!("{}", i),
+                                                CType::Float(f) => format!("{}", f),
+                                                CType::Bool(b) => match b {
+                                                    true => "true".to_string(),
+                                                    false => "false".to_string(),
+                                                },
+                                                CType::TString(s) => {
+                                                    format!("\"{}\"", s.replace("\"", "\\\""))
+                                                }
+                                                _ => args[0].0.clone(),
+                                            },
+                                            s,
+                                            match &args[1].1 {
+                                                CType::Int(i) => format!("{}", i),
+                                                CType::Float(f) => format!("{}", f),
+                                                CType::Bool(b) => match b {
+                                                    true => "true".to_string(),
+                                                    false => "false".to_string(),
+                                                },
+                                                CType::TString(s) => {
+                                                    format!("\"{}\"", s.replace("\"", "\\\""))
+                                                }
+                                                _ => args[1].0.clone(),
+                                            },
                                         ),
                                     })),
                                 }];
                                 fs.push(Function {
                                     name: constructor_fn_name.clone(),
-                                    args,
+                                    args: args
+                                        .into_iter()
+                                        .filter(|a| {
+                                            !matches!(
+                                                &a.1,
+                                                CType::Int(_)
+                                                    | CType::Float(_)
+                                                    | CType::Bool(_)
+                                                    | CType::TString(_)
+                                            )
+                                        })
+                                        .collect::<Vec<(String, CType)>>(),
                                     rettype,
                                     microstatements,
                                     kind: FnKind::Normal,
@@ -1799,16 +1968,57 @@ impl CType {
                                         kind: FnKind::Normal,
                                     });
                                 }
-                                ArgKinds::Ref => {
+                                ArgKinds::Mut => {
                                     let microstatements = vec![Microstatement::Return {
                                         value: Some(Box::new(Microstatement::Value {
                                             typen: rettype.clone(),
-                                            representation: format!("({} {})", s, args[0].0),
+                                            representation: format!("({} &mut {})", s, args[0].0),
                                         })),
                                     }];
                                     fs.push(Function {
                                         name: constructor_fn_name.clone(),
                                         args,
+                                        rettype,
+                                        microstatements,
+                                        kind: FnKind::Normal,
+                                    });
+                                }
+                                ArgKinds::Ref => {
+                                    let microstatements = vec![Microstatement::Return {
+                                        value: Some(Box::new(Microstatement::Value {
+                                            typen: rettype.clone(),
+                                            representation: format!(
+                                                "({} {})",
+                                                s,
+                                                match &args[0].1 {
+                                                    CType::Int(i) => format!("{}", i),
+                                                    CType::Float(f) => format!("{}", f),
+                                                    CType::Bool(b) => match b {
+                                                        true => "true".to_string(),
+                                                        false => "false".to_string(),
+                                                    },
+                                                    CType::TString(s) => {
+                                                        format!("\"{}\"", s.replace("\"", "\\\""))
+                                                    }
+                                                    _ => args[0].0.clone(),
+                                                },
+                                            ),
+                                        })),
+                                    }];
+                                    fs.push(Function {
+                                        name: constructor_fn_name.clone(),
+                                        args: args
+                                            .into_iter()
+                                            .filter(|a| {
+                                                !matches!(
+                                                    &a.1,
+                                                    CType::Int(_)
+                                                        | CType::Float(_)
+                                                        | CType::Bool(_)
+                                                        | CType::TString(_)
+                                                )
+                                            })
+                                            .collect::<Vec<(String, CType)>>(),
                                         rettype,
                                         microstatements,
                                         kind: FnKind::Normal,
@@ -1848,6 +2058,16 @@ impl CType {
                                             }),
                                         })
                                     }
+                                    ArgKinds::Mut => {
+                                        microstatements.push(Microstatement::Assignment {
+                                            mutable: true, // TODO: Determine this correctly
+                                            name: args[i].0.clone(),
+                                            value: Box::new(Microstatement::Value {
+                                                typen: args[i].1.clone(),
+                                                representation: format!("&mut {}", args[i].0),
+                                            }),
+                                        })
+                                    }
                                     ArgKinds::Ref => {}
                                 }
                             }
@@ -1856,11 +2076,35 @@ impl CType {
                                     typen: rettype.clone(),
                                     representation: format!(
                                         "{}.{}({})",
-                                        arg_car.0,
+                                        //arg_car.0,
+                                        match &arg_car.1 {
+                                            CType::Int(i) => format!("{}", i),
+                                            CType::Float(f) => format!("{}", f),
+                                            CType::Bool(b) => match b {
+                                                true => "true".to_string(),
+                                                false => "false".to_string(),
+                                            },
+                                            CType::TString(s) => {
+                                                format!("\"{}\"", s.replace("\"", "\\\""))
+                                            }
+                                            _ => arg_car.0.clone(),
+                                        },
                                         s,
                                         arg_cdr
                                             .into_iter()
-                                            .map(|a| a.0.clone())
+                                            //.map(|a| a.0.clone())
+                                            .map(|a| match &a.1 {
+                                                CType::Int(i) => format!("{}", i),
+                                                CType::Float(f) => format!("{}", f),
+                                                CType::Bool(b) => match b {
+                                                    true => "true".to_string(),
+                                                    false => "false".to_string(),
+                                                },
+                                                CType::TString(s) => {
+                                                    format!("\"{}\"", s.replace("\"", "\\\""))
+                                                }
+                                                _ => a.0.clone(),
+                                            })
                                             .collect::<Vec<String>>()
                                             .join(", ")
                                     ),
@@ -1868,7 +2112,18 @@ impl CType {
                             });
                             fs.push(Function {
                                 name: constructor_fn_name.clone(),
-                                args,
+                                args: args
+                                    .into_iter()
+                                    .filter(|a| {
+                                        !matches!(
+                                            &a.1,
+                                            CType::Int(_)
+                                                | CType::Float(_)
+                                                | CType::Bool(_)
+                                                | CType::TString(_)
+                                        )
+                                    })
+                                    .collect::<Vec<(String, CType)>>(),
                                 rettype,
                                 microstatements,
                                 kind: FnKind::Normal,
@@ -1906,17 +2161,54 @@ impl CType {
                                         }),
                                     })
                                 }
+                                ArgKinds::Mut => {
+                                    microstatements.push(Microstatement::Assignment {
+                                        mutable: true, // TODO: Determine this correctly
+                                        name: args[0].0.clone(),
+                                        value: Box::new(Microstatement::Value {
+                                            typen: args[0].1.clone(),
+                                            representation: format!("&mut {}", args[0].0),
+                                        }),
+                                    })
+                                }
                                 ArgKinds::Ref => {}
                             }
                             microstatements.push(Microstatement::Return {
                                 value: Some(Box::new(Microstatement::Value {
                                     typen: rettype.clone(),
-                                    representation: format!("({} as {})", args[0].0, s),
+                                    representation: format!(
+                                        "({} as {})",
+                                        //args[0].0,
+                                        match &args[0].1 {
+                                            CType::Int(i) => format!("{}", i),
+                                            CType::Float(f) => format!("{}", f),
+                                            CType::Bool(b) => match b {
+                                                true => "true".to_string(),
+                                                false => "false".to_string(),
+                                            },
+                                            CType::TString(s) => {
+                                                format!("\"{}\"", s.replace("\"", "\\\""))
+                                            }
+                                            _ => args[0].0.clone(),
+                                        },
+                                        s
+                                    ),
                                 })),
                             });
                             fs.push(Function {
                                 name: constructor_fn_name.clone(),
-                                args,
+                                args: args
+                                    .into_iter()
+                                    .filter(|a| {
+                                        !matches!(
+                                            &a.1,
+                                            CType::Int(_)
+                                                | CType::Float(_)
+                                                | CType::Bool(_)
+                                                | CType::TString(_)
+                                        )
+                                    })
+                                    .collect::<Vec<(String, CType)>>(),
                                 rettype,
                                 microstatements,
                                 kind: FnKind::Normal,
@@ -2571,6 +2863,7 @@ impl CType {
             CType::Cast(t) => CType::Cast(Box::new(t.swap_subtype(old_type, new_type))),
             CType::Own(t) => CType::Own(Box::new(t.swap_subtype(old_type, new_type))),
             CType::Deref(t) => CType::Deref(Box::new(t.swap_subtype(old_type, new_type))),
+            CType::Mut(t) => CType::Mut(Box::new(t.swap_subtype(old_type, new_type))),
             CType::Tuple(ts) => CType::Tuple(
                 ts.iter()
                     .map(|t| t.swap_subtype(old_type, new_type))
@@ -3859,6 +4152,7 @@ pub fn typebaselist_to_ctype(
                                         "Cast" => CType::Cast(Box::new(args[0].clone())),
                                         "Own" => CType::Own(Box::new(args[0].clone())),
                                         "Deref" => CType::Deref(Box::new(args[0].clone())),
+                                        "Mut" => CType::Mut(Box::new(args[0].clone())),
                                         "Tuple" => CType::tuple(args.clone()),
                                         "Field" => CType::field(args.clone()),
                                         "Either" => CType::either(args.clone()),

@@ -92,15 +92,22 @@ impl<'a> Scope<'a> {
                             // (from the root scope) and can't be hidden, as all code will need these
                             // to construct their own types.
                             match c.name.as_str() {
-                                "Type" | "Generic" | "Int" | "Float" | "Bool" | "String" => { /* Do nothing for the 'structural' types */ }
-                                g @ ("Group" | "Infix" | "Prefix" | "Method" | "Cast" | "Own" | "Deref"
-                                | "Array" | "Fail" | "Neg" | "Len" | "Size" | "FileStr"
-                                | "Env" | "EnvExists" | "Not") => s = CType::from_generic(s, g, 1),
+                                "Type" | "Generic" | "Int" | "Float" | "Bool" | "String" => {
+                                    /* Do nothing for the 'structural' types */
+                                }
+                                g @ ("Group" | "Infix" | "Prefix" | "Method" | "Cast" | "Own"
+                                | "Deref" | "Mut" | "Array" | "Fail" | "Neg" | "Len" | "Size"
+                                | "FileStr" | "Env" | "EnvExists" | "Not") => {
+                                    s = CType::from_generic(s, g, 1)
+                                }
                                 g @ ("Function" | "Call" | "Field" | "Prop" | "Buffer" | "Add"
-                                | "Sub" | "Mul" | "Div" | "Mod" | "Pow" | "Min" | "Max" | "If" | "And" | "Or"
-                                | "Xor" | "Nand" | "Nor" | "Xnor" | "Eq" | "Neq" | "Lt" | "Lte"
-                                | "Gt" | "Gte") => s = CType::from_generic(s, g, 2),
-                                g @ ("Binds" | "Tuple" | "Either" | "AnyOf") => s = CType::from_generic(s, g, 0), // Not kosher in Rust land, but 0 means "as many as we want"
+                                | "Sub" | "Mul" | "Div" | "Mod" | "Pow" | "Min" | "Max" | "If"
+                                | "And" | "Or" | "Xor" | "Nand" | "Nor" | "Xnor" | "Eq" | "Neq"
+                                | "Lt" | "Lte" | "Gt" | "Gte") => s = CType::from_generic(s, g, 2),
+                                g @ ("Binds" | "Tuple" | "Either" | "AnyOf") => {
+                                    // Not kosher in Rust land, but 0 means "as many as we want"
+                                    s = CType::from_generic(s, g, 0)
+                                }
                                 // TODO: Also add support for three arg `If` and `Env` with a
                                 // default property via overloading types
                                 unknown => {

@@ -43,12 +43,6 @@ impl From<String> for AlanError {
 
 /// Functions for (potentially) every type
 
-/// `clone` clones the input type
-#[inline(always)]
-fn clone<T: std::clone::Clone>(v: &T) -> T {
-    v.clone()
-}
-
 /// `hash` hashes the input type
 #[inline(always)]
 fn hash<T>(v: &T) -> i64 {
@@ -118,12 +112,6 @@ fn fallible_error<T>(m: &String) -> Result<T, AlanError> {
 #[inline(always)]
 fn bare_error(m: &String) -> AlanError {
     AlanError { message: m.clone() }
-}
-
-/// `maybe_exists` returns a boolean on whether or not the Maybe has a value
-#[inline(always)]
-fn maybe_exists<T>(v: &Option<T>) -> bool {
-    v.is_some()
 }
 
 /// Signed Integer-related functions
@@ -224,78 +212,6 @@ fn stringtof64(s: &String) -> Result<f64, AlanError> {
 
 /// String-related functions
 
-/// `i8tostring` converts an i8 into a simple string representation
-#[inline(always)]
-fn i8tostring(a: &i8) -> String {
-    format!("{}", a)
-}
-
-/// `i16tostring` converts an i16 into a simple string representation
-#[inline(always)]
-fn i16tostring(a: &i16) -> String {
-    format!("{}", a)
-}
-
-/// `i32tostring` converts an i32 into a simple string representation
-#[inline(always)]
-fn i32tostring(a: &i32) -> String {
-    format!("{}", a)
-}
-
-/// `i64tostring` converts an i64 into a simple string representation
-#[inline(always)]
-fn i64tostring(a: &i64) -> String {
-    format!("{}", a)
-}
-
-/// `u8tostring` converts an u8 into a simple string representation
-#[inline(always)]
-fn u8tostring(a: &u8) -> String {
-    format!("{}", a)
-}
-
-/// `u16tostring` converts an u16 into a simple string representation
-#[inline(always)]
-fn u16tostring(a: &u16) -> String {
-    format!("{}", a)
-}
-
-/// `u32tostring` converts an u32 into a simple string representation
-#[inline(always)]
-fn u32tostring(a: &u32) -> String {
-    format!("{}", a)
-}
-
-/// `u64tostring` converts an u64 into a simple string representation
-#[inline(always)]
-fn u64tostring(a: &u64) -> String {
-    format!("{}", a)
-}
-
-/// `f32tostring` converts an f32 into a simple string representation
-#[inline(always)]
-fn f32tostring(a: &f32) -> String {
-    format!("{}", a)
-}
-
-/// `f64tostring` converts an f64 into a simple string representation
-#[inline(always)]
-fn f64tostring(a: &f64) -> String {
-    format!("{}", a)
-}
-
-/// `concatstring` is a simple function that concatenates two strings
-#[inline(always)]
-fn concatstring(a: &String, b: &String) -> String {
-    format!("{}{}", a, b).to_string()
-}
-
-/// `repeatstring` creates a new string composed of the original string repeated `n` times
-#[inline(always)]
-fn repeatstring(a: &String, n: &i64) -> String {
-    a.repeat(*n as usize).to_string()
-}
-
 /// `splitstring` creates a vector of strings split by the specified separator string
 #[inline(always)]
 fn splitstring(a: &String, b: &String) -> Vec<String> {
@@ -320,12 +236,6 @@ fn getstring(a: &String, i: &i64) -> Result<String, AlanError> {
         )
         .into()),
     }
-}
-
-/// `trimstring` trims the string of whitespace
-#[inline(always)]
-fn trimstring(a: &String) -> String {
-    a.trim().to_string()
 }
 
 /// `indexstring` finds the index where the specified substring starts, if possible
@@ -600,12 +510,6 @@ fn append<A: std::clone::Clone>(a: &mut Vec<A>, b: &Vec<A>) {
     }
 }
 
-/// `hasarray` returns true if the specified value exists anywhere in the vector
-#[inline(always)]
-fn hasarray<T: std::cmp::PartialEq>(a: &Vec<T>, v: &T) -> bool {
-    a.contains(v)
-}
-
 /// `hasfnarray` returns true if the check function returns true for any element of the vector
 #[inline(always)]
 fn hasfnarray<T>(a: &Vec<T>, mut f: impl FnMut(&T) -> bool) -> bool {
@@ -851,12 +755,6 @@ fn storebuffer<T: std::clone::Clone, const S: usize>(
 
 /// Dictionary-related bindings
 
-/// `newdict` creates a new dictionary
-#[inline(always)]
-fn newdict<K: std::hash::Hash + Eq, V>() -> OrderedHashMap<K, V> {
-    OrderedHashMap::new()
-}
-
 /// `storedict` stores the provided key-value pair into the dictionary
 #[inline(always)]
 fn storedict<K: std::clone::Clone + std::hash::Hash + Eq, V: std::clone::Clone>(
@@ -874,18 +772,6 @@ fn getdict<K: std::hash::Hash + Eq, V: std::clone::Clone>(
     k: &K,
 ) -> Option<V> {
     d.get(k).cloned()
-}
-
-/// `hasdict` returns whether the specified key is in the dictionary
-#[inline(always)]
-fn hasdict<K: std::hash::Hash + Eq, V>(d: &OrderedHashMap<K, V>, k: &K) -> bool {
-    d.contains_key(k)
-}
-
-/// `lendict` returns the number of key-value pairs in the dictionary
-#[inline(always)]
-fn lendict<K, V>(d: &OrderedHashMap<K, V>) -> i64 {
-    d.len() as i64
 }
 
 /// `keysdict` returns an array of keys from the dictionary
@@ -935,28 +821,10 @@ fn concatdict<K: std::clone::Clone + std::hash::Hash + Eq, V: std::clone::Clone>
 
 /// Set-related bindings
 
-/// `newset` creates a new set
-#[inline(always)]
-fn newset<V: std::hash::Hash + Eq>() -> HashSet<V> {
-    HashSet::new()
-}
-
 /// `storeset` stores the provided value into the set
 #[inline(always)]
 fn storeset<V: std::clone::Clone + std::hash::Hash + Eq>(s: &mut HashSet<V>, v: &V) {
     s.insert(v.clone());
-}
-
-/// `hasset` returns whether the specified value is in the set
-#[inline(always)]
-fn hasset<V: std::hash::Hash + Eq>(s: &HashSet<V>, v: &V) -> bool {
-    s.contains(v)
-}
-
-/// `lenset` returns how many values are in the set
-#[inline(always)]
-fn lenset<V>(s: &HashSet<V>) -> i64 {
-    s.len() as i64
 }
 
 /// `arrayset` returns an array of values in the set
@@ -1043,14 +911,6 @@ fn get_or_maybe_exit<A: Clone>(a: &Option<A>) -> A {
         Some(v) => v.clone(),
         None => panic!("Expected value did not exist"), // TODO: Better error message somehow?
     }
-}
-
-/// Uuid-related functions
-
-/// `uuidstring` converts a UUID into a string
-#[inline(always)]
-fn uuidstring(u: &uuid::Uuid) -> String {
-    format!("{}", u)
 }
 
 /// GPU-related functions and types
