@@ -22,6 +22,7 @@ export ctype Method{F}; // A reference to a native method in the platform langua
 export ctype Cast{T}; // A reference to a native type in the platform language to cast to
 export ctype Own{T}; // Specifying that the native code needs an owned version of the type
 export ctype Deref{T}; // Specifying that the native code needs an owned version of the type and it is safe to dereference the reference
+export ctype Mut{T}; // Specifying that the function (native or otherwise) needs a mutable reference of the type
 export ctype Tuple{A, B}; // A tuple of two (or more) types in a single compound type
 export ctype Field{L, V}; // Labeling a type with a property name. Useful to turn tuples into structs
 export ctype Either{A, B}; // An either type, allowing the value to be from *one* of the specified types, kinda like Rust enums
@@ -141,7 +142,7 @@ export type Dict{K, V} = Binds{"OrderedHashMap", K, V};
 export type Set{V} = Binds{"std::collections::HashSet", V};
 
 /// Functions for (potentially) every type
-export fn clone{T} "clone" :: T -> T;
+export fn clone{T} (v: T) -> T = {Method{"clone"} :: T -> T}(v);
 // TODO: The "proper" way to hash this consistently for all types is to decompose the input type
 // into the various primitive types of Alan and then have hashing rules for each of them, which
 // may themselves decompose, etc. This might be doable in Alan code on top of specialized hashing
@@ -153,6 +154,7 @@ export fn hash "hashstring" :: string -> i64;
 export fn hash{T} "hash" :: T -> i64;
 export fn void{T}(v: T) -> void {}
 export fn void() -> void {}
+//export fn store{T} (a: T, b: T) -> T = {"std::mem::replace" :: (Mut{T}, Own{T}) -> T}(a, b);
 export fn store{T} "storeswap" :: (T, T) -> T;
 
 /// Fallible, Maybe, and Either functions
@@ -160,7 +162,7 @@ export fn getOr{T} "maybe_get_or" :: (T?, T) -> T;
 export fn getOr{T} "fallible_get_or" :: (T!, T) -> T;
 export fn Error{T} "fallible_error" :: string -> T!;
 export fn Error "bare_error" :: string -> Error;
-export fn exists{T} "maybe_exists" :: T? -> bool;
+export fn exists{T} (m: T?) -> bool = {Method{"is_some"} :: T? -> bool}(m);
 
 /// Primitive type casting functions
 export fn i8(i: i8) -> i8 = i;
@@ -559,25 +561,27 @@ export fn min (a: f64, b: f64) -> f64 = if(a.lte(b), a, b);
 export fn max (a: f64, b: f64) -> f64 = if(a.gte(b), a, b);
 
 /// String related bindings
-export fn string "i8tostring" :: i8 -> string;
-export fn string "i16tostring" :: i16 -> string;
-export fn string "i32tostring" :: i32 -> string;
-export fn string "i64tostring" :: i64 -> string;
-export fn string "u8tostring" :: u8 -> string;
-export fn string "u16tostring" :: u16 -> string;
-export fn string "u32tostring" :: u32 -> string;
-export fn string "u64tostring" :: u64 -> string;
-export fn string "f32tostring" :: f32 -> string;
-export fn string "f64tostring" :: f64 -> string;
+export fn string "format!" :: ("{}", i8) -> string;
+export fn string "format!" :: ("{}", i16) -> string;
+export fn string "format!" :: ("{}", i32) -> string;
+export fn string "format!" :: ("{}", i64) -> string;
+export fn string "format!" :: ("{}", u8) -> string;
+export fn string "format!" :: ("{}", u16) -> string;
+export fn string "format!" :: ("{}", u32) -> string;
+export fn string "format!" :: ("{}", u64) -> string;
+export fn string "format!" :: ("{}", f32) -> string;
+export fn string "format!" :: ("{}", f64) -> string;
 export fn string (b: bool) -> string = if(b, "true", "false");
 export fn string(s: string) -> string = s;
-export fn concat "concatstring" :: (string, string) -> string;
-export fn repeat "repeatstring" :: (string, i64) -> string;
+export fn concat "format!" :: ("{}{}", string, string) -> string;
+export fn repeat (a: string, n: i64) -> string = {Method{"repeat"} :: (string, Deref{Binds{"usize"}}) -> string}(
+  a,
+  {Cast{"usize"} :: Deref{i64} -> Binds{"usize"}}(n));
 export fn replace Method{"replace"} :: (string, string, string) -> string;
 export fn split "splitstring" :: (string, string) -> string[];
 export fn len "lenstring" :: string -> i64;
 export fn get "getstring" :: (string, i64) -> string!;
-export fn trim "trimstring" :: string -> string;
+export fn trim Method{"trim"} :: string -> string;
 export fn index "indexstring" :: (string, string) -> i64!;
 // TODO: Optimize this by using `as_str` inline, but need a `Str` type, which I *really* don't want to terrorize the user with
 export fn eq Infix{"=="} :: (Own{string}, Own{string}) -> bool;
@@ -609,7 +613,7 @@ export fn reduce{T, U} "reduce_difftype_idx" :: (T[], U, (U, T, i64) -> U) -> U;
 export fn concat{T} "concat" :: (T[], T[]) -> T[];
 export fn append{T} "append" :: (T[], T[]);
 export fn filled{T} "filled" :: (T, i64) -> T[];
-export fn has{T} "hasarray" :: (T[], T) -> bool;
+export fn has{T} (a: T[], v: T) -> bool = {Method{"contains"} :: (T[], T) -> bool}(a, v);
 export fn has{T} "hasfnarray" :: (T[], T -> bool) -> bool;
 export fn find{T} "findarray" :: (T[], T -> bool) -> T?;
 // TODO: The `if` syntactic sugar will make these `if` calls much nicer (though so would return
@@ -666,7 +670,7 @@ export fn repeat{T, S} "repeatbuffertoarray" :: (T[S], i64) -> T[];
 export fn store{T, S} "storebuffer" :: (T[S], i64, T) -> T!;
 
 /// Dictionary-related bindings
-export fn Dict{K, V} "newdict" :: () -> Dict{K, V};
+export fn Dict{K, V} "OrderedHashMap::new" :: () -> Dict{K, V};
 export fn Dict{K, V}(k: K, v: V) -> Dict{K, V} {
   let out = Dict{K, V}();
   out.store(k, v);
@@ -678,15 +682,15 @@ export fn Dict{K, V}(a: Array{(K, V)}) -> Dict{K, V} = a.reduce(Dict{K, V}(), fn
 });
 export fn store{K, V} "storedict" :: (Dict{K, V}, K, V);
 export fn get{K, V} "getdict" :: (Dict{K, V}, K) -> V?;
-export fn has{K, V} "hasdict" :: (Dict{K, V}, K) -> bool;
-export fn len{K, V} "lendict" :: Dict{K, V} -> i64;
+export fn has{K, V} (d: Dict{K, V}, k: K) -> bool = {Method{"contains_key"} :: (Dict{K, V}, K) -> bool}(d, k);
+export fn len{K, V} (d: Dict{K, V}) -> i64 = {Cast{"i64"} :: Deref{Binds{"usize"}} -> i64}({Method{"len"} :: Dict{K, V} -> Binds{"usize"}}(d));
 export fn keys{K, V} "keysdict" :: Dict{K, V} -> K[];
 export fn vals{K, V} "valsdict" :: Dict{K, V} -> V[];
 export fn Array{K, V} "arraydict" :: Dict{K, V} -> (K, V)[];
 export fn concat{K, V} "concatdict" :: (Dict{K, V}, Dict{K, V}) -> Dict{K, V};
 
 /// Set-related bindings
-export fn Set{V} "newset" :: () -> Set{V};
+export fn Set{V} "HashSet::new" :: () -> Set{V};
 export fn Set{V}(a: Array{V}) -> Set{V} = a.reduce(Set{V}(), fn (s: Set{V}, v: V) -> Set{V} {
   s.store(v);
   return s;
@@ -697,8 +701,8 @@ export fn Set{V}(v: V) -> Set{V} {
   return out;
 }
 export fn store{V} "storeset" :: (Set{V}, V);
-export fn has{V} "hasset" :: (Set{V}, V) -> bool;
-export fn len{V} "lenset" :: Set{V} -> i64;
+export fn has{V} (s: Set{V}, v: V) -> bool = {Method{"contains"} :: (Set{V}, V) -> bool}(s, v);
+export fn len{V} (s: Set{V}) -> i64 = {Cast{"i64"} :: Deref{Binds{"usize"}} -> i64}({Method{"len"} :: Set{V} -> Binds{"usize"}}(s));
 export fn Array{V} "arrayset" :: Set{V} -> V[];
 export fn union{V} "unionset" :: (Set{V}, Set{V}) -> Set{V};
 export fn or{V}(a: Set{V}, b: Set{V}) -> Set{V} = union(a, b);
@@ -852,7 +856,7 @@ export fn elapsed Method{"elapsed"} :: Instant -> Duration;
 
 /// Uuid-related bindings
 export fn uuid "uuid::Uuid::new_v4" :: () -> uuid;
-export fn string "uuidstring" :: uuid -> string;
+export fn string "format!" :: ("{}", uuid) -> string;
 
 /// GPU-related bindings
 
