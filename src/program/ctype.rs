@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
+use super::ArgKind;
 use super::Export;
 use super::FnKind;
 use super::Function;
@@ -1435,7 +1436,7 @@ impl CType {
     pub fn infer_generics(
         scope: &Scope,
         generics: &[(String, CType)],
-        fn_args: &[(String, CType)],
+        fn_args: &[(String, ArgKind, CType)],
         call_args: &[CType],
     ) -> Result<Vec<CType>, Box<dyn std::error::Error>> {
         let mut temp_scope = scope.child();
@@ -1446,7 +1447,7 @@ impl CType {
         }
         let input_types = fn_args
             .iter()
-            .map(|(_, t)| t.clone())
+            .map(|(_, _, t)| t.clone())
             .collect::<Vec<CType>>();
         let mut generic_types: HashMap<String, CType> = HashMap::new();
         CType::infer_generics_inner_loop(
@@ -1485,239 +1486,189 @@ impl CType {
         let mut fs = Vec::new();
         match self {
             CType::Call(n, f) => {
-                #[derive(Debug)]
-                enum ArgKinds {
-                    Ref,
-                    Own,
-                    Deref,
-                    Mut,
-                }
-                let (args, arg_kinds, rettype) = match &f.degroup() {
+                let (args, rettype) = match &f.degroup() {
                     CType::Function(i, o) => match &**i {
                         CType::Tuple(ts) => {
                             let mut args = Vec::new();
-                            let mut arg_kinds = Vec::new();
                             for (i, arg) in ts.iter().enumerate() {
                                 match arg {
                                     CType::Field(n, f) => match &**f {
                                         CType::Own(t) => {
-                                            arg_kinds.push(ArgKinds::Own);
-                                            args.push((n.clone(), *t.clone()));
+                                            args.push((n.clone(), ArgKind::Own, *t.clone()));
                                         }
                                         CType::Deref(t) => {
-                                            arg_kinds.push(ArgKinds::Deref);
-                                            args.push((n.clone(), *t.clone()));
+                                            args.push((n.clone(), ArgKind::Deref, *t.clone()));
                                         }
                                         CType::Mut(t) => {
-                                            arg_kinds.push(ArgKinds::Mut);
-                                            args.push((n.clone(), *t.clone()));
+                                            args.push((n.clone(), ArgKind::Mut, *t.clone()));
                                         }
                                         otherwise => {
-                                            arg_kinds.push(ArgKinds::Ref);
-                                            args.push((n.clone(), otherwise.clone()));
+                                            args.push((n.clone(), ArgKind::Ref, otherwise.clone()));
                                         }
                                     },
                                     CType::Own(t) => {
-                                        arg_kinds.push(ArgKinds::Own);
-                                        args.push((format!("arg{}", i), *t.clone()));
+                                        args.push((format!("arg{}", i), ArgKind::Own, *t.clone()));
                                     }
                                     CType::Deref(t) => {
-                                        arg_kinds.push(ArgKinds::Deref);
-                                        args.push((format!("arg{}", i), *t.clone()));
+                                        args.push((
+                                            format!("arg{}", i),
+                                            ArgKind::Deref,
+                                            *t.clone(),
+                                        ));
                                     }
                                     CType::Mut(t) => {
-                                        arg_kinds.push(ArgKinds::Mut);
-                                        args.push((format!("arg{}", i), *t.clone()));
+                                        args.push((format!("arg{}", i), ArgKind::Mut, *t.clone()));
                                     }
                                     otherwise => {
-                                        arg_kinds.push(ArgKinds::Ref);
-                                        args.push((format!("arg{}", i), otherwise.clone()));
+                                        args.push((
+                                            format!("arg{}", i),
+                                            ArgKind::Ref,
+                                            otherwise.clone(),
+                                        ));
                                     }
                                 }
                             }
-                            (args, arg_kinds, *o.clone())
+                            (args, *o.clone())
                         }
                         CType::Field(n, f) => match &**f {
-                            CType::Own(t) => (
-                                vec![(n.clone(), *t.clone())],
-                                vec![ArgKinds::Own],
-                                *o.clone(),
-                            ),
-                            CType::Deref(t) => (
-                                vec![(n.clone(), *t.clone())],
-                                vec![ArgKinds::Deref],
-                                *o.clone(),
-                            ),
-                            CType::Mut(t) => (
-                                vec![(n.clone(), *t.clone())],
-                                vec![ArgKinds::Mut],
-                                *o.clone(),
-                            ),
+                            CType::Own(t) => {
+                                (vec![(n.clone(), ArgKind::Own, *t.clone())], *o.clone())
+                            }
+                            CType::Deref(t) => {
+                                (vec![(n.clone(), ArgKind::Deref, *t.clone())], *o.clone())
+                            }
+                            CType::Mut(t) => {
+                                (vec![(n.clone(), ArgKind::Mut, *t.clone())], *o.clone())
+                            }
                             otherwise => (
-                                vec![(n.clone(), otherwise.clone())],
-                                vec![ArgKinds::Ref],
+                                vec![(n.clone(), ArgKind::Ref, otherwise.clone())],
                                 *o.clone(),
                             ),
                         },
-                        CType::Void => (Vec::new(), Vec::new(), *o.clone()),
+                        CType::Void => (Vec::new(), *o.clone()),
                         CType::Own(t) => (
-                            vec![("arg0".to_string(), *t.clone())],
-                            vec![ArgKinds::Own],
+                            vec![("arg0".to_string(), ArgKind::Own, *t.clone())],
                             *o.clone(),
                         ),
                         CType::Deref(t) => (
-                            vec![("arg0".to_string(), *t.clone())],
-                            vec![ArgKinds::Deref],
+                            vec![("arg0".to_string(), ArgKind::Deref, *t.clone())],
                             *o.clone(),
                         ),
                         CType::Mut(t) => (
-                            vec![("arg0".to_string(), *t.clone())],
-                            vec![ArgKinds::Mut],
+                            vec![("arg0".to_string(), ArgKind::Mut, *t.clone())],
                             *o.clone(),
                         ),
                         otherwise => (
-                            vec![("arg0".to_string(), otherwise.clone())],
-                            vec![ArgKinds::Ref],
+                            vec![("arg0".to_string(), ArgKind::Ref, otherwise.clone())],
                             *o.clone(),
                         ),
                     },
                     CType::Tuple(ts) => {
                         let mut args = Vec::new();
-                        let mut arg_kinds = Vec::new();
                         for (i, arg) in ts.iter().enumerate() {
                             match arg {
                                 CType::Field(n, f) => match &**f {
                                     CType::Own(t) => {
-                                        arg_kinds.push(ArgKinds::Own);
-                                        args.push((n.clone(), *t.clone()));
+                                        args.push((n.clone(), ArgKind::Own, *t.clone()));
                                     }
                                     CType::Deref(t) => {
-                                        arg_kinds.push(ArgKinds::Deref);
-                                        args.push((n.clone(), *t.clone()));
+                                        args.push((n.clone(), ArgKind::Deref, *t.clone()));
                                     }
                                     CType::Mut(t) => {
-                                        arg_kinds.push(ArgKinds::Mut);
-                                        args.push((n.clone(), *t.clone()));
+                                        args.push((n.clone(), ArgKind::Mut, *t.clone()));
                                     }
                                     otherwise => {
-                                        arg_kinds.push(ArgKinds::Ref);
-                                        args.push((n.clone(), otherwise.clone()));
+                                        args.push((n.clone(), ArgKind::Ref, otherwise.clone()));
                                     }
                                 },
                                 CType::Own(t) => {
-                                    arg_kinds.push(ArgKinds::Own);
-                                    args.push((format!("arg{}", i), *t.clone()));
+                                    args.push((format!("arg{}", i), ArgKind::Own, *t.clone()));
                                 }
                                 CType::Deref(t) => {
-                                    arg_kinds.push(ArgKinds::Deref);
-                                    args.push((format!("arg{}", i), *t.clone()));
+                                    args.push((format!("arg{}", i), ArgKind::Deref, *t.clone()));
                                 }
                                 CType::Mut(t) => {
-                                    arg_kinds.push(ArgKinds::Mut);
-                                    args.push((format!("arg{}", i), *t.clone()));
+                                    args.push((format!("arg{}", i), ArgKind::Mut, *t.clone()));
                                 }
                                 otherwise => {
-                                    arg_kinds.push(ArgKinds::Ref);
-                                    args.push((format!("arg{}", i), otherwise.clone()));
+                                    args.push((
+                                        format!("arg{}", i),
+                                        ArgKind::Ref,
+                                        otherwise.clone(),
+                                    ));
                                 }
                             }
                         }
-                        (args, arg_kinds, CType::Void)
+                        (args, CType::Void)
                     }
                     CType::Field(n, f) => match &**f {
-                        CType::Own(t) => (
-                            vec![(n.clone(), *t.clone())],
-                            vec![ArgKinds::Own],
-                            CType::Void,
-                        ),
-                        CType::Deref(t) => (
-                            vec![(n.clone(), *t.clone())],
-                            vec![ArgKinds::Deref],
-                            CType::Void,
-                        ),
-                        CType::Mut(t) => (
-                            vec![(n.clone(), *t.clone())],
-                            vec![ArgKinds::Mut],
-                            CType::Void,
-                        ),
+                        CType::Own(t) => (vec![(n.clone(), ArgKind::Own, *t.clone())], CType::Void),
+                        CType::Deref(t) => {
+                            (vec![(n.clone(), ArgKind::Deref, *t.clone())], CType::Void)
+                        }
+                        CType::Mut(t) => (vec![(n.clone(), ArgKind::Mut, *t.clone())], CType::Void),
                         otherwise => (
-                            vec![(n.clone(), otherwise.clone())],
-                            vec![ArgKinds::Ref],
+                            vec![(n.clone(), ArgKind::Ref, otherwise.clone())],
                             CType::Void,
                         ),
                     },
-                    CType::Void => (Vec::new(), Vec::new(), CType::Void),
+                    CType::Void => (Vec::new(), CType::Void),
                     CType::Own(t) => (
-                        vec![("arg0".to_string(), *t.clone())],
-                        vec![ArgKinds::Own],
+                        vec![("arg0".to_string(), ArgKind::Own, *t.clone())],
                         CType::Void,
                     ),
                     CType::Deref(t) => (
-                        vec![("arg0".to_string(), *t.clone())],
-                        vec![ArgKinds::Deref],
+                        vec![("arg0".to_string(), ArgKind::Deref, *t.clone())],
                         CType::Void,
                     ),
                     CType::Mut(t) => (
-                        vec![("arg0".to_string(), *t.clone())],
-                        vec![ArgKinds::Mut],
+                        vec![("arg0".to_string(), ArgKind::Mut, *t.clone())],
                         CType::Void,
                     ),
                     otherwise => (
-                        vec![("arg0".to_string(), otherwise.clone())],
-                        vec![ArgKinds::Ref],
+                        vec![("arg0".to_string(), ArgKind::Ref, otherwise.clone())],
                         CType::Void,
                     ),
                 };
                 // TODO: Add support for generics, generic methods, and properties
                 match &**n {
                     CType::TString(s) => {
-                        if (!arg_kinds.iter().all(|k| matches!(k, ArgKinds::Ref)))
-                            || args.iter().any(|a| {
-                                matches!(
-                                    a.1,
+                        if args.iter().any(|(_, k, t)| {
+                            !matches!(k, ArgKind::Ref)
+                                || matches!(
+                                    t,
                                     CType::Int(_)
                                         | CType::Float(_)
                                         | CType::Bool(_)
                                         | CType::TString(_)
                                 )
-                            })
-                        {
+                        }) {
                             // We need to create a wrapper function to give the native function an
                             // owned value
                             let mut microstatements = Vec::new();
-                            for (i, kind) in arg_kinds.iter().enumerate() {
+                            for (name, kind, typen) in args.iter() {
                                 match kind {
-                                    ArgKinds::Own => {
+                                    /*ArgKind::Own => {
                                         microstatements.push(Microstatement::Assignment {
                                             mutable: true, // TODO: Determine this correctly
-                                            name: args[i].0.clone(),
+                                            name: name.clone(),
                                             value: Box::new(Microstatement::Value {
-                                                typen: args[i].1.clone(),
-                                                representation: format!("{}.clone()", args[i].0),
+                                                typen: typen.clone(),
+                                                representation: format!("{}.clone()", name),
+                                            }),
+                                        })
+                                    }*/
+                                    ArgKind::Deref => {
+                                        microstatements.push(Microstatement::Assignment {
+                                            mutable: true, // TODO: Determine this correctly
+                                            name: name.clone(),
+                                            value: Box::new(Microstatement::Value {
+                                                typen: typen.clone(),
+                                                representation: format!("*{}", name),
                                             }),
                                         })
                                     }
-                                    ArgKinds::Deref => {
-                                        microstatements.push(Microstatement::Assignment {
-                                            mutable: true, // TODO: Determine this correctly
-                                            name: args[i].0.clone(),
-                                            value: Box::new(Microstatement::Value {
-                                                typen: args[i].1.clone(),
-                                                representation: format!("*{}", args[i].0),
-                                            }),
-                                        })
-                                    }
-                                    ArgKinds::Mut => {
-                                        microstatements.push(Microstatement::Assignment {
-                                            mutable: true, // TODO: Determine this correctly
-                                            name: args[i].0.clone(),
-                                            value: Box::new(Microstatement::Value {
-                                                typen: args[i].1.clone(),
-                                                representation: format!("&mut {}", args[i].0),
-                                            }),
-                                        })
-                                    }
-                                    ArgKinds::Ref => {}
+                                    ArgKind::Own | ArgKind::Mut | ArgKind::Ref => {}
                                 }
                             }
                             microstatements.push(Microstatement::Return {
@@ -1727,8 +1678,8 @@ impl CType {
                                         "{}({})",
                                         s,
                                         args.iter()
-                                            .map(|a| {
-                                                match &a.1 {
+                                            .map(|(name, _, typen)| {
+                                                match &typen {
                                                     CType::Int(i) => format!("{}", i),
                                                     CType::Float(f) => format!("{}", f),
                                                     CType::Bool(b) => match b {
@@ -1738,7 +1689,7 @@ impl CType {
                                                     CType::TString(s) => {
                                                         format!("\"{}\"", s.replace("\"", "\\\""))
                                                     }
-                                                    _ => a.0.clone(),
+                                                    _ => name.clone(),
                                                 }
                                             })
                                             .collect::<Vec<String>>()
@@ -1750,16 +1701,16 @@ impl CType {
                                 name: constructor_fn_name.clone(),
                                 args: args
                                     .into_iter()
-                                    .filter(|a| {
+                                    .filter(|(_, _, typen)| {
                                         !matches!(
-                                            &a.1,
+                                            &typen,
                                             CType::Int(_)
                                                 | CType::Float(_)
                                                 | CType::Bool(_)
                                                 | CType::TString(_)
                                         )
                                     })
-                                    .collect::<Vec<(String, CType)>>(),
+                                    .collect::<Vec<(String, ArgKind, CType)>>(),
                                 rettype,
                                 microstatements,
                                 kind: FnKind::Normal,
@@ -1779,44 +1730,31 @@ impl CType {
                             if args.len() != 2 {
                                 CType::fail("Native infix operators may only be bound with two input arguments");
                             }
-                            if !arg_kinds.iter().all(|k| matches!(k, ArgKinds::Ref)) {
+                            if !args.iter().all(|(_, k, _)| matches!(k, ArgKind::Ref)) {
                                 let mut microstatements = Vec::new();
-                                for (i, kind) in arg_kinds.iter().enumerate() {
+                                for (name, kind, typen) in args.iter() {
                                     match kind {
-                                        ArgKinds::Own => {
+                                        /*ArgKind::Own => {
                                             microstatements.push(Microstatement::Assignment {
                                                 mutable: true, // TODO: Determine this correctly
-                                                name: args[i].0.clone(),
+                                                name: name.clone(),
                                                 value: Box::new(Microstatement::Value {
-                                                    typen: args[i].1.clone(),
-                                                    representation: format!(
-                                                        "{}.clone()",
-                                                        args[i].0
-                                                    ),
+                                                    typen: typen.clone(),
+                                                    representation: format!("{}.clone()", name),
+                                                }),
+                                            })
+                                        }*/
+                                        ArgKind::Deref => {
+                                            microstatements.push(Microstatement::Assignment {
+                                                mutable: true, // TODO: Determine this correctly
+                                                name: name.clone(),
+                                                value: Box::new(Microstatement::Value {
+                                                    typen: typen.clone(),
+                                                    representation: format!("*{}", name),
                                                 }),
                                             })
                                         }
-                                        ArgKinds::Deref => {
-                                            microstatements.push(Microstatement::Assignment {
-                                                mutable: true, // TODO: Determine this correctly
-                                                name: args[i].0.clone(),
-                                                value: Box::new(Microstatement::Value {
-                                                    typen: args[i].1.clone(),
-                                                    representation: format!("*{}", args[i].0),
-                                                }),
-                                            })
-                                        }
-                                        ArgKinds::Mut => {
-                                            microstatements.push(Microstatement::Assignment {
-                                                mutable: true, // TODO: Determine this correctly
-                                                name: args[i].0.clone(),
-                                                value: Box::new(Microstatement::Value {
-                                                    typen: args[i].1.clone(),
-                                                    representation: format!("&mut {}", args[i].0),
-                                                }),
-                                            })
-                                        }
-                                        ArgKinds::Ref => {}
+                                        ArgKind::Own | ArgKind::Mut | ArgKind::Ref => {}
                                     }
                                 }
                                 microstatements.push(Microstatement::Return {
@@ -1824,7 +1762,7 @@ impl CType {
                                         typen: rettype.clone(),
                                         representation: format!(
                                             "({} {} {})",
-                                            match &args[0].1 {
+                                            match &args[0].2 {
                                                 CType::Int(i) => format!("{}", i),
                                                 CType::Float(f) => format!("{}", f),
                                                 CType::Bool(b) => match b {
@@ -1837,7 +1775,7 @@ impl CType {
                                                 _ => args[0].0.clone(),
                                             },
                                             s,
-                                            match &args[1].1 {
+                                            match &args[1].2 {
                                                 CType::Int(i) => format!("{}", i),
                                                 CType::Float(f) => format!("{}", f),
                                                 CType::Bool(b) => match b {
@@ -1858,14 +1796,14 @@ impl CType {
                                         .into_iter()
                                         .filter(|a| {
                                             !matches!(
-                                                &a.1,
+                                                &a.2,
                                                 CType::Int(_)
                                                     | CType::Float(_)
                                                     | CType::Bool(_)
                                                     | CType::TString(_)
                                             )
                                         })
-                                        .collect::<Vec<(String, CType)>>(),
+                                        .collect::<Vec<(String, ArgKind, CType)>>(),
                                     rettype,
                                     microstatements,
                                     kind: FnKind::Normal,
@@ -1876,7 +1814,7 @@ impl CType {
                                         typen: rettype.clone(),
                                         representation: format!(
                                             "({} {} {})",
-                                            match &args[0].1 {
+                                            match &args[0].2 {
                                                 CType::Int(i) => format!("{}", i),
                                                 CType::Float(f) => format!("{}", f),
                                                 CType::Bool(b) => match b {
@@ -1889,7 +1827,7 @@ impl CType {
                                                 _ => args[0].0.clone(),
                                             },
                                             s,
-                                            match &args[1].1 {
+                                            match &args[1].2 {
                                                 CType::Int(i) => format!("{}", i),
                                                 CType::Float(f) => format!("{}", f),
                                                 CType::Bool(b) => match b {
@@ -1910,14 +1848,14 @@ impl CType {
                                         .into_iter()
                                         .filter(|a| {
                                             !matches!(
-                                                &a.1,
+                                                &a.2,
                                                 CType::Int(_)
                                                     | CType::Float(_)
                                                     | CType::Bool(_)
                                                     | CType::TString(_)
                                             )
                                         })
-                                        .collect::<Vec<(String, CType)>>(),
+                                        .collect::<Vec<(String, ArgKind, CType)>>(),
                                     rettype,
                                     microstatements,
                                     kind: FnKind::Normal,
@@ -1934,8 +1872,8 @@ impl CType {
                             if args.len() != 1 {
                                 CType::fail("Native prefix operators may only be bound with one input argument");
                             }
-                            match arg_kinds[0] {
-                                ArgKinds::Own => {
+                            match &args[0].1 {
+                                /*ArgKind::Own => {
                                     let microstatements = vec![Microstatement::Return {
                                         value: Some(Box::new(Microstatement::Value {
                                             typen: rettype.clone(),
@@ -1952,8 +1890,8 @@ impl CType {
                                         microstatements,
                                         kind: FnKind::Normal,
                                     });
-                                }
-                                ArgKinds::Deref => {
+                                }*/
+                                ArgKind::Deref => {
                                     let microstatements = vec![Microstatement::Return {
                                         value: Some(Box::new(Microstatement::Value {
                                             typen: rettype.clone(),
@@ -1968,7 +1906,8 @@ impl CType {
                                         kind: FnKind::Normal,
                                     });
                                 }
-                                ArgKinds::Mut => {
+                                ArgKind::Mut => {
+                                    // TODO: Do we need this? It should already be mutable
                                     let microstatements = vec![Microstatement::Return {
                                         value: Some(Box::new(Microstatement::Value {
                                             typen: rettype.clone(),
@@ -1983,14 +1922,14 @@ impl CType {
                                         kind: FnKind::Normal,
                                     });
                                 }
-                                ArgKinds::Ref => {
+                                ArgKind::Own | ArgKind::Ref => {
                                     let microstatements = vec![Microstatement::Return {
                                         value: Some(Box::new(Microstatement::Value {
                                             typen: rettype.clone(),
                                             representation: format!(
                                                 "({} {})",
                                                 s,
-                                                match &args[0].1 {
+                                                match &args[0].2 {
                                                     CType::Int(i) => format!("{}", i),
                                                     CType::Float(f) => format!("{}", f),
                                                     CType::Bool(b) => match b {
@@ -2011,14 +1950,14 @@ impl CType {
                                             .into_iter()
                                             .filter(|a| {
                                                 !matches!(
-                                                    &a.1,
+                                                    &a.2,
                                                     CType::Int(_)
                                                         | CType::Float(_)
                                                         | CType::Bool(_)
                                                         | CType::TString(_)
                                                 )
                                             })
-                                            .collect::<Vec<(String, CType)>>(),
+                                            .collect::<Vec<(String, ArgKind, CType)>>(),
                                         rettype,
                                         microstatements,
                                         kind: FnKind::Normal,
@@ -2036,39 +1975,29 @@ impl CType {
                             let arg_car = args[0].clone();
                             let arg_cdr = args.clone().split_off(1);
                             let mut microstatements = Vec::new();
-                            for (i, kind) in arg_kinds.iter().enumerate() {
+                            for (name, kind, typen) in args.iter() {
                                 match kind {
-                                    ArgKinds::Own => {
+                                    /*ArgKind::Own => {
                                         microstatements.push(Microstatement::Assignment {
                                             mutable: true, // TODO: Determine this correctly
-                                            name: args[i].0.clone(),
+                                            name: name.clone(),
                                             value: Box::new(Microstatement::Value {
-                                                typen: args[i].1.clone(),
-                                                representation: format!("{}.clone()", args[i].0),
+                                                typen: typen.clone(),
+                                                representation: format!("{}.clone()", name),
+                                            }),
+                                        })
+                                    }*/
+                                    ArgKind::Deref => {
+                                        microstatements.push(Microstatement::Assignment {
+                                            mutable: true, // TODO: Determine this correctly
+                                            name: name.clone(),
+                                            value: Box::new(Microstatement::Value {
+                                                typen: typen.clone(),
+                                                representation: format!("*{}", name),
                                             }),
                                         })
                                     }
-                                    ArgKinds::Deref => {
-                                        microstatements.push(Microstatement::Assignment {
-                                            mutable: true, // TODO: Determine this correctly
-                                            name: args[i].0.clone(),
-                                            value: Box::new(Microstatement::Value {
-                                                typen: args[i].1.clone(),
-                                                representation: format!("*{}", args[i].0),
-                                            }),
-                                        })
-                                    }
-                                    ArgKinds::Mut => {
-                                        microstatements.push(Microstatement::Assignment {
-                                            mutable: true, // TODO: Determine this correctly
-                                            name: args[i].0.clone(),
-                                            value: Box::new(Microstatement::Value {
-                                                typen: args[i].1.clone(),
-                                                representation: format!("&mut {}", args[i].0),
-                                            }),
-                                        })
-                                    }
-                                    ArgKinds::Ref => {}
+                                    ArgKind::Own | ArgKind::Mut | ArgKind::Ref => {}
                                 }
                             }
                             microstatements.push(Microstatement::Return {
@@ -2076,8 +2005,7 @@ impl CType {
                                     typen: rettype.clone(),
                                     representation: format!(
                                         "{}.{}({})",
-                                        //arg_car.0,
-                                        match &arg_car.1 {
+                                        match &arg_car.2 {
                                             CType::Int(i) => format!("{}", i),
                                             CType::Float(f) => format!("{}", f),
                                             CType::Bool(b) => match b {
@@ -2092,8 +2020,7 @@ impl CType {
                                         s,
                                         arg_cdr
                                             .into_iter()
-                                            //.map(|a| a.0.clone())
-                                            .map(|a| match &a.1 {
+                                            .map(|a| match &a.2 {
                                                 CType::Int(i) => format!("{}", i),
                                                 CType::Float(f) => format!("{}", f),
                                                 CType::Bool(b) => match b {
@@ -2116,14 +2043,14 @@ impl CType {
                                     .into_iter()
                                     .filter(|a| {
                                         !matches!(
-                                            &a.1,
+                                            &a.2,
                                             CType::Int(_)
                                                 | CType::Float(_)
                                                 | CType::Bool(_)
                                                 | CType::TString(_)
                                         )
                                     })
-                                    .collect::<Vec<(String, CType)>>(),
+                                    .collect::<Vec<(String, ArgKind, CType)>>(),
                                 rettype,
                                 microstatements,
                                 kind: FnKind::Normal,
@@ -2142,44 +2069,33 @@ impl CType {
                                 );
                             }
                             let mut microstatements = Vec::new();
-                            match arg_kinds[0] {
-                                ArgKinds::Own => microstatements.push(Microstatement::Assignment {
+                            match &args[0].1 {
+                                /*ArgKind::Own => microstatements.push(Microstatement::Assignment {
                                     mutable: true, // TODO: Determine this correctly
                                     name: args[0].0.clone(),
                                     value: Box::new(Microstatement::Value {
-                                        typen: args[0].1.clone(),
+                                        typen: args[0].2.clone(),
                                         representation: format!("{}.clone()", args[0].0),
                                     }),
-                                }),
-                                ArgKinds::Deref => {
+                                }),*/
+                                ArgKind::Deref => {
                                     microstatements.push(Microstatement::Assignment {
                                         mutable: true, // TODO: Determine this correctly
                                         name: args[0].0.clone(),
                                         value: Box::new(Microstatement::Value {
-                                            typen: args[0].1.clone(),
+                                            typen: args[0].2.clone(),
                                             representation: format!("*{}", args[0].0),
                                         }),
                                     })
                                 }
-                                ArgKinds::Mut => {
-                                    microstatements.push(Microstatement::Assignment {
-                                        mutable: true, // TODO: Determine this correctly
-                                        name: args[0].0.clone(),
-                                        value: Box::new(Microstatement::Value {
-                                            typen: args[0].1.clone(),
-                                            representation: format!("&mut {}", args[0].0),
-                                        }),
-                                    })
-                                }
-                                ArgKinds::Ref => {}
+                                ArgKind::Own | ArgKind::Mut | ArgKind::Ref => {}
                             }
                             microstatements.push(Microstatement::Return {
                                 value: Some(Box::new(Microstatement::Value {
                                     typen: rettype.clone(),
                                     representation: format!(
                                         "({} as {})",
-                                        //args[0].0,
-                                        match &args[0].1 {
+                                        match &args[0].2 {
                                             CType::Int(i) => format!("{}", i),
                                             CType::Float(f) => format!("{}", f),
                                             CType::Bool(b) => match b {
@@ -2201,14 +2117,14 @@ impl CType {
                                     .into_iter()
                                     .filter(|a| {
                                         !matches!(
-                                            &a.1,
+                                            &a.2,
                                             CType::Int(_)
                                                 | CType::Float(_)
                                                 | CType::Bool(_)
                                                 | CType::TString(_)
                                         )
                                     })
-                                    .collect::<Vec<(String, CType)>>(),
+                                    .collect::<Vec<(String, ArgKind, CType)>>(),
                                 rettype,
                                 microstatements,
                                 kind: FnKind::Normal,
@@ -2229,7 +2145,7 @@ impl CType {
                 // This is just an alias
                 fs.push(Function {
                     name: constructor_fn_name.clone(),
-                    args: vec![(n.clone(), self.clone())],
+                    args: vec![(n.clone(), ArgKind::Ref, self.clone())],
                     rettype: t.clone(),
                     microstatements: Vec::new(),
                     kind: FnKind::Derived,
@@ -2263,7 +2179,7 @@ impl CType {
                                     );
                                     fs.push(Function {
                                         name: n.clone(),
-                                        args: vec![("arg0".to_string(), t.clone())],
+                                        args: vec![("arg0".to_string(), ArgKind::Ref, t.clone())],
                                         rettype: string.clone(),
                                         microstatements: vec![Microstatement::Value {
                                             typen: string,
@@ -2282,7 +2198,7 @@ impl CType {
                                     let int64 = CType::Binds("i64".to_string(), Vec::new());
                                     fs.push(Function {
                                         name: n.clone(),
-                                        args: vec![("arg0".to_string(), t.clone())],
+                                        args: vec![("arg0".to_string(), ArgKind::Ref, t.clone())],
                                         rettype: int64.clone(),
                                         microstatements: vec![Microstatement::Value {
                                             typen: int64,
@@ -2298,7 +2214,7 @@ impl CType {
                                     let float64 = CType::Binds("f64".to_string(), Vec::new());
                                     fs.push(Function {
                                         name: n.clone(),
-                                        args: vec![("arg0".to_string(), t.clone())],
+                                        args: vec![("arg0".to_string(), ArgKind::Ref, t.clone())],
                                         rettype: float64.clone(),
                                         microstatements: vec![Microstatement::Value {
                                             typen: float64,
@@ -2314,7 +2230,7 @@ impl CType {
                                     let booln = CType::Binds("bool".to_string(), Vec::new());
                                     fs.push(Function {
                                         name: n.clone(),
-                                        args: vec![("arg0".to_string(), t.clone())],
+                                        args: vec![("arg0".to_string(), ArgKind::Ref, t.clone())],
                                         rettype: booln.clone(),
                                         microstatements: vec![Microstatement::Value {
                                             typen: booln,
@@ -2351,25 +2267,25 @@ impl CType {
                             // Create an accessor function
                             fs.push(Function {
                                 name: n.clone(),
-                                args: vec![("arg0".to_string(), t.clone())],
+                                args: vec![("arg0".to_string(), ArgKind::Ref, t.clone())],
                                 rettype: *f.clone(),
                                 microstatements: Vec::new(),
                                 kind: FnKind::Derived,
                             });
                             // Add a copy of this arg to the args array with the
                             // name
-                            args.push((n.clone(), *f.clone()));
+                            args.push((n.clone(), ArgKind::Ref, *f.clone()));
                         }
                         otherwise => {
                             // Create an `<N>` function accepting the tuple by field number
                             fs.push(Function {
                                 name: format!("{}", i),
-                                args: vec![("arg0".to_string(), t.clone())],
+                                args: vec![("arg0".to_string(), ArgKind::Ref, t.clone())],
                                 rettype: otherwise.clone(),
                                 microstatements: Vec::new(),
                                 kind: FnKind::Derived,
                             });
-                            args.push((format!("arg{}", i), otherwise.clone()));
+                            args.push((format!("arg{}", i), ArgKind::Ref, otherwise.clone()));
                         }
                     }
                 }
@@ -2397,7 +2313,7 @@ impl CType {
                         );
                         fs.push(Function {
                             name: n.clone(),
-                            args: vec![("arg0".to_string(), t.clone())],
+                            args: vec![("arg0".to_string(), ArgKind::Ref, t.clone())],
                             rettype: string.clone(),
                             microstatements: vec![Microstatement::Value {
                                 typen: string,
@@ -2413,7 +2329,7 @@ impl CType {
                         let int64 = CType::Binds("i64".to_string(), Vec::new());
                         fs.push(Function {
                             name: n.clone(),
-                            args: vec![("arg0".to_string(), t.clone())],
+                            args: vec![("arg0".to_string(), ArgKind::Ref, t.clone())],
                             rettype: int64.clone(),
                             microstatements: vec![Microstatement::Value {
                                 typen: int64,
@@ -2429,7 +2345,7 @@ impl CType {
                         let float64 = CType::Binds("f64".to_string(), Vec::new());
                         fs.push(Function {
                             name: n.clone(),
-                            args: vec![("arg0".to_string(), t.clone())],
+                            args: vec![("arg0".to_string(), ArgKind::Ref, t.clone())],
                             rettype: float64.clone(),
                             microstatements: vec![Microstatement::Value {
                                 typen: float64,
@@ -2445,7 +2361,7 @@ impl CType {
                         let booln = CType::Binds("bool".to_string(), Vec::new());
                         fs.push(Function {
                             name: n.clone(),
-                            args: vec![("arg0".to_string(), t.clone())],
+                            args: vec![("arg0".to_string(), ArgKind::Ref, t.clone())],
                             rettype: booln.clone(),
                             microstatements: vec![Microstatement::Value {
                                 typen: booln,
@@ -2460,12 +2376,12 @@ impl CType {
                     otherwise => {
                         fs.push(Function {
                             name: n.clone(),
-                            args: vec![("arg0".to_string(), t.clone())],
+                            args: vec![("arg0".to_string(), ArgKind::Ref, t.clone())],
                             rettype: *f.clone(),
                             microstatements: Vec::new(),
                             kind: FnKind::Derived,
                         });
-                        args.push(("arg0".to_string(), otherwise.clone()));
+                        args.push(("arg0".to_string(), ArgKind::Ref, otherwise.clone()));
                     }
                 }
                 // Define the constructor function
@@ -2484,7 +2400,7 @@ impl CType {
                     // Create a constructor fn
                     fs.push(Function {
                         name: constructor_fn_name.clone(),
-                        args: vec![("arg0".to_string(), e.clone())],
+                        args: vec![("arg0".to_string(), ArgKind::Ref, e.clone())],
                         rettype: t.clone(),
                         microstatements: Vec::new(),
                         kind: FnKind::Derived,
@@ -2493,8 +2409,8 @@ impl CType {
                     fs.push(Function {
                         name: "store".to_string(),
                         args: vec![
-                            ("arg0".to_string(), t.clone()),
-                            ("arg1".to_string(), e.clone()),
+                            ("arg0".to_string(), ArgKind::Ref, t.clone()),
+                            ("arg1".to_string(), ArgKind::Ref, e.clone()),
                         ],
                         rettype: t.clone(),
                         microstatements: Vec::new(),
@@ -2515,14 +2431,14 @@ impl CType {
                     match e {
                         CType::Field(n, i) => fs.push(Function {
                             name: n.clone(),
-                            args: vec![("arg0".to_string(), t.clone())],
+                            args: vec![("arg0".to_string(), ArgKind::Ref, t.clone())],
                             rettype: CType::Either(vec![*i.clone(), CType::Void]),
                             microstatements: Vec::new(),
                             kind: FnKind::Derived,
                         }),
                         CType::Type(n, _) => fs.push(Function {
                             name: n.clone(),
-                            args: vec![("arg0".to_string(), t.clone())],
+                            args: vec![("arg0".to_string(), ArgKind::Ref, t.clone())],
                             rettype: CType::Either(vec![e.clone(), CType::Void]),
                             microstatements: Vec::new(),
                             kind: FnKind::Derived,
@@ -2539,7 +2455,7 @@ impl CType {
                 // implement one of these
                 fs.push(Function {
                     name: constructor_fn_name.clone(),
-                    args: vec![("arg0".to_string(), *b.clone())],
+                    args: vec![("arg0".to_string(), ArgKind::Ref, *b.clone())],
                     rettype: t.clone(),
                     microstatements: Vec::new(),
                     kind: FnKind::Derived,
@@ -2554,7 +2470,7 @@ impl CType {
                         args: {
                             let mut v = Vec::new();
                             for i in 0..size {
-                                v.push((format!("arg{}", i), *b.clone()));
+                                v.push((format!("arg{}", i), ArgKind::Ref, *b.clone()));
                             }
                             v
                         },
@@ -2574,7 +2490,7 @@ impl CType {
                 // other types, too.
                 fs.push(Function {
                     name: constructor_fn_name.clone(),
-                    args: vec![("arg0".to_string(), *a.clone())],
+                    args: vec![("arg0".to_string(), ArgKind::Ref, *a.clone())],
                     rettype: t.clone(),
                     microstatements: Vec::new(),
                     kind: FnKind::DerivedVariadic,

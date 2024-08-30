@@ -74,12 +74,6 @@ fn hashstring(v: &String) -> i64 {
     hasher.finish() as i64
 }
 
-/// `storeswap` swaps the input and output
-#[inline(always)]
-fn storeswap<T: std::clone::Clone>(a: &mut T, b: &mut T) -> T {
-    std::mem::replace(a, b.clone())
-}
-
 /// Fallible, Maybe, and Either functions
 
 /// `maybe_get_or` gets the Option's value or returns the default if not present.
@@ -1002,7 +996,7 @@ impl DerefMut for GBuffer {
     }
 }
 
-fn create_buffer_init(usage: &mut wgpu::BufferUsages, vals: &mut Vec<i32>) -> GBuffer {
+fn create_buffer_init(usage: &wgpu::BufferUsages, vals: &Vec<i32>) -> GBuffer {
     let g = gpu();
     let val_slice = &vals[..];
     let val_ptr = val_slice.as_ptr();
@@ -1018,7 +1012,7 @@ fn create_buffer_init(usage: &mut wgpu::BufferUsages, vals: &mut Vec<i32>) -> GB
     )))
 }
 
-fn create_empty_buffer(usage: &mut wgpu::BufferUsages, size: &mut i64) -> GBuffer {
+fn create_empty_buffer(usage: &wgpu::BufferUsages, size: &i64) -> GBuffer {
     let g = gpu();
     GBuffer(Rc::new(g.device.create_buffer(&wgpu::BufferDescriptor {
         label: None, // TODO: Add a label for easier debugging?
@@ -1073,15 +1067,11 @@ impl GPGPU {
 }
 
 #[inline(always)]
-fn GPGPU_new(
-    source: &mut String,
-    buffers: &mut Vec<Vec<GBuffer>>,
-    max_global_id: &mut [i64; 3],
-) -> GPGPU {
+fn GPGPU_new(source: &String, buffers: &Vec<Vec<GBuffer>>, max_global_id: &[i64; 3]) -> GPGPU {
     GPGPU::new(source.clone(), buffers.clone(), *max_global_id)
 }
 
-fn GPGPU_new_easy(source: &mut String, buffer: &mut GBuffer) -> GPGPU {
+fn GPGPU_new_easy(source: &String, buffer: &GBuffer) -> GPGPU {
     // In order to support larger arrays, we need to split the buffer length across them. Each of
     // indices is allowed to be up to 65535 (yes, a 16-bit integer) leading to a maximum length of
     // 65535^3, or about 2.815x10^14 elements (about 281 trillion elements). Not quite up to the
@@ -1110,7 +1100,7 @@ fn GPGPU_new_easy(source: &mut String, buffer: &mut GBuffer) -> GPGPU {
     GPGPU::new(source.clone(), vec![vec![buffer.clone()]], [x, y, z])
 }
 
-fn gpu_run(gg: &mut GPGPU) {
+fn gpu_run(gg: &GPGPU) {
     let g = gpu();
     let module = g.device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: None,
@@ -1165,7 +1155,7 @@ fn gpu_run(gg: &mut GPGPU) {
     g.queue.submit(Some(encoder.finish()));
 }
 
-fn read_buffer(b: &mut GBuffer) -> Vec<i32> {
+fn read_buffer(b: &GBuffer) -> Vec<i32> {
     // TODO: Support other value types
     let g = gpu();
     let temp_buffer = create_empty_buffer(

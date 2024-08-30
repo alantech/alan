@@ -2,6 +2,7 @@ use std::sync::OnceLock;
 
 use ordered_hash_map::OrderedHashMap;
 
+use super::ArgKind;
 use super::CType;
 use super::Const;
 use super::Export;
@@ -361,7 +362,7 @@ impl<'a> Scope<'a> {
                 let input = f
                     .args
                     .iter()
-                    .map(|(_, arg)| arg.clone())
+                    .map(|(_, _, arg)| arg.clone())
                     .collect::<Vec<CType>>();
                 let output = f.rettype.clone();
                 match generics {
@@ -404,7 +405,7 @@ impl<'a> Scope<'a> {
                             Box::new(CType::Tuple(
                                 f.args
                                     .iter()
-                                    .map(|(_, t)| t.clone())
+                                    .map(|(_, _, t)| t.clone())
                                     .collect::<Vec<CType>>(),
                             )),
                             Box::new(f.rettype.clone()),
@@ -484,8 +485,8 @@ impl<'a> Scope<'a> {
                     let args = f
                         .args
                         .iter()
-                        .map(|(name, argtype)| {
-                            (name.clone(), {
+                        .map(|(name, kind, argtype)| {
+                            (name.clone(), kind.clone(), {
                                 let mut a = argtype.clone();
                                 for ((_, o), n) in gen_args.iter().zip(generic_types.iter()) {
                                     a = a.swap_subtype(o, n);
@@ -493,15 +494,15 @@ impl<'a> Scope<'a> {
                                 a
                             })
                         })
-                        .collect::<Vec<(String, CType)>>();
+                        .collect::<Vec<(String, ArgKind, CType)>>();
                     possible_args_vec.push(args);
                 }
                 FnKind::Generic(gen_args, _) => {
                     let args = f
                         .args
                         .iter()
-                        .map(|(name, argtype)| {
-                            (name.clone(), {
+                        .map(|(name, kind, argtype)| {
+                            (name.clone(), kind.clone(), {
                                 let mut a = argtype.clone();
                                 for ((_, o), n) in gen_args.iter().zip(generic_types.iter()) {
                                     a = a.swap_subtype(o, n);
@@ -509,7 +510,7 @@ impl<'a> Scope<'a> {
                                 a
                             })
                         })
-                        .collect::<Vec<(String, CType)>>();
+                        .collect::<Vec<(String, ArgKind, CType)>>();
                     possible_args_vec.push(args);
                 }
             }
@@ -521,7 +522,7 @@ impl<'a> Scope<'a> {
                 // This is pretty cheap, but for now, a "non-strict" string representation
                 // of the CTypes is how we'll match the args against each other. TODO: Do
                 // this without constructing a string to compare against each other.
-                if !possible_args[i].1.accepts(arg) {
+                if !possible_args[i].2.accepts(arg) {
                     args_match = false;
                     break;
                 }
@@ -612,7 +613,7 @@ impl<'a> Scope<'a> {
                     // actual args are the same type as the function's arg.
                     let mut args_match = true;
                     for arg in args.iter() {
-                        if !f.args[0].1.accepts(arg) {
+                        if !f.args[0].2.accepts(arg) {
                             args_match = false;
                             break;
                         }
@@ -632,7 +633,7 @@ impl<'a> Scope<'a> {
                         // This is pretty cheap, but for now, a "non-strict" string representation
                         // of the CTypes is how we'll match the args against each other. TODO: Do
                         // this without constructing a string to compare against each other.
-                        if !f.args[i].1.accepts(arg) {
+                        if !f.args[i].2.accepts(arg) {
                             args_match = false;
                             break;
                         }
@@ -710,7 +711,7 @@ impl<'a> Scope<'a> {
                     // actual args are the same type as the function's arg.
                     let mut args_match = true;
                     for arg in args.iter() {
-                        if !f.args[0].1.accepts(arg) {
+                        if !f.args[0].2.accepts(arg) {
                             args_match = false;
                             break;
                         }
@@ -728,7 +729,7 @@ impl<'a> Scope<'a> {
                         // This is pretty cheap, but for now, a "non-strict" string representation
                         // of the CTypes is how we'll match the args against each other. TODO: Do
                         // this without constructing a string to compare against each other.
-                        if !f.args[i].1.accepts(arg) {
+                        if !f.args[i].2.accepts(arg) {
                             args_match = false;
                             break;
                         }

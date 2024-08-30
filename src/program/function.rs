@@ -1,6 +1,7 @@
 use super::ctype::{withtypeoperatorslist_to_ctype, CType};
 use super::microstatement::{statement_to_microstatements, Microstatement};
 use super::scope::merge;
+use super::ArgKind;
 use super::Export;
 use super::FnKind;
 use super::Scope;
@@ -9,7 +10,7 @@ use crate::parse;
 #[derive(Clone, Debug)]
 pub struct Function {
     pub name: String,
-    pub args: Vec<(String, CType)>,
+    pub args: Vec<(String, ArgKind, CType)>,
     pub rettype: CType,
     pub microstatements: Vec<Microstatement>,
     pub kind: FnKind,
@@ -180,14 +181,34 @@ impl Function {
                         CType::Tuple(ts) => {
                             for (i, t) in ts.iter().enumerate() {
                                 args.push(match t {
-                                    CType::Field(argname, t) => (argname.clone(), *t.clone()),
-                                    otherwise => (format!("arg{}", i), otherwise.clone()),
+                                    CType::Field(argname, t) => match &**t {
+                                        CType::Mut(t) => {
+                                            (argname.clone(), ArgKind::Mut, *t.clone())
+                                        }
+                                        otherwise => {
+                                            (argname.clone(), ArgKind::Ref, otherwise.clone())
+                                        }
+                                    },
+                                    CType::Mut(t) => {
+                                        (format!("arg{}", i), ArgKind::Mut, *t.clone())
+                                    }
+                                    otherwise => {
+                                        (format!("arg{}", i), ArgKind::Ref, otherwise.clone())
+                                    }
                                 });
                             }
                         }
-                        CType::Field(argname, t) => args.push((argname.clone(), *t.clone())),
+                        CType::Field(argname, t) => match &*t {
+                            CType::Mut(t) => args.push((argname.clone(), ArgKind::Mut, *t.clone())),
+                            otherwise => {
+                                args.push((argname.clone(), ArgKind::Ref, otherwise.clone()))
+                            }
+                        },
                         CType::Void => {} // Do nothing so an empty set is properly
-                        otherwise => args.push(("arg0".to_string(), otherwise.clone())),
+                        CType::Mut(t) => args.push(("arg0".to_string(), ArgKind::Mut, *t.clone())),
+                        otherwise => {
+                            args.push(("arg0".to_string(), ArgKind::Ref, otherwise.clone()))
+                        }
                     }
                     let function = Function {
                         name,
@@ -317,7 +338,7 @@ impl Function {
         // TODO: Add code to properly convert the typeassignable vec into a CType tree and use it.
         // For now, just hardwire the parsing as before.
         let (args, rettype) = match &function_ast.opttype {
-            None => Ok::<(Vec<(String, CType)>, CType), Box<dyn std::error::Error>>((
+            None => Ok::<(Vec<(String, ArgKind, CType)>, CType), Box<dyn std::error::Error>>((
                 Vec::new(),
                 CType::Void,
             )), // TODO: Does this path *ever* trigger?
@@ -354,14 +375,38 @@ impl Function {
                         CType::Tuple(ts) => {
                             for (i, t) in ts.iter().enumerate() {
                                 out_args.push(match t {
-                                    CType::Field(argname, t) => (argname.clone(), *t.clone()),
-                                    otherwise => (format!("arg{}", i), otherwise.clone()),
+                                    CType::Field(argname, t) => match &**t {
+                                        CType::Mut(t) => {
+                                            (argname.clone(), ArgKind::Mut, *t.clone())
+                                        }
+                                        otherwise => {
+                                            (argname.clone(), ArgKind::Ref, otherwise.clone())
+                                        }
+                                    },
+                                    CType::Mut(t) => {
+                                        (format!("arg{}", i), ArgKind::Mut, *t.clone())
+                                    }
+                                    otherwise => {
+                                        (format!("arg{}", i), ArgKind::Ref, otherwise.clone())
+                                    }
                                 });
                             }
                         }
-                        CType::Field(argname, t) => out_args.push((argname.clone(), *t.clone())),
+                        CType::Field(argname, t) => match &*t {
+                            CType::Mut(t) => {
+                                out_args.push((argname.clone(), ArgKind::Mut, *t.clone()))
+                            }
+                            otherwise => {
+                                out_args.push((argname.clone(), ArgKind::Ref, otherwise.clone()))
+                            }
+                        },
                         CType::Void => {} // Do nothing so an empty set is properly
-                        otherwise => out_args.push(("arg0".to_string(), otherwise.clone())),
+                        CType::Mut(t) => {
+                            out_args.push(("arg0".to_string(), ArgKind::Mut, *t.clone()))
+                        }
+                        otherwise => {
+                            out_args.push(("arg0".to_string(), ArgKind::Ref, otherwise.clone()))
+                        }
                     }
                     Ok((out_args, output_type.clone()))
                 }
@@ -433,14 +478,38 @@ impl Function {
                         CType::Tuple(ts) => {
                             for (i, t) in ts.iter().enumerate() {
                                 out_args.push(match t {
-                                    CType::Field(argname, t) => (argname.clone(), *t.clone()),
-                                    otherwise => (format!("arg{}", i), otherwise.clone()),
+                                    CType::Field(argname, t) => match &**t {
+                                        CType::Mut(t) => {
+                                            (argname.clone(), ArgKind::Mut, *t.clone())
+                                        }
+                                        otherwise => {
+                                            (argname.clone(), ArgKind::Ref, otherwise.clone())
+                                        }
+                                    },
+                                    CType::Mut(t) => {
+                                        (format!("arg{}", i), ArgKind::Mut, *t.clone())
+                                    }
+                                    otherwise => {
+                                        (format!("arg{}", i), ArgKind::Ref, otherwise.clone())
+                                    }
                                 });
                             }
                         }
-                        CType::Field(argname, t) => out_args.push((argname.clone(), *t.clone())),
+                        CType::Field(argname, t) => match &*t {
+                            CType::Mut(t) => {
+                                out_args.push((argname.clone(), ArgKind::Mut, *t.clone()))
+                            }
+                            otherwise => {
+                                out_args.push((argname.clone(), ArgKind::Ref, otherwise.clone()))
+                            }
+                        },
                         CType::Void => {} // Do nothing so an empty set is properly
-                        otherwise => out_args.push(("arg0".to_string(), otherwise.clone())),
+                        CType::Mut(t) => {
+                            out_args.push(("arg0".to_string(), ArgKind::Mut, *t.clone()))
+                        }
+                        otherwise => {
+                            out_args.push(("arg0".to_string(), ArgKind::Ref, otherwise.clone()))
+                        }
                     }
                     Ok((out_args, output_type.clone()))
                 }
@@ -448,9 +517,10 @@ impl Function {
         }?;
         let microstatements = {
             let mut ms = Vec::new();
-            for (name, typen) in &args {
+            for (name, kind, typen) in &args {
                 ms.push(Microstatement::Arg {
                     name: name.clone(),
+                    kind: kind.clone(),
                     typen: typen.clone(),
                 });
             }
@@ -515,8 +585,8 @@ impl Function {
                 let args = generic_function
                     .args
                     .iter()
-                    .map(|(name, argtype)| {
-                        (name.clone(), {
+                    .map(|(name, kind, argtype)| {
+                        (name.clone(), kind.clone(), {
                             let mut a = argtype.clone();
                             for ((_, o), n) in gen_args.iter().zip(generic_types.iter()) {
                                 a = a.swap_subtype(o, n);
@@ -524,9 +594,9 @@ impl Function {
                             a
                         })
                     })
-                    .collect::<Vec<(String, CType)>>();
+                    .collect::<Vec<(String, ArgKind, CType)>>();
                 // Make sure all argument types exist within the generic function call scope
-                for (_, arg) in &args {
+                for (_, _, arg) in &args {
                     scope = CType::from_ctype(scope, arg.to_callable_string(), arg.clone());
                 }
                 let rettype = {
@@ -538,9 +608,10 @@ impl Function {
                 };
                 let microstatements = {
                     let mut ms = Vec::new();
-                    for (name, typen) in &args {
+                    for (name, kind, typen) in &args {
                         ms.push(Microstatement::Arg {
                             name: name.clone(),
+                            kind: kind.clone(),
                             typen: typen.clone(),
                         });
                     }
@@ -580,8 +651,8 @@ impl Function {
                 let args = generic_function
                     .args
                     .iter()
-                    .map(|(name, argtype)| {
-                        (name.clone(), {
+                    .map(|(name, kind, argtype)| {
+                        (name.clone(), kind.clone(), {
                             let mut a = argtype.clone();
                             for ((_, o), n) in gen_args.iter().zip(generic_types.iter()) {
                                 a = a.swap_subtype(o, n);
@@ -589,9 +660,9 @@ impl Function {
                             a
                         })
                     })
-                    .collect::<Vec<(String, CType)>>();
+                    .collect::<Vec<(String, ArgKind, CType)>>();
                 // Make sure all argument types exist within the generic function call scope
-                for (_, arg) in &args {
+                for (_, _, arg) in &args {
                     scope = CType::from_ctype(scope, arg.to_callable_string(), arg.clone());
                 }
                 let rettype = {
@@ -608,9 +679,10 @@ impl Function {
                 }
                 let microstatements = {
                     let mut ms = Vec::new();
-                    for (name, typen) in &args {
+                    for (name, kind, typen) in &args {
                         ms.push(Microstatement::Arg {
                             name: name.clone(),
+                            kind: kind.clone(),
                             typen: typen.clone(),
                         });
                     }

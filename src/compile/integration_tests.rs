@@ -1582,6 +1582,22 @@ to barto bar3
 "#;
 );
 
+test!(mutable_functions => r#"
+    fn addeq (a: Mut{i64}, b: i64) {
+        a = a.clone() + b;
+    }
+
+    infix addeq as += precedence 0;
+
+    export fn main {
+        let five = 3;
+        five.print;
+        five += 2;
+        five.print;
+    }"#;
+    stdout "3\n5\n";
+);
+
 // Conditionals
 
 test!(if_fn => r#"

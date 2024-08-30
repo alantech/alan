@@ -1,3 +1,4 @@
+mod argkind;
 mod constn;
 mod ctype;
 mod export;
@@ -11,6 +12,7 @@ mod program;
 mod scope;
 mod typeoperatormapping;
 
+pub use argkind::ArgKind;
 pub use constn::Const;
 pub use ctype::CType;
 pub use export::Export;

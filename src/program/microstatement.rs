@@ -1,5 +1,6 @@
 use super::ctype::{withtypeoperatorslist_to_ctype, CType};
 use super::scope::merge;
+use super::ArgKind;
 use super::FnKind;
 use super::Function;
 use super::OperatorMapping;
@@ -19,6 +20,7 @@ pub enum Microstatement {
     },
     Arg {
         name: String,
+        kind: ArgKind,
         typen: CType,
     },
     FnCall {
@@ -63,7 +65,7 @@ impl Microstatement {
                 let arg_types = function
                     .args
                     .iter()
-                    .map(|(_, t)| t.clone())
+                    .map(|(_, _, t)| t.clone())
                     .collect::<Vec<CType>>();
                 CType::Function(
                     Box::new(if arg_types.is_empty() {
@@ -477,10 +479,12 @@ pub fn baseassignablelist_to_microstatements<'a>(
                 // TODO: Add code to properly convert the typeassignable vec into a CType tree and use it.
                 // For now, just hardwire the parsing as before.
                 let (args, rettype) = match &f.opttype {
-                    None => Ok::<(Vec<(String, CType)>, CType), Box<dyn std::error::Error>>((
-                        Vec::new(),
-                        CType::Void,
-                    )), // TODO: Does this path *ever* trigger?
+                    None => {
+                        Ok::<(Vec<(String, ArgKind, CType)>, CType), Box<dyn std::error::Error>>((
+                            Vec::new(),
+                            CType::Void,
+                        ))
+                    } // TODO: Does this path *ever* trigger?
                     Some(typeassignable) if typeassignable.is_empty() => {
                         Ok((Vec::new(), CType::Void))
                     }
@@ -517,18 +521,46 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                 CType::Tuple(ts) => {
                                     for (i, t) in ts.iter().enumerate() {
                                         out_args.push(match t {
-                                            CType::Field(argname, t) => {
-                                                (argname.clone(), *t.clone())
+                                            CType::Field(argname, t) => match &**t {
+                                                CType::Mut(t) => {
+                                                    (argname.clone(), ArgKind::Mut, *t.clone())
+                                                }
+                                                otherwise => (
+                                                    argname.clone(),
+                                                    ArgKind::Ref,
+                                                    otherwise.clone(),
+                                                ),
+                                            },
+                                            CType::Mut(t) => {
+                                                (format!("arg{}", i), ArgKind::Mut, *t.clone())
                                             }
-                                            otherwise => (format!("arg{}", i), otherwise.clone()),
+                                            otherwise => (
+                                                format!("arg{}", i),
+                                                ArgKind::Ref,
+                                                otherwise.clone(),
+                                            ),
                                         });
                                     }
                                 }
-                                CType::Field(argname, t) => {
-                                    out_args.push((argname.clone(), *t.clone()))
-                                }
+                                CType::Field(argname, t) => match &*t {
+                                    CType::Mut(t) => {
+                                        out_args.push((argname.clone(), ArgKind::Mut, *t.clone()))
+                                    }
+                                    otherwise => out_args.push((
+                                        argname.clone(),
+                                        ArgKind::Ref,
+                                        otherwise.clone(),
+                                    )),
+                                },
                                 CType::Void => {} // Do nothing so an empty set is properly
-                                otherwise => out_args.push(("arg0".to_string(), otherwise.clone())),
+                                CType::Mut(t) => {
+                                    out_args.push(("arg0".to_string(), ArgKind::Mut, *t.clone()))
+                                }
+                                otherwise => out_args.push((
+                                    "arg0".to_string(),
+                                    ArgKind::Ref,
+                                    otherwise.clone(),
+                                )),
                             }
                             Ok((out_args, output_type.clone()))
                         }
@@ -600,26 +632,55 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                 CType::Tuple(ts) => {
                                     for (i, t) in ts.iter().enumerate() {
                                         out_args.push(match t {
-                                            CType::Field(argname, t) => {
-                                                (argname.clone(), *t.clone())
+                                            CType::Field(argname, t) => match &**t {
+                                                CType::Mut(t) => {
+                                                    (argname.clone(), ArgKind::Mut, *t.clone())
+                                                }
+                                                otherwise => (
+                                                    argname.clone(),
+                                                    ArgKind::Ref,
+                                                    otherwise.clone(),
+                                                ),
+                                            },
+                                            CType::Mut(t) => {
+                                                (format!("arg{}", i), ArgKind::Mut, *t.clone())
                                             }
-                                            otherwise => (format!("arg{}", i), otherwise.clone()),
+                                            otherwise => (
+                                                format!("arg{}", i),
+                                                ArgKind::Ref,
+                                                otherwise.clone(),
+                                            ),
                                         });
                                     }
                                 }
-                                CType::Field(argname, t) => {
-                                    out_args.push((argname.clone(), *t.clone()))
-                                }
+                                CType::Field(argname, t) => match &*t {
+                                    CType::Mut(t) => {
+                                        out_args.push((argname.clone(), ArgKind::Mut, *t.clone()))
+                                    }
+                                    otherwise => out_args.push((
+                                        argname.clone(),
+                                        ArgKind::Ref,
+                                        otherwise.clone(),
+                                    )),
+                                },
                                 CType::Void => {} // Do nothing so an empty set is properly
-                                otherwise => out_args.push(("arg0".to_string(), otherwise.clone())),
+                                CType::Mut(t) => {
+                                    out_args.push(("arg0".to_string(), ArgKind::Mut, *t.clone()))
+                                }
+                                otherwise => out_args.push((
+                                    "arg0".to_string(),
+                                    ArgKind::Ref,
+                                    otherwise.clone(),
+                                )),
                             }
                             Ok((out_args, output_type.clone()))
                         }
                     },
                 }?;
-                for (name, typen) in &args {
+                for (name, kind, typen) in &args {
                     microstatements.push(Microstatement::Arg {
                         name: name.clone(),
+                        kind: kind.clone(),
                         typen: typen.clone(),
                     });
                 }
@@ -834,7 +895,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                         Microstatement::Closure { function } => {
                             if &function.name == f && function.args.len() == arg_types.len() {
                                 let mut works = true;
-                                for ((_, a), b) in function.args.iter().zip(&arg_types) {
+                                for ((_, _, a), b) in function.args.iter().zip(&arg_types) {
                                     if !a.accepts(b) {
                                         works = false;
                                     }
@@ -845,7 +906,11 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                 }
                             }
                         }
-                        Microstatement::Arg { name, typen } => {
+                        Microstatement::Arg {
+                            name,
+                            kind: _,
+                            typen,
+                        } => {
                             if name == f {
                                 if let CType::Function(i, o) = typen {
                                     let mut works = true;
@@ -901,9 +966,9 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                         typen,
                                         representation,
                                     } => {
-                                        if typen != &fun.args[i].1 {
+                                        if typen != &fun.args[i].2 {
                                             arg_microstatements[i] = Microstatement::Value {
-                                                typen: fun.args[i].1.clone(),
+                                                typen: fun.args[i].2.clone(),
                                                 representation: representation.clone(),
                                             };
                                         }
