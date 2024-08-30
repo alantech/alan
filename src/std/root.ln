@@ -159,8 +159,9 @@ export fn store{T} (a: Mut{T}, b: T) -> T = {"std::mem::replace" :: (Mut{T}, Own
 /// Fallible, Maybe, and Either functions
 export fn getOr{T} "maybe_get_or" :: (T?, T) -> T;
 export fn getOr{T} "fallible_get_or" :: (T!, T) -> T;
-export fn Error{T} "fallible_error" :: string -> T!;
-export fn Error "bare_error" :: string -> Error;
+export fn Error{T} (e: string) -> T! = {"Err" :: Own{Error} -> T!}(
+  {Method{"into"} :: Own{string} -> Error}(e));
+export fn Error (e: string) -> Error = {Method{"into"} :: Own{string} -> Error}(e);
 export fn exists{T} (m: T?) -> bool = {Method{"is_some"} :: T? -> bool}(m);
 
 /// Primitive type casting functions

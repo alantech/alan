@@ -95,19 +95,6 @@ fn fallible_get_or<T: std::clone::Clone>(v: &Result<T, AlanError>, d: &T) -> T {
     }
 }
 
-/// `fallible_error` create an Err for the given fallible type
-#[inline(always)]
-fn fallible_error<T>(m: &String) -> Result<T, AlanError> {
-    Err(m.clone().into())
-}
-
-/// `bare_error` create a bare Error value, useful when trying to extract the actual error from a
-/// Fallible type
-#[inline(always)]
-fn bare_error(m: &String) -> AlanError {
-    AlanError { message: m.clone() }
-}
-
 /// Signed Integer-related functions
 
 /// `stringtoi8` tries to convert a string into an i8
