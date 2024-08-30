@@ -154,8 +154,7 @@ export fn hash "hashstring" :: string -> i64;
 export fn hash{T} "hash" :: T -> i64;
 export fn void{T}(v: T) -> void {}
 export fn void() -> void {}
-//export fn store{T} (a: T, b: T) -> T = {"std::mem::replace" :: (Mut{T}, Own{T}) -> T}(a, b);
-export fn store{T} "storeswap" :: (T, T) -> T;
+export fn store{T} (a: Mut{T}, b: T) -> T = {"std::mem::replace" :: (Mut{T}, Own{T}) -> T}(a, b);
 
 /// Fallible, Maybe, and Either functions
 export fn getOr{T} "maybe_get_or" :: (T?, T) -> T;
@@ -599,8 +598,8 @@ export fn join{S}(a: Buffer{string, S}, s: string) -> string = {Method{"join"} :
 /// Array related bindings
 export fn get{T} "getarray" :: (T[], i64) -> T?;
 export fn len{T} "lenarray" :: T[] -> i64;
-export fn push{T} "pusharray" :: (T[], T);
-export fn pop{T} "poparray" :: T[] -> T?;
+export fn push{T} "pusharray" :: (Mut{T[]}, T);
+export fn pop{T} "poparray" :: Mut{T[]} -> T?;
 export fn map{T, U} "map_onearg" :: (T[], T -> U) -> U[];
 export fn map{T, U} "map_twoarg" :: (T[], (T, i64) -> U) -> U[];
 export fn parmap{T, U} "parmap_onearg" :: (T[], T -> U) -> U[];
@@ -611,7 +610,7 @@ export fn reduce{T} "reduce_sametype_idx" :: (T[], (T, T, i64) -> T) -> T?;
 export fn reduce{T, U} "reduce_difftype" :: (T[], U, (U, T) -> U) -> U;
 export fn reduce{T, U} "reduce_difftype_idx" :: (T[], U, (U, T, i64) -> U) -> U;
 export fn concat{T} "concat" :: (T[], T[]) -> T[];
-export fn append{T} "append" :: (T[], T[]);
+export fn append{T} "append" :: (Mut{T[]}, T[]);
 export fn filled{T} "filled" :: (T, i64) -> T[];
 export fn has{T} (a: T[], v: T) -> bool = {Method{"contains"} :: (T[], T) -> bool}(a, v);
 export fn has{T} "hasfnarray" :: (T[], T -> bool) -> bool;
@@ -639,8 +638,8 @@ export fn index{T}(a: Array{T}, f: (T, i64) -> bool) -> Maybe{i64} = a.reduce(
 export fn every{T} "everyarray" :: (T[], T -> bool) -> bool;
 export fn some{T} "somearray" :: (T[], T -> bool) -> bool;
 export fn repeat{T} "repeatarray" :: (T[], i64) -> T[];
-export fn store{T} "storearray" :: (T[], i64, T) -> void!;
-export fn delete{T} "deletearray" :: (T[], i64) -> T!;
+export fn store{T} "storearray" :: (Mut{T[]}, i64, T) -> void!;
+export fn delete{T} "deletearray" :: (Mut{T[]}, i64) -> T!;
 
 /// Buffer related bindings
 export fn get{T, S} "getbuffer" :: (T[S], i64) -> T?;
@@ -654,7 +653,7 @@ export fn has{T, S} "hasbuffer" :: (T[S], T) -> bool;
 export fn has{T, S} "hasfnbuffer" :: (T[S], T -> bool) -> bool;
 export fn find{T, S} "findbuffer" :: (T[S], T -> bool) -> T?;
 export fn every{T, S} "everybuffer" :: (T[S], T -> bool) -> bool;
-fn concatInner{T, S, N} "concatbuffer" :: (T[S + N], T[S], T[N]);
+fn concatInner{T, S, N} "concatbuffer" :: (Mut{T[S + N]}, T[S], T[N]);
 export fn concat{T, S, N}(a: Buffer{T, S}, b: Buffer{T, N}) -> Buffer{T, S + N} {
   // I can't bind directly into Rust because Rust can't add const integer type parameters together.
   // It's *theoretically* possible to generate a new Rust function in each case with the required
@@ -667,7 +666,7 @@ export fn concat{T, S, N}(a: Buffer{T, S}, b: Buffer{T, N}) -> Buffer{T, S + N} 
 // TODO: Be able to resolve explicit integer constant values as the integer type so it can be
 // grabbed by the type inference system. For now, repeat for buffers outputs an array, instead.
 export fn repeat{T, S} "repeatbuffertoarray" :: (T[S], i64) -> T[];
-export fn store{T, S} "storebuffer" :: (T[S], i64, T) -> T!;
+export fn store{T, S} "storebuffer" :: (Mut{T[S]}, i64, T) -> T!;
 
 /// Dictionary-related bindings
 export fn Dict{K, V} "OrderedHashMap::new" :: () -> Dict{K, V};
@@ -680,7 +679,7 @@ export fn Dict{K, V}(a: Array{(K, V)}) -> Dict{K, V} = a.reduce(Dict{K, V}(), fn
   d.store(v.0, v.1);
   return d;
 });
-export fn store{K, V} "storedict" :: (Dict{K, V}, K, V);
+export fn store{K, V} "storedict" :: (Mut{Dict{K, V}}, K, V);
 export fn get{K, V} "getdict" :: (Dict{K, V}, K) -> V?;
 export fn has{K, V} (d: Dict{K, V}, k: K) -> bool = {Method{"contains_key"} :: (Dict{K, V}, K) -> bool}(d, k);
 export fn len{K, V} (d: Dict{K, V}) -> i64 = {Cast{"i64"} :: Deref{Binds{"usize"}} -> i64}({Method{"len"} :: Dict{K, V} -> Binds{"usize"}}(d));
@@ -700,7 +699,7 @@ export fn Set{V}(v: V) -> Set{V} {
   out.store(v);
   return out;
 }
-export fn store{V} "storeset" :: (Set{V}, V);
+export fn store{V} "storeset" :: (Mut{Set{V}}, V);
 export fn has{V} (s: Set{V}, v: V) -> bool = {Method{"contains"} :: (Set{V}, V) -> bool}(s, v);
 export fn len{V} (s: Set{V}) -> i64 = {Cast{"i64"} :: Deref{Binds{"usize"}} -> i64}({Method{"len"} :: Set{V} -> Binds{"usize"}}(s));
 export fn Array{V} "arrayset" :: Set{V} -> V[];

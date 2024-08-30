@@ -3,24 +3,34 @@
 use ordered_hash_map::OrderedHashMap;
 
 use crate::lntors::typen;
-use crate::program::{CType, FnKind, Function, Microstatement, Scope};
+use crate::program::{ArgKind, CType, FnKind, Function, Microstatement, Scope};
 
 pub fn from_microstatement(
     microstatement: &Microstatement,
+    parent_fn: &Function,
     scope: &Scope,
     mut out: OrderedHashMap<String, String>,
 ) -> Result<(String, OrderedHashMap<String, String>), Box<dyn std::error::Error>> {
     match microstatement {
-        Microstatement::Arg { name, typen } => {
+        Microstatement::Arg { name, kind, typen } => {
             // TODO: Update the serialization logic to understand values vs references so we can
             // eliminate this useless (and harmful for mutable references) clone
             if let CType::Function { .. } = typen {
                 Ok(("".to_string(), out))
             } else {
-                Ok((
-                    format!("let mut {} = {}.clone()", name, name), // TODO: not always mutable
-                    out,
-                ))
+                match &kind {
+                    ArgKind::Mut => Ok(("".to_string(), out)), // We actively want to mutate the argument, don't
+                    // alias it
+                    ArgKind::Own => Ok(("".to_string(), out)), // We already own the value
+                    ArgKind::Ref => Ok((
+                        format!("let mut {} = {}.clone()", name, name), // TODO: not always mutable
+                        out,
+                    )), // TODO: Should these two be distinguished?
+                    ArgKind::Deref => Ok((
+                        format!("let mut {} = *{}", name, name), // TODO: not always mutable
+                        out,
+                    )),
+                }
             }
         }
         Microstatement::Assignment {
@@ -28,7 +38,7 @@ pub fn from_microstatement(
             value,
             mutable: _,
         } => {
-            let (val, o) = from_microstatement(value, scope, out)?;
+            let (val, o) = from_microstatement(value, parent_fn, scope, out)?;
             // I wish I didn't have to write the following line because you can't re-assign a
             // variable in a let destructuring, afaict
             out = o;
@@ -51,11 +61,11 @@ pub fn from_microstatement(
             let arg_names = function
                 .args
                 .iter()
-                .map(|(n, _)| n.clone())
+                .map(|(n, _, _)| n.clone())
                 .collect::<Vec<String>>();
             let mut inner_statements = Vec::new();
             for ms in &function.microstatements {
-                let (val, o) = from_microstatement(ms, scope, out)?;
+                let (val, o) = from_microstatement(ms, parent_fn, scope, out)?;
                 out = o;
                 inner_statements.push(val);
             }
@@ -96,7 +106,7 @@ pub fn from_microstatement(
                             | FnKind::Static => {
                                 let mut arg_strs = Vec::new();
                                 for arg in &fun.args {
-                                    arg_strs.push(arg.1.to_callable_string());
+                                    arg_strs.push(arg.2.to_callable_string());
                                 }
                                 // Come up with a function name that is unique so Rust doesn't choke on
                                 // duplicate function names that are allowed in Alan
@@ -118,7 +128,7 @@ pub fn from_microstatement(
         Microstatement::Array { vals, .. } => {
             let mut val_representations = Vec::new();
             for val in vals {
-                let (rep, o) = from_microstatement(val, scope, out)?;
+                let (rep, o) = from_microstatement(val, parent_fn, scope, out)?;
                 val_representations.push(rep);
                 out = o;
             }
@@ -152,7 +162,7 @@ pub fn from_microstatement(
                     out = o;
                     let mut arg_strs = Vec::new();
                     for arg in &function.args {
-                        arg_strs.push(arg.1.to_callable_string());
+                        arg_strs.push(arg.2.to_callable_string());
                     }
                     // Come up with a function name that is unique so Rust doesn't choke on
                     // duplicate function names that are allowed in Alan
@@ -161,8 +171,8 @@ pub fn from_microstatement(
                     out = generate(rustname.clone(), function, scope, out)?;
                     // Now call this function
                     let mut argstrs = Vec::new();
-                    for arg in args {
-                        let (a, o) = from_microstatement(arg, scope, out)?;
+                    for (i, arg) in args.iter().enumerate() {
+                        let (a, o) = from_microstatement(arg, parent_fn, scope, out)?;
                         out = o;
                         // If the argument is itself a function, this is the only place in Rust
                         // where you can't pass by reference, so we check the type and change
@@ -170,11 +180,23 @@ pub fn from_microstatement(
                         let arg_type = arg.get_type();
                         match arg_type {
                             CType::Function(..) => argstrs.push(a.to_string()),
-                            _ => argstrs.push(if a.starts_with("&mut ") {
-                                a
-                            } else {
-                                format!("&mut {}", a)
-                            }),
+                            _ => match function.args[i].1 {
+                                ArgKind::Mut => {
+                                    let mut prefix = "&mut ";
+                                    for (name, kind, _) in &parent_fn.args {
+                                        if name == &a {
+                                            if let ArgKind::Mut = kind {
+                                                prefix = "";
+                                            }
+                                        }
+                                    }
+                                    argstrs.push(format!("{}{}", prefix, a));
+                                }
+                                // Because we create clones for these two right now, we always need
+                                // this
+                                ArgKind::Ref | ArgKind::Deref => argstrs.push(format!("&{}", a)),
+                                ArgKind::Own => argstrs.push(a.clone()),
+                            },
                         }
                     }
                     Ok((
@@ -184,8 +206,8 @@ pub fn from_microstatement(
                 }
                 FnKind::Bind(rustname) => {
                     let mut argstrs = Vec::new();
-                    for arg in args {
-                        let (a, o) = from_microstatement(arg, scope, out)?;
+                    for (i, arg) in args.iter().enumerate() {
+                        let (a, o) = from_microstatement(arg, parent_fn, scope, out)?;
                         out = o;
                         // If the argument is itself a function, this is the only place in Rust
                         // where you can't pass by reference, so we check the type and change
@@ -193,11 +215,23 @@ pub fn from_microstatement(
                         let arg_type = arg.get_type();
                         match arg_type {
                             CType::Function(..) => argstrs.push(a.to_string()),
-                            _ => argstrs.push(if a.starts_with("&mut ") {
-                                a
-                            } else {
-                                format!("&mut {}", a)
-                            }),
+                            _ => match function.args[i].1 {
+                                ArgKind::Mut => {
+                                    let mut prefix = "&mut ";
+                                    for (name, kind, _) in &parent_fn.args {
+                                        if name == &a {
+                                            if let ArgKind::Mut = kind {
+                                                prefix = "";
+                                            }
+                                        }
+                                    }
+                                    argstrs.push(format!("{}{}", prefix, a));
+                                }
+                                // Because we create clones for these two right now, we always need
+                                // this
+                                ArgKind::Ref | ArgKind::Deref => argstrs.push(format!("&{}", a)),
+                                ArgKind::Own => argstrs.push(a.clone()),
+                            },
                         }
                     }
                     Ok((
@@ -231,20 +265,9 @@ pub fn from_microstatement(
                     out = o;
                     let mut argstrs = Vec::new();
                     for arg in args {
-                        let (a, o) = from_microstatement(arg, scope, out)?;
+                        let (a, o) = from_microstatement(arg, parent_fn, scope, out)?;
                         out = o;
-                        // If the argument is itself a function, this is the only place in Rust
-                        // where you can't pass by reference, so we check the type and change
-                        // the argument output accordingly.
-                        let arg_type = arg.get_type();
-                        match arg_type {
-                            CType::Function(..) => argstrs.push(a.to_string()),
-                            _ => argstrs.push(if a.starts_with("&mut ") {
-                                a
-                            } else {
-                                format!("&mut {}", a)
-                            }),
-                        }
+                        argstrs.push(a.to_string());
                     }
                     // The behavior of the generated code depends on the structure of the
                     // return type and the input types. We also do some logic based on the name
@@ -280,7 +303,7 @@ pub fn from_microstatement(
                     //    question. (This conflicts with (1) so it's checked first.)
                     if function.args.len() == 1 {
                         // This is a wacky unwrapping logic...
-                        let mut input_type = &function.args[0].1;
+                        let mut input_type = &function.args[0].2;
                         while matches!(input_type, CType::Type(..) | CType::Group(_)) {
                             input_type = match input_type {
                                 CType::Type(_, t) => t,
@@ -340,7 +363,7 @@ pub fn from_microstatement(
                                 // function argument. We blow up here if the first argument is
                                 // *not* a Type we can get an enum name from (it *shouldn't* be
                                 // possible, but..)
-                                let enum_type = function.args[0].1.degroup();
+                                let enum_type = function.args[0].2.degroup();
                                 let enum_name = enum_type.to_callable_string();
                                 // We pass through to the main path if we can't find a matching
                                 // name
@@ -353,16 +376,16 @@ pub fn from_microstatement(
                                         } else if let CType::Type(name, _) = &ts[1] {
                                             if name == "Error" {
                                                 if function.name == "Error" {
-                                                    return Ok((format!("(match {} {{ Err(e) => Some(e.clone()), _ => None }})", argstrs[0]), out));
+                                                    return Ok((format!("(match &{} {{ Err(e) => Some(e.clone()), _ => None }})", argstrs[0]), out));
                                                 } else {
-                                                    return Ok((format!("(match {} {{ Ok(v) => Some(v.clone()), _ => None }})", argstrs[0]), out));
+                                                    return Ok((format!("(match &{} {{ Ok(v) => Some(v.clone()), _ => None }})", argstrs[0]), out));
                                                 }
                                             }
                                         }
                                     }
                                     return Ok((
                                         format!(
-                                            "(match {} {{ {}::{}(v) => Some(v.clone()), _ => None }})",
+                                            "(match &{} {{ {}::{}(v) => Some(v.clone()), _ => None }})",
                                             argstrs[0], enum_name, function.name
                                         ),
                                         out,
@@ -394,7 +417,7 @@ pub fn from_microstatement(
                                 if argstrs.len() != 2 {
                                     return Err(format!("Invalid arguments {} provided for Either re-assignment function, must be two arguments", argstrs.join(", ")).into());
                                 }
-                                let enum_type = &function.args[1].1.degroup();
+                                let enum_type = &function.args[1].2.degroup();
                                 let enum_name = match enum_type {
                                     CType::Field(n, _) => Ok(n.clone()),
                                     CType::Type(n, _) => Ok(n.clone()),
@@ -691,7 +714,7 @@ pub fn from_microstatement(
                                     return Err(format!("Invalid arguments {} provided for Either constructor function, must be zero or one argument", argstrs.join(", ")).into());
                                 }
                                 let enum_type = match &function.args.first() {
-                                    Some(t) => t.1.degroup(),
+                                    Some(t) => t.2.degroup(),
                                     None => CType::Void,
                                 };
                                 let enum_name = match enum_type {
@@ -1020,7 +1043,7 @@ pub fn from_microstatement(
         Microstatement::VarCall { name, args, .. } => {
             let mut argstrs = Vec::new();
             for arg in args {
-                let (a, o) = from_microstatement(arg, scope, out)?;
+                let (a, o) = from_microstatement(arg, parent_fn, scope, out)?;
                 out = o;
                 // If the argument is itself a function, this is the only place in Rust
                 // where you can't pass by reference, so we check the type and change
@@ -1028,6 +1051,7 @@ pub fn from_microstatement(
                 let arg_type = arg.get_type();
                 match arg_type {
                     CType::Function(..) => argstrs.push(a.to_string()),
+                    // TODO: How to figure out the arg kinds for a VarCall
                     _ => argstrs.push(if a.starts_with("&mut ") {
                         a
                     } else {
@@ -1039,7 +1063,7 @@ pub fn from_microstatement(
         }
         Microstatement::Return { value } => match value {
             Some(val) => {
-                let (retval, o) = from_microstatement(val, scope, out)?;
+                let (retval, o) = from_microstatement(val, parent_fn, scope, out)?;
                 out = o;
                 Ok((
                     format!(
@@ -1068,13 +1092,17 @@ pub fn generate(
     // First make sure all of the function argument types are defined
     let mut arg_strs = Vec::new();
     for arg in &function.args {
-        let (l, t) = arg;
+        let (l, k, t) = arg;
         let (t_str, o) = typen::generate(t, out)?;
         out = o;
         if t_str.starts_with("impl") || t_str.starts_with("&") {
             arg_strs.push(format!("{}: {}", l, t_str));
         } else {
-            arg_strs.push(format!("{}: &{}", l, t_str));
+            match k {
+                ArgKind::Mut => arg_strs.push(format!("{}: &mut {}", l, t_str)),
+                ArgKind::Own => arg_strs.push(format!("{}: {}", l, t_str)),
+                _ => arg_strs.push(format!("{}: &{}", l, t_str)),
+            }
         }
     }
     let opt_ret_str = match &function.rettype.degroup() {
@@ -1107,7 +1135,7 @@ pub fn generate(
     )
     .to_string();
     for microstatement in &function.microstatements {
-        let (stmt, o) = from_microstatement(microstatement, scope, out)?;
+        let (stmt, o) = from_microstatement(microstatement, function, scope, out)?;
         out = o;
         fn_string = format!("{}    {};\n", fn_string, stmt);
     }
