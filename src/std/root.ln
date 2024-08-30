@@ -578,7 +578,10 @@ export fn repeat (a: string, n: i64) -> string = {Method{"repeat"} :: (string, D
   {Cast{"usize"} :: Deref{i64} -> Binds{"usize"}}(n));
 export fn replace Method{"replace"} :: (string, string, string) -> string;
 export fn split "splitstring" :: (string, string) -> string[];
-export fn len "lenstring" :: string -> i64;
+export fn len (s: string) -> i64 = {Cast{"i64"} :: Deref{Binds{"usize"}} -> i64}(
+  {Method{"len"} :: Array{Binds{"char"}} -> Binds{"usize"}}(
+    {Method{"collect::<Vec<char>>"} :: Own{Binds{"std::str::Chars"}} -> Array{Binds{"char"}}}(
+      {Method{"chars"} :: string -> Binds{"std::str::Chars"}}(s))));
 export fn get "getstring" :: (string, i64) -> string!;
 export fn trim Method{"trim"} :: string -> string;
 export fn index "indexstring" :: (string, string) -> i64!;
@@ -597,9 +600,10 @@ export fn join{S}(a: Buffer{string, S}, s: string) -> string = {Method{"join"} :
 
 /// Array related bindings
 export fn get{T} "getarray" :: (T[], i64) -> T?;
-export fn len{T} "lenarray" :: T[] -> i64;
-export fn push{T} "pusharray" :: (Mut{T[]}, T);
-export fn pop{T} "poparray" :: Mut{T[]} -> T?;
+export fn len{T} (a: T[]) -> i64 = {Cast{"i64"} :: Deref{Binds{"usize"}} -> i64}(
+  {Method{"len"} :: T[] -> Binds{"usize"}}(a));
+export fn push{T} (a: Mut{T[]}, v: T) = {Method{"push"} :: (Mut{T[]}, Own{T})}(a, v);
+export fn pop{T} (a: Mut{T[]}) -> T? = {Method{"pop"} :: Mut{T[]} -> T?}(a);
 export fn map{T, U} "map_onearg" :: (T[], T -> U) -> U[];
 export fn map{T, U} "map_twoarg" :: (T[], (T, i64) -> U) -> U[];
 export fn parmap{T, U} "parmap_onearg" :: (T[], T -> U) -> U[];
@@ -679,7 +683,9 @@ export fn Dict{K, V}(a: Array{(K, V)}) -> Dict{K, V} = a.reduce(Dict{K, V}(), fn
   d.store(v.0, v.1);
   return d;
 });
-export fn store{K, V} "storedict" :: (Mut{Dict{K, V}}, K, V);
+export fn store{K, V} (d: Mut{Dict{K, V}}, k: K, v: V) {
+  {Method{"insert"} :: (Mut{Dict{K, V}}, Own{K}, Own{V}) -> V?}(d, k, v);
+}
 export fn get{K, V} "getdict" :: (Dict{K, V}, K) -> V?;
 export fn has{K, V} (d: Dict{K, V}, k: K) -> bool = {Method{"contains_key"} :: (Dict{K, V}, K) -> bool}(d, k);
 export fn len{K, V} (d: Dict{K, V}) -> i64 = {Cast{"i64"} :: Deref{Binds{"usize"}} -> i64}({Method{"len"} :: Dict{K, V} -> Binds{"usize"}}(d));
@@ -699,7 +705,9 @@ export fn Set{V}(v: V) -> Set{V} {
   out.store(v);
   return out;
 }
-export fn store{V} "storeset" :: (Mut{Set{V}}, V);
+export fn store{V} (s: Mut{Set{V}}, v: V) {
+  {Method{"insert"} :: (Mut{Set{V}}, Own{V}) -> bool}(s, v);
+}
 export fn has{V} (s: Set{V}, v: V) -> bool = {Method{"contains"} :: (Set{V}, V) -> bool}(s, v);
 export fn len{V} (s: Set{V}) -> i64 = {Cast{"i64"} :: Deref{Binds{"usize"}} -> i64}({Method{"len"} :: Set{V} -> Binds{"usize"}}(s));
 export fn Array{V} "arrayset" :: Set{V} -> V[];
@@ -841,8 +849,8 @@ export fn ExitCode(e: i8) -> ExitCode = ExitCode(e.u8);
 export fn ExitCode(e: i16) -> ExitCode = ExitCode(e.u8);
 export fn ExitCode(e: i32) -> ExitCode = ExitCode(e.u8);
 export fn ExitCode(e: i64) -> ExitCode = ExitCode(e.u8);
-export fn getOrExit{T} "get_or_exit" :: T! -> T;
-export fn getOrExit{T} "get_or_maybe_exit" :: T? -> T;
+export fn getOrExit{T} (v: T!) -> T = {Method{"unwrap"} :: T! -> T}(v);
+export fn getOrExit{T} (v: T?) -> T = {Method{"unwrap"} :: T? -> T}(v);
 
 /// Thread-related bindings
 export fn wait (t: i64) = {"std::thread::sleep" :: Own{Duration}}(
@@ -3756,17 +3764,19 @@ export fn map(gb: GBuffer, f: (gi32, gu32) -> gi32) -> GBuffer {
 
 /// Stdout/stderr-related bindings
 // TODO: Rework this to just print anything that can be converted to `string` via interfaces
-export fn print "print_duration" :: Duration;
+export fn print (d: Duration) = {"println!" :: ("{}.{:0>9}", u64, u32)}(
+  {Method{"as_secs"} :: Duration -> u64}(d),
+  {Method{"subsec_nanos"} :: Duration -> u32}(d));
 export fn print{T} "println_result" :: T!;
 export fn print{T} "println_maybe" :: T?;
 export fn print{T} "print_vec" :: T[];
 export fn print{T, N} "print_buffer" :: T[N];
 export fn print{T} "print_vec_result" :: Array{T!};
-export fn print "println_void" :: void;
-export fn print{T} "println" :: T;
+export fn print (v: void) = {"println!" :: "void"}();
+export fn print{T} (v: T) = {"println!" :: ("{}", T)}(v);
 export fn eprint{T} "eprintln_result" :: T!;
 export fn eprint{T} "eprintln_maybe" :: T?;
-export fn eprint{T} "eprintln" :: T;
+export fn eprint{T} (v: T) = {"eprintln!" :: ("{}", T)}(v);
 
 // TODO: Function resolution is effectively backwards at the moment. This is the fallback `getOr`,
 // but it needs to be defined last instead of first.

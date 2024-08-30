@@ -212,12 +212,6 @@ fn splitstring(a: &String, b: &String) -> Vec<String> {
     a.split(b).map(|v| v.to_string()).collect::<Vec<String>>()
 }
 
-/// `lenstring` returns the length of the string (the number of characters, not bytes)
-#[inline(always)]
-fn lenstring(a: &String) -> i64 {
-    a.chars().collect::<Vec<char>>().len() as i64
-}
-
 /// `getstring` returns the character at the specified index (TODO: What is a "character" in Alan?)
 #[inline(always)]
 fn getstring(a: &String, i: &i64) -> Result<String, AlanError> {
@@ -226,7 +220,7 @@ fn getstring(a: &String, i: &i64) -> Result<String, AlanError> {
         None => Err(format!(
             "Index {} is out-of-bounds for a string length of {}",
             i,
-            lenstring(a)
+            a.chars().collect::<Vec<char>>().len()
         )
         .into()),
     }
@@ -265,34 +259,10 @@ fn getarray<T: Clone>(a: &Vec<T>, i: &i64) -> Option<T> {
     }
 }
 
-/// `lenarray` returns the length of an array (Rust Vector)
-#[inline(always)]
-fn lenarray<T>(a: &Vec<T>) -> i64 {
-    a.len() as i64
-}
-
-/// `pusharray` pushes a value onto the array
-#[inline(always)]
-fn pusharray<T: Clone>(a: &mut Vec<T>, v: &T) {
-    a.push(v.clone());
-}
-
-/// `poparray` pops a value off of the array into an Option<T>
-#[inline(always)]
-fn poparray<T>(a: &mut Vec<T>) -> Option<T> {
-    a.pop()
-}
-
 /// `filled` returns a filled Vec<V> of the provided value for the provided size
 #[inline(always)]
 fn filled<V: std::clone::Clone>(i: &V, l: &i64) -> Vec<V> {
     vec![i.clone(); *l as usize]
-}
-
-/// `vec_len` returns the length of a vector
-#[inline(always)]
-fn vec_len<A>(v: &Vec<A>) -> i64 {
-    v.len() as i64
 }
 
 /// `map_onearg` runs the provided single-argument function on each element of the vector,
@@ -749,16 +719,6 @@ fn storebuffer<T: std::clone::Clone, const S: usize>(
 
 /// Dictionary-related bindings
 
-/// `storedict` stores the provided key-value pair into the dictionary
-#[inline(always)]
-fn storedict<K: std::clone::Clone + std::hash::Hash + Eq, V: std::clone::Clone>(
-    d: &mut OrderedHashMap<K, V>,
-    k: &K,
-    v: &V,
-) {
-    d.insert(k.clone(), v.clone());
-}
-
 /// `getdict` returns the value for the given key, if it exists
 #[inline(always)]
 fn getdict<K: std::hash::Hash + Eq, V: std::clone::Clone>(
@@ -814,12 +774,6 @@ fn concatdict<K: std::clone::Clone + std::hash::Hash + Eq, V: std::clone::Clone>
 }
 
 /// Set-related bindings
-
-/// `storeset` stores the provided value into the set
-#[inline(always)]
-fn storeset<V: std::clone::Clone + std::hash::Hash + Eq>(s: &mut HashSet<V>, v: &V) {
-    s.insert(v.clone());
-}
 
 /// `arrayset` returns an array of values in the set
 #[inline(always)]
@@ -884,27 +838,6 @@ fn productset<V: std::clone::Clone + std::hash::Hash + Eq>(
         }
     }
     out
-}
-
-/// Process exit-related bindings
-
-/// `get_or_exit` is basically an alias to `unwrap`, but as a function instead of a method
-#[inline(always)]
-fn get_or_exit<A: Clone>(a: &Result<A, AlanError>) -> A {
-    match a {
-        Ok(v) => v.clone(),
-        Err(e) => panic!("{:?}", e),
-    }
-}
-
-/// `get_or_maybe_exit` is basically an alias to `unwrap`, but as a function instead of a method
-/// and for `Option` instead of `Result`
-#[inline(always)]
-fn get_or_maybe_exit<A: Clone>(a: &Option<A>) -> A {
-    match a {
-        Some(v) => v.clone(),
-        None => panic!("Expected value did not exist"), // TODO: Better error message somehow?
-    }
 }
 
 /// GPU-related functions and types
@@ -1188,12 +1121,6 @@ fn read_buffer(b: &GBuffer) -> Vec<i32> {
 
 /// Stdout/stderr-related functions
 
-/// `println` is a simple function that prints basically anything
-#[inline(always)]
-fn println<A: std::fmt::Display>(a: &A) {
-    println!("{}", a);
-}
-
 /// `println_result` is a small wrapper function that makes printing Result types easy
 #[inline(always)]
 fn println_result<A: std::fmt::Display>(a: &Result<A, AlanError>) {
@@ -1210,18 +1137,6 @@ fn println_maybe<A: std::fmt::Display>(a: &Option<A>) {
         Some(o) => println!("{}", o),
         None => println!("void"),
     };
-}
-
-/// `println_void` prints "void" if called
-#[inline(always)]
-fn println_void(_void: &()) {
-    println!("void");
-}
-
-/// `eprintln` is a simple function that prints basically anything
-#[inline(always)]
-fn eprintln<A: std::fmt::Display>(a: &A) {
-    eprintln!("{}", a);
 }
 
 /// `eprintln_result` is a small wrapper function that makes printing Result types easy
@@ -1279,10 +1194,4 @@ fn print_buffer<A: std::fmt::Display, const N: usize>(vs: &[A; N]) {
             .collect::<Vec<String>>()
             .join(", ")
     );
-}
-
-/// `print_duration` pretty-prints a duration value. TODO: Move this into Alan code and out of here
-#[inline(always)]
-fn print_duration(d: &std::time::Duration) {
-    println!("{}.{:0>9}", d.as_secs(), d.subsec_nanos()); // TODO: Figure out which subsec to use
 }
