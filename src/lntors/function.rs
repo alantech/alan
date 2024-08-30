@@ -185,9 +185,8 @@ pub fn from_microstatement(
                                     let mut prefix = "&mut ";
                                     for (name, kind, _) in &parent_fn.args {
                                         if name == &a {
-                                            match kind {
-                                                ArgKind::Mut => prefix = "",
-                                                _ => {}
+                                            if let ArgKind::Mut = kind {
+                                                prefix = "";
                                             }
                                         }
                                     }
@@ -221,9 +220,8 @@ pub fn from_microstatement(
                                     let mut prefix = "&mut ";
                                     for (name, kind, _) in &parent_fn.args {
                                         if name == &a {
-                                            match kind {
-                                                ArgKind::Mut => prefix = "",
-                                                _ => {}
+                                            if let ArgKind::Mut = kind {
+                                                prefix = "";
                                             }
                                         }
                                     }
