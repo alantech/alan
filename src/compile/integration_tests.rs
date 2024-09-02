@@ -2554,8 +2554,7 @@ void
 );
 test!(fallible => r#"
     // TODO: Rewrite these conditionals with conditional syntax once implemented
-    // TODO: Why does this function still require a return type to work?
-    fn reciprocal(val: f64) -> Fallible{f64} = if(val == 0.0, fn {
+    fn reciprocal(val: f64) = if(val == 0.0, fn {
       return Error{f64}('Divide by zero error!');
     }, fn {
       return Fallible{f64}(1.0 / val);
