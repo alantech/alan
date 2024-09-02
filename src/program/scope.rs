@@ -359,12 +359,13 @@ impl<'a> Scope<'a> {
                         Some(gs.iter().map(|(g, _)| g.clone()).collect::<Vec<String>>())
                     }
                 };
+                // TODO: Potentially refactor this
                 let input = f
-                    .args
+                    .args()
                     .iter()
                     .map(|(_, _, arg)| arg.clone())
                     .collect::<Vec<CType>>();
-                let output = f.rettype.clone();
+                let output = f.rettype().clone();
                 match generics {
                     None => CType::Function(Box::new(CType::Tuple(input)), Box::new(output)),
                     Some(gs) => CType::Generic(
@@ -400,17 +401,7 @@ impl<'a> Scope<'a> {
             if let Some(s) = scope_to_check {
                 if let Some(funcs) = s.functions.get(function) {
                     for f in funcs {
-                        // TODO: Just have the function type on the Function object
-                        let f_type = CType::Function(
-                            Box::new(CType::Tuple(
-                                f.args
-                                    .iter()
-                                    .map(|(_, _, t)| t.clone())
-                                    .collect::<Vec<CType>>(),
-                            )),
-                            Box::new(f.rettype.clone()),
-                        );
-                        if f_type.degroup().to_strict_string(false) == fn_type_str {
+                        if f.typen.to_strict_string(false) == fn_type_str {
                             return Some(f);
                         }
                     }
@@ -463,7 +454,7 @@ impl<'a> Scope<'a> {
                     if g.len() != generic_types.len() {
                         continue;
                     }
-                    if args.len() != f.args.len() {
+                    if args.len() != f.args().len() {
                         continue;
                     }
                     // Passes the preliminary check
@@ -483,7 +474,7 @@ impl<'a> Scope<'a> {
                 }
                 FnKind::BoundGeneric(gen_args, _) => {
                     let args = f
-                        .args
+                        .args()
                         .iter()
                         .map(|(name, kind, argtype)| {
                             (name.clone(), kind.clone(), {
@@ -499,7 +490,7 @@ impl<'a> Scope<'a> {
                 }
                 FnKind::Generic(gen_args, _) => {
                     let args = f
-                        .args
+                        .args()
                         .iter()
                         .map(|(name, kind, argtype)| {
                             (name.clone(), kind.clone(), {
@@ -613,7 +604,7 @@ impl<'a> Scope<'a> {
                     // actual args are the same type as the function's arg.
                     let mut args_match = true;
                     for arg in args.iter() {
-                        if !f.args[0].2.accepts(arg) {
+                        if !f.args()[0].2.accepts(arg) {
                             args_match = false;
                             break;
                         }
@@ -625,7 +616,7 @@ impl<'a> Scope<'a> {
                     }
                 }
                 FnKind::Normal | FnKind::Bind(_) | FnKind::Derived | FnKind::Static => {
-                    if args.len() != f.args.len() {
+                    if args.len() != f.args().len() {
                         continue;
                     }
                     let mut args_match = true;
@@ -633,7 +624,7 @@ impl<'a> Scope<'a> {
                         // This is pretty cheap, but for now, a "non-strict" string representation
                         // of the CTypes is how we'll match the args against each other. TODO: Do
                         // this without constructing a string to compare against each other.
-                        if !f.args[i].2.accepts(arg) {
+                        if !f.args()[i].2.accepts(arg) {
                             args_match = false;
                             break;
                         }
@@ -645,10 +636,10 @@ impl<'a> Scope<'a> {
                     }
                 }
                 FnKind::Generic(g, _) | FnKind::BoundGeneric(g, _) => {
-                    if args.len() != f.args.len() {
+                    if args.len() != f.args().len() {
                         continue;
                     }
-                    match CType::infer_generics(self, g, &f.args, args) {
+                    match CType::infer_generics(self, g, &f.args(), args) {
                         Ok(gs) => {
                             return Some(gs);
                         }
@@ -711,7 +702,7 @@ impl<'a> Scope<'a> {
                     // actual args are the same type as the function's arg.
                     let mut args_match = true;
                     for arg in args.iter() {
-                        if !f.args[0].2.accepts(arg) {
+                        if !f.args()[0].2.accepts(arg) {
                             args_match = false;
                             break;
                         }
@@ -721,7 +712,7 @@ impl<'a> Scope<'a> {
                     }
                 }
                 FnKind::Normal | FnKind::Bind(_) | FnKind::Derived | FnKind::Static => {
-                    if args.len() != f.args.len() {
+                    if args.len() != f.args().len() {
                         continue;
                     }
                     let mut args_match = true;
@@ -729,7 +720,7 @@ impl<'a> Scope<'a> {
                         // This is pretty cheap, but for now, a "non-strict" string representation
                         // of the CTypes is how we'll match the args against each other. TODO: Do
                         // this without constructing a string to compare against each other.
-                        if !f.args[i].2.accepts(arg) {
+                        if !f.args()[i].2.accepts(arg) {
                             args_match = false;
                             break;
                         }

@@ -1,4 +1,5 @@
 use super::ctype::{withtypeoperatorslist_to_ctype, CType};
+use super::function::{type_to_args, type_to_rettype};
 use super::scope::merge;
 use super::ArgKind;
 use super::FnKind;
@@ -59,23 +60,8 @@ impl Microstatement {
                 Some(v) => v.get_type(),
                 None => CType::Void,
             },
-            Self::FnCall { function, args: _ } => function.rettype.clone(),
-            Self::Closure { function } => {
-                // TODO: Just have Function store this
-                let arg_types = function
-                    .args
-                    .iter()
-                    .map(|(_, _, t)| t.clone())
-                    .collect::<Vec<CType>>();
-                CType::Function(
-                    Box::new(if arg_types.is_empty() {
-                        CType::Void
-                    } else {
-                        CType::Tuple(arg_types)
-                    }),
-                    Box::new(function.rettype.clone()),
-                )
-            }
+            Self::FnCall { function, args: _ } => function.rettype(),
+            Self::Closure { function } => function.typen.clone(),
             Self::VarCall { typen, .. } => typen.clone(),
         }
     }
@@ -478,16 +464,15 @@ pub fn baseassignablelist_to_microstatements<'a>(
                 // *and* needs refactoring
                 // TODO: Add code to properly convert the typeassignable vec into a CType tree and use it.
                 // For now, just hardwire the parsing as before.
-                let (args, rettype) = match &f.opttype {
-                    None => {
-                        Ok::<(Vec<(String, ArgKind, CType)>, CType), Box<dyn std::error::Error>>((
-                            Vec::new(),
-                            CType::Void,
-                        ))
-                    } // TODO: Does this path *ever* trigger?
-                    Some(typeassignable) if typeassignable.is_empty() => {
-                        Ok((Vec::new(), CType::Void))
-                    }
+                let mut typen = match &f.opttype {
+                    None => Ok::<CType, Box<dyn std::error::Error>>(CType::Function(
+                        Box::new(CType::Void),
+                        Box::new(CType::Void),
+                    )),
+                    Some(typeassignable) if typeassignable.is_empty() => Ok(CType::Function(
+                        Box::new(CType::Void),
+                        Box::new(CType::Void),
+                    )),
                     Some(typeassignable) => match &kind {
                         FnKind::Generic(gs, _) | FnKind::BoundGeneric(gs, _) => {
                             // This lets us partially resolve the function argument and return types
@@ -502,7 +487,10 @@ pub fn baseassignablelist_to_microstatements<'a>(
                             // it's any other type, we presume it's only the input type defined
                             let (input_type, output_type) = match ctype {
                                 CType::Function(i, o) => (*i.clone(), *o.clone()),
-                                otherwise => (otherwise.clone(), CType::Void), // TODO: Type inference signaling?
+                                otherwise => (
+                                    otherwise.clone(),
+                                    CType::Infer("unknown".to_string(), "unknown".to_string()),
+                                ),
                             };
                             // In case there were any created functions (eg constructor or accessor
                             // functions) in that path, we need to merge the child's functions back up
@@ -516,62 +504,21 @@ pub fn baseassignablelist_to_microstatements<'a>(
                             // a Field type, we have a single argument function with a specified
                             // variable name. If it's any other type, we just label it `arg0`
                             let degrouped_input = input_type.degroup();
-                            let mut out_args = Vec::new();
-                            match degrouped_input {
-                                CType::Tuple(ts) => {
-                                    for (i, t) in ts.iter().enumerate() {
-                                        out_args.push(match t {
-                                            CType::Field(argname, t) => match &**t {
-                                                CType::Mut(t) => {
-                                                    (argname.clone(), ArgKind::Mut, *t.clone())
-                                                }
-                                                otherwise => (
-                                                    argname.clone(),
-                                                    ArgKind::Ref,
-                                                    otherwise.clone(),
-                                                ),
-                                            },
-                                            CType::Mut(t) => {
-                                                (format!("arg{}", i), ArgKind::Mut, *t.clone())
-                                            }
-                                            otherwise => (
-                                                format!("arg{}", i),
-                                                ArgKind::Ref,
-                                                otherwise.clone(),
-                                            ),
-                                        });
-                                    }
-                                }
-                                CType::Field(argname, t) => match &*t {
-                                    CType::Mut(t) => {
-                                        out_args.push((argname.clone(), ArgKind::Mut, *t.clone()))
-                                    }
-                                    otherwise => out_args.push((
-                                        argname.clone(),
-                                        ArgKind::Ref,
-                                        otherwise.clone(),
-                                    )),
-                                },
-                                CType::Void => {} // Do nothing so an empty set is properly
-                                CType::Mut(t) => {
-                                    out_args.push(("arg0".to_string(), ArgKind::Mut, *t.clone()))
-                                }
-                                otherwise => out_args.push((
-                                    "arg0".to_string(),
-                                    ArgKind::Ref,
-                                    otherwise.clone(),
-                                )),
-                            }
-                            Ok((out_args, output_type.clone()))
+                            Ok(CType::Function(
+                                Box::new(degrouped_input),
+                                Box::new(output_type),
+                            ))
                         }
                         _ => {
-                            // TODO: Figure out how to drop this duplication
                             let ctype = withtypeoperatorslist_to_ctype(typeassignable, &scope)?;
                             // If the `ctype` is a Function type, we have both the input and output defined. If
                             // it's any other type, we presume it's only the input type defined
                             let (input_type, output_type) = match ctype {
                                 CType::Function(i, o) => (*i.clone(), *o.clone()),
-                                otherwise => (otherwise.clone(), CType::Void), // TODO: Type inference signaling?
+                                otherwise => (
+                                    otherwise.clone(),
+                                    CType::Infer("unknown".to_string(), "unknonw".to_string()),
+                                ),
                             };
                             // TODO: This is getting duplicated in a few different places. The CType creation
                             // should probably centralize creating these type names and constructor functions
@@ -579,6 +526,8 @@ pub fn baseassignablelist_to_microstatements<'a>(
                             // because that's all I need, and the input type would be much more convoluted.
                             if let CType::Void = output_type {
                                 // Skip this
+                            } else if let CType::Infer(..) = output_type {
+                                // Also skip
                             } else {
                                 // This particular hackery assumes that the return type is not itself a
                                 // function and that it is using the `->` operator syntax. These are terrible
@@ -618,71 +567,16 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                     }
                                 }
                             }
-                            // The input type will be interpreted in many different ways:
-                            // If it's a Group, unwrap it and continue. Ideally after that it's a Tuple
-                            // type containing Field types, that's a "conventional" function
-                            // definition, where the label becomes an argument name and the type is the
-                            // type. If the tuple doesn't have Fields inside of it, we auto-generate
-                            // argument names, eg `arg0`, `arg1`, etc. If it is not a Tuple type but is
-                            // a Field type, we have a single argument function with a specified
-                            // variable name. If it's any other type, we just label it `arg0`
                             let degrouped_input = input_type.degroup();
-                            let mut out_args = Vec::new();
-                            match degrouped_input {
-                                CType::Tuple(ts) => {
-                                    for (i, t) in ts.iter().enumerate() {
-                                        out_args.push(match t {
-                                            CType::Field(argname, t) => match &**t {
-                                                CType::Mut(t) => {
-                                                    (argname.clone(), ArgKind::Mut, *t.clone())
-                                                }
-                                                otherwise => (
-                                                    argname.clone(),
-                                                    ArgKind::Ref,
-                                                    otherwise.clone(),
-                                                ),
-                                            },
-                                            CType::Mut(t) => {
-                                                (format!("arg{}", i), ArgKind::Mut, *t.clone())
-                                            }
-                                            otherwise => (
-                                                format!("arg{}", i),
-                                                ArgKind::Ref,
-                                                otherwise.clone(),
-                                            ),
-                                        });
-                                    }
-                                }
-                                CType::Field(argname, t) => match &*t {
-                                    CType::Mut(t) => {
-                                        out_args.push((argname.clone(), ArgKind::Mut, *t.clone()))
-                                    }
-                                    otherwise => out_args.push((
-                                        argname.clone(),
-                                        ArgKind::Ref,
-                                        otherwise.clone(),
-                                    )),
-                                },
-                                CType::Void => {} // Do nothing so an empty set is properly
-                                CType::Mut(t) => {
-                                    out_args.push(("arg0".to_string(), ArgKind::Mut, *t.clone()))
-                                }
-                                otherwise => out_args.push((
-                                    "arg0".to_string(),
-                                    ArgKind::Ref,
-                                    otherwise.clone(),
-                                )),
-                            }
-                            Ok((out_args, output_type.clone()))
+                            Ok(CType::Function(
+                                Box::new(degrouped_input),
+                                Box::new(output_type),
+                            ))
                         }
                     },
                 }?;
-                for (name, kind, typen) in &args {
-                    microstatements.push(Microstatement::Arg {
-                        name: name.clone(),
-                        kind: kind.clone(),
-                        typen: typen.clone(),
-                    });
+                for (name, kind, typen) in type_to_args(&typen) {
+                    microstatements.push(Microstatement::Arg { name, kind, typen });
                 }
                 for statement in &statements {
                     let res =
@@ -691,13 +585,45 @@ pub fn baseassignablelist_to_microstatements<'a>(
                     microstatements = res.1;
                 }
                 let ms = microstatements.split_off(original_len);
+                if let Some(m) = ms.last() {
+                    if let Microstatement::Arg { .. } = m {
+                        // Don't do anything in this path, this is probably a derived function
+                    } else {
+                        let current_rettype = type_to_rettype(&typen);
+                        let actual_rettype = match m {
+                            Microstatement::Return { value: Some(v) } => v.get_type(),
+                            _ => CType::Void,
+                        };
+                        if let CType::Infer(..) = current_rettype {
+                            // We're definitely replacing with the inferred type
+                            let input_type = match &typen {
+                                CType::Function(i, _) => *i.clone(),
+                                _ => CType::Void,
+                            };
+                            typen = CType::Function(Box::new(input_type), Box::new(actual_rettype));
+                        } else if current_rettype.to_strict_string(false)
+                            != actual_rettype.to_strict_string(false)
+                        {
+                            CType::fail(&format!(
+                                "Function {} specified to return {} but actually returns {}",
+                                match &f.optname {
+                                    Some(name) => name,
+                                    None => "closure",
+                                },
+                                current_rettype.to_strict_string(false),
+                                actual_rettype.to_strict_string(false),
+                            ));
+                        } else {
+                            // Do nothing, they're the same
+                        }
+                    }
+                }
                 let function = Function {
                     name: match &f.optname {
                         Some(name) => name.clone(),
                         None => "closure".to_string(),
                     },
-                    args,
-                    rettype,
+                    typen,
                     microstatements: ms,
                     kind,
                 };
@@ -893,9 +819,9 @@ pub fn baseassignablelist_to_microstatements<'a>(
                 for ms in microstatements.iter().rev() {
                     match ms {
                         Microstatement::Closure { function } => {
-                            if &function.name == f && function.args.len() == arg_types.len() {
+                            if &function.name == f && function.args().len() == arg_types.len() {
                                 let mut works = true;
-                                for ((_, _, a), b) in function.args.iter().zip(&arg_types) {
+                                for ((_, _, a), b) in function.args().iter().zip(&arg_types) {
                                     if !a.accepts(b) {
                                         works = false;
                                     }
@@ -960,15 +886,15 @@ pub fn baseassignablelist_to_microstatements<'a>(
                             // Success! Let's emit this
                             // TODO: Do a better job at type rewriting here
                             #[allow(clippy::needless_range_loop)]
-                            for i in 0..fun.args.len() {
+                            for i in 0..fun.args().len() {
                                 match &arg_microstatements[i] {
                                     Microstatement::Value {
                                         typen,
                                         representation,
                                     } => {
-                                        if typen != &fun.args[i].2 {
+                                        if typen != &fun.args()[i].2 {
                                             arg_microstatements[i] = Microstatement::Value {
-                                                typen: fun.args[i].2.clone(),
+                                                typen: fun.args()[i].2.clone(),
                                                 representation: representation.clone(),
                                             };
                                         }

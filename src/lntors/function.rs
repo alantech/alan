@@ -59,9 +59,9 @@ pub fn from_microstatement(
         }
         Microstatement::Closure { function } => {
             let arg_names = function
-                .args
-                .iter()
-                .map(|(n, _, _)| n.clone())
+                .args()
+                .into_iter()
+                .map(|(n, _, _)| n)
                 .collect::<Vec<String>>();
             let mut inner_statements = Vec::new();
             for ms in &function.microstatements {
@@ -93,8 +93,8 @@ pub fn from_microstatement(
                 let f = scope.resolve_function_by_type(representation, typen);
                 match f {
                     None => Err(format!(
-                        "Somehow can't find a definition for function {}",
-                        representation
+                        "Somehow can't find a definition for function {}, {:?}",
+                        representation, typen
                     )
                     .into()),
                     Some(fun) => {
@@ -105,7 +105,7 @@ pub fn from_microstatement(
                             | FnKind::DerivedVariadic
                             | FnKind::Static => {
                                 let mut arg_strs = Vec::new();
-                                for arg in &fun.args {
+                                for arg in &fun.args() {
                                     arg_strs.push(arg.2.to_callable_string());
                                 }
                                 // Come up with a function name that is unique so Rust doesn't choke on
@@ -158,10 +158,10 @@ pub fn from_microstatement(
                     Err("Generic functions should have been resolved before reaching here".into())
                 }
                 FnKind::Normal => {
-                    let (_, o) = typen::generate(&function.rettype, out)?;
+                    let (_, o) = typen::generate(&function.rettype(), out)?;
                     out = o;
                     let mut arg_strs = Vec::new();
-                    for arg in &function.args {
+                    for arg in &function.args() {
                         arg_strs.push(arg.2.to_callable_string());
                     }
                     // Come up with a function name that is unique so Rust doesn't choke on
@@ -180,10 +180,10 @@ pub fn from_microstatement(
                         let arg_type = arg.get_type();
                         match arg_type {
                             CType::Function(..) => argstrs.push(a.to_string()),
-                            _ => match function.args[i].1 {
+                            _ => match function.args()[i].1 {
                                 ArgKind::Mut => {
                                     let mut prefix = "&mut ";
-                                    for (name, kind, _) in &parent_fn.args {
+                                    for (name, kind, _) in &parent_fn.args() {
                                         if name == &a {
                                             if let ArgKind::Mut = kind {
                                                 prefix = "";
@@ -215,10 +215,10 @@ pub fn from_microstatement(
                         let arg_type = arg.get_type();
                         match arg_type {
                             CType::Function(..) => argstrs.push(a.to_string()),
-                            _ => match function.args[i].1 {
+                            _ => match function.args()[i].1 {
                                 ArgKind::Mut => {
                                     let mut prefix = "&mut ";
-                                    for (name, kind, _) in &parent_fn.args {
+                                    for (name, kind, _) in &parent_fn.args() {
                                         if name == &a {
                                             if let ArgKind::Mut = kind {
                                                 prefix = "";
@@ -261,7 +261,7 @@ pub fn from_microstatement(
                 FnKind::Derived | FnKind::DerivedVariadic => {
                     // The initial work to get the values to construct the type is the same as
                     // with bound functions, though.
-                    let (_, o) = typen::generate(&function.rettype, out)?;
+                    let (_, o) = typen::generate(&function.rettype(), out)?;
                     out = o;
                     let mut argstrs = Vec::new();
                     for arg in args {
@@ -301,9 +301,9 @@ pub fn from_microstatement(
                     // 3) If the input type is an either and the name of the function matches
                     //    the name of a sub-type, it returns a Maybe{T} for the type in
                     //    question. (This conflicts with (1) so it's checked first.)
-                    if function.args.len() == 1 {
+                    if function.args().len() == 1 {
                         // This is a wacky unwrapping logic...
-                        let mut input_type = &function.args[0].2;
+                        let mut input_type = &function.args()[0].2;
                         while matches!(input_type, CType::Type(..) | CType::Group(_)) {
                             input_type = match input_type {
                                 CType::Type(_, t) => t,
@@ -363,7 +363,7 @@ pub fn from_microstatement(
                                 // function argument. We blow up here if the first argument is
                                 // *not* a Type we can get an enum name from (it *shouldn't* be
                                 // possible, but..)
-                                let enum_type = function.args[0].2.degroup();
+                                let enum_type = function.args()[0].2.degroup();
                                 let enum_name = enum_type.to_callable_string();
                                 // We pass through to the main path if we can't find a matching
                                 // name
@@ -394,8 +394,8 @@ pub fn from_microstatement(
                             }
                             _ => {}
                         }
-                    } else if function.args.is_empty() {
-                        let inner_ret_type = match &function.rettype.degroup() {
+                    } else if function.args().is_empty() {
+                        let inner_ret_type = match &function.rettype().degroup() {
                             CType::Field(_, t) => *t.clone(),
                             CType::Type(_, t) => *t.clone(),
                             t => t.clone(),
@@ -404,7 +404,7 @@ pub fn from_microstatement(
                             return Ok(("None".to_string(), out));
                         }
                     }
-                    let ret_type = &function.rettype.degroup();
+                    let ret_type = &function.rettype().degroup();
                     let ret_name = ret_type.to_callable_string();
                     if function.name == "store" {
                         let inner_ret_type = match ret_type {
@@ -417,7 +417,7 @@ pub fn from_microstatement(
                                 if argstrs.len() != 2 {
                                     return Err(format!("Invalid arguments {} provided for Either re-assignment function, must be two arguments", argstrs.join(", ")).into());
                                 }
-                                let enum_type = &function.args[1].2.degroup();
+                                let enum_type = &function.args()[1].2.degroup();
                                 let enum_name = match enum_type {
                                     CType::Field(n, _) => Ok(n.clone()),
                                     CType::Type(n, _) => Ok(n.clone()),
@@ -713,7 +713,7 @@ pub fn from_microstatement(
                                 if argstrs.len() > 1 {
                                     return Err(format!("Invalid arguments {} provided for Either constructor function, must be zero or one argument", argstrs.join(", ")).into());
                                 }
-                                let enum_type = match &function.args.first() {
+                                let enum_type = match &function.args().first() {
                                     Some(t) => t.2.degroup(),
                                     None => CType::Void,
                                 };
@@ -1091,7 +1091,7 @@ pub fn generate(
     let mut fn_string = "".to_string();
     // First make sure all of the function argument types are defined
     let mut arg_strs = Vec::new();
-    for arg in &function.args {
+    for arg in &function.args() {
         let (l, k, t) = arg;
         let (t_str, o) = typen::generate(t, out)?;
         out = o;
@@ -1105,7 +1105,7 @@ pub fn generate(
             }
         }
     }
-    let opt_ret_str = match &function.rettype.degroup() {
+    let opt_ret_str = match &function.rettype().degroup() {
         CType::Void => None,
         CType::Type(n, _) if n == "void" => None,
         otherwise => {
