@@ -399,11 +399,11 @@ impl Function {
         let mut typen = match &function_ast.opttype {
             None => Ok::<CType, Box<dyn std::error::Error>>(CType::Function(
                 Box::new(CType::Void),
-                Box::new(CType::Void),
+                Box::new(CType::Infer("unknown".to_string(), "unknown".to_string())),
             )),
             Some(typeassignable) if typeassignable.is_empty() => Ok(CType::Function(
                 Box::new(CType::Void),
-                Box::new(CType::Void),
+                Box::new(CType::Infer("unknown".to_string(), "unknown".to_string())),
             )),
             Some(typeassignable) => match &kind {
                 FnKind::Generic(gs, _) | FnKind::BoundGeneric(gs, _) => {

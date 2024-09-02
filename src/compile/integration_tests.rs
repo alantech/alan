@@ -184,11 +184,11 @@ test!(normal_exit_code => r#"
     status 0;
 );
 test!(error_exit_code => r#"
-    export fn main() -> ExitCode = ExitCode(1);"#;
+    export fn main() = ExitCode(1);"#;
     status 1;
 );
 test!(non_global_memory_exit_code => r#"
-    export fn main() -> ExitCode {
+    export fn main() {
       let x: i64 = 0;
       return x.ExitCode;
     }"#;
@@ -246,7 +246,7 @@ test!(void_values => r#"
 
 // This one will replace the hello_world test above once the syntax is updated
 test!(print_function => r#"
-    export fn main() -> ExitCode {
+    export fn main() {
       print('Hello, World');
       return ExitCode(0);
     }"#;
@@ -266,37 +266,37 @@ test!(duration_print => r#"
 // Basic Math Tests
 
 test!(i8_add => r#"
-    export fn main() -> ExitCode = ExitCode(add(i8(1), i8(2)));"#;
+    export fn main = ExitCode(add(i8(1), i8(2)));"#;
     status 3;
 );
 test!(i8_sub => r#"
-    export fn main() -> ExitCode = ExitCode(sub(i8(2), i8(1)));"#;
+    export fn main = ExitCode(sub(i8(2), i8(1)));"#;
     status 1;
 );
 test!(i8_mul => r#"
-    export fn main() -> ExitCode = ExitCode(mul(i8(2), i8(1)));"#;
+    export fn main = ExitCode(mul(i8(2), i8(1)));"#;
     status 2;
 );
 test!(i8_div => r#"
-    export fn main() -> ExitCode = ExitCode(div(i8(6), i8(2)));"#;
+    export fn main = ExitCode(div(i8(6), i8(2)));"#;
     status 3;
 );
 test!(i8_mod => r#"
-    export fn main() -> ExitCode = ExitCode(mod(i8(6), i8(4)));"#;
+    export fn main = ExitCode(mod(i8(6), i8(4)));"#;
     status 2;
 );
 test!(i8_pow => r#"
-    export fn main() -> ExitCode = ExitCode(pow(i8(6), i8(2)));"#;
+    export fn main = ExitCode(pow(i8(6), i8(2)));"#;
     status 36;
 );
 test!(i8_min => r#"
-    export fn main() {
+    export fn main {
       print(min(i8(3), i8(5)));
     }"#;
     stdout "3\n";
 );
 test!(i8_max => r#"
-    export fn main() {
+    export fn main {
       print(max(i8(3), i8(5)));
     }"#;
     stdout "5\n";
@@ -454,7 +454,7 @@ test!(u8_add => r#"
     status 3;
 );
 test!(u8_sub => r#"
-    export fn main() -> ExitCode = ExitCode(sub(u8(2), u8(1)));"#;
+    export fn main() = ExitCode(sub(u8(2), u8(1)));"#;
     status 1;
 );
 test!(u8_mul => r#"
@@ -462,7 +462,7 @@ test!(u8_mul => r#"
     status 2;
 );
 test!(u8_div => r#"
-    export fn main() -> ExitCode = ExitCode(div(u8(6), u8(2)));"#;
+    export fn main() = ExitCode(div(u8(6), u8(2)));"#;
     status 3;
 );
 test!(u8_mod => r#"
@@ -470,7 +470,7 @@ test!(u8_mod => r#"
     status 2;
 );
 test!(u8_pow => r#"
-    export fn main() -> ExitCode = ExitCode(pow(u8(6), u8(2)));"#;
+    export fn main() = ExitCode(pow(u8(6), u8(2)));"#;
     status 36;
 );
 test!(u8_min => r#"
@@ -790,7 +790,7 @@ test!(hello_gpu_odd => r#"
 test!(gpu_map => r#"
     export fn main {
         let b = GBuffer([1, 2, 3, 4]);
-        let out = b.map(fn (val: gi32) -> gi32 = val + 2);
+        let out = b.map(fn (val: gi32) = val + 2);
         out.read{i32}.print;
     }"#;
     stdout "[3, 4, 5, 6]\n";
@@ -799,7 +799,7 @@ test!(gpu_map => r#"
 test!(gpu_if => r#"
     export fn main {
         let b = GBuffer([1, 2, 3, 4]);
-        let out = b.map(fn (val: gi32, i: gu32) -> gi32 = if(
+        let out = b.map(fn (val: gi32, i: gu32) = if(
             i % 2 == 0,
             val * i.gi32,
             val - i.gi32));
@@ -1530,7 +1530,7 @@ test!(bitshifting => r#"
 test!(basic_function_usage => r#"
     fn foo() = print('foo');
 
-    fn bar(s: string) -> string = s.concat("bar");
+    fn bar(s: string) = s.concat("bar");
 
     export fn main {
       foo();
@@ -1541,13 +1541,12 @@ foobar
 "#;
 );
 
-// TODO: I had to change a lot here due to a lack of return type inference, try to restore this
 test!(functions_and_custom_operators => r#"
     fn foo() {
       print('foo');
     }
 
-    fn bar(str: string, a: i64, b: i64) -> string {
+    fn bar(str: string, a: i64, b: i64) {
       return str.repeat(a).concat(b.string);
     }
 
@@ -1555,11 +1554,11 @@ test!(functions_and_custom_operators => r#"
       print(pre.concat(bar(body, 1, 2)));
     }
 
-    fn double(a: i64) -> i64 = a * 2;
+    fn double(a: i64) = a * 2;
 
     prefix double as ## precedence 10
 
-    fn doublesum(a: i64, b: i64) -> i64 = ##a + ##b
+    fn doublesum(a: i64, b: i64) = ##a + ##b
 
     infix doublesum as #+# precedence 11
 
@@ -1603,7 +1602,7 @@ test!(mutable_functions => r#"
 test!(if_fn => r#"
     export fn main {
         if(1 == 0, fn = print('What!?'), fn = print('Math is sane...'));
-        if(1 == 2, fn () -> string = 'Uhh...').print;
+        if(1 == 2, fn = 'Uhh...').print;
         if(1 == 1, 'Correct!').print;
     }"#;
     stdout "Math is sane...\nvoid\nCorrect!\n";
@@ -1866,8 +1865,8 @@ void
 "#;
 );
 test!(array_has => r#"
-    fn even(t: i64) -> bool = t % 2 == 0;
-    fn odd(t: i64) -> bool = t % 2 == 1;
+    fn even(t: i64) = t % 2 == 0;
+    fn odd(t: i64) = t % 2 == 1;
     export fn main {
         const test = [ 1, 1, 2, 3, 5, 8 ];
         test.has(3).print;
@@ -1880,22 +1879,22 @@ test!(array_has => r#"
 test!(array_map => r#"
     export fn main {
       const count = [1, 2, 3, 4, 5]; // Ah, ah, ahh!
-      const byTwos = count.map(fn (n: i64) -> i64 = n * 2);
-      count.map(fn (n: i64) -> string = string(n)).join(', ').print;
-      byTwos.map(fn (n: i64) -> string = string(n)).join(', ').print;
+      const byTwos = count.map(fn (n: i64) = n * 2);
+      count.map(fn (n: i64) = string(n)).join(', ').print;
+      byTwos.map(fn (n: i64) = string(n)).join(', ').print;
     }"#;
     stdout "1, 2, 3, 4, 5\n2, 4, 6, 8, 10\n";
 );
 test!(array_repeat => r#"
     export fn main {
       const arr = [1, 2, 3].repeat(3);
-      const out = arr.map(fn (x: i64) -> string = x.string).join(', ');
+      const out = arr.map(fn (x: i64) = x.string).join(', ');
       print(out);
     }"#;
     stdout "1, 2, 3, 1, 2, 3, 1, 2, 3\n";
 );
 test!(array_find => r#"
-    fn odd(x: i64) -> bool = x % 2 == 1;
+    fn odd(x: i64) = x % 2 == 1;
     export fn main {
         const test = [ 1, 1, 2, 3, 5, 8 ];
         test.find(odd).getOr(0).print;
@@ -1903,7 +1902,7 @@ test!(array_find => r#"
     stdout "1\n";
 );
 test!(array_every => r#"
-    fn odd(x: i64) -> bool = x % 2 == 1;
+    fn odd(x: i64) = x % 2 == 1;
 
     export fn main {
         const test = [ 1, 1, 2, 3, 5, 8 ];
@@ -1912,7 +1911,7 @@ test!(array_every => r#"
     stdout "false\n";
 );
 test!(array_some => r#"
-    fn odd(x: i64) -> bool = x % 2 == 1;
+    fn odd(x: i64) = x % 2 == 1;
 
     export fn main {
         const test = [ 1, 1, 2, 3, 5, 8 ];
@@ -1921,7 +1920,7 @@ test!(array_some => r#"
     stdout "true\n";
 );
 test!(array_index => r#"
-    fn odd(x: i64) -> bool = x % 2 == 1;
+    fn odd(x: i64) = x % 2 == 1;
 
     export fn main {
         const test = [ 1, 1, 2, 3, 5, 8 ];
@@ -1947,7 +1946,7 @@ test!(array_reduce_filter_concat => r#"
       test.reduce(max).print;
 
       print('filter test');
-      test.filter(fn isOdd(i: i64) -> bool = i % 2 == 1).map(string).join(', ').print;
+      test.filter(fn isOdd(i: i64) = i % 2 == 1).map(string).join(', ').print;
 
       print('concat test');
       test.concat(test2).map(string).join(', ').print;
@@ -1980,15 +1979,15 @@ test!(array_custom_types => r#"
 
     export fn main {
       const five = [1, 2, 3, 4, 5];
-      five.map(fn (n: i64) -> Foo {
+      five.map(fn (n: i64) {
         return Foo(n.string, n % 2 == 0);
-      }).filter(fn (f: Foo) -> bool = f.bar).map(fn (f: Foo) -> string = f.foo).join(', ').print;
+      }).filter(fn (f: Foo) = f.bar).map(fn (f: Foo) = f.foo).join(', ').print;
     }"#;
     stdout "2, 4\n";
 );
 // Buffers
 test!(buffer_map => r#"
-    fn double(x: i64) -> i64 = x * 2;
+    fn double(x: i64) = x * 2;
     export fn main {
         const b = Buffer{i64, 3}(1, 2, 3);
         b.print;
@@ -2006,7 +2005,7 @@ test!(buffer_join => r#"
     stdout "Hello, World!\n";
 );
 test!(buffer_reduce => r#"
-    fn concat(s: string, i: i64) -> string = s.concat(i.string);
+    fn concat(s: string, i: i64) = s.concat(i.string);
     export fn main {
         const b = {i64[5]}(1, 2, 3, 4, 5);
         b.reduce(add).print;
@@ -2015,8 +2014,8 @@ test!(buffer_reduce => r#"
     stdout "15\n012345\n";
 );
 test!(buffer_has => r#"
-    fn even(t: i64) -> bool = t % 2 == 0;
-    fn odd(t: i64) -> bool = t % 2 == 1;
+    fn even(t: i64) = t % 2 == 0;
+    fn odd(t: i64) = t % 2 == 1;
     export fn main {
         const test = {i64[6]}(1, 1, 2, 3, 5, 8);
         test.has(3).print;
@@ -2027,7 +2026,7 @@ test!(buffer_has => r#"
     stdout "true\nfalse\ntrue\ntrue\n";
 );
 test!(buffer_find => r#"
-    fn odd(x: i64) -> bool = x % 2 == 1;
+    fn odd(x: i64) = x % 2 == 1;
     export fn main {
         const test = {i64[6]}(1, 1, 2, 3, 5, 8);
         test.find(odd).getOr(0).print;
@@ -2035,7 +2034,7 @@ test!(buffer_find => r#"
     stdout "1\n";
 );
 test!(buffer_every => r#"
-    fn odd(x: i64) -> bool = x % 2 == 1;
+    fn odd(x: i64) = x % 2 == 1;
 
     export fn main {
         const test = {i64[6]}(1, 1, 2, 3, 5, 8);
@@ -2095,7 +2094,7 @@ test!(basic_dict => r#"
       // test.store('foo', 1);
       test.store('bar', 2);
       test['baz'] = 99;
-      print(test.Array.map(fn (n: (string, i64)) -> string {
+      print(test.Array.map(fn (n: (string, i64)) {
         return 'key: '.concat(n.0).concat("\nval: ").concat(string(n.1));
       }).join("\n"));
       print(test.keys.join(', '));
@@ -2105,7 +2104,7 @@ test!(basic_dict => r#"
       test['bar'].print;
       let test2 = Dict('foo', 3);
       test2['bay'] = 4;
-      test.concat(test2).Array.map(fn (n: (string, i64)) -> string {
+      test.concat(test2).Array.map(fn (n: (string, i64)) {
         return 'key: '.concat(n.0).concat("\nval: ").concat(n.1.string);
       }).join("\n").print;
     }"#;
@@ -2136,7 +2135,7 @@ test!(keyval_array_to_dict => r#"
       // const kva = [ (1, 'foo'), (2, 'bar'), (3, 'baz') ];
       const kva = [ {(i64, string)}(1, 'foo'), {(i64, string)}(2, 'bar'), {(i64, string)}(3, 'baz') ];
       const hm = Dict(kva);
-      print(hm.Array.map(fn (n: (i64, string)) -> string {
+      print(hm.Array.map(fn (n: (i64, string)) {
         return 'key: '.concat(string(n.0)).concat("\nval: ").concat(n.1);
       }).join("\n"));
       print(hm.get(1));
@@ -2211,7 +2210,7 @@ hello, nested generics!
 "#;
 );
 test!(generic_functions => r#"
-    fn empty{T}() -> Array{T} = Array{T}(); // Pointless, but just for testing
+    fn empty{T}() = Array{T}(); // Pointless, but just for testing
 
     export fn main {
       let foo = empty{i64}();
@@ -2531,9 +2530,7 @@ test!(maybe_exists => r#"
 
 test!(maybe => r#"
     // TODO: Rewrite these conditionals with conditional syntax once implemented
-    fn fiver(val: f64) -> i64? = if(val.i64 == 5,
-      fn () -> i64? = {i64?}(5),
-      fn () -> i64? = {i64?}());
+    fn fiver(val: f64) = if(val.i64 == 5, fn = {i64?}(5), fn = {i64?}());
 
     export fn main {
       const maybe5 = fiver(5.5);
@@ -2557,9 +2554,10 @@ void
 );
 test!(fallible => r#"
     // TODO: Rewrite these conditionals with conditional syntax once implemented
-    fn reciprocal(val: f64) -> Fallible{f64} = if(val == 0.0, fn () -> Fallible{f64} {
+    // TODO: Why does this function still require a return type to work?
+    fn reciprocal(val: f64) -> Fallible{f64} = if(val == 0.0, fn {
       return Error{f64}('Divide by zero error!');
-    }, fn () -> Fallible{f64} {
+    }, fn {
       return Fallible{f64}(1.0 / val);
     });
 
@@ -2748,7 +2746,7 @@ test_ignore!(closure_creation_and_usage => r#"
     stdout "1\n2\n1\n";
 );
 test!(closure_by_name => r#"
-    fn double(x: i64) -> i64 = x * 2;
+    fn double(x: i64) = x * 2;
 
     export fn main {
       const numbers = [1, 2, 3, 4, 5];
