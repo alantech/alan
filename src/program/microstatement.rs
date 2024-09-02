@@ -520,53 +520,6 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                     CType::Infer("unknown".to_string(), "unknonw".to_string()),
                                 ),
                             };
-                            // TODO: This is getting duplicated in a few different places. The CType creation
-                            // should probably centralize creating these type names and constructor functions
-                            // for us rather than this hackiness. Only adding the hackery to the output_type
-                            // because that's all I need, and the input type would be much more convoluted.
-                            if let CType::Void = output_type {
-                                // Skip this
-                            } else if let CType::Infer(..) = output_type {
-                                // Also skip
-                            } else {
-                                // This particular hackery assumes that the return type is not itself a
-                                // function and that it is using the `->` operator syntax. These are terrible
-                                // assumptions and this hacky code needs to die soon.
-                                let mut lastfnop = None;
-                                for (i, ta) in typeassignable.iter().enumerate() {
-                                    if ta.to_string().trim() == "->" {
-                                        lastfnop = Some(i);
-                                    }
-                                }
-                                if let Some(lastfnop) = lastfnop {
-                                    let returntypeassignables =
-                                        typeassignable[lastfnop + 1..typeassignable.len()].to_vec();
-                                    // TODO: Be more complete here
-                                    let name = output_type.to_callable_string();
-                                    // Don't recreate the exact same thing. It only causes pain
-                                    if scope.resolve_type(&name).is_none() {
-                                        let parse_type = parse::Types {
-                                            typen: "type".to_string(),
-                                            a: "".to_string(),
-                                            opttypegenerics: None,
-                                            b: "".to_string(),
-                                            fulltypename: parse::FullTypename {
-                                                typename: name.clone(),
-                                                opttypegenerics: None,
-                                            },
-                                            c: "".to_string(),
-                                            typedef: parse::TypeDef {
-                                                a: "=".to_string(),
-                                                b: "".to_string(),
-                                                typeassignables: returntypeassignables,
-                                            },
-                                            optsemicolon: ";".to_string(),
-                                        };
-                                        let res = CType::from_ast(inner_scope, &parse_type, false)?;
-                                        inner_scope = res.0;
-                                    }
-                                }
-                            }
                             let degrouped_input = input_type.degroup();
                             Ok(CType::Function(
                                 Box::new(degrouped_input),
@@ -617,6 +570,31 @@ pub fn baseassignablelist_to_microstatements<'a>(
                             // Do nothing, they're the same
                         }
                     }
+                }
+                match &typen {
+                    CType::Function(i, o) => {
+                        match &**o {
+                            CType::Void => { /* Do nothing */ }
+                            CType::Infer(t, _) if t == "unknown" => {
+                                CType::fail(&format!(
+                                    "The return type for {}({}) could not be inferred.",
+                                    match &f.optname {
+                                        Some(name) => name,
+                                        None => "closure",
+                                    },
+                                    i.to_strict_string(false)
+                                ));
+                            }
+                            CType::Infer(..) => { /* Do nothing */ }
+                            otherwise => {
+                                let name = otherwise.to_callable_string();
+                                if scope.resolve_type(&name).is_none() {
+                                    scope = CType::from_ctype(scope, name, otherwise.clone());
+                                }
+                            }
+                        }
+                    }
+                    _ => unreachable!(),
                 }
                 let function = Function {
                     name: match &f.optname {
