@@ -10,13 +10,120 @@ use crate::parse;
 #[derive(Clone, Debug)]
 pub struct Function {
     pub name: String,
-    pub args: Vec<(String, ArgKind, CType)>,
-    pub rettype: CType,
+    pub typen: CType,
     pub microstatements: Vec<Microstatement>,
     pub kind: FnKind,
 }
 
+pub fn type_to_args(t: &CType) -> Vec<(String, ArgKind, CType)> {
+    match t {
+        CType::Function(i, _) => {
+            let mut args = Vec::new();
+            match &**i {
+                CType::Tuple(ts) => {
+                    for (i, t) in ts.iter().enumerate() {
+                        args.push(match t {
+                            CType::Field(argname, t) => match &**t {
+                                CType::Own(t) => (argname.clone(), ArgKind::Own, *t.clone()),
+                                CType::Deref(t) => (argname.clone(), ArgKind::Deref, *t.clone()),
+                                CType::Mut(t) => (argname.clone(), ArgKind::Mut, *t.clone()),
+                                otherwise => (argname.clone(), ArgKind::Ref, otherwise.clone()),
+                            },
+                            CType::Own(t) => (format!("arg{}", i), ArgKind::Own, *t.clone()),
+                            CType::Deref(t) => (format!("arg{}", i), ArgKind::Deref, *t.clone()),
+                            CType::Mut(t) => (format!("arg{}", i), ArgKind::Mut, *t.clone()),
+                            otherwise => (format!("arg{}", i), ArgKind::Ref, otherwise.clone()),
+                        });
+                    }
+                }
+                CType::Field(argname, t) => match &**t {
+                    CType::Own(t) => args.push((argname.clone(), ArgKind::Own, *t.clone())),
+                    CType::Deref(t) => args.push((argname.clone(), ArgKind::Deref, *t.clone())),
+                    CType::Mut(t) => args.push((argname.clone(), ArgKind::Mut, *t.clone())),
+                    otherwise => args.push((argname.clone(), ArgKind::Ref, otherwise.clone())),
+                },
+                CType::Void => { /* Do nothing */ }
+                CType::Own(t) => args.push(("arg0".to_string(), ArgKind::Own, *t.clone())),
+                CType::Deref(t) => args.push(("arg0".to_string(), ArgKind::Deref, *t.clone())),
+                CType::Mut(t) => args.push(("arg0".to_string(), ArgKind::Mut, *t.clone())),
+                otherwise => args.push(("arg0".to_string(), ArgKind::Ref, otherwise.clone())),
+            }
+            args
+        }
+        CType::Tuple(ts) => {
+            let mut args = Vec::new();
+            for (i, t) in ts.iter().enumerate() {
+                args.push(match t {
+                    CType::Field(argname, t) => match &**t {
+                        CType::Own(t) => (argname.clone(), ArgKind::Own, *t.clone()),
+                        CType::Deref(t) => (argname.clone(), ArgKind::Deref, *t.clone()),
+                        CType::Mut(t) => (argname.clone(), ArgKind::Mut, *t.clone()),
+                        otherwise => (argname.clone(), ArgKind::Ref, otherwise.clone()),
+                    },
+                    CType::Own(t) => (format!("arg{}", i), ArgKind::Own, *t.clone()),
+                    CType::Deref(t) => (format!("arg{}", i), ArgKind::Deref, *t.clone()),
+                    CType::Mut(t) => (format!("arg{}", i), ArgKind::Mut, *t.clone()),
+                    otherwise => (format!("arg{}", i), ArgKind::Ref, otherwise.clone()),
+                });
+            }
+            args
+        }
+        CType::Field(argname, t) => match &**t {
+            CType::Own(t) => vec![(argname.clone(), ArgKind::Own, *t.clone())],
+            CType::Deref(t) => vec![(argname.clone(), ArgKind::Deref, *t.clone())],
+            CType::Mut(t) => vec![(argname.clone(), ArgKind::Mut, *t.clone())],
+            otherwise => vec![(argname.clone(), ArgKind::Ref, otherwise.clone())],
+        },
+        CType::Void => Vec::new(),
+        CType::Own(t) => vec![("arg0".to_string(), ArgKind::Own, *t.clone())],
+        CType::Deref(t) => vec![("arg0".to_string(), ArgKind::Deref, *t.clone())],
+        CType::Mut(t) => vec![("arg0".to_string(), ArgKind::Mut, *t.clone())],
+        otherwise => vec![("arg0".to_string(), ArgKind::Ref, otherwise.clone())],
+    }
+}
+
+pub fn type_to_rettype(t: &CType) -> CType {
+    match t {
+        CType::Function(_, o) => *o.clone(),
+        _ => CType::Void,
+    }
+}
+
+pub fn args_and_rettype_to_type(args: Vec<(String, ArgKind, CType)>, rettype: CType) -> CType {
+    CType::Function(
+        Box::new(if args.is_empty() {
+            CType::Void
+        } else {
+            CType::Tuple(
+                args.into_iter()
+                    .map(|(n, k, t)| {
+                        CType::Field(
+                            n,
+                            Box::new(match k {
+                                ArgKind::Mut => CType::Mut(Box::new(t)),
+                                ArgKind::Ref => t,
+                                ArgKind::Own | ArgKind::Deref => CType::fail(
+                                    "Somehow got an Own or Deref for a normal Alan function",
+                                ),
+                            }),
+                        )
+                    })
+                    .collect::<Vec<CType>>(),
+            )
+        }),
+        Box::new(rettype),
+    )
+}
+
 impl Function {
+    pub fn args(&self) -> Vec<(String, ArgKind, CType)> {
+        type_to_args(&self.typen)
+    }
+
+    pub fn rettype(&self) -> CType {
+        type_to_rettype(&self.typen)
+    }
+
     pub fn from_ast<'a>(
         scope: Scope<'a>,
         function_ast: &parse::Functions,
@@ -156,7 +263,7 @@ impl Function {
                             CType::TString(s) => {
                                 match &*f {
                                     CType::Function(i, o) => (s.clone(), *i.clone(), *o.clone()),
-                                    otherwise => (s.clone(), otherwise.clone(), CType::Void), // TODO: Type inference signaling?
+                                    otherwise => (s.clone(), otherwise.clone(), CType::Infer("unknown".to_string(), "unknown".to_string())),
                                 }
                             }
                             _ => CType::fail("TODO: Support more than bare function calls for generic function binding"),
@@ -167,53 +274,10 @@ impl Function {
                     // functions) in that path, we need to merge the child's functions back up
                     // TODO: Why can't I box this up into a function?
                     merge!(scope, temp_scope);
-                    // The input type will be interpreted in many different ways:
-                    // If it's a Group, unwrap it and continue. Ideally after that it's a Tuple
-                    // type containing Field types, that's a "conventional" function
-                    // definition, where the label becomes an argument name and the type is the
-                    // type. If the tuple doesn't have Fields inside of it, we auto-generate
-                    // argument names, eg `arg0`, `arg1`, etc. If it is not a Tuple type but is
-                    // a Field type, we have a single argument function with a specified
-                    // variable name. If it's any other type, we just label it `arg0`
                     let degrouped_input = input_type.degroup();
-                    let mut args = Vec::new();
-                    match degrouped_input {
-                        CType::Tuple(ts) => {
-                            for (i, t) in ts.iter().enumerate() {
-                                args.push(match t {
-                                    CType::Field(argname, t) => match &**t {
-                                        CType::Mut(t) => {
-                                            (argname.clone(), ArgKind::Mut, *t.clone())
-                                        }
-                                        otherwise => {
-                                            (argname.clone(), ArgKind::Ref, otherwise.clone())
-                                        }
-                                    },
-                                    CType::Mut(t) => {
-                                        (format!("arg{}", i), ArgKind::Mut, *t.clone())
-                                    }
-                                    otherwise => {
-                                        (format!("arg{}", i), ArgKind::Ref, otherwise.clone())
-                                    }
-                                });
-                            }
-                        }
-                        CType::Field(argname, t) => match &*t {
-                            CType::Mut(t) => args.push((argname.clone(), ArgKind::Mut, *t.clone())),
-                            otherwise => {
-                                args.push((argname.clone(), ArgKind::Ref, otherwise.clone()))
-                            }
-                        },
-                        CType::Void => {} // Do nothing so an empty set is properly
-                        CType::Mut(t) => args.push(("arg0".to_string(), ArgKind::Mut, *t.clone())),
-                        otherwise => {
-                            args.push(("arg0".to_string(), ArgKind::Ref, otherwise.clone()))
-                        }
-                    }
                     let function = Function {
                         name,
-                        args,
-                        rettype,
+                        typen: CType::Function(Box::new(degrouped_input), Box::new(rettype)),
                         microstatements: Vec::new(),
                         kind: FnKind::BoundGeneric(generics, rustfunc.clone()),
                     };
@@ -230,9 +294,6 @@ impl Function {
                             .functions
                             .insert(function.name.clone(), vec![function]);
                     }
-                    // TODO: This is a hack, I shouldn't be digging into the `fntype` to get the
-                    // function name
-                    //FnKind::BoundGeneric(generics, b.rustfunc.clone())
                 } else {
                     let ctype = withtypeoperatorslist_to_ctype(fntype, &scope)?;
                     if is_export {
@@ -335,14 +396,15 @@ impl Function {
             }
             _ => FnKind::Normal,
         };
-        // TODO: Add code to properly convert the typeassignable vec into a CType tree and use it.
-        // For now, just hardwire the parsing as before.
-        let (args, rettype) = match &function_ast.opttype {
-            None => Ok::<(Vec<(String, ArgKind, CType)>, CType), Box<dyn std::error::Error>>((
-                Vec::new(),
-                CType::Void,
-            )), // TODO: Does this path *ever* trigger?
-            Some(typeassignable) if typeassignable.is_empty() => Ok((Vec::new(), CType::Void)),
+        let mut typen = match &function_ast.opttype {
+            None => Ok::<CType, Box<dyn std::error::Error>>(CType::Function(
+                Box::new(CType::Void),
+                Box::new(CType::Void),
+            )),
+            Some(typeassignable) if typeassignable.is_empty() => Ok(CType::Function(
+                Box::new(CType::Void),
+                Box::new(CType::Void),
+            )),
             Some(typeassignable) => match &kind {
                 FnKind::Generic(gs, _) | FnKind::BoundGeneric(gs, _) => {
                     let mut temp_scope = scope.child();
@@ -355,69 +417,32 @@ impl Function {
                     // it's any other type, we presume it's only the input type defined
                     let (input_type, output_type) = match ctype {
                         CType::Function(i, o) => (*i.clone(), *o.clone()),
-                        otherwise => (otherwise.clone(), CType::Void), // TODO: Type inference signaling?
+                        otherwise => (
+                            otherwise.clone(),
+                            CType::Infer("unknown".to_string(), "unknown".to_string()),
+                        ),
                     };
                     // In case there were any created functions (eg constructor or accessor
                     // functions) in that path, we need to merge the child's functions back up
                     // TODO: Why can't I box this up into a function?
                     merge!(scope, temp_scope);
-                    // The input type will be interpreted in many different ways:
-                    // If it's a Group, unwrap it and continue. Ideally after that it's a Tuple
-                    // type containing Field types, that's a "conventional" function
-                    // definition, where the label becomes an argument name and the type is the
-                    // type. If the tuple doesn't have Fields inside of it, we auto-generate
-                    // argument names, eg `arg0`, `arg1`, etc. If it is not a Tuple type but is
-                    // a Field type, we have a single argument function with a specified
-                    // variable name. If it's any other type, we just label it `arg0`
                     let degrouped_input = input_type.degroup();
-                    let mut out_args = Vec::new();
-                    match degrouped_input {
-                        CType::Tuple(ts) => {
-                            for (i, t) in ts.iter().enumerate() {
-                                out_args.push(match t {
-                                    CType::Field(argname, t) => match &**t {
-                                        CType::Mut(t) => {
-                                            (argname.clone(), ArgKind::Mut, *t.clone())
-                                        }
-                                        otherwise => {
-                                            (argname.clone(), ArgKind::Ref, otherwise.clone())
-                                        }
-                                    },
-                                    CType::Mut(t) => {
-                                        (format!("arg{}", i), ArgKind::Mut, *t.clone())
-                                    }
-                                    otherwise => {
-                                        (format!("arg{}", i), ArgKind::Ref, otherwise.clone())
-                                    }
-                                });
-                            }
-                        }
-                        CType::Field(argname, t) => match &*t {
-                            CType::Mut(t) => {
-                                out_args.push((argname.clone(), ArgKind::Mut, *t.clone()))
-                            }
-                            otherwise => {
-                                out_args.push((argname.clone(), ArgKind::Ref, otherwise.clone()))
-                            }
-                        },
-                        CType::Void => {} // Do nothing so an empty set is properly
-                        CType::Mut(t) => {
-                            out_args.push(("arg0".to_string(), ArgKind::Mut, *t.clone()))
-                        }
-                        otherwise => {
-                            out_args.push(("arg0".to_string(), ArgKind::Ref, otherwise.clone()))
-                        }
-                    }
-                    Ok((out_args, output_type.clone()))
+                    Ok(CType::Function(
+                        Box::new(degrouped_input),
+                        Box::new(output_type),
+                    ))
                 }
                 _ => {
-                    // TODO: Figure out how to drop this duplication
                     let ctype = withtypeoperatorslist_to_ctype(typeassignable, &scope)?;
                     // If the `ctype` is a Function type, we have both the input and output defined. If
                     // it's any other type, we presume it's only the input type defined
+
                     let (input_type, output_type) = match ctype {
                         CType::Function(i, o) => (*i.clone(), *o.clone()),
-                        otherwise => (otherwise.clone(), CType::Void), // TODO: Type inference signaling?
+                        otherwise => (
+                            otherwise.clone(),
+                            CType::Infer("unknown".to_string(), "unknown".to_string()),
+                        ),
                     };
                     // TODO: This is getting duplicated in a few different places. The CType creation
                     // should probably centralize creating these type names and constructor functions
@@ -425,6 +450,8 @@ impl Function {
                     // because that's all I need, and the input type would be much more convoluted.
                     if let CType::Void = output_type {
                         // Skip this
+                    } else if let CType::Infer(_, _) = output_type {
+                        // Also skip
                     } else {
                         // This particular hackery assumes that the return type is not itself a
                         // function and that it is using the `->` operator syntax. These are terrible
@@ -464,65 +491,18 @@ impl Function {
                             }
                         }
                     }
-                    // The input type will be interpreted in many different ways:
-                    // If it's a Group, unwrap it and continue. Ideally after that it's a Tuple
-                    // type containing Field types, that's a "conventional" function
-                    // definition, where the label becomes an argument name and the type is the
-                    // type. If the tuple doesn't have Fields inside of it, we auto-generate
-                    // argument names, eg `arg0`, `arg1`, etc. If it is not a Tuple type but is
-                    // a Field type, we have a single argument function with a specified
-                    // variable name. If it's any other type, we just label it `arg0`
                     let degrouped_input = input_type.degroup();
-                    let mut out_args = Vec::new();
-                    match degrouped_input {
-                        CType::Tuple(ts) => {
-                            for (i, t) in ts.iter().enumerate() {
-                                out_args.push(match t {
-                                    CType::Field(argname, t) => match &**t {
-                                        CType::Mut(t) => {
-                                            (argname.clone(), ArgKind::Mut, *t.clone())
-                                        }
-                                        otherwise => {
-                                            (argname.clone(), ArgKind::Ref, otherwise.clone())
-                                        }
-                                    },
-                                    CType::Mut(t) => {
-                                        (format!("arg{}", i), ArgKind::Mut, *t.clone())
-                                    }
-                                    otherwise => {
-                                        (format!("arg{}", i), ArgKind::Ref, otherwise.clone())
-                                    }
-                                });
-                            }
-                        }
-                        CType::Field(argname, t) => match &*t {
-                            CType::Mut(t) => {
-                                out_args.push((argname.clone(), ArgKind::Mut, *t.clone()))
-                            }
-                            otherwise => {
-                                out_args.push((argname.clone(), ArgKind::Ref, otherwise.clone()))
-                            }
-                        },
-                        CType::Void => {} // Do nothing so an empty set is properly
-                        CType::Mut(t) => {
-                            out_args.push(("arg0".to_string(), ArgKind::Mut, *t.clone()))
-                        }
-                        otherwise => {
-                            out_args.push(("arg0".to_string(), ArgKind::Ref, otherwise.clone()))
-                        }
-                    }
-                    Ok((out_args, output_type.clone()))
+                    Ok(CType::Function(
+                        Box::new(degrouped_input),
+                        Box::new(output_type),
+                    ))
                 }
             },
         }?;
         let microstatements = {
             let mut ms = Vec::new();
-            for (name, kind, typen) in &args {
-                ms.push(Microstatement::Arg {
-                    name: name.clone(),
-                    kind: kind.clone(),
-                    typen: typen.clone(),
-                });
+            for (name, kind, typen) in type_to_args(&typen) {
+                ms.push(Microstatement::Arg { name, kind, typen });
             }
             // We can't generate the rest of the microstatements while the generic function is
             // still generic
@@ -535,10 +515,44 @@ impl Function {
             }
             ms
         };
+        // Determine the actual return type of the function and check if it matches the specified
+        // return type (or update that return type if it's to be inferred
+        if let Some(ms) = microstatements.last() {
+            if let Microstatement::Arg { .. } = ms {
+                // Don't do anything in this path, this is probably a derived function
+            } else {
+                let current_rettype = type_to_rettype(&typen);
+                let actual_rettype = match ms {
+                    Microstatement::Return { value } => match value {
+                        Some(v) => v.get_type(),
+                        None => CType::Void,
+                    },
+                    _ => CType::Void,
+                };
+                if let CType::Infer(..) = current_rettype {
+                    // We're definitely replacing with the inferred type
+                    let input_type = match &typen {
+                        CType::Function(i, _) => *i.clone(),
+                        _ => CType::Void,
+                    };
+                    typen = CType::Function(Box::new(input_type), Box::new(actual_rettype));
+                } else if current_rettype.to_strict_string(false)
+                    != actual_rettype.to_strict_string(false)
+                {
+                    CType::fail(&format!(
+                        "Function {} specified to return {} but actually returns {}",
+                        name,
+                        current_rettype.to_strict_string(false),
+                        actual_rettype.to_strict_string(false),
+                    ));
+                } else {
+                    // Do nothing, they're the same
+                }
+            }
+        }
         let function = Function {
             name,
-            args,
-            rettype,
+            typen,
             microstatements,
             kind,
         };
@@ -583,7 +597,7 @@ impl Function {
                 }
                 let kind = FnKind::Bind(bind_str);
                 let args = generic_function
-                    .args
+                    .args()
                     .iter()
                     .map(|(name, kind, argtype)| {
                         (name.clone(), kind.clone(), {
@@ -599,8 +613,8 @@ impl Function {
                 for (_, _, arg) in &args {
                     scope = CType::from_ctype(scope, arg.to_callable_string(), arg.clone());
                 }
-                let rettype = {
-                    let mut a = generic_function.rettype.clone();
+                let mut rettype = {
+                    let mut a = generic_function.rettype().clone();
                     for ((_, o), n) in gen_args.iter().zip(generic_types.iter()) {
                         a = a.swap_subtype(o, n);
                     }
@@ -617,6 +631,35 @@ impl Function {
                     }
                     ms
                 };
+                // Determine the actual return type of the function and check if it matches the specified
+                // return type (or update that return type if it's to be inferred
+                if let Some(ms) = microstatements.last() {
+                    if let Microstatement::Arg { .. } = ms {
+                        // Don't do anything in this path, this is probably a derived function
+                    } else {
+                        let actual_rettype = match ms {
+                            Microstatement::Return { value } => match value {
+                                Some(v) => v.get_type(),
+                                None => CType::Void,
+                            },
+                            _ => CType::Void,
+                        };
+                        if let CType::Infer(..) = &rettype {
+                            rettype = actual_rettype;
+                        } else if rettype.to_strict_string(false)
+                            != actual_rettype.to_strict_string(false)
+                        {
+                            CType::fail(&format!(
+                                "Function {} specified to return {} but actually returns {}",
+                                generic_function.name,
+                                rettype.to_strict_string(false),
+                                actual_rettype.to_strict_string(false),
+                            ));
+                        } else {
+                            // Do nothing, they're the same
+                        }
+                    }
+                }
                 let name = format!(
                     "{}_{}",
                     generic_function.name,
@@ -628,8 +671,8 @@ impl Function {
                 ); // Really bad
                 let f = Function {
                     name,
-                    args,
-                    rettype,
+                    // TODO: Can I eliminate this indirection?
+                    typen: args_and_rettype_to_type(args, rettype),
                     microstatements,
                     kind,
                 };
@@ -649,7 +692,7 @@ impl Function {
             FnKind::Generic(gen_args, statements) => {
                 let kind = FnKind::Normal;
                 let args = generic_function
-                    .args
+                    .args()
                     .iter()
                     .map(|(name, kind, argtype)| {
                         (name.clone(), kind.clone(), {
@@ -665,8 +708,8 @@ impl Function {
                 for (_, _, arg) in &args {
                     scope = CType::from_ctype(scope, arg.to_callable_string(), arg.clone());
                 }
-                let rettype = {
-                    let mut a = generic_function.rettype.clone();
+                let mut rettype = {
+                    let mut a = generic_function.rettype().clone();
                     for ((_, o), n) in gen_args.iter().zip(generic_types.iter()) {
                         a = a.swap_subtype(o, n);
                     }
@@ -693,6 +736,35 @@ impl Function {
                     }
                     ms
                 };
+                // Determine the actual return type of the function and check if it matches the specified
+                // return type (or update that return type if it's to be inferred
+                if let Some(ms) = microstatements.last() {
+                    if let Microstatement::Arg { .. } = ms {
+                        // Don't do anything in this path, this is probably a derived function
+                    } else {
+                        let actual_rettype = match ms {
+                            Microstatement::Return { value } => match value {
+                                Some(v) => v.get_type(),
+                                None => CType::Void,
+                            },
+                            _ => CType::Void,
+                        };
+                        if let CType::Infer(..) = &rettype {
+                            rettype = actual_rettype;
+                        } else if rettype.to_strict_string(false)
+                            != actual_rettype.to_strict_string(false)
+                        {
+                            CType::fail(&format!(
+                                "Function {} specified to return {} but actually returns {}",
+                                generic_function.name,
+                                rettype.to_strict_string(false),
+                                actual_rettype.to_strict_string(false),
+                            ));
+                        } else {
+                            // Do nothing, they're the same
+                        }
+                    }
+                }
                 let name = format!(
                     "{}_{}",
                     generic_function.name,
@@ -704,8 +776,8 @@ impl Function {
                 ); // Really bad
                 let f = Function {
                     name,
-                    args,
-                    rettype,
+                    // TODO: Can I eliminate this indirection?
+                    typen: args_and_rettype_to_type(args, rettype),
                     microstatements,
                     kind,
                 };
