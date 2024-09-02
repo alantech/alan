@@ -591,10 +591,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                     } else {
                         let current_rettype = type_to_rettype(&typen);
                         let actual_rettype = match m {
-                            Microstatement::Return { value } => match value {
-                                Some(v) => v.get_type(),
-                                None => CType::Void,
-                            },
+                            Microstatement::Return { value: Some(v) } => v.get_type(),
                             _ => CType::Void,
                         };
                         if let CType::Infer(..) = current_rettype {

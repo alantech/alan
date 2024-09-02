@@ -523,10 +523,7 @@ impl Function {
             } else {
                 let current_rettype = type_to_rettype(&typen);
                 let actual_rettype = match ms {
-                    Microstatement::Return { value } => match value {
-                        Some(v) => v.get_type(),
-                        None => CType::Void,
-                    },
+                    Microstatement::Return { value: Some(v) } => v.get_type(),
                     _ => CType::Void,
                 };
                 if let CType::Infer(..) = current_rettype {
@@ -638,10 +635,7 @@ impl Function {
                         // Don't do anything in this path, this is probably a derived function
                     } else {
                         let actual_rettype = match ms {
-                            Microstatement::Return { value } => match value {
-                                Some(v) => v.get_type(),
-                                None => CType::Void,
-                            },
+                            Microstatement::Return { value: Some(v) } => v.get_type(),
                             _ => CType::Void,
                         };
                         if let CType::Infer(..) = &rettype {
@@ -743,10 +737,7 @@ impl Function {
                         // Don't do anything in this path, this is probably a derived function
                     } else {
                         let actual_rettype = match ms {
-                            Microstatement::Return { value } => match value {
-                                Some(v) => v.get_type(),
-                                None => CType::Void,
-                            },
+                            Microstatement::Return { value: Some(v) } => v.get_type(),
                             _ => CType::Void,
                         };
                         if let CType::Infer(..) = &rettype {
