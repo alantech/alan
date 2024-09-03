@@ -66,6 +66,7 @@ export ctype Gte{A, B}; // Returns true if A is greater than or equal to B
 
 // Defining derived types
 export type void = ();
+export type Self{T} = T;
 export type Error = Binds{"AlanError"};
 export type Fallible{T} = Either{T, Error};
 export type Maybe{T} = Either{T, ()};
@@ -74,32 +75,32 @@ export type Release = Eq{Env{"ALAN_TARGET"}, "release"};
 export type Debug = Eq{Env{"ALAN_TARGET"}, "debug"};
 
 // Defining the operators in the type system
-export type infix Function as -> precedence 3; // I -> O, where I is the input and O is the output. With Tuples and Fields you can reconstruct arguments for functions.
+export type infix Function as -> precedence 4; // I -> O, where I is the input and O is the output. With Tuples and Fields you can reconstruct arguments for functions.
 export type infix Call as :: precedence 0; // N :: F, where N is the native function (or method) and F is the function type
 export type infix Tuple as , precedence 0; // A, B, C, ... The tuple type combines with other tuple types to become a larger tuple type. To have a tuple of tuples, you need to `Group` the inner tuple, eg `(a, b), c`
 export type infix Field as : precedence 1; // Foo: Bar, let's you specify a property access label for the type, useful for syntactic sugar on a tuple type and the Either type (eventually).
 export type infix Either as | precedence 0; // A | B, the type has a singular value from only one of the types at once.
-export type infix Prop as . precedence 5; // A.B, returns the sub-type within A referenced by property B. Allows an inverse of a Tuple or Either type, accessed by either the Field name or an integer index
+export type infix Prop as . precedence 6; // A.B, returns the sub-type within A referenced by property B. Allows an inverse of a Tuple or Either type, accessed by either the Field name or an integer index
 export type infix AnyOf as & precedence 0; // A & B, which can be passed to a function that takes A or B as necessary.
-export type infix Buffer as [ precedence 1; // Technically allows `Foo[3` by itself to be valid syntax, but...
-export type postfix Group as ] precedence 1; // Technically not necessary, but allows for `Foo[3]` to do the "right thing" and become a buffer of size 3, with a singular useless Group being wrapped around it (and then unwrapped on type generation). The only "bad" thing here is `Group` gets special behavior, matching the `(...)` syntax, so there's two ways to invoke a Group via symbols.
-export type postfix Array as [] precedence 4; // Allows `Foo[]` to do the right thing
-export type postfix Maybe as ? precedence 4; // Allows `Foo?` for nullable types. Should this have a precedence of 5?
-export type postfix Fallible as ! precedence 4; // Allows `Foo!` for fallible types. Same question on the precedence.
-export type infix Add as + precedence 2;
-export type infix Sub as - precedence 2;
-export type infix Mul as * precedence 3;
-export type infix Div as / precedence 3;
-export type infix Mod as % precedence 3;
-export type infix Pow as ** precedence 4;
+export type infix Buffer as [ precedence 2; // Technically allows `Foo[3` by itself to be valid syntax, but...
+export type postfix Self as ] precedence 11; // Technically not necessary, but allows for `Foo[3]` to do the "right thing" and become a buffer of size 3, with a singular useless Group being wrapped around it (and then unwrapped on type generation). The only "bad" thing here is `Group` gets special behavior, matching the `(...)` syntax, so there's two ways to invoke a Group via symbols.
+export type postfix Array as [] precedence 5; // Allows `Foo[]` to do the right thing
+export type postfix Maybe as ? precedence 5; // Allows `Foo?` for nullable types. Should this have a precedence of 5?
+export type postfix Fallible as ! precedence 5; // Allows `Foo!` for fallible types. Same question on the precedence.
+export type infix Add as + precedence 3;
+export type infix Sub as - precedence 3;
+export type infix Mul as * precedence 4;
+export type infix Div as / precedence 4;
+export type infix Mod as % precedence 4;
+export type infix Pow as ** precedence 5;
 export type infix If as ?? precedence 1; // C puts this kind of thing as a very high precedence. I'm not sure if I want to follow it. I feel like that would force grouping parens everywhere.
-export type infix And as && precedence 3;
-export type infix Or as || precedence 2;
-export type infix Xor as ^ precedence 2;
-export type prefix Not as ~ precedence 4; // TODO: Temporarily change this from ! to ~ until the operator prefix/postfix tiebreaker is updated to accept whichever *works* rather than prefer prefix
-export type infix Nand as !& precedence 3;
-export type infix Nor as !| precedence 2;
-export type infix Xnor as !^ precedence 2;
+export type infix And as && precedence 4;
+export type infix Or as || precedence 3;
+export type infix Xor as ^ precedence 3;
+export type prefix Not as ~ precedence 5; // TODO: Temporarily change this from ! to ~ until the operator prefix/postfix tiebreaker is updated to accept whichever *works* rather than prefer prefix
+export type infix Nand as !& precedence 4;
+export type infix Nor as !| precedence 3;
+export type infix Xnor as !^ precedence 3;
 export type infix Eq as == precedence 1;
 export type infix Neq as != precedence 1;
 export type infix Lt as < precedence 1;
@@ -600,7 +601,7 @@ export fn min (a: string, b: string) = if(a.lte(b), fn () = a.clone(), fn () = b
 export fn max (a: string, b: string) = if(a.gte(b), fn () = a.clone(), fn () = b.clone());
 export fn join Method{"join"} :: (string[], string) -> string;
 // TODO: There's something odd with the Buffer symbolic syntax that needs fixing
-export fn join{S}(a: Buffer{string, S}, s: string) = {Method{"join"} :: (Buffer{string, S}, string) -> string}(a, s);
+export fn join{S}(a: string[S], s: string) = {Method{"join"} :: (string[S], string) -> string}(a, s);
 
 /// Array related bindings
 export fn get{T} "getarray" :: (T[], i64) -> T?;
@@ -623,8 +624,7 @@ export fn filled{T} "filled" :: (T, i64) -> T[];
 export fn has{T} (a: T[], v: T) = {Method{"contains"} :: (T[], T) -> bool}(a, v);
 export fn has{T} "hasfnarray" :: (T[], T -> bool) -> bool;
 export fn find{T} "findarray" :: (T[], T -> bool) -> T?;
-// TODO: The `if` syntactic sugar will make these `if` calls much nicer (though so would return
-// type inference, to be honest)
+// TODO: The `if` syntactic sugar will make these `if` calls much nicer
 export fn index{T}(a: Array{T}, v: T) = a.reduce(
   Maybe{i64}(),
   fn (out: Maybe{i64}, val: T, idx: i64) = if(out.exists, out, if(val.eq(v), Maybe(idx), out)));
@@ -644,8 +644,8 @@ export fn delete{T} "deletearray" :: (Mut{T[]}, i64) -> T!;
 export fn get{T, S} "getbuffer" :: (T[S], i64) -> T?;
 export fn len{T, S}(T[S]) = {S}();
 // TODO: Still something weird with the buffer symbolic syntax, skipping it for map
-export fn map{T, S, U} "mapbuffer_onearg" :: (Buffer{T, S}, T -> U) -> Buffer{U, S};
-export fn map{T, S, U} "mapbuffer_twoarg" :: (Buffer{T, S}, (T, i64) -> U) -> Buffer{U, S};
+export fn map{T, S, U} "mapbuffer_onearg" :: (T[S], T -> U) -> (U[S]);
+export fn map{T, S, U} "mapbuffer_twoarg" :: (T[S], (T, i64) -> U) -> (U[S]);
 export fn reduce{T, S} "reducebuffer_sametype" :: (T[S], (T, T) -> T) -> T?;
 export fn reduce{T, S, U} "reducebuffer_difftype" :: (T[S], U, (U, T) -> U) -> U;
 export fn has{T, S} "hasbuffer" :: (T[S], T) -> bool;
@@ -653,7 +653,7 @@ export fn has{T, S} "hasfnbuffer" :: (T[S], T -> bool) -> bool;
 export fn find{T, S} "findbuffer" :: (T[S], T -> bool) -> T?;
 export fn every{T, S} "everybuffer" :: (T[S], T -> bool) -> bool;
 fn concatInner{T, S, N} "concatbuffer" :: (Mut{T[S + N]}, T[S], T[N]);
-export fn concat{T, S, N}(a: Buffer{T, S}, b: Buffer{T, N}) {
+export fn concat{T, S, N}(a: T[S], b: T[N]) {
   // I can't bind directly into Rust because Rust can't add const integer type parameters together.
   // It's *theoretically* possible to generate a new Rust function in each case with the required
   // sizes, but it will be really difficult, so I'm implementing this for now with the intent to
@@ -3767,7 +3767,7 @@ export fn print{T}(v: T!) = if({T}(v).exists,
   fn = v.Error.getOrExit.print);
 export fn print(v: void) = {"println!" :: "void"}();
 export fn print(s: string) = {"println!" :: ("{}", string)}(s);
-export fn print{T, N}(a: Buffer{T, N}) = "[".concat(a.map(fn (v: T) = v.string).join(", ")).concat("]").print;
+export fn print{T, N}(a: T[N]) = "[".concat(a.map(fn (v: T) = v.string).join(", ")).concat("]").print;
 export fn print{T}(a: T[]) = "[".concat(a.map(fn (v: T) = v.string).join(", ")).concat("]").print;
 export fn print{T}(v: T) = {"println!" :: ("{}", string)}(v.string);
 export fn eprint{T}(v: T?) = if(v.exists,
