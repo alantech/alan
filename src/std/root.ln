@@ -159,10 +159,13 @@ export fn store{T} (a: Mut{T}, b: T) -> T = {"std::mem::replace" :: (Mut{T}, Own
 /// Fallible, Maybe, and Either functions
 export fn getOr{T} "maybe_get_or" :: (T?, T) -> T;
 export fn getOr{T} "fallible_get_or" :: (T!, T) -> T;
+export fn getOrExit{T} (v: T!) = {Method{"unwrap"} :: Own{T!} -> T}(v);
+export fn getOrExit{T} (v: T?) = {Method{"unwrap"} :: Own{T?} -> T}(v);
 export fn Error{T} (e: string) = {"Err" :: Own{Error} -> T!}(
   {Method{"into"} :: Own{string} -> Error}(e));
 export fn Error (e: string) = {Method{"into"} :: Own{string} -> Error}(e);
 export fn exists{T} (m: T?) = {Method{"is_some"} :: T? -> bool}(m);
+export fn string(e: Error) = {"format!" :: ("{}", Error) -> string}(e);
 
 /// Primitive type casting functions
 export fn i8(i: i8) = i;
@@ -571,7 +574,7 @@ export fn string "format!" :: ("{}", u32) -> string;
 export fn string "format!" :: ("{}", u64) -> string;
 export fn string "format!" :: ("{}", f32) -> string;
 export fn string "format!" :: ("{}", f64) -> string;
-export fn string (b: bool) = if(b, "true", "false");
+export fn string(b: bool) = if(b, "true", "false");
 export fn string(s: string) = s;
 export fn concat "format!" :: ("{}{}", string, string) -> string;
 export fn repeat (a: string, n: i64) = {Method{"repeat"} :: (string, Deref{Binds{"usize"}}) -> string}(
@@ -831,18 +834,6 @@ export fn reduce{T, U}(t: Tree{T}, i: U, f: (U, Node{T}) -> U) = t.Array.reduce(
 export fn reduce{T, U}(t: Tree{T}, i: U, f: (U, Node{T}, i64) -> U) = t.Array.reduce(i, f);
 
 export fn find{T}(t: Tree{T}, f: (T) -> bool) = t.Array.find(f);
-
-/// Process exit-related bindings
-export fn ExitCode "std::process::ExitCode::from" :: Own{u8} -> ExitCode;
-export fn ExitCode(e: u16) = ExitCode(e.u8);
-export fn ExitCode(e: u32) = ExitCode(e.u8);
-export fn ExitCode(e: u64) = ExitCode(e.u8);
-export fn ExitCode(e: i8) = ExitCode(e.u8);
-export fn ExitCode(e: i16) = ExitCode(e.u8);
-export fn ExitCode(e: i32) = ExitCode(e.u8);
-export fn ExitCode(e: i64) = ExitCode(e.u8);
-export fn getOrExit{T} (v: T!) = {Method{"unwrap"} :: T! -> T}(v);
-export fn getOrExit{T} (v: T?) = {Method{"unwrap"} :: T? -> T}(v);
 
 /// Thread-related bindings
 export fn wait (t: i64) = {"std::thread::sleep" :: Own{Duration}}(
@@ -3753,22 +3744,42 @@ export fn map(gb: GBuffer, f: (gi32, gu32) -> gi32) {
   return out;
 }
 
+/// Process exit-related bindings
+export fn ExitCode "std::process::ExitCode::from" :: Own{u8} -> ExitCode;
+export fn ExitCode(e: u16) = ExitCode(e.u8);
+export fn ExitCode(e: u32) = ExitCode(e.u8);
+export fn ExitCode(e: u64) = ExitCode(e.u8);
+export fn ExitCode(e: i8) = ExitCode(e.u8);
+export fn ExitCode(e: i16) = ExitCode(e.u8);
+export fn ExitCode(e: i32) = ExitCode(e.u8);
+export fn ExitCode(e: i64) = ExitCode(e.u8);
 
 /// Stdout/stderr-related bindings
 // TODO: Rework this to just print anything that can be converted to `string` via interfaces
 export fn print (d: Duration) = {"println!" :: ("{}.{:0>9}", u64, u32)}(
   {Method{"as_secs"} :: Duration -> u64}(d),
   {Method{"subsec_nanos"} :: Duration -> u32}(d));
-export fn print{T} "println_result" :: T!;
-export fn print{T} "println_maybe" :: T?;
-export fn print{T} "print_vec" :: T[];
-export fn print{T, N} "print_buffer" :: T[N];
-export fn print{T} "print_vec_result" :: Array{T!};
-export fn print (v: void) = {"println!" :: "void"}();
-export fn print{T} (v: T) = {"println!" :: ("{}", T)}(v);
-export fn eprint{T} "eprintln_result" :: T!;
-export fn eprint{T} "eprintln_maybe" :: T?;
-export fn eprint{T} (v: T) = {"eprintln!" :: ("{}", T)}(v);
+export fn print{T}(v: T?) = if(v.exists,
+  fn = v.getOrExit.print,
+  fn = print("void"));
+export fn print{T}(v: T!) = if({T}(v).exists,
+  fn = v.getOrExit.print,
+  fn = v.Error.getOrExit.print);
+export fn print(v: void) = {"println!" :: "void"}();
+export fn print(s: string) = {"println!" :: ("{}", string)}(s);
+export fn print{T, N}(a: Buffer{T, N}) = "[".concat(a.map(fn (v: T) = v.string).join(", ")).concat("]").print;
+export fn print{T}(a: T[]) = "[".concat(a.map(fn (v: T) = v.string).join(", ")).concat("]").print;
+export fn print{T}(v: T) = {"println!" :: ("{}", string)}(v.string);
+export fn eprint{T}(v: T?) = if(v.exists,
+  fn = v.getOrExit.eprint,
+  fn = eprint("void"));
+export fn eprint{T}(v: T!) = if({T}(v).exists,
+  fn = v.getOrExit.eprint,
+  fn = v.Error.getOrExit.eprint);
+export fn eprint(v: void) = {"eprintln!" :: "void"}();
+export fn eprint(s: string) = {"eprintln!" :: ("{}", string)}(s);
+export fn eprint{T}(a: T[]) = "[".concat(a.map(fn (v: T) = v.string).join(", ")).concat("]").eprint;
+export fn eprint{T}(v: T) = {"eprintln!" :: ("{}", T)}(v.string);
 
 // TODO: Function resolution is effectively backwards at the moment. This is the fallback `getOr`,
 // but it needs to be defined last instead of first.
