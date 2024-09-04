@@ -74,103 +74,13 @@ fn hashstring(v: &String) -> i64 {
     hasher.finish() as i64
 }
 
-/// Signed Integer-related functions
-
-/// `stringtoi8` tries to convert a string into an i8
-#[inline(always)]
-fn stringtoi8(s: &String) -> Result<i8, AlanError> {
-    match s.parse() {
-        Ok(v) => Ok(v),
-        Err(_) => Err("Not a Number".into()),
-    }
-}
-
-/// `stringtoi16` tries to convert a string into an i16
-#[inline(always)]
-fn stringtoi16(s: &String) -> Result<i16, AlanError> {
-    match s.parse() {
-        Ok(v) => Ok(v),
-        Err(_) => Err("Not a Number".into()),
-    }
-}
-
-/// `stringtoi32` tries to convert a string into an i32
-#[inline(always)]
-fn stringtoi32(s: &String) -> Result<i32, AlanError> {
-    match s.parse() {
-        Ok(v) => Ok(v),
-        Err(_) => Err("Not a Number".into()),
-    }
-}
-
-/// `stringtoi64` tries to convert a string into an i64
-#[inline(always)]
-fn stringtoi64(s: &String) -> Result<i64, AlanError> {
-    match s.parse() {
-        Ok(v) => Ok(v),
-        Err(_) => Err("Not a Number".into()),
-    }
-}
-
-/// Unsigned Integer-related functions
-
-/// `stringtou8` tries to convert a string into an u8
-#[inline(always)]
-fn stringtou8(s: &String) -> Result<u8, AlanError> {
-    match s.parse() {
-        Ok(v) => Ok(v),
-        Err(_) => Err("Not a Number".into()),
-    }
-}
-
-/// `stringtou16` tries to convert a string into an u16
-#[inline(always)]
-fn stringtou16(s: &String) -> Result<u16, AlanError> {
-    match s.parse() {
-        Ok(v) => Ok(v),
-        Err(_) => Err("Not a Number".into()),
-    }
-}
-
-/// `stringtou32` tries to convert a string into an u32
-#[inline(always)]
-fn stringtou32(s: &String) -> Result<u32, AlanError> {
-    match s.parse() {
-        Ok(v) => Ok(v),
-        Err(_) => Err("Not a Number".into()),
-    }
-}
-
-/// `stringtou64` tries to convert a string into an u64
-#[inline(always)]
-fn stringtou64(s: &String) -> Result<u64, AlanError> {
-    match s.parse() {
-        Ok(v) => Ok(v),
-        Err(_) => Err("Not a Number".into()),
-    }
-}
-
-/// Float-related functions
-
-/// `stringtof32` tries to convert a string into an f32
-#[inline(always)]
-fn stringtof32(s: &String) -> Result<f32, AlanError> {
-    match s.parse() {
-        Ok(v) => Ok(v),
-        Err(_) => Err("Not a Number".into()),
-    }
-}
-
-/// `stringtof64` tries to convert a string into an f64
-#[inline(always)]
-fn stringtof64(s: &String) -> Result<f64, AlanError> {
-    match s.parse() {
-        Ok(v) => Ok(v),
-        Err(_) => Err("Not a Number".into()),
-    }
-}
-
 /// String-related functions
+
+/// Converts anything that implements ToString into a string. Needed to convert all errors into
+/// AlanError since it doesn't seem possible to `impl From<dyn std::error::Error>`
+fn stringify<T: std::string::ToString>(v: T) -> String {
+    v.to_string()
+}
 
 /// `splitstring` creates a vector of strings split by the specified separator string
 #[inline(always)]
