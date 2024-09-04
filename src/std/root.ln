@@ -179,7 +179,8 @@ export fn i8 Cast{"i8"} :: Deref{u32} -> i8;
 export fn i8 Cast{"i8"} :: Deref{u64} -> i8;
 export fn i8 Cast{"i8"} :: Deref{f32} -> i8;
 export fn i8 Cast{"i8"} :: Deref{f64} -> i8;
-export fn i8 "stringtoi8" :: string -> i8!;
+// TODO: LOL, what a hack
+export fn i8 Method{"parse().map_err(|s| AlanError { message: stringify(s) }).into"} :: string -> i8!;
 
 export fn i16 Cast{"i16"} :: Deref{i8} -> i16;
 export fn i16(i: i16) = i;
@@ -191,7 +192,7 @@ export fn i16 Cast{"i16"} :: Deref{u32} -> i16;
 export fn i16 Cast{"i16"} :: Deref{u64} -> i16;
 export fn i16 Cast{"i16"} :: Deref{f32} -> i16;
 export fn i16 Cast{"i16"} :: Deref{f64} -> i16;
-export fn i16 "stringtoi16" :: string -> i16!;
+export fn i16 Method{"parse().map_err(|s| AlanError { message: stringify(s) }).into"} :: string -> i16!;
 
 export fn i32 Cast{"i32"} :: Deref{i8} -> i32;
 export fn i32 Cast{"i32"} :: Deref{i16} -> i32;
@@ -203,7 +204,7 @@ export fn i32 Cast{"i32"} :: Deref{u32} -> i32;
 export fn i32 Cast{"i32"} :: Deref{u64} -> i32;
 export fn i32 Cast{"i32"} :: Deref{f32} -> i32;
 export fn i32 Cast{"i32"} :: Deref{f64} -> i32;
-export fn i32 "stringtoi32" :: string -> i32!;
+export fn i32 Method{"parse().map_err(|s| AlanError { message: stringify(s) }).into"} :: string -> i32!;
 
 export fn i64 Cast{"i64"} :: Deref{i8} -> i64;
 export fn i64 Cast{"i64"} :: Deref{i16} -> i64;
@@ -215,7 +216,7 @@ export fn i64 Cast{"i64"} :: Deref{u32} -> i64;
 export fn i64 Cast{"i64"} :: Deref{u64} -> i64;
 export fn i64 Cast{"i64"} :: Deref{f32} -> i64;
 export fn i64 Cast{"i64"} :: Deref{f64} -> i64;
-export fn i64 "stringtoi64" :: string -> i64!;
+export fn i64 Method{"parse().map_err(|s| AlanError { message: stringify(s) }).into"} :: string -> i64!;
 
 export fn u8 Cast{"u8"} :: Deref{i8} -> u8;
 export fn u8 Cast{"u8"} :: Deref{i16} -> u8;
@@ -227,7 +228,7 @@ export fn u8 Cast{"u8"} :: Deref{u32} -> u8;
 export fn u8 Cast{"u8"} :: Deref{u64} -> u8;
 export fn u8 Cast{"u8"} :: Deref{f32} -> u8;
 export fn u8 Cast{"u8"} :: Deref{f64} -> u8;
-export fn u8 "stringtou8" :: string -> u8!;
+export fn u8 Method{"parse().map_err(|s| AlanError { message: stringify(s) }).into"} :: string -> u8!;
 
 export fn u16 Cast{"u16"} :: Deref{i8} -> u16;
 export fn u16 Cast{"u16"} :: Deref{i16} -> u16;
@@ -239,7 +240,7 @@ export fn u16 Cast{"u16"} :: Deref{u32} -> u16;
 export fn u16 Cast{"u16"} :: Deref{u64} -> u16;
 export fn u16 Cast{"u16"} :: Deref{f32} -> u16;
 export fn u16 Cast{"u16"} :: Deref{f64} -> u16;
-export fn u16 "stringtou16" :: string -> u16!;
+export fn u16 Method{"parse().map_err(|s| AlanError { message: stringify(s) }).into"} :: string -> u16!;
 
 export fn u32 Cast{"u32"} :: Deref{i8} -> u32;
 export fn u32 Cast{"u32"} :: Deref{i16} -> u32;
@@ -251,7 +252,7 @@ export fn u32(i: u32) = i;
 export fn u32 Cast{"u32"} :: Deref{u64} -> u32;
 export fn u32 Cast{"u32"} :: Deref{f32} -> u32;
 export fn u32 Cast{"u32"} :: Deref{f64} -> u32;
-export fn u32 "stringtou32" :: string -> u32!;
+export fn u32 Method{"parse().map_err(|s| AlanError { message: stringify(s) }).into"} :: string -> u32!;
 
 export fn u64 Cast{"u64"} :: Deref{i8} -> u64;
 export fn u64 Cast{"u64"} :: Deref{i16} -> u64;
@@ -263,7 +264,7 @@ export fn u64 Cast{"u64"} :: Deref{u32} -> u64;
 export fn u64(u: u64) = u;
 export fn u64 Cast{"u64"} :: Deref{f32} -> u64;
 export fn u64 Cast{"u64"} :: Deref{f64} -> u64;
-export fn u64 "stringtou64" :: string -> u64!;
+export fn u64 Method{"parse().map_err(|s| AlanError { message: stringify(s) }).into"} :: string -> u64!;
 
 export fn f32 Cast{"f32"} :: Deref{i8} -> f32;
 export fn f32 Cast{"f32"} :: Deref{i16} -> f32;
@@ -275,7 +276,7 @@ export fn f32 Cast{"f32"} :: Deref{u32} -> f32;
 export fn f32 Cast{"f32"} :: Deref{u64} -> f32;
 export fn f32(f: f32) = f;
 export fn f32 Cast{"f32"} :: Deref{f64} -> f32;
-export fn f32 "stringtof32" :: string -> f32!;
+export fn f32 Method{"parse().map_err(|s| AlanError { message: stringify(s) }).into"} :: string -> f32!;
 
 export fn f64 Cast{"f64"} :: Deref{i8} -> f64;
 export fn f64 Cast{"f64"} :: Deref{i16} -> f64;
@@ -287,7 +288,7 @@ export fn f64 Cast{"f64"} :: Deref{u32} -> f64;
 export fn f64 Cast{"f64"} :: Deref{u64} -> f64;
 export fn f64 Cast{"f64"} :: Deref{f32} -> f64;
 export fn f64(f: f64) = f;
-export fn f64 "stringtof64" :: string -> f64!;
+export fn f64 Method{"parse().map_err(|s| AlanError { message: stringify(s) }).into"} :: string -> f64!;
 
 export fn bool (i: i8) = {Infix{"!="} :: (Deref{i8}, Deref{i8}) -> bool}(i, 0.i8);
 export fn bool (i: i16) = {Infix{"!="} :: (Deref{i16}, Deref{i16}) -> bool}(i, 0.i16);

@@ -743,6 +743,19 @@ test!(string_max => r#"
     }"#;
     stdout "5\n";
 );
+test!(string_parse => r#"
+    export fn main {
+      "8".i8.print;
+      "foo".i8.print;
+      "16".i16.print;
+      "foo".i16.print;
+      "32".i32.print;
+      "foo".i32.print;
+      "64".i64.print;
+      "foo".i64.print;
+    }"#;
+    stdout "8\nError: invalid digit found in string\n16\nError: invalid digit found in string\n32\nError: invalid digit found in string\n64\nError: invalid digit found in string\n";
+);
 
 // GPGPU
 
