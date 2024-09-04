@@ -74,27 +74,6 @@ fn hashstring(v: &String) -> i64 {
     hasher.finish() as i64
 }
 
-/// Fallible, Maybe, and Either functions
-
-/// `maybe_get_or` gets the Option's value or returns the default if not present.
-#[inline(always)]
-fn maybe_get_or<T: std::clone::Clone>(v: &Option<T>, d: &T) -> T {
-    match v {
-        Some(val) => val.clone(),
-        None => d.clone(),
-    }
-}
-
-/// `fallible_get_or` gets the Fallible (Result with pre-bound error) value or returns the default
-/// if not present.
-#[inline(always)]
-fn fallible_get_or<T: std::clone::Clone>(v: &Result<T, AlanError>, d: &T) -> T {
-    match v {
-        Ok(val) => val.clone(),
-        Err(_) => d.clone(),
-    }
-}
-
 /// Signed Integer-related functions
 
 /// `stringtoi8` tries to convert a string into an i8

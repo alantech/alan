@@ -158,8 +158,8 @@ export fn void() -> void {}
 export fn store{T} (a: Mut{T}, b: T) -> T = {"std::mem::replace" :: (Mut{T}, Own{T}) -> T}(a, b);
 
 /// Fallible, Maybe, and Either functions
-export fn getOr{T} "maybe_get_or" :: (T?, T) -> T;
-export fn getOr{T} "fallible_get_or" :: (T!, T) -> T;
+export fn getOr{T} (v: T?, d: T) = {Method{"unwrap_or"} :: (Own{T?}, Own{T}) -> T}(v, d);
+export fn getOr{T} (v: T!, d: T) = {Method{"unwrap_or"} :: (Own{T!}, Own{T}) -> T}(v, d);
 export fn getOrExit{T} (v: T!) = {Method{"unwrap"} :: Own{T!} -> T}(v);
 export fn getOrExit{T} (v: T?) = {Method{"unwrap"} :: Own{T?} -> T}(v);
 export fn Error{T} (e: string) = {"Err" :: Own{Error} -> T!}(
@@ -600,7 +600,6 @@ export fn gte Infix{">="} :: (Own{string}, Own{string}) -> bool;
 export fn min (a: string, b: string) = if(a.lte(b), fn () = a.clone(), fn () = b.clone());
 export fn max (a: string, b: string) = if(a.gte(b), fn () = a.clone(), fn () = b.clone());
 export fn join Method{"join"} :: (string[], string) -> string;
-// TODO: There's something odd with the Buffer symbolic syntax that needs fixing
 export fn join{S}(a: string[S], s: string) = {Method{"join"} :: (string[S], string) -> string}(a, s);
 
 /// Array related bindings
@@ -643,7 +642,6 @@ export fn delete{T} "deletearray" :: (Mut{T[]}, i64) -> T!;
 /// Buffer related bindings
 export fn get{T, S} "getbuffer" :: (T[S], i64) -> T?;
 export fn len{T, S}(T[S]) = {S}();
-// TODO: Still something weird with the buffer symbolic syntax, skipping it for map
 export fn map{T, S, U} "mapbuffer_onearg" :: (T[S], T -> U) -> (U[S]);
 export fn map{T, S, U} "mapbuffer_twoarg" :: (T[S], (T, i64) -> U) -> (U[S]);
 export fn reduce{T, S} "reducebuffer_sametype" :: (T[S], (T, T) -> T) -> T?;
