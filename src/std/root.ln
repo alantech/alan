@@ -158,6 +158,8 @@ export fn void() -> void {}
 export fn store{T} (a: Mut{T}, b: T) -> T = {"std::mem::replace" :: (Mut{T}, Own{T}) -> T}(a, b);
 
 /// Fallible, Maybe, and Either functions
+export fn Maybe{T}(v: T!) = {Method{"ok"} :: T! -> T?}(v);
+export fn Fallible{T}(v: T?, e: Error) = {Method{"ok_or"} :: (T?, Error) -> T!}(v, e);
 export fn getOr{T} (v: T?, d: T) = {Method{"unwrap_or"} :: (Own{T?}, Own{T}) -> T}(v, d);
 export fn getOr{T} (v: T!, d: T) = {Method{"unwrap_or"} :: (Own{T!}, Own{T}) -> T}(v, d);
 export fn getOrExit{T} (v: T!) = {Method{"unwrap"} :: Own{T!} -> T}(v);
