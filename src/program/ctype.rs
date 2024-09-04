@@ -769,9 +769,19 @@ impl CType {
                         input.push(g2);
                     }
                     (Some(CType::Function(i1, o1)), Some(CType::Function(i2, o2))) => {
-                        arg.push(i1);
+                        match &**i1 {
+                            CType::Tuple(ts1) if ts1.len() == 1 => {
+                                arg.push(&ts1[0]);
+                            }
+                            otherwise => arg.push(otherwise),
+                        }
                         arg.push(o1);
-                        input.push(i2);
+                        match &**i2 {
+                            CType::Tuple(ts2) if ts2.len() == 1 => {
+                                input.push(&ts2[0]);
+                            }
+                            otherwise => input.push(otherwise),
+                        }
                         input.push(o2);
                     }
                     (Some(CType::Call(n1, f1)), Some(CType::Call(n2, f2))) => {
@@ -824,14 +834,6 @@ impl CType {
                         for t2 in ts2 {
                             input.push(t2);
                         }
-                    }
-                    (Some(CType::Tuple(ts1)), Some(b)) if ts1.len() == 1 => {
-                        arg.push(&ts1[0]);
-                        input.push(b);
-                    }
-                    (Some(a), Some(CType::Tuple(ts2))) if ts2.len() == 1 => {
-                        arg.push(a);
-                        input.push(&ts2[0]);
                     }
                     (Some(CType::Field(l1, t1)), Some(CType::Field(l2, t2))) => {
                         // TODO: Allow out-of-order listing based on Field labels
@@ -2659,6 +2661,10 @@ impl CType {
                         CType::Group(t) => *t,
                         t => t,
                     };
+                }
+                // Let's just avoid the "bare field" type definition and auto-wrap into a tuple
+                if let CType::Field(..) = &inner_type {
+                    inner_type = CType::Tuple(vec![inner_type]);
                 }
                 inner_type.to_functions(name.clone())
             }

@@ -136,14 +136,14 @@ pub fn ctype_to_rtype(
                     t => out.push(ctype_to_rtype(t, in_function_type)?),
                 }
             }
-            Ok(format!("({})", out.join(", ")))
+            if out.len() == 1 {
+                Ok(format!("({},)", out[0]))
+            } else {
+                Ok(format!("({})", out.join(", ")))
+            }
         }
         CType::Field(k, v) => {
-            if in_function_type {
-                Ok(ctype_to_rtype(v, in_function_type)?)
-            } else {
-                Ok(format!("{}: {}", k, ctype_to_rtype(v, in_function_type)?))
-            }
+            Ok(format!("/* {} */ {}", k, ctype_to_rtype(v, in_function_type)?))
         }
         CType::Either(ts) => {
             // Special handling to convert `Either{T, void}` to `Option<T>` and `Either{T, Error}`
