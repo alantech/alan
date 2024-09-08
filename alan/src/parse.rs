@@ -947,8 +947,8 @@ test!(typebaselist =>
     ];
 );
 named_and!(typedef: TypeDef =>
-    a: String as eq,
-    b: String as whitespace,
+    a: Option<String> as opt_string!(eq),
+    b: String as optwhitespace,
     typeassignables: Vec<WithTypeOperators> as typeassignables,
 );
 named_and!(types: Types =>
@@ -967,6 +967,7 @@ test!(types =>
     pass "type Result{T, Error} = Binds{'Result', T, Error};";
     pass "type ExitCode = Binds{'std::process::ExitCode'};";
     pass "type{Windows} Path = driveLetter: string, pathsegments: Array{string};";
+    pass "type add <- 'my_dep' @ '1.0.0';";
 );
 named_and!(ctypes: CTypes =>
     ctype: String as ctype,
@@ -1462,13 +1463,13 @@ test!(interfaces =>
     pass "interface Stringifiable {\ntoString(Stringifiable) -> string,\n}";
 );
 named_or!(exportable: Exportable =>
+    OperatorMapping: OperatorMapping as operatormapping,
+    TypeOperatorMapping: TypeOperatorMapping as typeoperatormapping,
     Functions: Functions as functions,
     ConstDeclaration: ConstDeclaration as constdeclaration,
     Types: Types as types,
     CTypes: CTypes as ctypes,
     Intefaces: Interfaces as interfaces,
-    OperatorMapping: OperatorMapping as operatormapping,
-    TypeOperatorMapping: TypeOperatorMapping as typeoperatormapping,
     Ref: String as variable,
 );
 named_and!(exports: Exports =>
@@ -1485,11 +1486,11 @@ test!(exports =>
 named_or!(rootelements: RootElements =>
     Whitespace: String as whitespace,
     Exports: Exports as exports,
+    OperatorMapping: OperatorMapping as operatormapping,
+    TypeOperatorMapping: TypeOperatorMapping as typeoperatormapping,
     Functions: Functions as functions,
     Types: Types as types,
     ConstDeclaration: ConstDeclaration as constdeclaration,
-    OperatorMapping: OperatorMapping as operatormapping,
-    TypeOperatorMapping: TypeOperatorMapping as typeoperatormapping,
     Interfaces: Interfaces as interfaces,
 );
 list!(opt body: RootElements => rootelements);

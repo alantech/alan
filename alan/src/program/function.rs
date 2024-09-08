@@ -555,6 +555,7 @@ impl Function {
     ) -> Result<(Scope<'a>, Function), Box<dyn std::error::Error>> {
         match &generic_function.kind {
             FnKind::Normal
+            | FnKind::External(_)
             | FnKind::Bind(_)
             | FnKind::Derived
             | FnKind::DerivedVariadic

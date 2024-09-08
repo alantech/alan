@@ -99,6 +99,7 @@ pub fn from_microstatement(
                     .into()),
                     Some(fun) => {
                         match &fun.kind {
+                            FnKind::External(_) => todo!(),
                             FnKind::Normal
                             | FnKind::Generic(..)
                             | FnKind::Derived
@@ -157,6 +158,7 @@ pub fn from_microstatement(
                 FnKind::Generic(..) | FnKind::BoundGeneric(..) => {
                     Err("Generic functions should have been resolved before reaching here".into())
                 }
+                FnKind::External(_) => todo!(),
                 FnKind::Normal => {
                     let (_, o) = typen::generate(&function.rettype(), out)?;
                     out = o;

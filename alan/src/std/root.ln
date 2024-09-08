@@ -23,6 +23,11 @@ export ctype Cast{T}; // A reference to a native type in the platform language t
 export ctype Own{T}; // Specifying that the native code needs an owned version of the type
 export ctype Deref{T}; // Specifying that the native code needs an owned version of the type and it is safe to dereference the reference
 export ctype Mut{T}; // Specifying that the function (native or otherwise) needs a mutable reference of the type
+export ctype Dependency{N, V}; // The representation of a dependency (of some form or another). Does nothing on its own
+export ctype Rust{D}; // Specifying that the provided dependency is a Rust dependency.
+export ctype Node{D}; // Specifying that the provided dependency is a Node.js dependency.
+export ctype From{D}; // Pulls the desired value from the dependency. Magically figures out which is needed through compiler trickery.
+export ctype Import{N, D}; // Imports the named value from the dependency.
 export ctype Tuple{A, B}; // A tuple of two (or more) types in a single compound type
 export ctype Field{L, V}; // Labeling a type with a property name. Useful to turn tuples into structs
 export ctype Either{A, B}; // An either type, allowing the value to be from *one* of the specified types, kinda like Rust enums
@@ -77,13 +82,16 @@ export type Debug = Eq{Env{"ALAN_TARGET"}, "debug"};
 // Defining the operators in the type system
 export type infix Function as -> precedence 4; // I -> O, where I is the input and O is the output. With Tuples and Fields you can reconstruct arguments for functions.
 export type infix Call as :: precedence 0; // N :: F, where N is the native function (or method) and F is the function type
+export type infix Dependency as @ precedence 1; // N @ V, where N is the name of the dependency and V is the version
+export type infix Import as <- precedence 0; // N <- D, where N is the name of the value to be imported and D is the dependency to pull it from
+export type prefix From as <- precedence 0; // <- D, where D is the dependency to pull a value or values from
 export type infix Tuple as , precedence 0; // A, B, C, ... The tuple type combines with other tuple types to become a larger tuple type. To have a tuple of tuples, you need to `Group` the inner tuple, eg `(a, b), c`
 export type infix Field as : precedence 1; // Foo: Bar, let's you specify a property access label for the type, useful for syntactic sugar on a tuple type and the Either type (eventually).
 export type infix Either as | precedence 0; // A | B, the type has a singular value from only one of the types at once.
 export type infix Prop as . precedence 6; // A.B, returns the sub-type within A referenced by property B. Allows an inverse of a Tuple or Either type, accessed by either the Field name or an integer index
 export type infix AnyOf as & precedence 0; // A & B, which can be passed to a function that takes A or B as necessary.
 export type infix Buffer as [ precedence 2; // Technically allows `Foo[3` by itself to be valid syntax, but...
-export type postfix Self as ] precedence 11; // Technically not necessary, but allows for `Foo[3]` to do the "right thing" and become a buffer of size 3, with a singular useless Group being wrapped around it (and then unwrapped on type generation). The only "bad" thing here is `Group` gets special behavior, matching the `(...)` syntax, so there's two ways to invoke a Group via symbols.
+export type postfix Self as ] precedence 11; // This one goes to eleven. Technically not necessary, but allows for `Foo[3]` to do the "right thing" and become a buffer of size 3
 export type postfix Array as [] precedence 5; // Allows `Foo[]` to do the right thing
 export type postfix Maybe as ? precedence 5; // Allows `Foo?` for nullable types. Should this have a precedence of 5?
 export type postfix Fallible as ! precedence 5; // Allows `Foo!` for fallible types. Same question on the precedence.
@@ -865,8 +873,35 @@ export fn GBuffer{T}(vals: T[]) = GBuffer(storageBuffer(), vals.map(fn (v: T) ->
 export fn GBuffer(size: i64) = GBuffer(storageBuffer(), size);
 export fn len "bufferlen" :: GBuffer -> i64;
 export fn id "buffer_id" :: GBuffer -> string;
-export fn GPGPU "GPGPU_new" :: (string, Array{Array{GBuffer}}, i64[3]) -> GPGPU;
-export fn GPGPU "GPGPU_new_easy" :: (string, GBuffer) -> GPGPU;
+export fn GPGPU "GPGPU::new" :: (Own{string}, Own{Array{Array{GBuffer}}}, Deref{i64[3]}) -> GPGPU;
+export fn GPGPU(src: string, buf: GBuffer) -> GPGPU {
+  // In order to support larger arrays, we need to split the buffer length across them. Each of
+  // indices is allowed to be up to 65535 (yes, a 16-bit integer) leading to a maximum length of
+  // 65535^3, or about 2.815x10^14 elements (about 281 trillion elements). Not quite up to the
+  // 64-bit address space limit 2^64 or about 1.845x10^19 or about 18 quintillion elements, but
+  // enough for exactly 1PB of 32-bit numbers in an array, so we should be good.
+  // For now, the 65535 limit should be hardcoded by the shader author and an early exit
+  // conditional check if the shader is operating on a nonexistent array index. This may change
+  // in the future if the performance penalty of the bounds check is considered too high.
+  //
+  // Explaining the equation itself, the array length, L, needs to be split into X, Y, and Z
+  // parts where L = X + A*Y + B*Z, with X, Y, and Z bound between 0 and 65534 (inclusive) while
+  // A is 65535 and B is 65535^2 or 4294836225. Computing each dimension is to take the original
+  // length of the array (which is the buffer size divided by 4 because we're only supporting
+  // 32-bit numbers for now) and then getting the division and remainder first by the B constant,
+  // and the Z limit becomes the division + 1, while the remainder is executed division and
+  // remainder on the A constant, division + 1, and this remainder becomes the X limit (plus 1).
+  // Including this big explanation in case I've made an off-by-one error here ;)
+  let l = buf.len();
+  let zDiv = l.div(4_294_836_225);
+  let z = zDiv.add(1);
+  let zRem = l.mod(4_294_836_225);
+  let yDiv = zRem.div(65_535);
+  let y = yDiv.add(1);
+  let yRem = zRem.mod(65_535);
+  let x = max(yRem, 1);
+  return GPGPU(src, [[buf]], {i64[3]}(x, y, z));
+}
 export fn run "gpu_run" :: GPGPU;
 export fn read{T} "read_buffer" :: GBuffer -> T[];
 

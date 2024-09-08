@@ -19,7 +19,7 @@ jobs:
     - name: Rust-managed Benchmarks
       run: cargo bench
     - name: Build Alan-managed Benchmarks
-      run: cargo run -- compile benches/bench.ln
+      run: cargo run -- compile alan/benches/bench.ln
     - name: Alan-managed Benchmarks
       run: ./bench
 

@@ -91,24 +91,24 @@ fn splitstring(a: &String, b: &String) -> Vec<String> {
 /// `getstring` returns the character at the specified index (TODO: What is a "character" in Alan?)
 #[inline(always)]
 fn getstring(a: &String, i: &i64) -> Result<String, AlanError> {
-    match a.chars().nth(*i as usize) {
-        Some(c) => Ok(String::from(c)),
-        None => Err(format!(
-            "Index {} is out-of-bounds for a string length of {}",
-            i,
-            a.chars().collect::<Vec<char>>().len()
-        )
-        .into()),
-    }
+    a.chars()
+        .nth(*i as usize)
+        .map(|c| String::from(c))
+        .ok_or(AlanError {
+            message: format!(
+                "Index {} is out-of-bounds for a string length of {}",
+                i,
+                a.chars().collect::<Vec<char>>().len()
+            ),
+        })
 }
 
 /// `indexstring` finds the index where the specified substring starts, if possible
 #[inline(always)]
 fn indexstring(a: &String, b: &String) -> Result<i64, AlanError> {
-    match a.find(b) {
-        Some(v) => Ok(v as i64),
-        None => Err(format!("Could not find {} in {}", b, a).into()),
-    }
+    a.find(b).map(|v| v as i64).ok_or(AlanError {
+        message: format!("Could not find {} in {}", b, a),
+    })
 }
 
 /// Boolean-related functions
@@ -129,10 +129,7 @@ fn ifbool<T>(c: &bool, mut t: impl FnMut() -> T, mut f: impl FnMut() -> T) -> T 
 /// `getarray` returns a value from an array at the location specified
 #[inline(always)]
 fn getarray<T: Clone>(a: &Vec<T>, i: &i64) -> Option<T> {
-    match a.get(*i as usize) {
-        Some(v) => Some(v.clone()),
-        None => None,
-    }
+    a.get(*i as usize).cloned()
 }
 
 /// `filled` returns a filled Vec<V> of the provided value for the provided size
@@ -873,40 +870,6 @@ impl GPGPU {
             workgroup_sizes,
         }
     }
-}
-
-#[inline(always)]
-fn GPGPU_new(source: &String, buffers: &Vec<Vec<GBuffer>>, max_global_id: &[i64; 3]) -> GPGPU {
-    GPGPU::new(source.clone(), buffers.clone(), *max_global_id)
-}
-
-fn GPGPU_new_easy(source: &String, buffer: &GBuffer) -> GPGPU {
-    // In order to support larger arrays, we need to split the buffer length across them. Each of
-    // indices is allowed to be up to 65535 (yes, a 16-bit integer) leading to a maximum length of
-    // 65535^3, or about 2.815x10^14 elements (about 281 trillion elements). Not quite up to the
-    // 64-bit address space limit 2^64 or about 1.845x10^19 or about 18 quintillion elements, but
-    // enough for exactly 1PB of 32-bit numbers in an array, so we should be good.
-    // For now, the 65535 limit should be hardcoded by the shader author and an early exit
-    // conditional check if the shader is operating on a nonexistent array index. This may change
-    // in the future if the performance penalty of the bounds check is considered too high.
-    //
-    // Explaining the equation itself, the array length, L, needs to be split into X, Y, and Z
-    // parts where L = X + A*Y + B*Z, with X, Y, and Z bound between 0 and 65534 (inclusive) while
-    // A is 65535 and B is 65535^2 or 4294836225. Computing each dimension is to take the original
-    // length of the array (which is the buffer size divided by 4 because we're only supporting
-    // 32-bit numbers for now) and then getting the division and remainder first by the B constant,
-    // and the Z limit becomes the division + 1, while the remainder is executed division and
-    // remainder on the A constant, division + 1, and this remainder becomes the X limit (plus 1).
-    // Including this big explanation in case I've made an off-by-one error here ;)
-    let l: i64 = (buffer.size() / 4).try_into().unwrap();
-    let z_div = l / 4294836225;
-    let z = z_div + 1;
-    let z_rem = l.wrapping_rem(4294836225);
-    let y_div = z_rem / 65535;
-    let y = y_div + 1;
-    let y_rem = z_rem.wrapping_rem(65535);
-    let x = std::cmp::max(y_rem, 1);
-    GPGPU::new(source.clone(), vec![vec![buffer.clone()]], [x, y, z])
 }
 
 fn gpu_run(gg: &GPGPU) {

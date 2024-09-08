@@ -730,7 +730,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                     },
                     c: "".to_string(),
                     typedef: parse::TypeDef {
-                        a: "=".to_string(),
+                        a: Some("=".to_string()),
                         b: "".to_string(),
                         typeassignables: g.typecalllist.clone(),
                     },
@@ -1017,7 +1017,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                             },
                             c: "".to_string(),
                             typedef: parse::TypeDef {
-                                a: "=".to_string(),
+                                a: Some("=".to_string()),
                                 b: "".to_string(),
                                 typeassignables: vec![parse::WithTypeOperators::TypeBaseList(
                                     vec![
