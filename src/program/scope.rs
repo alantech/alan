@@ -97,15 +97,14 @@ impl<'a> Scope<'a> {
                                     /* Do nothing for the 'structural' types */
                                 }
                                 g @ ("Group" | "Infix" | "Prefix" | "Method" | "Cast" | "Own"
-                                | "Deref" | "Mut" | "Array" | "Fail" | "Neg" | "Len" | "Size"
-                                | "FileStr" | "Env" | "EnvExists" | "Not") => {
-                                    s = CType::from_generic(s, g, 1)
-                                }
-                                g @ ("Function" | "Call" | "Field" | "Prop" | "Buffer" | "Add"
-                                | "Sub" | "Mul" | "Div" | "Mod" | "Pow" | "Min" | "Max" | "If"
-                                | "And" | "Or" | "Xor" | "Nand" | "Nor" | "Xnor" | "Eq" | "Neq"
-                                | "Lt" | "Lte" | "Gt" | "Gte") => s = CType::from_generic(s, g, 2),
-                                g @ ("Binds" | "Tuple" | "Either" | "AnyOf") => {
+                                | "Deref" | "Mut" | "Rust" | "Node" | "From" | "Array" | "Fail"
+                                | "Neg" | "Len" | "Size" | "FileStr" | "Env" | "EnvExists"
+                                | "Not") => s = CType::from_generic(s, g, 1),
+                                g @ ("Function" | "Call" | "Dependency" | "Import" | "Field"
+                                | "Prop" | "Buffer" | "Add" | "Sub" | "Mul" | "Div" | "Mod"
+                                | "Pow" | "Min" | "Max" | "And" | "Or" | "Xor" | "Nand" | "Nor"
+                                | "Xnor" | "Eq" | "Neq" | "Lt" | "Lte" | "Gt" | "Gte") => s = CType::from_generic(s, g, 2),
+                                g @ ("If" | "Binds" | "Tuple" | "Either" | "AnyOf") => {
                                     // Not kosher in Rust land, but 0 means "as many as we want"
                                     s = CType::from_generic(s, g, 0)
                                 }
@@ -351,6 +350,7 @@ impl<'a> Scope<'a> {
             .map(|f| {
                 let generics = match &f.kind {
                     FnKind::Normal
+                    | FnKind::External(_)
                     | FnKind::Bind(_)
                     | FnKind::Derived
                     | FnKind::DerivedVariadic
@@ -445,6 +445,7 @@ impl<'a> Scope<'a> {
         for f in &fs {
             match &f.kind {
                 FnKind::Normal
+                | FnKind::External(_)
                 | FnKind::Bind(_)
                 | FnKind::Derived
                 | FnKind::DerivedVariadic
@@ -466,6 +467,7 @@ impl<'a> Scope<'a> {
         for f in &generic_fs {
             match &f.kind {
                 FnKind::Normal
+                | FnKind::External(_)
                 | FnKind::Bind(_)
                 | FnKind::Derived
                 | FnKind::DerivedVariadic
@@ -615,7 +617,11 @@ impl<'a> Scope<'a> {
                         return None;
                     }
                 }
-                FnKind::Normal | FnKind::Bind(_) | FnKind::Derived | FnKind::Static => {
+                FnKind::Normal
+                | FnKind::External(_)
+                | FnKind::Bind(_)
+                | FnKind::Derived
+                | FnKind::Static => {
                     if args.len() != f.args().len() {
                         continue;
                     }
@@ -711,7 +717,11 @@ impl<'a> Scope<'a> {
                         return Some(f.clone());
                     }
                 }
-                FnKind::Normal | FnKind::Bind(_) | FnKind::Derived | FnKind::Static => {
+                FnKind::Normal
+                | FnKind::External(_)
+                | FnKind::Bind(_)
+                | FnKind::Derived
+                | FnKind::Static => {
                     if args.len() != f.args().len() {
                         continue;
                     }

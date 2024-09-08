@@ -11,4 +11,5 @@ pub enum FnKind {
     Derived,
     DerivedVariadic,
     Static,
+    External(CType),
 }

@@ -91,24 +91,24 @@ fn splitstring(a: &String, b: &String) -> Vec<String> {
 /// `getstring` returns the character at the specified index (TODO: What is a "character" in Alan?)
 #[inline(always)]
 fn getstring(a: &String, i: &i64) -> Result<String, AlanError> {
-    match a.chars().nth(*i as usize) {
-        Some(c) => Ok(String::from(c)),
-        None => Err(format!(
-            "Index {} is out-of-bounds for a string length of {}",
-            i,
-            a.chars().collect::<Vec<char>>().len()
-        )
-        .into()),
-    }
+    a.chars()
+        .nth(*i as usize)
+        .map(|c| String::from(c))
+        .ok_or(AlanError {
+            message: format!(
+                "Index {} is out-of-bounds for a string length of {}",
+                i,
+                a.chars().collect::<Vec<char>>().len()
+            ),
+        })
 }
 
 /// `indexstring` finds the index where the specified substring starts, if possible
 #[inline(always)]
 fn indexstring(a: &String, b: &String) -> Result<i64, AlanError> {
-    match a.find(b) {
-        Some(v) => Ok(v as i64),
-        None => Err(format!("Could not find {} in {}", b, a).into()),
-    }
+    a.find(b).map(|v| v as i64).ok_or(AlanError {
+        message: format!("Could not find {} in {}", b, a),
+    })
 }
 
 /// Boolean-related functions
@@ -129,10 +129,7 @@ fn ifbool<T>(c: &bool, mut t: impl FnMut() -> T, mut f: impl FnMut() -> T) -> T 
 /// `getarray` returns a value from an array at the location specified
 #[inline(always)]
 fn getarray<T: Clone>(a: &Vec<T>, i: &i64) -> Option<T> {
-    match a.get(*i as usize) {
-        Some(v) => Some(v.clone()),
-        None => None,
-    }
+    a.get(*i as usize).cloned()
 }
 
 /// `filled` returns a filled Vec<V> of the provided value for the provided size
