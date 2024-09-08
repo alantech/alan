@@ -872,40 +872,6 @@ impl GPGPU {
     }
 }
 
-#[inline(always)]
-fn GPGPU_new(source: &String, buffers: &Vec<Vec<GBuffer>>, max_global_id: &[i64; 3]) -> GPGPU {
-    GPGPU::new(source.clone(), buffers.clone(), *max_global_id)
-}
-
-fn GPGPU_new_easy(source: &String, buffer: &GBuffer) -> GPGPU {
-    // In order to support larger arrays, we need to split the buffer length across them. Each of
-    // indices is allowed to be up to 65535 (yes, a 16-bit integer) leading to a maximum length of
-    // 65535^3, or about 2.815x10^14 elements (about 281 trillion elements). Not quite up to the
-    // 64-bit address space limit 2^64 or about 1.845x10^19 or about 18 quintillion elements, but
-    // enough for exactly 1PB of 32-bit numbers in an array, so we should be good.
-    // For now, the 65535 limit should be hardcoded by the shader author and an early exit
-    // conditional check if the shader is operating on a nonexistent array index. This may change
-    // in the future if the performance penalty of the bounds check is considered too high.
-    //
-    // Explaining the equation itself, the array length, L, needs to be split into X, Y, and Z
-    // parts where L = X + A*Y + B*Z, with X, Y, and Z bound between 0 and 65534 (inclusive) while
-    // A is 65535 and B is 65535^2 or 4294836225. Computing each dimension is to take the original
-    // length of the array (which is the buffer size divided by 4 because we're only supporting
-    // 32-bit numbers for now) and then getting the division and remainder first by the B constant,
-    // and the Z limit becomes the division + 1, while the remainder is executed division and
-    // remainder on the A constant, division + 1, and this remainder becomes the X limit (plus 1).
-    // Including this big explanation in case I've made an off-by-one error here ;)
-    let l: i64 = (buffer.size() / 4).try_into().unwrap();
-    let z_div = l / 4294836225;
-    let z = z_div + 1;
-    let z_rem = l.wrapping_rem(4294836225);
-    let y_div = z_rem / 65535;
-    let y = y_div + 1;
-    let y_rem = z_rem.wrapping_rem(65535);
-    let x = std::cmp::max(y_rem, 1);
-    GPGPU::new(source.clone(), vec![vec![buffer.clone()]], [x, y, z])
-}
-
 fn gpu_run(gg: &GPGPU) {
     let g = gpu();
     let module = g.device.create_shader_module(wgpu::ShaderModuleDescriptor {
