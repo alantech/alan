@@ -5,14 +5,16 @@ use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 use std::sync::OnceLock;
 
-use ordered_hash_map::OrderedHashMap;
+pub use ordered_hash_map::OrderedHashMap;
+pub use uuid::Uuid;
+pub use wgpu::BufferUsages;
 
 /// The `AlanError` type is a *cloneable* error that all errors are implemented as within Alan, to
 /// simplify error handling. In the future it will have a stack trace based on the Alan source
 /// code, but for now only a simple error message is provided.
 #[derive(Clone, Debug)]
 pub struct AlanError {
-    message: String,
+    pub message: String,
 }
 
 impl std::fmt::Display for AlanError {
