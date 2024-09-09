@@ -72,12 +72,7 @@ pub fn build(source_file: String) -> Result<String, Box<dyn std::error::Error>> 
 name = "alan_generated_bin"
 edition = "2021"
 
-[dependencies]
-flume = "0.11.0"
-futures = "0.3.30"
-ordered_hash_map = "0.4.0"
-uuid = { version = "1.10.0", features = ["v4", "fast-rng"] }
-wgpu = "0.20.1""#;
+[dependencies]"#;
     let cargo_path = {
         let mut c = project_dir.clone();
         c.push("Cargo.toml");
@@ -137,13 +132,6 @@ wgpu = "0.20.1""#;
                 Err(e)
             }
         }?;
-        match write(cargo_path.clone(), cargo_str) {
-            Ok(a) => Ok(a),
-            Err(e) => {
-                lockfile.unlock()?;
-                Err(e)
-            }
-        }?;
         let src_path = {
             let mut s = project_dir.clone();
             s.push("src");
@@ -169,7 +157,30 @@ wgpu = "0.20.1""#;
                 Err(e)
             }
         }?;
-        let rs_str = match lntors(hello_path.to_string_lossy().to_string()) {
+        let (rs_str, deps) = match lntors(hello_path.to_string_lossy().to_string()) {
+            Ok(a) => Ok(a),
+            Err(e) => {
+                lockfile.unlock()?;
+                Err(e)
+            }
+        }?;
+        match write(
+            cargo_path.clone(),
+            format!(
+                "{}\n{}",
+                cargo_str,
+                deps.iter()
+                    .map(|(k, v)| {
+                        if v.starts_with("http") {
+                            format!("{} = {{ git = \"{}\" }}", k, v)
+                        } else {
+                            format!("{} = \"{}\"", k, v)
+                        }
+                    })
+                    .collect::<Vec<String>>()
+                    .join("\n")
+            ),
+        ) {
             Ok(a) => Ok(a),
             Err(e) => {
                 lockfile.unlock()?;
@@ -210,15 +221,6 @@ wgpu = "0.20.1""#;
             }
         }?;
     }
-    // Always write the `Cargo.toml` file, in case the cache is out-of-date from a prior version of
-    // the Alan compiler is still present.
-    match write(cargo_path, cargo_str) {
-        Ok(a) => Ok(a),
-        Err(e) => {
-            lockfile.unlock()?;
-            Err(e)
-        }
-    }?;
     // We need to remove the prior binary, if it exists, to prevent a prior successful compilation
     // from accidentally being treated as the output of an unsuccessful compilation.
     match Command::new("rm")
@@ -244,8 +246,33 @@ wgpu = "0.20.1""#;
         s
     };
     // Generate the rust code to compile
-    let rs_str = match lntors(source_file.clone()) {
+    let (rs_str, deps) = match lntors(source_file.clone()) {
         Ok(s) => Ok(s),
+        Err(e) => {
+            lockfile.unlock()?;
+            Err(e)
+        }
+    }?;
+    // Always write the `Cargo.toml` file, in case the cache is out-of-date from a prior version of
+    // the Alan compiler is still present.
+    match write(
+        cargo_path.clone(),
+        format!(
+            "{}\n{}",
+            cargo_str,
+            deps.iter()
+                .map(|(k, v)| {
+                    if v.starts_with("http") {
+                        format!("{} = {{ git = \"{}\" }}", k, v)
+                    } else {
+                        format!("{} = \"{}\"", k, v)
+                    }
+                })
+                .collect::<Vec<String>>()
+                .join("\n")
+        ),
+    ) {
+        Ok(a) => Ok(a),
         Err(e) => {
             lockfile.unlock()?;
             Err(e)
@@ -384,14 +411,34 @@ pub fn test(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
 pub fn to_rs(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
     set_var("ALAN_TARGET", "release");
     // Generate the rust code to compile
-    let rs_str = lntors(source_file.clone())?;
+    let (rs_str, deps) = lntors(source_file.clone())?;
     // Shove it into a temp file for rustc
-    let out_file = match PathBuf::from(source_file).file_stem() {
+    let out_file = match PathBuf::from(source_file.clone()).file_stem() {
         Some(pb) => format!("{}.rs", pb.to_string_lossy()),
         None => {
             return Err("Invalid path".into());
         }
     };
     write(out_file, rs_str)?;
+    if !deps.is_empty() {
+        let cargo_str = format!(
+            "[package]\nname = \"{}\"\nedition = \"2021\"\n\n[dependencies]\n{}",
+            PathBuf::from(source_file)
+                .file_stem()
+                .unwrap()
+                .to_string_lossy(),
+            deps.iter()
+                .map(|(k, v)| {
+                    if v.starts_with("http") {
+                        format!("{} = {{ git = \"{}\" }}", k, v)
+                    } else {
+                        format!("{} = \"{}\"", k, v)
+                    }
+                })
+                .collect::<Vec<String>>()
+                .join("\n")
+        );
+        write("Cargo.toml", cargo_str)?;
+    }
     Ok(())
 }

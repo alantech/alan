@@ -10,25 +10,35 @@ pub fn from_microstatement(
     parent_fn: &Function,
     scope: &Scope,
     mut out: OrderedHashMap<String, String>,
-) -> Result<(String, OrderedHashMap<String, String>), Box<dyn std::error::Error>> {
+    mut deps: OrderedHashMap<String, String>,
+) -> Result<
+    (
+        String,
+        OrderedHashMap<String, String>,
+        OrderedHashMap<String, String>,
+    ),
+    Box<dyn std::error::Error>,
+> {
     match microstatement {
         Microstatement::Arg { name, kind, typen } => {
             // TODO: Update the serialization logic to understand values vs references so we can
             // eliminate this useless (and harmful for mutable references) clone
             if let CType::Function { .. } = typen {
-                Ok(("".to_string(), out))
+                Ok(("".to_string(), out, deps))
             } else {
                 match &kind {
-                    ArgKind::Mut => Ok(("".to_string(), out)), // We actively want to mutate the argument, don't
+                    ArgKind::Mut => Ok(("".to_string(), out, deps)), // We actively want to mutate the argument, don't
                     // alias it
-                    ArgKind::Own => Ok(("".to_string(), out)), // We already own the value
+                    ArgKind::Own => Ok(("".to_string(), out, deps)), // We already own the value
                     ArgKind::Ref => Ok((
                         format!("let mut {} = {}.clone()", name, name), // TODO: not always mutable
                         out,
+                        deps,
                     )), // TODO: Should these two be distinguished?
                     ArgKind::Deref => Ok((
                         format!("let mut {} = *{}", name, name), // TODO: not always mutable
                         out,
+                        deps,
                     )),
                 }
             }
@@ -38,10 +48,11 @@ pub fn from_microstatement(
             value,
             mutable: _,
         } => {
-            let (val, o) = from_microstatement(value, parent_fn, scope, out)?;
+            let (val, o, d) = from_microstatement(value, parent_fn, scope, out, deps)?;
             // I wish I didn't have to write the following line because you can't re-assign a
             // variable in a let destructuring, afaict
             out = o;
+            deps = d;
             Ok((
                 format!(
                     "let {}{} = {}",
@@ -55,6 +66,7 @@ pub fn from_microstatement(
                 )
                 .to_string(),
                 out,
+                deps,
             ))
         }
         Microstatement::Closure { function } => {
@@ -65,8 +77,9 @@ pub fn from_microstatement(
                 .collect::<Vec<String>>();
             let mut inner_statements = Vec::new();
             for ms in &function.microstatements {
-                let (val, o) = from_microstatement(ms, parent_fn, scope, out)?;
+                let (val, o, d) = from_microstatement(ms, parent_fn, scope, out, deps)?;
                 out = o;
+                deps = d;
                 inner_statements.push(val);
             }
             Ok((
@@ -76,18 +89,73 @@ pub fn from_microstatement(
                     inner_statements.join(";\n        "),
                 ),
                 out,
+                deps,
             ))
         }
         Microstatement::Value {
             typen,
             representation,
         } => match &typen {
-            CType::Type(n, _) if n == "string" => {
-                Ok((format!("{}.to_string()", representation).to_string(), out))
-            }
-            CType::Binds(a, _) if a == "String" => {
-                Ok((format!("{}.to_string()", representation).to_string(), out))
-            }
+            CType::Type(n, _) if n == "string" => Ok((
+                format!("{}.to_string()", representation).to_string(),
+                out,
+                deps,
+            )),
+            CType::Binds(n, _) => match &**n {
+                CType::TString(s) => {
+                    if s == "String" {
+                        Ok((
+                            format!("{}.to_string()", representation).to_string(),
+                            out,
+                            deps,
+                        ))
+                    } else {
+                        Ok((representation.clone(), out, deps))
+                    }
+                }
+                CType::Import(n, d) => {
+                    match &**d {
+                        CType::Type(_, t) => match &**t {
+                            CType::Rust(d) => match &**d {
+                                CType::Dependency(n, v) => {
+                                    let name = match &**n {
+                                        CType::TString(s) => s.clone(),
+                                        _ => CType::fail("Dependency names must be strings"),
+                                    };
+                                    let version = match &**v {
+                                        CType::TString(s) => s.clone(),
+                                        _ => CType::fail("Dependency versions must be strings"),
+                                    };
+                                    deps.insert(name, version);
+                                }
+                                _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
+                            }
+                            otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
+                        }
+                        CType::Rust(d) => match &**d {
+                            CType::Dependency(n, v) => {
+                                let name = match &**n {
+                                    CType::TString(s) => s.clone(),
+                                    _ => CType::fail("Dependency names must be strings"),
+                                };
+                                let version = match &**v {
+                                    CType::TString(s) => s.clone(),
+                                    _ => CType::fail("Dependency versions must be strings"),
+                                };
+                                deps.insert(name, version);
+                            }
+                            _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
+                        }
+                        otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
+                    }
+                    match &**n {
+                        CType::TString(_) => { /* Do nothing */ }
+                        _ => CType::fail("Native import names must be strings"),
+                    }
+                    Ok((representation.clone(), out, deps))
+                }
+                _ => CType::fail("Bound types must be strings or rust imports"),
+            },
             CType::Function(..) => {
                 // We need to make sure this function we're referencing exists
                 let f = scope.resolve_function_by_type(representation, typen);
@@ -99,8 +167,8 @@ pub fn from_microstatement(
                     .into()),
                     Some(fun) => {
                         match &fun.kind {
-                            FnKind::External(_) => todo!(),
                             FnKind::Normal
+                            | FnKind::External(_)
                             | FnKind::Generic(..)
                             | FnKind::Derived
                             | FnKind::DerivedVariadic
@@ -114,28 +182,109 @@ pub fn from_microstatement(
                                 let rustname =
                                     format!("{}_{}", fun.name, arg_strs.join("_")).to_string();
                                 // Make the function we need, but with the name we're
-                                out = generate(rustname.clone(), fun, scope, out)?;
-                                Ok((rustname, out))
+                                let res = generate(rustname.clone(), fun, scope, out, deps)?;
+                                out = res.0;
+                                deps = res.1;
+                                if let FnKind::External(d) = &fun.kind {
+                                    match &*d {
+                                        CType::Type(_, t) => match &**t {
+                                            CType::Rust(d) => match &**d {
+                                                CType::Dependency(n, v) => {
+                                                    let name = match &**n {
+                                                        CType::TString(s) => s.clone(),
+                                                        _ => CType::fail("Dependency names must be strings"),
+                                                    };
+                                                    let version = match &**v {
+                                                        CType::TString(s) => s.clone(),
+                                                        _ => CType::fail("Dependency versions must be strings"),
+                                                    };
+                                                    deps.insert(name, version);
+                                                }
+                                                _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
+                                            }
+                                            otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
+                                        }
+                                        CType::Rust(d) => match &**d {
+                                            CType::Dependency(n, v) => {
+                                                let name = match &**n {
+                                                    CType::TString(s) => s.clone(),
+                                                    _ => CType::fail("Dependency names must be strings"),
+                                                };
+                                                let version = match &**v {
+                                                    CType::TString(s) => s.clone(),
+                                                    _ => CType::fail("Dependency versions must be strings"),
+                                                };
+                                                deps.insert(name, version);
+                                            }
+                                            _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
+                                        }
+                                        otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
+                                    }
+                                }
+                                Ok((rustname, out, deps))
                             }
-                            FnKind::Bind(rustname) | FnKind::BoundGeneric(_, rustname) => {
-                                Ok((rustname.clone(), out))
+                            FnKind::Bind(rustname)
+                            | FnKind::BoundGeneric(_, rustname)
+                            | FnKind::ExternalBind(rustname, _)
+                            | FnKind::ExternalGeneric(_, rustname, _) => {
+                                if let FnKind::ExternalGeneric(_, _, d)
+                                | FnKind::ExternalBind(_, d) = &fun.kind
+                                {
+                                    match &*d {
+                                        CType::Type(_, t) => match &**t {
+                                            CType::Rust(d) => match &**d {
+                                                CType::Dependency(n, v) => {
+                                                    let name = match &**n {
+                                                        CType::TString(s) => s.clone(),
+                                                        _ => CType::fail("Dependency names must be strings"),
+                                                    };
+                                                    let version = match &**v {
+                                                        CType::TString(s) => s.clone(),
+                                                        _ => CType::fail("Dependency versions must be strings"),
+                                                    };
+                                                    deps.insert(name, version);
+                                                }
+                                                _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
+                                            }
+                                            otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
+                                        }
+                                        CType::Rust(d) => match &**d {
+                                            CType::Dependency(n, v) => {
+                                                let name = match &**n {
+                                                    CType::TString(s) => s.clone(),
+                                                    _ => CType::fail("Dependency names must be strings"),
+                                                };
+                                                let version = match &**v {
+                                                    CType::TString(s) => s.clone(),
+                                                    _ => CType::fail("Dependency versions must be strings"),
+                                                };
+                                                deps.insert(name, version);
+                                            }
+                                            _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
+                                        }
+                                        otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
+                                    }
+                                }
+                                Ok((rustname.clone(), out, deps))
                             }
                         }
                     }
                 }
             }
-            _ => Ok((representation.clone(), out)),
+            _ => Ok((representation.clone(), out, deps)),
         },
         Microstatement::Array { vals, .. } => {
             let mut val_representations = Vec::new();
             for val in vals {
-                let (rep, o) = from_microstatement(val, parent_fn, scope, out)?;
+                let (rep, o, d) = from_microstatement(val, parent_fn, scope, out, deps)?;
                 val_representations.push(rep);
                 out = o;
+                deps = d;
             }
             Ok((
                 format!("vec![{}]", val_representations.join(", ")).to_string(),
                 out,
+                deps,
             ))
         }
         Microstatement::FnCall { function, args } => {
@@ -143,25 +292,22 @@ pub fn from_microstatement(
             let mut arg_type_strs = Vec::new();
             for arg in args {
                 let arg_type = arg.get_type();
-                let (_, o) = typen::generate(&arg_type, out)?;
+                let (_, o, d) = typen::generate(&arg_type, out, deps)?;
                 out = o;
+                deps = d;
                 arg_types.push(arg_type.clone());
-                match typen::ctype_to_rtype(&arg_type, true) {
-                    Err(e) => Err(e),
-                    Ok(s) => {
-                        arg_type_strs.push(s);
-                        Ok(())
-                    }
-                }?
+                let res = typen::ctype_to_rtype(&arg_type, true, deps)?;
+                arg_type_strs.push(res.0);
+                deps = res.1;
             }
             match &function.kind {
-                FnKind::Generic(..) | FnKind::BoundGeneric(..) => {
+                FnKind::Generic(..) | FnKind::BoundGeneric(..) | FnKind::ExternalGeneric(..) => {
                     Err("Generic functions should have been resolved before reaching here".into())
                 }
-                FnKind::External(_) => todo!(),
-                FnKind::Normal => {
-                    let (_, o) = typen::generate(&function.rettype(), out)?;
+                FnKind::Normal | FnKind::External(_) => {
+                    let (_, o, d) = typen::generate(&function.rettype(), out, deps)?;
                     out = o;
+                    deps = d;
                     let mut arg_strs = Vec::new();
                     for arg in &function.args() {
                         arg_strs.push(arg.2.to_callable_string());
@@ -170,12 +316,15 @@ pub fn from_microstatement(
                     // duplicate function names that are allowed in Alan
                     let rustname = format!("{}_{}", function.name, arg_strs.join("_")).to_string();
                     // Make the function we need, but with the name we're
-                    out = generate(rustname.clone(), function, scope, out)?;
+                    let res = generate(rustname.clone(), function, scope, out, deps)?;
+                    out = res.0;
+                    deps = res.1;
                     // Now call this function
                     let mut argstrs = Vec::new();
                     for (i, arg) in args.iter().enumerate() {
-                        let (a, o) = from_microstatement(arg, parent_fn, scope, out)?;
+                        let (a, o, d) = from_microstatement(arg, parent_fn, scope, out, deps)?;
                         out = o;
+                        deps = d;
                         // If the argument is itself a function, this is the only place in Rust
                         // where you can't pass by reference, so we check the type and change
                         // the argument output accordingly.
@@ -201,16 +350,54 @@ pub fn from_microstatement(
                             },
                         }
                     }
+                    if let FnKind::External(d) = &function.kind {
+                        match &*d {
+                            CType::Type(_, t) => match &**t {
+                                CType::Rust(d) => match &**d {
+                                    CType::Dependency(n, v) => {
+                                        let name = match &**n {
+                                            CType::TString(s) => s.clone(),
+                                            _ => CType::fail("Dependency names must be strings"),
+                                        };
+                                        let version = match &**v {
+                                            CType::TString(s) => s.clone(),
+                                            _ => CType::fail("Dependency versions must be strings"),
+                                        };
+                                        deps.insert(name, version);
+                                    }
+                                    _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
+                                }
+                                otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
+                            }
+                            CType::Rust(d) => match &**d {
+                                CType::Dependency(n, v) => {
+                                    let name = match &**n {
+                                        CType::TString(s) => s.clone(),
+                                        _ => CType::fail("Dependency names must be strings"),
+                                    };
+                                    let version = match &**v {
+                                        CType::TString(s) => s.clone(),
+                                        _ => CType::fail("Dependency versions must be strings"),
+                                    };
+                                    deps.insert(name, version);
+                                }
+                                _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
+                            }
+                            otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
+                        }
+                    }
                     Ok((
                         format!("{}({})", rustname, argstrs.join(", ")).to_string(),
                         out,
+                        deps,
                     ))
                 }
-                FnKind::Bind(rustname) => {
+                FnKind::Bind(rustname) | FnKind::ExternalBind(rustname, _) => {
                     let mut argstrs = Vec::new();
                     for (i, arg) in args.iter().enumerate() {
-                        let (a, o) = from_microstatement(arg, parent_fn, scope, out)?;
+                        let (a, o, d) = from_microstatement(arg, parent_fn, scope, out, deps)?;
                         out = o;
+                        deps = d;
                         // If the argument is itself a function, this is the only place in Rust
                         // where you can't pass by reference, so we check the type and change
                         // the argument output accordingly.
@@ -236,9 +423,46 @@ pub fn from_microstatement(
                             },
                         }
                     }
+                    if let FnKind::ExternalBind(_, d) = &function.kind {
+                        match &*d {
+                            CType::Type(_, t) => match &**t {
+                                CType::Rust(d) => match &**d {
+                                    CType::Dependency(n, v) => {
+                                        let name = match &**n {
+                                            CType::TString(s) => s.clone(),
+                                            _ => CType::fail("Dependency names must be strings"),
+                                        };
+                                        let version = match &**v {
+                                            CType::TString(s) => s.clone(),
+                                            _ => CType::fail("Dependency versions must be strings"),
+                                        };
+                                        deps.insert(name, version);
+                                    }
+                                    _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
+                                }
+                                otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
+                            }
+                            CType::Rust(d) => match &**d {
+                                CType::Dependency(n, v) => {
+                                    let name = match &**n {
+                                        CType::TString(s) => s.clone(),
+                                        _ => CType::fail("Dependency names must be strings"),
+                                    };
+                                    let version = match &**v {
+                                        CType::TString(s) => s.clone(),
+                                        _ => CType::fail("Dependency versions must be strings"),
+                                    };
+                                    deps.insert(name, version);
+                                }
+                                _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
+                            }
+                            otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
+                        }
+                    }
                     Ok((
                         format!("{}({})", rustname, argstrs.join(", ")).to_string(),
                         out,
+                        deps,
                     ))
                 }
                 FnKind::Static => {
@@ -249,13 +473,67 @@ pub fn from_microstatement(
                             representation,
                             typen,
                         } => match &typen {
-                            CType::Type(n, _) if n == "string" => {
-                                Ok((format!("{}.to_string()", representation).to_string(), out))
-                            }
-                            CType::Binds(a, _) if a == "String" => {
-                                Ok((format!("{}.to_string()", representation).to_string(), out))
-                            }
-                            _ => Ok((representation.clone(), out)),
+                            CType::Type(n, _) if n == "string" => Ok((
+                                format!("{}.to_string()", representation).to_string(),
+                                out,
+                                deps,
+                            )),
+                            CType::Binds(n, _) => match &**n {
+                                CType::TString(s) => {
+                                    if s == "String" {
+                                        Ok((
+                                            format!("{}.to_string()", representation).to_string(),
+                                            out,
+                                            deps,
+                                        ))
+                                    } else {
+                                        Ok((representation.clone(), out, deps))
+                                    }
+                                }
+                                CType::Import(n, d) => {
+                                    match &**d {
+                                        CType::Type(_, t) => match &**t {
+                                            CType::Rust(d) => match &**d {
+                                                CType::Dependency(n, v) => {
+                                                    let name = match &**n {
+                                                        CType::TString(s) => s.clone(),
+                                                        _ => CType::fail("Dependency names must be strings"),
+                                                    };
+                                                    let version = match &**v {
+                                                        CType::TString(s) => s.clone(),
+                                                        _ => CType::fail("Dependency versions must be strings"),
+                                                    };
+                                                    deps.insert(name, version);
+                                                }
+                                                _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
+                                            }
+                                            otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
+                                        }
+                                        CType::Rust(d) => match &**d {
+                                            CType::Dependency(n, v) => {
+                                                let name = match &**n {
+                                                    CType::TString(s) => s.clone(),
+                                                    _ => CType::fail("Dependency names must be strings"),
+                                                };
+                                                let version = match &**v {
+                                                    CType::TString(s) => s.clone(),
+                                                    _ => CType::fail("Dependency versions must be strings"),
+                                                };
+                                                deps.insert(name, version);
+                                            }
+                                            _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
+                                        }
+                                        otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
+                                    }
+                                    match &**n {
+                                        CType::TString(_) => { /* Do nothing */ }
+                                        _ => CType::fail("Native import names must be strings"),
+                                    }
+                                    Ok((representation.clone(), out, deps))
+                                }
+                                _ => CType::fail("Bound types must be strings or rust imports"),
+                            },
+                            _ => Ok((representation.clone(), out, deps)),
                         },
                         _ => unreachable!(),
                     }
@@ -263,12 +541,14 @@ pub fn from_microstatement(
                 FnKind::Derived | FnKind::DerivedVariadic => {
                     // The initial work to get the values to construct the type is the same as
                     // with bound functions, though.
-                    let (_, o) = typen::generate(&function.rettype(), out)?;
+                    let (_, o, d) = typen::generate(&function.rettype(), out, deps)?;
                     out = o;
+                    deps = d;
                     let mut argstrs = Vec::new();
                     for arg in args {
-                        let (a, o) = from_microstatement(arg, parent_fn, scope, out)?;
+                        let (a, o, d) = from_microstatement(arg, parent_fn, scope, out, deps)?;
                         out = o;
+                        deps = d;
                         argstrs.push(a.to_string());
                     }
                     // The behavior of the generated code depends on the structure of the
@@ -318,7 +598,7 @@ pub fn from_microstatement(
                                 // Short-circuit for direct `<N>` function calls (which can only be
                                 // generated by the internals of the compiler)
                                 if let Ok(i) = function.name.parse::<i64>() {
-                                    return Ok((format!("{}.{}", argstrs[0], i), out));
+                                    return Ok((format!("{}.{}", argstrs[0], i), out, deps));
                                 }
                                 let accessor_field = ts
                                     .iter()
@@ -342,11 +622,11 @@ pub fn from_microstatement(
                                         _ => false,
                                     });
                                 if let Some((i, _)) = accessor_field {
-                                    return Ok((format!("{}.{}", argstrs[0], i), out));
+                                    return Ok((format!("{}.{}", argstrs[0], i), out, deps));
                                 }
                             }
                             CType::Field(..) => {
-                                return Ok((format!("{}.0", argstrs[0]), out));
+                                return Ok((format!("{}.0", argstrs[0]), out, deps));
                             }
                             CType::Either(ts) => {
                                 // The kinds of types allowed here are `Type`, `Bound`, and
@@ -374,13 +654,13 @@ pub fn from_microstatement(
                                     // Make this more centralized
                                     if ts.len() == 2 {
                                         if let CType::Void = &ts[1] {
-                                            return Ok((argstrs[0].clone(), out));
+                                            return Ok((argstrs[0].clone(), out, deps));
                                         } else if let CType::Type(name, _) = &ts[1] {
                                             if name == "Error" {
                                                 if function.name == "Error" {
-                                                    return Ok((format!("(match &{} {{ Err(e) => Some(e.clone()), _ => None }})", argstrs[0]), out));
+                                                    return Ok((format!("(match &{} {{ Err(e) => Some(e.clone()), _ => None }})", argstrs[0]), out, deps));
                                                 } else {
-                                                    return Ok((format!("(match &{} {{ Ok(v) => Some(v.clone()), _ => None }})", argstrs[0]), out));
+                                                    return Ok((format!("(match &{} {{ Ok(v) => Some(v.clone()), _ => None }})", argstrs[0]), out, deps));
                                                 }
                                             }
                                         }
@@ -391,6 +671,7 @@ pub fn from_microstatement(
                                             argstrs[0], enum_name, function.name
                                         ),
                                         out,
+                                        deps,
                                     ));
                                 }
                             }
@@ -403,7 +684,7 @@ pub fn from_microstatement(
                             t => t.clone(),
                         };
                         if let CType::Either(_) = inner_ret_type {
-                            return Ok(("None".to_string(), out));
+                            return Ok(("None".to_string(), out, deps));
                         }
                     }
                     let ret_type = &function.rettype().degroup();
@@ -445,6 +726,7 @@ pub fn from_microstatement(
                                                                 }
                                                             ),
                                                             out,
+                                                            deps,
                                                         ));
                                                     } else {
                                                         return Ok((
@@ -464,14 +746,21 @@ pub fn from_microstatement(
                                                                 }
                                                             ),
                                                             out,
+                                                            deps,
                                                         ));
                                                     }
                                                 } else if let CType::Type(name, _) = &ts[1] {
                                                     if name == "Error" {
-                                                        let okrustname =
-                                                            typen::ctype_to_rtype(&ts[0], true)?;
-                                                        let errrustname =
-                                                            typen::ctype_to_rtype(&ts[1], true)?;
+                                                        let (okrustname, d) =
+                                                            typen::ctype_to_rtype(
+                                                                &ts[0], true, deps,
+                                                            )?;
+                                                        deps = d;
+                                                        let (errrustname, d) =
+                                                            typen::ctype_to_rtype(
+                                                                &ts[1], true, deps,
+                                                            )?;
+                                                        deps = d;
                                                         if let CType::Binds(..) = t {
                                                             return Ok((
                                                                 format!(
@@ -492,6 +781,7 @@ pub fn from_microstatement(
                                                                     }
                                                                 ),
                                                                 out,
+                                                                deps,
                                                             ));
                                                         } else {
                                                             return Ok((
@@ -513,6 +803,7 @@ pub fn from_microstatement(
                                                                     }
                                                                 ),
                                                                 out,
+                                                                deps,
                                                             ));
                                                         }
                                                     }
@@ -533,6 +824,7 @@ pub fn from_microstatement(
                                                     },
                                                 ),
                                                 out,
+                                                deps,
                                             ));
                                         }
                                         CType::Type(n, _) if *n == enum_name => {
@@ -552,6 +844,7 @@ pub fn from_microstatement(
                                                                 }
                                                             ),
                                                             out,
+                                                            deps,
                                                         ));
                                                     } else {
                                                         return Ok((
@@ -571,14 +864,21 @@ pub fn from_microstatement(
                                                                 }
                                                             ),
                                                             out,
+                                                            deps,
                                                         ));
                                                     }
                                                 } else if let CType::Type(name, _) = &ts[1] {
                                                     if name == "Error" {
-                                                        let okrustname =
-                                                            typen::ctype_to_rtype(&ts[0], true)?;
-                                                        let errrustname =
-                                                            typen::ctype_to_rtype(&ts[1], true)?;
+                                                        let (okrustname, d) =
+                                                            typen::ctype_to_rtype(
+                                                                &ts[0], true, deps,
+                                                            )?;
+                                                        deps = d;
+                                                        let (errrustname, d) =
+                                                            typen::ctype_to_rtype(
+                                                                &ts[1], true, deps,
+                                                            )?;
+                                                        deps = d;
                                                         if let CType::Binds(..) = t {
                                                             return Ok((
                                                                 format!(
@@ -599,6 +899,7 @@ pub fn from_microstatement(
                                                                     }
                                                                 ),
                                                                 out,
+                                                                deps,
                                                             ));
                                                         } else {
                                                             return Ok((
@@ -620,6 +921,7 @@ pub fn from_microstatement(
                                                                     }
                                                                 ),
                                                                 out,
+                                                                deps,
                                                             ));
                                                         }
                                                     }
@@ -640,6 +942,7 @@ pub fn from_microstatement(
                                                     },
                                                 ),
                                                 out,
+                                                deps,
                                             ));
                                         }
                                         _ => {}
@@ -678,6 +981,7 @@ pub fn from_microstatement(
                                                 .join(", ")
                                         ),
                                         out,
+                                        deps,
                                     ));
                                 } else if argstrs.len() == 1 {
                                     return Ok((
@@ -690,6 +994,7 @@ pub fn from_microstatement(
                                             size
                                         ),
                                         out,
+                                        deps,
                                     ));
                                 } else {
                                     return Err(format!("Invalid arguments {} provided for Buffer constructor function, must be either 1 element to fill, or the full size of the buffer", argstrs.join(", ")).into());
@@ -709,6 +1014,7 @@ pub fn from_microstatement(
                                             .join(", ")
                                     ),
                                     out,
+                                    deps,
                                 ));
                             }
                             CType::Either(ts) => {
@@ -733,7 +1039,7 @@ pub fn from_microstatement(
                                             if ts.len() == 2 {
                                                 if let CType::Void = &ts[1] {
                                                     if let CType::Void = t {
-                                                        return Ok(("None".to_string(), out));
+                                                        return Ok(("None".to_string(), out, deps));
                                                     } else {
                                                         return Ok((
                                                             format!(
@@ -746,14 +1052,21 @@ pub fn from_microstatement(
                                                                 }
                                                             ),
                                                             out,
+                                                            deps,
                                                         ));
                                                     }
                                                 } else if let CType::Type(name, _) = &ts[1] {
                                                     if name == "Error" {
-                                                        let okrustname =
-                                                            typen::ctype_to_rtype(&ts[0], true)?;
-                                                        let errrustname =
-                                                            typen::ctype_to_rtype(&ts[1], true)?;
+                                                        let (okrustname, d) =
+                                                            typen::ctype_to_rtype(
+                                                                &ts[0], true, deps,
+                                                            )?;
+                                                        deps = d;
+                                                        let (errrustname, d) =
+                                                            typen::ctype_to_rtype(
+                                                                &ts[1], true, deps,
+                                                            )?;
+                                                        deps = d;
                                                         if let CType::Binds(..) = t {
                                                             return Ok((
                                                                 format!(
@@ -768,6 +1081,7 @@ pub fn from_microstatement(
                                                                     }
                                                                 ),
                                                                 out,
+                                                                deps,
                                                             ));
                                                         } else {
                                                             return Ok((
@@ -783,6 +1097,7 @@ pub fn from_microstatement(
                                                                     }
                                                                 ),
                                                                 out,
+                                                                deps,
                                                             ));
                                                         }
                                                     }
@@ -799,6 +1114,7 @@ pub fn from_microstatement(
                                                     },
                                                 ),
                                                 out,
+                                                deps,
                                             ));
                                         }
                                         CType::Type(n, _) if *n == enum_name => {
@@ -807,7 +1123,7 @@ pub fn from_microstatement(
                                             if ts.len() == 2 {
                                                 if let CType::Void = &ts[1] {
                                                     if let CType::Void = t {
-                                                        return Ok(("None".to_string(), out));
+                                                        return Ok(("None".to_string(), out, deps));
                                                     } else {
                                                         return Ok((
                                                             format!(
@@ -820,14 +1136,21 @@ pub fn from_microstatement(
                                                                 }
                                                             ),
                                                             out,
+                                                            deps,
                                                         ));
                                                     }
                                                 } else if let CType::Type(name, _) = &ts[1] {
                                                     if name == "Error" {
-                                                        let okrustname =
-                                                            typen::ctype_to_rtype(&ts[0], true)?;
-                                                        let errrustname =
-                                                            typen::ctype_to_rtype(&ts[1], true)?;
+                                                        let (okrustname, d) =
+                                                            typen::ctype_to_rtype(
+                                                                &ts[0], true, deps,
+                                                            )?;
+                                                        deps = d;
+                                                        let (errrustname, d) =
+                                                            typen::ctype_to_rtype(
+                                                                &ts[1], true, deps,
+                                                            )?;
+                                                        deps = d;
                                                         if let CType::Binds(..) = t {
                                                             return Ok((
                                                                 format!(
@@ -842,6 +1165,7 @@ pub fn from_microstatement(
                                                                     }
                                                                 ),
                                                                 out,
+                                                                deps,
                                                             ));
                                                         } else {
                                                             return Ok((
@@ -857,6 +1181,7 @@ pub fn from_microstatement(
                                                                     }
                                                                 ),
                                                                 out,
+                                                                deps,
                                                             ));
                                                         }
                                                     }
@@ -873,56 +1198,25 @@ pub fn from_microstatement(
                                                     },
                                                 ),
                                                 out,
+                                                deps,
                                             ));
                                         }
-                                        CType::Binds(n, ..) if *n == enum_name => {
-                                            // Special-casing for Option and Result mapping. TODO:
-                                            // Make this more centralized
-                                            if ts.len() == 2 {
-                                                if let CType::Void = &ts[1] {
-                                                    if let CType::Void = t {
-                                                        return Ok(("None".to_string(), out));
-                                                    } else {
-                                                        return Ok((
-                                                            format!(
-                                                                "Some({})",
-                                                                match argstrs[0]
-                                                                    .strip_prefix("&mut ")
-                                                                {
-                                                                    Some(s) => s,
-                                                                    None => &argstrs[0],
-                                                                }
-                                                            ),
-                                                            out,
-                                                        ));
-                                                    }
-                                                } else if let CType::Type(name, _) = &ts[1] {
-                                                    if name == "Error" {
-                                                        let okrustname =
-                                                            typen::ctype_to_rtype(&ts[0], true)?;
-                                                        let errrustname =
-                                                            typen::ctype_to_rtype(&ts[1], true)?;
-                                                        if let CType::Binds(..) = t {
+                                        CType::Binds(n, ..) => match &**n {
+                                            CType::TString(s) if s == &enum_name => {
+                                                // Special-casing for Option and Result mapping. TODO:
+                                                // Make this more centralized
+                                                if ts.len() == 2 {
+                                                    if let CType::Void = &ts[1] {
+                                                        if let CType::Void = t {
                                                             return Ok((
-                                                                format!(
-                                                                    "Err::<{}, {}>({})",
-                                                                    okrustname,
-                                                                    errrustname,
-                                                                    match argstrs[0]
-                                                                        .strip_prefix("&mut ")
-                                                                    {
-                                                                        Some(s) => s,
-                                                                        None => &argstrs[0],
-                                                                    }
-                                                                ),
+                                                                "None".to_string(),
                                                                 out,
+                                                                deps,
                                                             ));
                                                         } else {
                                                             return Ok((
                                                                 format!(
-                                                                    "Ok::<{}, {}>({})",
-                                                                    okrustname,
-                                                                    errrustname,
+                                                                    "Some({})",
                                                                     match argstrs[0]
                                                                         .strip_prefix("&mut ")
                                                                     {
@@ -931,24 +1225,201 @@ pub fn from_microstatement(
                                                                     }
                                                                 ),
                                                                 out,
+                                                                deps,
                                                             ));
+                                                        }
+                                                    } else if let CType::Type(name, _) = &ts[1] {
+                                                        if name == "Error" {
+                                                            let (okrustname, d) =
+                                                                typen::ctype_to_rtype(
+                                                                    &ts[0], true, deps,
+                                                                )?;
+                                                            deps = d;
+                                                            let (errrustname, d) =
+                                                                typen::ctype_to_rtype(
+                                                                    &ts[1], true, deps,
+                                                                )?;
+                                                            deps = d;
+                                                            if let CType::Binds(..) = t {
+                                                                return Ok((
+                                                                    format!(
+                                                                        "Err::<{}, {}>({})",
+                                                                        okrustname,
+                                                                        errrustname,
+                                                                        match argstrs[0]
+                                                                            .strip_prefix("&mut ")
+                                                                        {
+                                                                            Some(s) => s,
+                                                                            None => &argstrs[0],
+                                                                        }
+                                                                    ),
+                                                                    out,
+                                                                    deps,
+                                                                ));
+                                                            } else {
+                                                                return Ok((
+                                                                    format!(
+                                                                        "Ok::<{}, {}>({})",
+                                                                        okrustname,
+                                                                        errrustname,
+                                                                        match argstrs[0]
+                                                                            .strip_prefix("&mut ")
+                                                                        {
+                                                                            Some(s) => s,
+                                                                            None => &argstrs[0],
+                                                                        }
+                                                                    ),
+                                                                    out,
+                                                                    deps,
+                                                                ));
+                                                            }
                                                         }
                                                     }
                                                 }
+                                                return Ok((
+                                                    format!(
+                                                        "{}::{}({})",
+                                                        function.name,
+                                                        enum_name,
+                                                        match argstrs[0].strip_prefix("&mut ") {
+                                                            Some(s) => s,
+                                                            None => &argstrs[0],
+                                                        },
+                                                    ),
+                                                    out,
+                                                    deps,
+                                                ));
                                             }
-                                            return Ok((
-                                                format!(
-                                                    "{}::{}({})",
-                                                    function.name,
-                                                    enum_name,
-                                                    match argstrs[0].strip_prefix("&mut ") {
-                                                        Some(s) => s,
-                                                        None => &argstrs[0],
-                                                    },
-                                                ),
-                                                out,
-                                            ));
-                                        }
+                                            CType::Import(n, d) => match &**n {
+                                                CType::TString(s) if s == &enum_name => {
+                                                    match &**d {
+                                                        CType::Type(_, t) => match &**t {
+                                                            CType::Rust(d) => match &**d {
+                                                                CType::Dependency(n, v) => {
+                                                                    let name = match &**n {
+                                                                        CType::TString(s) => s.clone(),
+                                                                        _ => CType::fail("Dependency names must be strings"),
+                                                                    };
+                                                                    let version = match &**v {
+                                                                        CType::TString(s) => s.clone(),
+                                                                        _ => CType::fail("Dependency versions must be strings"),
+                                                                    };
+                                                                    deps.insert(name, version);
+                                                                }
+                                                                _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
+                                                            }
+                                                            otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
+                                                        }
+                                                        CType::Rust(d) => match &**d {
+                                                            CType::Dependency(n, v) => {
+                                                                let name = match &**n {
+                                                                    CType::TString(s) => s.clone(),
+                                                                    _ => CType::fail("Dependency names must be strings"),
+                                                                };
+                                                                let version = match &**v {
+                                                                    CType::TString(s) => s.clone(),
+                                                                    _ => CType::fail("Dependency versions must be strings"),
+                                                                };
+                                                                deps.insert(name, version);
+                                                            }
+                                                            _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
+                                                        }
+                                                        otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
+                                                    }
+                                                    // Special-casing for Option and Result mapping. TODO:
+                                                    // Make this more centralized
+                                                    if ts.len() == 2 {
+                                                        if let CType::Void = &ts[1] {
+                                                            if let CType::Void = t {
+                                                                return Ok((
+                                                                    "None".to_string(),
+                                                                    out,
+                                                                    deps,
+                                                                ));
+                                                            } else {
+                                                                return Ok((
+                                                                    format!(
+                                                                        "Some({})",
+                                                                        match argstrs[0]
+                                                                            .strip_prefix("&mut ")
+                                                                        {
+                                                                            Some(s) => s,
+                                                                            None => &argstrs[0],
+                                                                        }
+                                                                    ),
+                                                                    out,
+                                                                    deps,
+                                                                ));
+                                                            }
+                                                        } else if let CType::Type(name, _) = &ts[1]
+                                                        {
+                                                            if name == "Error" {
+                                                                let (okrustname, d) =
+                                                                    typen::ctype_to_rtype(
+                                                                        &ts[0], true, deps,
+                                                                    )?;
+                                                                deps = d;
+                                                                let (errrustname, d) =
+                                                                    typen::ctype_to_rtype(
+                                                                        &ts[1], true, deps,
+                                                                    )?;
+                                                                deps = d;
+                                                                if let CType::Binds(..) = t {
+                                                                    return Ok((
+                                                                        format!(
+                                                                            "Err::<{}, {}>({})",
+                                                                            okrustname,
+                                                                            errrustname,
+                                                                            match argstrs[0]
+                                                                                .strip_prefix(
+                                                                                    "&mut "
+                                                                                ) {
+                                                                                Some(s) => s,
+                                                                                None => &argstrs[0],
+                                                                            }
+                                                                        ),
+                                                                        out,
+                                                                        deps,
+                                                                    ));
+                                                                } else {
+                                                                    return Ok((
+                                                                        format!(
+                                                                            "Ok::<{}, {}>({})",
+                                                                            okrustname,
+                                                                            errrustname,
+                                                                            match argstrs[0]
+                                                                                .strip_prefix(
+                                                                                    "&mut "
+                                                                                ) {
+                                                                                Some(s) => s,
+                                                                                None => &argstrs[0],
+                                                                            }
+                                                                        ),
+                                                                        out,
+                                                                        deps,
+                                                                    ));
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                    return Ok((
+                                                        format!(
+                                                            "{}::{}({})",
+                                                            function.name,
+                                                            enum_name,
+                                                            match argstrs[0].strip_prefix("&mut ") {
+                                                                Some(s) => s,
+                                                                None => &argstrs[0],
+                                                            },
+                                                        ),
+                                                        out,
+                                                        deps,
+                                                    ));
+                                                }
+                                                _ => {}
+                                            },
+                                            _ => {}
+                                        },
                                         _ => {}
                                     }
                                 }
@@ -987,6 +1458,7 @@ pub fn from_microstatement(
                                                 }
                                             ),
                                             out,
+                                            deps,
                                         ));
                                     } else {
                                         return Ok((
@@ -1002,6 +1474,7 @@ pub fn from_microstatement(
                                                     .join(", ")
                                             ),
                                             out,
+                                            deps,
                                         ));
                                     }
                                 } else {
@@ -1024,10 +1497,11 @@ pub fn from_microstatement(
                                         }
                                     ),
                                     out,
+                                    deps,
                                 ));
                             }
                             CType::Binds(..) => {
-                                return Ok((argstrs.join(", "), out));
+                                return Ok((argstrs.join(", "), out, deps));
                             }
                             otherwise => {
                                 return Err(format!("How did you get here? Trying to create a constructor function {:?} for {:?}", function, otherwise).into());
@@ -1045,8 +1519,9 @@ pub fn from_microstatement(
         Microstatement::VarCall { name, args, .. } => {
             let mut argstrs = Vec::new();
             for arg in args {
-                let (a, o) = from_microstatement(arg, parent_fn, scope, out)?;
+                let (a, o, d) = from_microstatement(arg, parent_fn, scope, out, deps)?;
                 out = o;
+                deps = d;
                 // If the argument is itself a function, this is the only place in Rust
                 // where you can't pass by reference, so we check the type and change
                 // the argument output accordingly.
@@ -1061,12 +1536,17 @@ pub fn from_microstatement(
                     }),
                 }
             }
-            Ok((format!("{}({})", name, argstrs.join(", ")).to_string(), out))
+            Ok((
+                format!("{}({})", name, argstrs.join(", ")).to_string(),
+                out,
+                deps,
+            ))
         }
         Microstatement::Return { value } => match value {
             Some(val) => {
-                let (retval, o) = from_microstatement(val, parent_fn, scope, out)?;
+                let (retval, o, d) = from_microstatement(val, parent_fn, scope, out, deps)?;
                 out = o;
+                deps = d;
                 Ok((
                     format!(
                         "return {}",
@@ -1077,9 +1557,10 @@ pub fn from_microstatement(
                     )
                     .to_string(),
                     out,
+                    deps,
                 ))
             }
-            None => Ok(("return".to_string(), out)),
+            None => Ok(("return".to_string(), out, deps)),
         },
     }
 }
@@ -1089,14 +1570,22 @@ pub fn generate(
     function: &Function,
     scope: &Scope,
     mut out: OrderedHashMap<String, String>,
-) -> Result<OrderedHashMap<String, String>, Box<dyn std::error::Error>> {
+    mut deps: OrderedHashMap<String, String>,
+) -> Result<
+    (
+        OrderedHashMap<String, String>,
+        OrderedHashMap<String, String>,
+    ),
+    Box<dyn std::error::Error>,
+> {
     let mut fn_string = "".to_string();
     // First make sure all of the function argument types are defined
     let mut arg_strs = Vec::new();
     for arg in &function.args() {
         let (l, k, t) = arg;
-        let (t_str, o) = typen::generate(t, out)?;
+        let (t_str, o, d) = typen::generate(t, out, deps)?;
         out = o;
+        deps = d;
         if t_str.starts_with("impl") || t_str.starts_with("&") {
             arg_strs.push(format!("{}: {}", l, t_str));
         } else {
@@ -1111,8 +1600,9 @@ pub fn generate(
         CType::Void => None,
         CType::Type(n, _) if n == "void" => None,
         otherwise => {
-            let (t_str, o) = typen::generate(otherwise, out)?;
+            let (t_str, o, d) = typen::generate(otherwise, out, deps)?;
             out = o;
+            deps = d;
             match t_str.strip_prefix("&") {
                 Some(s) => Some(s.to_string()),
                 None => Some(t_str),
@@ -1137,11 +1627,12 @@ pub fn generate(
     )
     .to_string();
     for microstatement in &function.microstatements {
-        let (stmt, o) = from_microstatement(microstatement, function, scope, out)?;
+        let (stmt, o, d) = from_microstatement(microstatement, function, scope, out, deps)?;
         out = o;
+        deps = d;
         fn_string = format!("{}    {};\n", fn_string, stmt);
     }
     fn_string = format!("{}}}", fn_string);
     out.insert(rustname, fn_string);
-    Ok(out)
+    Ok((out, deps))
 }

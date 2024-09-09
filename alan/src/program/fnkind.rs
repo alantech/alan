@@ -12,4 +12,6 @@ pub enum FnKind {
     DerivedVariadic,
     Static,
     External(CType),
+    ExternalBind(String, CType),
+    ExternalGeneric(Vec<(String, CType)>, String, CType),
 }

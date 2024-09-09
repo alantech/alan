@@ -33,7 +33,7 @@ Currently, the only way to install `alan` is to have a working `rust` developmen
 ```bash
 git clone https://github.com/alantech/alan
 cd alan
-cargo install --path .
+cargo install --path alan
 ```
 
 alan v0.2 has been tested on x86-64 for Windows, Mac, and Linux, ARM64 for Linux and Mac, and RISC-V for Linux.

@@ -352,10 +352,13 @@ impl<'a> Scope<'a> {
                     FnKind::Normal
                     | FnKind::External(_)
                     | FnKind::Bind(_)
+                    | FnKind::ExternalBind(_, _)
                     | FnKind::Derived
                     | FnKind::DerivedVariadic
                     | FnKind::Static => None,
-                    FnKind::Generic(gs, _) | FnKind::BoundGeneric(gs, _) => {
+                    FnKind::Generic(gs, _)
+                    | FnKind::BoundGeneric(gs, _)
+                    | FnKind::ExternalGeneric(gs, _, _) => {
                         Some(gs.iter().map(|(g, _)| g.clone()).collect::<Vec<String>>())
                     }
                 };
@@ -447,10 +450,13 @@ impl<'a> Scope<'a> {
                 FnKind::Normal
                 | FnKind::External(_)
                 | FnKind::Bind(_)
+                | FnKind::ExternalBind(_, _)
                 | FnKind::Derived
                 | FnKind::DerivedVariadic
                 | FnKind::Static => { /* Do nothing */ }
-                FnKind::Generic(g, _) | FnKind::BoundGeneric(g, _) => {
+                FnKind::Generic(g, _)
+                | FnKind::BoundGeneric(g, _)
+                | FnKind::ExternalGeneric(g, _, _) => {
                     // TODO: Check interface constraints once interfaces exist
                     if g.len() != generic_types.len() {
                         continue;
@@ -469,28 +475,15 @@ impl<'a> Scope<'a> {
                 FnKind::Normal
                 | FnKind::External(_)
                 | FnKind::Bind(_)
+                | FnKind::ExternalBind(_, _)
                 | FnKind::Derived
                 | FnKind::DerivedVariadic
                 | FnKind::Static => {
                     panic!("This should be impossible. If reached it would generate faulty code");
                 }
-                FnKind::BoundGeneric(gen_args, _) => {
-                    let args = f
-                        .args()
-                        .iter()
-                        .map(|(name, kind, argtype)| {
-                            (name.clone(), kind.clone(), {
-                                let mut a = argtype.clone();
-                                for ((_, o), n) in gen_args.iter().zip(generic_types.iter()) {
-                                    a = a.swap_subtype(o, n);
-                                }
-                                a
-                            })
-                        })
-                        .collect::<Vec<(String, ArgKind, CType)>>();
-                    possible_args_vec.push(args);
-                }
-                FnKind::Generic(gen_args, _) => {
+                FnKind::Generic(gen_args, _)
+                | FnKind::BoundGeneric(gen_args, _)
+                | FnKind::ExternalGeneric(gen_args, _, _) => {
                     let args = f
                         .args()
                         .iter()
@@ -620,6 +613,7 @@ impl<'a> Scope<'a> {
                 FnKind::Normal
                 | FnKind::External(_)
                 | FnKind::Bind(_)
+                | FnKind::ExternalBind(_, _)
                 | FnKind::Derived
                 | FnKind::Static => {
                     if args.len() != f.args().len() {
@@ -641,14 +635,14 @@ impl<'a> Scope<'a> {
                         return None;
                     }
                 }
-                FnKind::Generic(g, _) | FnKind::BoundGeneric(g, _) => {
+                FnKind::Generic(g, _)
+                | FnKind::BoundGeneric(g, _)
+                | FnKind::ExternalGeneric(g, _, _) => {
                     if args.len() != f.args().len() {
                         continue;
                     }
                     match CType::infer_generics(self, g, &f.args(), args) {
-                        Ok(gs) => {
-                            return Some(gs);
-                        }
+                        Ok(gs) => return Some(gs),
                         Err(_) => { /* Do nothing */ }
                     };
                 }
@@ -720,6 +714,7 @@ impl<'a> Scope<'a> {
                 FnKind::Normal
                 | FnKind::External(_)
                 | FnKind::Bind(_)
+                | FnKind::ExternalBind(_, _)
                 | FnKind::Derived
                 | FnKind::Static => {
                     if args.len() != f.args().len() {
@@ -739,7 +734,9 @@ impl<'a> Scope<'a> {
                         return Some(f.clone());
                     }
                 }
-                FnKind::Generic(_, _) | FnKind::BoundGeneric(_, _) => { /* Do nothing */ }
+                FnKind::Generic(_, _)
+                | FnKind::BoundGeneric(_, _)
+                | FnKind::ExternalGeneric(_, _, _) => { /* Do nothing */ }
             }
         }
         None

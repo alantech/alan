@@ -258,12 +258,23 @@ impl Function {
                     let ctype = withtypeoperatorslist_to_ctype(fntype, &temp_scope)?;
                     // If the `ctype` is a Function type, we have both the input and output defined. If
                     // it's any other type, we presume it's only the input type defined
-                    let (rustfunc, input_type, rettype) = match ctype {
+                    let (kind, input_type, rettype) = match ctype {
                         CType::Call(n, f) => match &*n {
                             CType::TString(s) => {
                                 match &*f {
-                                    CType::Function(i, o) => (s.clone(), *i.clone(), *o.clone()),
-                                    otherwise => (s.clone(), otherwise.clone(), CType::Infer("unknown".to_string(), "unknown".to_string())),
+                                    CType::Function(i, o) => (FnKind::BoundGeneric(generics, s.clone()), *i.clone(), *o.clone()),
+                                    otherwise => (FnKind::BoundGeneric(generics, s.clone()), otherwise.clone(), CType::Infer("unknown".to_string(), "unknown".to_string())),
+                                }
+                            }
+                            CType::Import(n, d) => {
+                                match &**n {
+                                    CType::TString(s) => {
+                                        match &*f {
+                                            CType::Function(i, o) => (FnKind::ExternalGeneric(generics, s.clone(), *d.clone()), *i.clone(), *o.clone()),
+                                            otherwise => (FnKind::ExternalGeneric(generics, s.clone(), *d.clone()), otherwise.clone(), CType::Infer("unknown".to_string(), "unknown".to_string())),
+                                        }
+                                    }
+                                    _ => CType::fail("TODO: Support more than bare function imports for generic function binding"),
                                 }
                             }
                             _ => CType::fail("TODO: Support more than bare function calls for generic function binding"),
@@ -279,7 +290,7 @@ impl Function {
                         name,
                         typen: CType::Function(Box::new(degrouped_input), Box::new(rettype)),
                         microstatements: Vec::new(),
-                        kind: FnKind::BoundGeneric(generics, rustfunc.clone()),
+                        kind,
                     };
                     if is_export {
                         scope
@@ -557,12 +568,14 @@ impl Function {
             FnKind::Normal
             | FnKind::External(_)
             | FnKind::Bind(_)
+            | FnKind::ExternalBind(_, _)
             | FnKind::Derived
             | FnKind::DerivedVariadic
             | FnKind::Static => {
                 Err("Should be impossible. Attempted to realize a non-generic function".into())
             }
-            FnKind::BoundGeneric(gen_args, generic_fn_string) => {
+            FnKind::BoundGeneric(gen_args, generic_fn_string)
+            | FnKind::ExternalGeneric(gen_args, generic_fn_string, _) => {
                 let arg_strs = generic_types
                     .iter()
                     .map(|a| a.to_string())
@@ -572,7 +585,11 @@ impl Function {
                     let gen_str = &gen_args[i].0;
                     bind_str = bind_str.replace(gen_str, arg_str);
                 }
-                let kind = FnKind::Bind(bind_str);
+                let kind = match &generic_function.kind {
+                    FnKind::BoundGeneric(..) => FnKind::Bind(bind_str),
+                    FnKind::ExternalGeneric(_, _, d) => FnKind::ExternalBind(bind_str, d.clone()),
+                    _ => unreachable!(),
+                };
                 let args = generic_function
                     .args()
                     .iter()
