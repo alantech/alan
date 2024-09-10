@@ -753,6 +753,7 @@ impl GPU {
                     label: Some(&format!("{} on {}", info.name, info.backend.to_str())),
                     required_features: features,
                     required_limits: limits,
+                    memory_hints: wgpu::MemoryHints::Performance,
                 },
                 None,
             );
@@ -896,6 +897,7 @@ pub fn gpu_run(gg: &GPGPU) {
             module: &module,
             entry_point: &gg.entrypoint,
             compilation_options: wgpu::PipelineCompilationOptions::default(),
+            cache: None, // TODO: Might be worthwhile
         });
     let mut bind_groups = Vec::new();
     let mut encoder = g
