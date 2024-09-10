@@ -37,7 +37,7 @@ impl<'a> Program<'a> {
     pub fn load(&mut self, path: String) -> Result<(), Box<dyn std::error::Error>> {
         let ln_src = if path.starts_with('@') {
             match path.as_str() {
-                "@std/app" => include_str!("../std/app.ln").to_string(),
+                //"@std/app" => include_str!("../std/app.ln").to_string(),
                 _ => {
                     return Err(format!("Unknown standard library named {}", &path).into());
                 }
