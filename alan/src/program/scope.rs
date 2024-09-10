@@ -8,7 +8,6 @@ use super::Const;
 use super::Export;
 use super::FnKind;
 use super::Function;
-use super::Import;
 use super::OperatorMapping;
 use super::Program;
 use super::TypeOperatorMapping;
@@ -18,7 +17,6 @@ use crate::parse;
 pub struct Scope<'a> {
     pub path: String,
     pub parent: Option<&'a Scope<'a>>,
-    pub imports: OrderedHashMap<String, Import>,
     pub types: OrderedHashMap<String, CType>,
     pub consts: OrderedHashMap<String, Const>,
     pub functions: OrderedHashMap<String, Vec<Function>>,
@@ -42,7 +40,6 @@ impl<'a> Scope<'a> {
             let mut s = Scope {
                 path: "@root".to_string(),
                 parent: None,
-                imports: OrderedHashMap::new(),
                 types: OrderedHashMap::new(),
                 consts: OrderedHashMap::new(),
                 functions: OrderedHashMap::new(),
@@ -50,7 +47,6 @@ impl<'a> Scope<'a> {
                 typeoperatormappings: OrderedHashMap::new(),
                 exports: OrderedHashMap::new(),
             };
-            // The root scope has no imports, so this portion is skipped
             // TODO: Eliminate the duplicate code
             for (i, element) in ast.body.iter().enumerate() {
                 match element {
@@ -138,7 +134,6 @@ impl<'a> Scope<'a> {
         let mut s = Scope {
             path: path.to_string(),
             parent: Some(Scope::root()),
-            imports: OrderedHashMap::new(),
             types: OrderedHashMap::new(),
             consts: OrderedHashMap::new(),
             functions: OrderedHashMap::new(),
@@ -146,9 +141,6 @@ impl<'a> Scope<'a> {
             typeoperatormappings: OrderedHashMap::new(),
             exports: OrderedHashMap::new(),
         };
-        for i in ast.imports.iter() {
-            s = Import::from_ast(program, path.to_string(), s, i)?;
-        }
         for (i, element) in ast.body.iter().enumerate() {
             match element {
                 parse::RootElements::Types(t) => match CType::from_ast(s, t, false) {
@@ -212,7 +204,6 @@ impl<'a> Scope<'a> {
         Scope {
             path: path.clone(),
             parent: Some(self),
-            imports: OrderedHashMap::new(),
             types: OrderedHashMap::new(),
             consts: OrderedHashMap::new(),
             functions: OrderedHashMap::new(),
@@ -226,7 +217,6 @@ impl<'a> Scope<'a> {
     #[allow(clippy::too_many_arguments)]
     pub fn merge(
         &mut self,
-        mut imports: OrderedHashMap<String, Import>,
         mut types: OrderedHashMap<String, CType>,
         mut consts: OrderedHashMap<String, Const>,
         mut functions: OrderedHashMap<String, Vec<Function>>,
@@ -234,9 +224,6 @@ impl<'a> Scope<'a> {
         mut typeoperatormappings: OrderedHashMap<String, TypeOperatorMapping>,
         mut exports: OrderedHashMap<String, Export>,
     ) {
-        for (name, import) in imports.drain() {
-            self.imports.insert(name, import);
-        }
         for (name, ctype) in types.drain() {
             self.types.insert(name, ctype);
         }
@@ -746,7 +733,6 @@ impl<'a> Scope<'a> {
 macro_rules! merge {
     ( $parent: expr, $child: expr $(,)?) => {
         let Scope {
-            imports,
             types,
             consts,
             functions,
@@ -756,7 +742,6 @@ macro_rules! merge {
             ..
         } = $child;
         $parent.merge(
-            imports,
             types,
             consts,
             functions,

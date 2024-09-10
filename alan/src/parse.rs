@@ -1,12 +1,10 @@
-use std::path::PathBuf;
-
 use nom::{
     branch::alt,
     bytes::complete::{tag, take},
     character::complete::satisfy,
     combinator::{all_consuming, opt, peek, recognize},
     error::{Error, ErrorKind},
-    multi::{many0, many1, separated_list0, separated_list1},
+    multi::{many0, many1, separated_list0},
     sequence::tuple,
     IResult,
 };
@@ -362,7 +360,6 @@ build!(colon, token!(":"));
 build!(under, token!("_"));
 build!(negate, token!("-"));
 build!(dot, token!("."));
-build!(par, token!(".."));
 build!(eq, token!("="));
 build!(openparen, token!("("));
 build!(closeparen, token!(")"));
@@ -373,8 +370,6 @@ build!(closearr, token!("]"));
 build!(comma, token!(","));
 build!(semicolon, token!(";"));
 build!(optsemicolon, zero_or_one!(semicolon));
-build!(at, token!("@"));
-build!(slash, token!("/"));
 // Validating charset
 build!(base2, or!(charset!('0'..='1'), under));
 build!(base8, or!(charset!('0'..='7'), under));
@@ -574,8 +569,6 @@ build!(constn, token!("const"));
 build!(export, token!("export"));
 build!(ctype, token!("ctype"));
 build!(typen, token!("type"));
-build!(import, token!("import"));
-build!(from, token!("from"));
 build!(fnn, token!("fn"));
 build!(quote, token!("'"));
 build!(doublequote, token!("\""));
@@ -614,78 +607,6 @@ test!(strn =>
     pass "'str\\'3'";
     pass "\"str\\\"4\"";
 );
-named_or!(varop: VarOp => Variable: String as variable, Operator: String as operators);
-impl VarOp {
-    #[allow(clippy::inherent_to_string)]
-    pub fn to_string(&self) -> String {
-        match self {
-            VarOp::Variable(v) => v.clone(),
-            VarOp::Operator(o) => o.clone(),
-        }
-    }
-}
-// Validating named_and
-named_and!(renamed: Renamed =>
-    a: String as blank,
-    asn: String as asn,
-    b: String as blank,
-    varop: VarOp as varop,
-);
-test!(renamed =>
-    fail "";
-    fail "as";
-    fail " as ";
-    pass " as foo" => "", super::Renamed{
-        a: " ".to_string(),
-        asn: "as".to_string(),
-        b: " ".to_string(),
-        varop: super::VarOp::Variable("foo".to_string())
-    };
-    pass " as +";
-    pass " as foo bar" => " bar", super::Renamed{
-        a: " ".to_string(),
-        asn: "as".to_string(),
-        b: " ".to_string(),
-        varop: super::VarOp::Variable("foo".to_string())
-    };
-);
-// Validate optional fields
-named_and!(renameablevar: RenameableVar => varop: VarOp as varop, optrenamed: Option<Renamed> as opt(renamed));
-test!(renameablevar =>
-    fail "";
-    pass "foo" => "", super::RenameableVar{
-        varop: super::VarOp::Variable("foo".to_string()),
-        optrenamed: None,
-    };
-    pass "foo as bar" => "", super::RenameableVar{
-        varop: super::VarOp::Variable("foo".to_string()),
-        optrenamed: Some(super::Renamed{
-            a: " ".to_string(),
-            asn: "as".to_string(),
-            b: " ".to_string(),
-            varop: super::VarOp::Variable("bar".to_string())
-        })
-    };
-);
-// Validating list
-list!(varlist: RenameableVar => renameablevar, sep);
-test!(varlist =>
-    fail "";
-    pass "foo" => "", vec![super::RenameableVar{
-        varop: super::VarOp::Variable("foo".to_string()),
-        optrenamed: None,
-    }];
-    pass "foo, bar" => "", vec![
-        super::RenameableVar{
-            varop: super::VarOp::Variable("foo".to_string()),
-            optrenamed: None,
-        },
-        super::RenameableVar{
-            varop: super::VarOp::Variable("bar".to_string()),
-            optrenamed: None,
-        }
-    ];
-);
 named_and!(fulltypename: FullTypename =>
     typename: String as variable,
     opttypegenerics: Option<GnCall> as opt(gncall)
@@ -693,125 +614,6 @@ named_and!(fulltypename: FullTypename =>
 test!(fulltypename =>
     pass "Array{Array{int64}}" => "";
 );
-list!(depsegments: String => variable, slash);
-named_and!(curdir: CurDir =>
-    dot: String as dot,
-    slash: String as slash,
-    depsegments: Vec<String> as depsegments,
-);
-impl CurDir {
-    #[allow(clippy::inherent_to_string)]
-    fn to_string(&self) -> String {
-        format!("./{}", self.depsegments.join("/"))
-    }
-}
-named_and!(pardir: ParDir =>
-    par: String as par,
-    slash: String as slash,
-    depsegments: Vec<String> as depsegments,
-);
-impl ParDir {
-    #[allow(clippy::inherent_to_string)]
-    fn to_string(&self) -> String {
-        format!("../{}", self.depsegments.join("/"))
-    }
-}
-named_or!(localdependency: LocalDependency => CurDir: CurDir as curdir, ParDir: ParDir as pardir);
-impl LocalDependency {
-    #[allow(clippy::inherent_to_string)]
-    fn to_string(&self) -> String {
-        match &self {
-            LocalDependency::CurDir(c) => c.to_string(),
-            LocalDependency::ParDir(p) => p.to_string(),
-        }
-    }
-}
-named_and!(globaldependency: GlobalDependency =>
-    at: String as at,
-    depsegments: Vec<String> as depsegments,
-);
-impl GlobalDependency {
-    #[allow(clippy::inherent_to_string)]
-    fn to_string(&self) -> String {
-        format!("@{}", self.depsegments.join("/"))
-    }
-}
-// This one is kinda complex, so let's take a look at it
-named_or!(dependency: Dependency =>
-    Local: LocalDependency as localdependency,
-    Global: GlobalDependency as globaldependency,
-);
-test!(dependency =>
-    fail "";
-    fail "foo";
-    pass "./foo" => "", super::Dependency::Local(super::LocalDependency::CurDir(super::CurDir{
-        dot: ".".to_string(),
-        slash: "/".to_string(),
-        depsegments: vec!["foo".to_string()],
-    }));
-    pass "./foo/bar";
-    pass "../foo";
-    pass "../foo/bar";
-    pass "@foo";
-    pass "@foo/bar";
-);
-impl Dependency {
-    pub fn resolve(&self, curr_file: String) -> Result<String, Box<dyn std::error::Error>> {
-        match &self {
-            Dependency::Local(l) => {
-                let path = PathBuf::from(curr_file)
-                    .parent()
-                    .unwrap()
-                    .join(l.to_string())
-                    .canonicalize()?;
-                Ok(path.to_string_lossy().to_string())
-            }
-            Dependency::Global(g) => {
-                if g.depsegments[0] == "std" {
-                    // Keep the `@std/...` imports as-is for the Program level to know it should
-                    // pull from the embedded strings
-                    Ok(g.to_string())
-                } else {
-                    // For everything else, let's assume it's in the `./dependencies` directory
-                    let path = PathBuf::from("./dependencies")
-                        .join(g.depsegments.join("/"))
-                        .canonicalize()?;
-                    Ok(path.to_string_lossy().to_string())
-                }
-            }
-        }
-    }
-}
-named_and!(standardimport: StandardImport =>
-    import: String as import,
-    a: String as optblank,
-    opttypegenerics: Option<GnCall> as opt(gncall),
-    b: String as optblank,
-    dependency: Dependency as dependency,
-    renamed: Option<Renamed> as opt(renamed),
-    c: String as optblank,
-    d: String as newline,
-    e: String as optwhitespace,
-);
-named_and!(fromimport: FromImport =>
-    from: String as from,
-    a: String as optblank,
-    opttypegenerics: Option<GnCall> as opt(gncall),
-    b: String as optblank,
-    dependency: Dependency as dependency,
-    c: String as blank,
-    import: String as import,
-    d: String as blank,
-    varlist: Vec<RenameableVar> as varlist,
-    e: String as optblank,
-    f: String as newline,
-    g: String as optwhitespace,
-);
-named_or!(importstatement: ImportStatement =>
-    Standard: StandardImport as standardimport,
-    From: FromImport as fromimport,
-);
-list!(opt imports: ImportStatement => importstatement);
 impl FullTypename {
     #[allow(clippy::inherent_to_string)]
     pub fn to_string(&self) -> String {
@@ -1496,40 +1298,15 @@ named_or!(rootelements: RootElements =>
 list!(opt body: RootElements => rootelements);
 named_and!(ln: Ln =>
     a: String as optwhitespace,
-    imports: Vec<ImportStatement> as imports,
     body: Vec<RootElements> as body,
 );
 test!(ln =>
     pass "";
     pass " " => "", super::Ln{
         a: " ".to_string(),
-        imports: Vec::new(),
         body: Vec::new(),
     };
-    pass "import ./foo" => "import ./foo", super::Ln{
-        a: "".to_string(),
-        imports: Vec::new(),
-        body: Vec::new(),
-    };
-    pass "import ./foo\n" => "", super::Ln{
-        a: "".to_string(),
-        imports: vec![super::ImportStatement::Standard(super::StandardImport{
-            import: "import".to_string(),
-            a: " ".to_string(),
-            opttypegenerics: None,
-            b: "".to_string(),
-            dependency: super::Dependency::Local(super::LocalDependency::CurDir(super::CurDir{
-                dot: ".".to_string(),
-                slash: "/".to_string(),
-                depsegments: vec!["foo".to_string()],
-            })),
-            renamed: None,
-            c: "".to_string(),
-            d: "\n".to_string(),
-            e: "".to_string()
-        })],
-        body: Vec::new(),
-    };
+    pass "const test = 5;";
 );
 
 pub fn get_ast(input: &str) -> Result<Ln, nom::Err<nom::error::Error<&str>>> {
@@ -1545,7 +1322,5 @@ pub fn get_ast(input: &str) -> Result<Ln, nom::Err<nom::error::Error<&str>>> {
 test!(get_ast =>
     pass "";
     pass " ";
-    fail "import ./foo";
-    pass "import ./foo\n";
     pass "export fn main {\n  print('Hello, World!');\n}";
 );
