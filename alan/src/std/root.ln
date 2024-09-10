@@ -161,9 +161,9 @@ export fn clone{T} (v: T) -> T = {Method{"clone"} :: T -> T}(v);
 // functions in Rust (as partially implemented here) or it might be better done as a special `hash`
 // function created by the compiler for the specific type *if* ever actually used, walking the
 // CType tree to determine the correct code to run. In either case, this is "good enough" for now.
+export fn hash{T} "alan_std::hash" <- RootBacking :: T -> i64;
 export fn hash{T} "alan_std::hasharray" <- RootBacking :: T[] -> i64;
 export fn hash "alan_std::hashstring" <- RootBacking :: string -> i64;
-export fn hash{T} "alan_std::hash" <- RootBacking :: T -> i64;
 export fn void{T}(v: T) -> void {}
 export fn void() -> void {}
 export fn store{T} (a: Mut{T}, b: T) -> T = {"std::mem::replace" :: (Mut{T}, Own{T}) -> T}(a, b);
@@ -171,6 +171,7 @@ export fn store{T} (a: Mut{T}, b: T) -> T = {"std::mem::replace" :: (Mut{T}, Own
 /// Fallible, Maybe, and Either functions
 export fn Maybe{T}(v: T!) = {Method{"ok"} :: T! -> T?}(v);
 export fn Fallible{T}(v: T?, e: Error) = {Method{"ok_or"} :: (T?, Error) -> T!}(v, e);
+export fn getOr{T, U}(v: U, d: T) = {T}(v).getOr(d);
 export fn getOr{T} (v: T?, d: T) = {Method{"unwrap_or"} :: (Own{T?}, Own{T}) -> T}(v, d);
 export fn getOr{T} (v: T!, d: T) = {Method{"unwrap_or"} :: (Own{T!}, Own{T}) -> T}(v, d);
 export fn getOrExit{T} (v: T!) = {Method{"unwrap"} :: Own{T!} -> T}(v);
@@ -326,10 +327,10 @@ export fn nor (a: bool, b: bool) = a.or(b).not;
 export fn xnor Infix{"=="} :: (bool, bool) -> bool;
 export fn eq Infix{"=="} :: (bool, bool) -> bool;
 export fn neq Infix{"!="} :: (bool, bool) -> bool;
-export fn if{T} "alan_std::ifbool" <- RootBacking :: (bool, () -> T, () -> T) -> T;
-export fn if{T}(c: bool, t: () -> T) = if(c, fn () -> Maybe{T} = Maybe{T}(t()), fn () -> Maybe{T} = Maybe{T}());
-export fn if{T}(c: bool, t: T, f: T) = if(c, fn () -> T = t, fn () -> T = f);
 export fn if{T}(c: bool, t: T) = if(c, fn () -> Maybe{T} = Maybe{T}(t), fn () -> Maybe{T} = Maybe{T}());
+export fn if{T}(c: bool, t: T, f: T) = if(c, fn () -> T = t, fn () -> T = f);
+export fn if{T}(c: bool, t: () -> T) = if(c, fn () -> Maybe{T} = Maybe{T}(t()), fn () -> Maybe{T} = Maybe{T}());
+export fn if{T} "alan_std::ifbool" <- RootBacking :: (bool, () -> T, () -> T) -> T;
 
 /// Signed Integer-related functions and function bindings
 export fn add Method{"wrapping_add"} :: (i8, Deref{i8}) -> i8;
@@ -703,16 +704,16 @@ export fn Array{K, V} "alan_std::arraydict" <- RootBacking :: Dict{K, V} -> (K, 
 export fn concat{K, V} "alan_std::concatdict" <- RootBacking :: (Dict{K, V}, Dict{K, V}) -> Dict{K, V};
 
 /// Set-related bindings
-export fn Set{V} "std::collections::HashSet::new" :: () -> Set{V};
-export fn Set{V}(a: Array{V}) = a.reduce(Set{V}(), fn (s: Set{V}, v: V) {
-  s.store(v);
-  return s;
-});
 export fn Set{V}(v: V) {
   let out = Set{V}();
   out.store(v);
   return out;
 }
+export fn Set{V}(a: Array{V}) = a.reduce(Set{V}(), fn (s: Set{V}, v: V) {
+  s.store(v);
+  return s;
+});
+export fn Set{V} "std::collections::HashSet::new" :: () -> Set{V};
 export fn store{V} (s: Mut{Set{V}}, v: V) {
   {Method{"insert"} :: (Mut{Set{V}}, Own{V}) -> bool}(s, v);
 }
@@ -3795,34 +3796,30 @@ export fn ExitCode(e: i64) = ExitCode(e.u8);
 
 /// Stdout/stderr-related bindings
 // TODO: Rework this to just print anything that can be converted to `string` via interfaces
+export fn print{T}(v: T) = {"println!" :: ("{}", string)}(v.string);
 export fn print (d: Duration) = {"println!" :: ("{}.{:0>9}", u64, u32)}(
   {Method{"as_secs"} :: Duration -> u64}(d),
   {Method{"subsec_nanos"} :: Duration -> u32}(d));
+export fn print(v: void) = {"println!" :: "void"}();
+export fn print(s: string) = {"println!" :: ("{}", string)}(s);
+export fn print{T, N}(a: T[N]) = "[".concat(a.map(fn (v: T) = v.string).join(", ")).concat("]").print;
+export fn print{T}(a: T[]) = "[".concat(a.map(fn (v: T) = v.string).join(", ")).concat("]").print;
 export fn print{T}(v: T?) = if(v.exists,
   fn = v.getOrExit.print,
   fn = print("void"));
 export fn print{T}(v: T!) = if({T}(v).exists,
   fn = v.getOrExit.print,
   fn = v.Error.getOrExit.print);
-export fn print(v: void) = {"println!" :: "void"}();
-export fn print(s: string) = {"println!" :: ("{}", string)}(s);
-export fn print{T, N}(a: T[N]) = "[".concat(a.map(fn (v: T) = v.string).join(", ")).concat("]").print;
-export fn print{T}(a: T[]) = "[".concat(a.map(fn (v: T) = v.string).join(", ")).concat("]").print;
-export fn print{T}(v: T) = {"println!" :: ("{}", string)}(v.string);
+export fn eprint{T}(v: T) = {"eprintln!" :: ("{}", T)}(v.string);
+export fn eprint(v: void) = {"eprintln!" :: "void"}();
+export fn eprint(s: string) = {"eprintln!" :: ("{}", string)}(s);
+export fn eprint{T}(a: T[]) = "[".concat(a.map(fn (v: T) = v.string).join(", ")).concat("]").eprint;
 export fn eprint{T}(v: T?) = if(v.exists,
   fn = v.getOrExit.eprint,
   fn = eprint("void"));
 export fn eprint{T}(v: T!) = if({T}(v).exists,
   fn = v.getOrExit.eprint,
   fn = v.Error.getOrExit.eprint);
-export fn eprint(v: void) = {"eprintln!" :: "void"}();
-export fn eprint(s: string) = {"eprintln!" :: ("{}", string)}(s);
-export fn eprint{T}(a: T[]) = "[".concat(a.map(fn (v: T) = v.string).join(", ")).concat("]").eprint;
-export fn eprint{T}(v: T) = {"eprintln!" :: ("{}", T)}(v.string);
-
-// TODO: Function resolution is effectively backwards at the moment. This is the fallback `getOr`,
-// but it needs to be defined last instead of first.
-export fn getOr{T, U}(v: U, d: T) = {T}(v).getOr(d);
 
 /// Built-in operator definitions
 export infix add as + precedence 3;

@@ -2508,9 +2508,7 @@ impl CType {
             for (name, fns) in name_fn_pairs.drain() {
                 if scope.functions.contains_key(&name) {
                     let func_vec = scope.functions.get_mut(&name).unwrap();
-                    for f in fns {
-                        func_vec.push(f);
-                    }
+                    func_vec.splice(0..0, fns);
                 } else {
                     scope.functions.insert(name, fns);
                 }
@@ -2552,9 +2550,7 @@ impl CType {
             for (name, fns) in name_fn_pairs.drain() {
                 if scope.functions.contains_key(&name) {
                     let func_vec = scope.functions.get_mut(&name).unwrap();
-                    for f in fns {
-                        func_vec.push(f);
-                    }
+                    func_vec.splice(0..0, fns);
                 } else {
                     scope.functions.insert(name, fns);
                 }
