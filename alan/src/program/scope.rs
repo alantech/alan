@@ -233,9 +233,7 @@ impl<'a> Scope<'a> {
         for (name, fs) in functions.drain() {
             if self.functions.contains_key(&name) {
                 let func_vec = self.functions.get_mut(&name).unwrap();
-                for f in fs {
-                    func_vec.push(f);
-                }
+                func_vec.splice(0..0, fs);
             } else {
                 self.functions.insert(name, fs);
             }
