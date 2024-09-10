@@ -69,10 +69,13 @@ export ctype Lte{A, B}; // Returns true if A is less than or equal to B
 export ctype Gt{A, B}; // Returns true if A is greater than B
 export ctype Gte{A, B}; // Returns true if A is greater than or equal to B
 
+// Importing the Root Scope backing implementation and supporting 3rd party libraries
+export type RootBacking = Rust{Dependency{"alan_std", "https://github.com/alantech/alan.git"}};
+
 // Defining derived types
 export type void = ();
 export type Self{T} = T;
-export type Error = Binds{"AlanError"};
+export type Error = Binds{Import{"alan_std::AlanError", RootBacking}};
 export type Fallible{T} = Either{T, Error};
 export type Maybe{T} = Either{T, ()};
 export type Test = Eq{Env{"ALAN_TARGET"}, "test"};
@@ -84,7 +87,7 @@ export type infix Function as -> precedence 4; // I -> O, where I is the input a
 export type infix Call as :: precedence 0; // N :: F, where N is the native function (or method) and F is the function type
 export type infix Dependency as @ precedence 1; // N @ V, where N is the name of the dependency and V is the version
 export type infix Import as <- precedence 0; // N <- D, where N is the name of the value to be imported and D is the dependency to pull it from
-export type prefix From as <- precedence 0; // <- D, where D is the dependency to pull a value or values from
+export type prefix From as <= precedence 0; // <- D, where D is the dependency to pull a value or values from, TODO: Switch to <- once disambiguation is fixed
 export type infix Tuple as , precedence 0; // A, B, C, ... The tuple type combines with other tuple types to become a larger tuple type. To have a tuple of tuples, you need to `Group` the inner tuple, eg `(a, b), c`
 export type infix Field as : precedence 1; // Foo: Bar, let's you specify a property access label for the type, useful for syntactic sugar on a tuple type and the Either type (eventually).
 export type infix Either as | precedence 0; // A | B, the type has a singular value from only one of the types at once.
@@ -144,10 +147,10 @@ export type Instant = Binds{"std::time::Instant"};
 export type Duration = Binds{"std::time::Duration"};
 
 // Binding the uuid type
-export type uuid = Binds{"uuid::Uuid"};
+export type uuid = Binds{"alan_std::Uuid" <- RootBacking};
 
 // Binding the Dict and Set types
-export type Dict{K, V} = Binds{"OrderedHashMap", K, V};
+export type Dict{K, V} = Binds{"alan_std::OrderedHashMap" <- RootBacking, K, V};
 export type Set{V} = Binds{"std::collections::HashSet", V};
 
 /// Functions for (potentially) every type
@@ -158,9 +161,9 @@ export fn clone{T} (v: T) -> T = {Method{"clone"} :: T -> T}(v);
 // functions in Rust (as partially implemented here) or it might be better done as a special `hash`
 // function created by the compiler for the specific type *if* ever actually used, walking the
 // CType tree to determine the correct code to run. In either case, this is "good enough" for now.
-export fn hash{T} "hasharray" :: T[] -> i64;
-export fn hash "hashstring" :: string -> i64;
-export fn hash{T} "hash" :: T -> i64;
+export fn hash{T} "alan_std::hasharray" <- RootBacking :: T[] -> i64;
+export fn hash "alan_std::hashstring" <- RootBacking :: string -> i64;
+export fn hash{T} "alan_std::hash" <- RootBacking :: T -> i64;
 export fn void{T}(v: T) -> void {}
 export fn void() -> void {}
 export fn store{T} (a: Mut{T}, b: T) -> T = {"std::mem::replace" :: (Mut{T}, Own{T}) -> T}(a, b);
@@ -190,7 +193,7 @@ export fn i8 Cast{"i8"} :: Deref{u64} -> i8;
 export fn i8 Cast{"i8"} :: Deref{f32} -> i8;
 export fn i8 Cast{"i8"} :: Deref{f64} -> i8;
 // TODO: LOL, what a hack
-export fn i8 Method{"parse().map_err(|s| AlanError { message: stringify(s) }).into"} :: string -> i8!;
+export fn i8 Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"} :: string -> i8!;
 
 export fn i16 Cast{"i16"} :: Deref{i8} -> i16;
 export fn i16(i: i16) = i;
@@ -202,7 +205,7 @@ export fn i16 Cast{"i16"} :: Deref{u32} -> i16;
 export fn i16 Cast{"i16"} :: Deref{u64} -> i16;
 export fn i16 Cast{"i16"} :: Deref{f32} -> i16;
 export fn i16 Cast{"i16"} :: Deref{f64} -> i16;
-export fn i16 Method{"parse().map_err(|s| AlanError { message: stringify(s) }).into"} :: string -> i16!;
+export fn i16 Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"} :: string -> i16!;
 
 export fn i32 Cast{"i32"} :: Deref{i8} -> i32;
 export fn i32 Cast{"i32"} :: Deref{i16} -> i32;
@@ -214,7 +217,7 @@ export fn i32 Cast{"i32"} :: Deref{u32} -> i32;
 export fn i32 Cast{"i32"} :: Deref{u64} -> i32;
 export fn i32 Cast{"i32"} :: Deref{f32} -> i32;
 export fn i32 Cast{"i32"} :: Deref{f64} -> i32;
-export fn i32 Method{"parse().map_err(|s| AlanError { message: stringify(s) }).into"} :: string -> i32!;
+export fn i32 Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"} :: string -> i32!;
 
 export fn i64 Cast{"i64"} :: Deref{i8} -> i64;
 export fn i64 Cast{"i64"} :: Deref{i16} -> i64;
@@ -226,7 +229,7 @@ export fn i64 Cast{"i64"} :: Deref{u32} -> i64;
 export fn i64 Cast{"i64"} :: Deref{u64} -> i64;
 export fn i64 Cast{"i64"} :: Deref{f32} -> i64;
 export fn i64 Cast{"i64"} :: Deref{f64} -> i64;
-export fn i64 Method{"parse().map_err(|s| AlanError { message: stringify(s) }).into"} :: string -> i64!;
+export fn i64 Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"} :: string -> i64!;
 
 export fn u8 Cast{"u8"} :: Deref{i8} -> u8;
 export fn u8 Cast{"u8"} :: Deref{i16} -> u8;
@@ -238,7 +241,7 @@ export fn u8 Cast{"u8"} :: Deref{u32} -> u8;
 export fn u8 Cast{"u8"} :: Deref{u64} -> u8;
 export fn u8 Cast{"u8"} :: Deref{f32} -> u8;
 export fn u8 Cast{"u8"} :: Deref{f64} -> u8;
-export fn u8 Method{"parse().map_err(|s| AlanError { message: stringify(s) }).into"} :: string -> u8!;
+export fn u8 Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"} :: string -> u8!;
 
 export fn u16 Cast{"u16"} :: Deref{i8} -> u16;
 export fn u16 Cast{"u16"} :: Deref{i16} -> u16;
@@ -250,7 +253,7 @@ export fn u16 Cast{"u16"} :: Deref{u32} -> u16;
 export fn u16 Cast{"u16"} :: Deref{u64} -> u16;
 export fn u16 Cast{"u16"} :: Deref{f32} -> u16;
 export fn u16 Cast{"u16"} :: Deref{f64} -> u16;
-export fn u16 Method{"parse().map_err(|s| AlanError { message: stringify(s) }).into"} :: string -> u16!;
+export fn u16 Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"} :: string -> u16!;
 
 export fn u32 Cast{"u32"} :: Deref{i8} -> u32;
 export fn u32 Cast{"u32"} :: Deref{i16} -> u32;
@@ -262,7 +265,7 @@ export fn u32(i: u32) = i;
 export fn u32 Cast{"u32"} :: Deref{u64} -> u32;
 export fn u32 Cast{"u32"} :: Deref{f32} -> u32;
 export fn u32 Cast{"u32"} :: Deref{f64} -> u32;
-export fn u32 Method{"parse().map_err(|s| AlanError { message: stringify(s) }).into"} :: string -> u32!;
+export fn u32 Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"} :: string -> u32!;
 
 export fn u64 Cast{"u64"} :: Deref{i8} -> u64;
 export fn u64 Cast{"u64"} :: Deref{i16} -> u64;
@@ -274,7 +277,7 @@ export fn u64 Cast{"u64"} :: Deref{u32} -> u64;
 export fn u64(u: u64) = u;
 export fn u64 Cast{"u64"} :: Deref{f32} -> u64;
 export fn u64 Cast{"u64"} :: Deref{f64} -> u64;
-export fn u64 Method{"parse().map_err(|s| AlanError { message: stringify(s) }).into"} :: string -> u64!;
+export fn u64 Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"} :: string -> u64!;
 
 export fn f32 Cast{"f32"} :: Deref{i8} -> f32;
 export fn f32 Cast{"f32"} :: Deref{i16} -> f32;
@@ -286,7 +289,7 @@ export fn f32 Cast{"f32"} :: Deref{u32} -> f32;
 export fn f32 Cast{"f32"} :: Deref{u64} -> f32;
 export fn f32(f: f32) = f;
 export fn f32 Cast{"f32"} :: Deref{f64} -> f32;
-export fn f32 Method{"parse().map_err(|s| AlanError { message: stringify(s) }).into"} :: string -> f32!;
+export fn f32 Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"} :: string -> f32!;
 
 export fn f64 Cast{"f64"} :: Deref{i8} -> f64;
 export fn f64 Cast{"f64"} :: Deref{i16} -> f64;
@@ -298,7 +301,7 @@ export fn f64 Cast{"f64"} :: Deref{u32} -> f64;
 export fn f64 Cast{"f64"} :: Deref{u64} -> f64;
 export fn f64 Cast{"f64"} :: Deref{f32} -> f64;
 export fn f64(f: f64) = f;
-export fn f64 Method{"parse().map_err(|s| AlanError { message: stringify(s) }).into"} :: string -> f64!;
+export fn f64 Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"} :: string -> f64!;
 
 export fn bool (i: i8) = {Infix{"!="} :: (Deref{i8}, Deref{i8}) -> bool}(i, 0.i8);
 export fn bool (i: i16) = {Infix{"!="} :: (Deref{i16}, Deref{i16}) -> bool}(i, 0.i16);
@@ -323,7 +326,7 @@ export fn nor (a: bool, b: bool) = a.or(b).not;
 export fn xnor Infix{"=="} :: (bool, bool) -> bool;
 export fn eq Infix{"=="} :: (bool, bool) -> bool;
 export fn neq Infix{"!="} :: (bool, bool) -> bool;
-export fn if{T} "ifbool" :: (bool, () -> T, () -> T) -> T;
+export fn if{T} "alan_std::ifbool" <- RootBacking :: (bool, () -> T, () -> T) -> T;
 export fn if{T}(c: bool, t: () -> T) = if(c, fn () -> Maybe{T} = Maybe{T}(t()), fn () -> Maybe{T} = Maybe{T}());
 export fn if{T}(c: bool, t: T, f: T) = if(c, fn () -> T = t, fn () -> T = f);
 export fn if{T}(c: bool, t: T) = if(c, fn () -> Maybe{T} = Maybe{T}(t), fn () -> Maybe{T} = Maybe{T}());
@@ -593,14 +596,14 @@ export fn repeat (a: string, n: i64) = {Method{"repeat"} :: (string, Deref{Binds
   a,
   {Cast{"usize"} :: Deref{i64} -> Binds{"usize"}}(n));
 export fn replace Method{"replace"} :: (string, string, string) -> string;
-export fn split "splitstring" :: (string, string) -> string[];
+export fn split "alan_std::splitstring" <- RootBacking :: (string, string) -> string[];
 export fn len (s: string) = {Cast{"i64"} :: Deref{Binds{"usize"}} -> i64}(
   {Method{"len"} :: Array{Binds{"char"}} -> Binds{"usize"}}(
     {Method{"collect::<Vec<char>>"} :: Own{Binds{"std::str::Chars"}} -> Array{Binds{"char"}}}(
       {Method{"chars"} :: string -> Binds{"std::str::Chars"}}(s))));
-export fn get "getstring" :: (string, i64) -> string!;
+export fn get "alan_std::getstring" <- RootBacking :: (string, i64) -> string!;
 export fn trim Method{"trim"} :: string -> string;
-export fn index "indexstring" :: (string, string) -> i64!;
+export fn index "alan_std::indexstring" <- RootBacking :: (string, string) -> i64!;
 // TODO: Optimize this by using `as_str` inline, but need a `Str` type, which I *really* don't want to terrorize the user with
 export fn eq Infix{"=="} :: (Own{string}, Own{string}) -> bool;
 export fn neq Infix{"!="} :: (Own{string}, Own{string}) -> bool;
@@ -614,26 +617,26 @@ export fn join Method{"join"} :: (string[], string) -> string;
 export fn join{S}(a: string[S], s: string) = {Method{"join"} :: (string[S], string) -> string}(a, s);
 
 /// Array related bindings
-export fn get{T} "getarray" :: (T[], i64) -> T?;
+export fn get{T} "alan_std::getarray" <- RootBacking :: (T[], i64) -> T?;
 export fn len{T} (a: T[]) -> i64 = {Cast{"i64"} :: Deref{Binds{"usize"}} -> i64}(
   {Method{"len"} :: T[] -> Binds{"usize"}}(a));
 export fn push{T} (a: Mut{T[]}, v: T) = {Method{"push"} :: (Mut{T[]}, Own{T})}(a, v);
 export fn pop{T} (a: Mut{T[]}) -> T? = {Method{"pop"} :: Mut{T[]} -> T?}(a);
-export fn map{T, U} "map_onearg" :: (T[], T -> U) -> U[];
-export fn map{T, U} "map_twoarg" :: (T[], (T, i64) -> U) -> U[];
-export fn parmap{T, U} "parmap_onearg" :: (T[], T -> U) -> U[];
-export fn filter{T} "filter_onearg" :: (T[], T -> bool) -> T[];
-export fn filter{T} "filter_twoarg" :: (T[], (T, i64) -> bool) -> T[];
-export fn reduce{T} "reduce_sametype" :: (T[], (T, T) -> T) -> T?;
-export fn reduce{T} "reduce_sametype_idx" :: (T[], (T, T, i64) -> T) -> T?;
-export fn reduce{T, U} "reduce_difftype" :: (T[], U, (U, T) -> U) -> U;
-export fn reduce{T, U} "reduce_difftype_idx" :: (T[], U, (U, T, i64) -> U) -> U;
-export fn concat{T} "concat" :: (T[], T[]) -> T[];
-export fn append{T} "append" :: (Mut{T[]}, T[]);
-export fn filled{T} "filled" :: (T, i64) -> T[];
+export fn map{T, U} "alan_std::map_onearg" <- RootBacking :: (T[], T -> U) -> U[];
+export fn map{T, U} "alan_std::map_twoarg" <- RootBacking :: (T[], (T, i64) -> U) -> U[];
+export fn parmap{T, U} "alan_std::parmap_onearg" <- RootBacking :: (T[], T -> U) -> U[];
+export fn filter{T} "alan_std::filter_onearg" <- RootBacking :: (T[], T -> bool) -> T[];
+export fn filter{T} "alan_std::filter_twoarg" <- RootBacking :: (T[], (T, i64) -> bool) -> T[];
+export fn reduce{T} "alan_std::reduce_sametype" <- RootBacking :: (T[], (T, T) -> T) -> T?;
+export fn reduce{T} "alan_std::reduce_sametype_idx" <- RootBacking :: (T[], (T, T, i64) -> T) -> T?;
+export fn reduce{T, U} "alan_std::reduce_difftype" <- RootBacking :: (T[], U, (U, T) -> U) -> U;
+export fn reduce{T, U} "alan_std::reduce_difftype_idx" <- RootBacking :: (T[], U, (U, T, i64) -> U) -> U;
+export fn concat{T} "alan_std::concat" <- RootBacking :: (T[], T[]) -> T[];
+export fn append{T} "alan_std::append" <- RootBacking :: (Mut{T[]}, T[]);
+export fn filled{T} "alan_std::filled" <- RootBacking :: (T, i64) -> T[];
 export fn has{T} (a: T[], v: T) = {Method{"contains"} :: (T[], T) -> bool}(a, v);
-export fn has{T} "hasfnarray" :: (T[], T -> bool) -> bool;
-export fn find{T} "findarray" :: (T[], T -> bool) -> T?;
+export fn has{T} "alan_std::hasfnarray" <- RootBacking :: (T[], T -> bool) -> bool;
+export fn find{T} "alan_std::findarray" <- RootBacking :: (T[], T -> bool) -> T?;
 // TODO: The `if` syntactic sugar will make these `if` calls much nicer
 export fn index{T}(a: Array{T}, v: T) = a.reduce(
   Maybe{i64}(),
@@ -644,24 +647,24 @@ export fn index{T}(a: Array{T}, f: (T) -> bool) = a.reduce(
 export fn index{T}(a: Array{T}, f: (T, i64) -> bool) = a.reduce(
   Maybe{i64}(),
   fn (out: Maybe{i64}, val: T, idx: i64) = if(out.exists, out, if(f(val, idx), idx)));
-export fn every{T} "everyarray" :: (T[], T -> bool) -> bool;
-export fn some{T} "somearray" :: (T[], T -> bool) -> bool;
-export fn repeat{T} "repeatarray" :: (T[], i64) -> T[];
-export fn store{T} "storearray" :: (Mut{T[]}, i64, T) -> void!;
-export fn delete{T} "deletearray" :: (Mut{T[]}, i64) -> T!;
+export fn every{T} "alan_std::everyarray" <- RootBacking :: (T[], T -> bool) -> bool;
+export fn some{T} "alan_std::somearray" <- RootBacking :: (T[], T -> bool) -> bool;
+export fn repeat{T} "alan_std::repeatarray" <- RootBacking :: (T[], i64) -> T[];
+export fn store{T} "alan_std::storearray" <- RootBacking :: (Mut{T[]}, i64, T) -> void!;
+export fn delete{T} "alan_std::deletearray" <- RootBacking :: (Mut{T[]}, i64) -> T!;
 
 /// Buffer related bindings
-export fn get{T, S} "getbuffer" :: (T[S], i64) -> T?;
+export fn get{T, S} "alan_std::getbuffer" <- RootBacking :: (T[S], i64) -> T?;
 export fn len{T, S}(T[S]) = {S}();
-export fn map{T, S, U} "mapbuffer_onearg" :: (T[S], T -> U) -> (U[S]);
-export fn map{T, S, U} "mapbuffer_twoarg" :: (T[S], (T, i64) -> U) -> (U[S]);
-export fn reduce{T, S} "reducebuffer_sametype" :: (T[S], (T, T) -> T) -> T?;
-export fn reduce{T, S, U} "reducebuffer_difftype" :: (T[S], U, (U, T) -> U) -> U;
-export fn has{T, S} "hasbuffer" :: (T[S], T) -> bool;
-export fn has{T, S} "hasfnbuffer" :: (T[S], T -> bool) -> bool;
-export fn find{T, S} "findbuffer" :: (T[S], T -> bool) -> T?;
-export fn every{T, S} "everybuffer" :: (T[S], T -> bool) -> bool;
-fn concatInner{T, S, N} "concatbuffer" :: (Mut{T[S + N]}, T[S], T[N]);
+export fn map{T, S, U} "alan_std::mapbuffer_onearg" <- RootBacking :: (T[S], T -> U) -> (U[S]);
+export fn map{T, S, U} "alan_std::mapbuffer_twoarg" <- RootBacking :: (T[S], (T, i64) -> U) -> (U[S]);
+export fn reduce{T, S} "alan_std::reducebuffer_sametype" <- RootBacking :: (T[S], (T, T) -> T) -> T?;
+export fn reduce{T, S, U} "alan_std::reducebuffer_difftype" <- RootBacking :: (T[S], U, (U, T) -> U) -> U;
+export fn has{T, S} "alan_std::hasbuffer" <- RootBacking :: (T[S], T) -> bool;
+export fn has{T, S} "alan_std::hasfnbuffer" <- RootBacking :: (T[S], T -> bool) -> bool;
+export fn find{T, S} "alan_std::findbuffer" <- RootBacking :: (T[S], T -> bool) -> T?;
+export fn every{T, S} "alan_std::everybuffer" <- RootBacking :: (T[S], T -> bool) -> bool;
+fn concatInner{T, S, N} "alan_std::concatbuffer" <- RootBacking :: (Mut{T[S + N]}, T[S], T[N]);
 export fn concat{T, S, N}(a: T[S], b: T[N]) {
   // I can't bind directly into Rust because Rust can't add const integer type parameters together.
   // It's *theoretically* possible to generate a new Rust function in each case with the required
@@ -673,11 +676,11 @@ export fn concat{T, S, N}(a: T[S], b: T[N]) {
 }
 // TODO: Be able to resolve explicit integer constant values as the integer type so it can be
 // grabbed by the type inference system. For now, repeat for buffers outputs an array, instead.
-export fn repeat{T, S} "repeatbuffertoarray" :: (T[S], i64) -> T[];
-export fn store{T, S} "storebuffer" :: (Mut{T[S]}, i64, T) -> T!;
+export fn repeat{T, S} "alan_std::repeatbuffertoarray" <- RootBacking :: (T[S], i64) -> T[];
+export fn store{T, S} "alan_std::storebuffer" <- RootBacking :: (Mut{T[S]}, i64, T) -> T!;
 
 /// Dictionary-related bindings
-export fn Dict{K, V} "OrderedHashMap::new" :: () -> Dict{K, V};
+export fn Dict{K, V} "alan_std::OrderedHashMap::new" <- RootBacking :: () -> Dict{K, V};
 export fn Dict{K, V}(k: K, v: V) {
   let out = Dict{K, V}();
   out.store(k, v);
@@ -690,17 +693,17 @@ export fn Dict{K, V}(a: Array{(K, V)}) = a.reduce(Dict{K, V}(), fn (d: Dict{K, V
 export fn store{K, V} (d: Mut{Dict{K, V}}, k: K, v: V) {
   {Method{"insert"} :: (Mut{Dict{K, V}}, Own{K}, Own{V}) -> V?}(d, k, v);
 }
-export fn get{K, V} "getdict" :: (Dict{K, V}, K) -> V?;
+export fn get{K, V} "alan_std::getdict" <- RootBacking :: (Dict{K, V}, K) -> V?;
 export fn has{K, V} (d: Dict{K, V}, k: K) = {Method{"contains_key"} :: (Dict{K, V}, K) -> bool}(d, k);
 export fn len{K, V} (d: Dict{K, V}) = {Cast{"i64"} :: Deref{Binds{"usize"}} -> i64}(
   {Method{"len"} :: Dict{K, V} -> Binds{"usize"}}(d));
-export fn keys{K, V} "keysdict" :: Dict{K, V} -> K[];
-export fn vals{K, V} "valsdict" :: Dict{K, V} -> V[];
-export fn Array{K, V} "arraydict" :: Dict{K, V} -> (K, V)[];
-export fn concat{K, V} "concatdict" :: (Dict{K, V}, Dict{K, V}) -> Dict{K, V};
+export fn keys{K, V} "alan_std::keysdict" <- RootBacking :: Dict{K, V} -> K[];
+export fn vals{K, V} "alan_std::valsdict" <- RootBacking :: Dict{K, V} -> V[];
+export fn Array{K, V} "alan_std::arraydict" <- RootBacking :: Dict{K, V} -> (K, V)[];
+export fn concat{K, V} "alan_std::concatdict" <- RootBacking :: (Dict{K, V}, Dict{K, V}) -> Dict{K, V};
 
 /// Set-related bindings
-export fn Set{V} "HashSet::new" :: () -> Set{V};
+export fn Set{V} "std::collections::HashSet::new" :: () -> Set{V};
 export fn Set{V}(a: Array{V}) = a.reduce(Set{V}(), fn (s: Set{V}, v: V) {
   s.store(v);
   return s;
@@ -716,16 +719,16 @@ export fn store{V} (s: Mut{Set{V}}, v: V) {
 export fn has{V} (s: Set{V}, v: V) = {Method{"contains"} :: (Set{V}, V) -> bool}(s, v);
 export fn len{V} (s: Set{V}) = {Cast{"i64"} :: Deref{Binds{"usize"}} -> i64}(
   {Method{"len"} :: Set{V} -> Binds{"usize"}}(s));
-export fn Array{V} "arrayset" :: Set{V} -> V[];
-export fn union{V} "unionset" :: (Set{V}, Set{V}) -> Set{V};
+export fn Array{V} "alan_std::arrayset" <- RootBacking :: Set{V} -> V[];
+export fn union{V} "alan_std::unionset" <- RootBacking :: (Set{V}, Set{V}) -> Set{V};
 export fn or{V}(a: Set{V}, b: Set{V}) = union(a, b);
-export fn intersect{V} "intersectset" :: (Set{V}, Set{V}) -> Set{V};
+export fn intersect{V} "alan_std::intersectset" <- RootBacking :: (Set{V}, Set{V}) -> Set{V};
 export fn and{V}(a: Set{V}, b: Set{V}) = intersect(a, b);
-export fn difference{V} "differenceset" :: (Set{V}, Set{V}) -> Set{V};
+export fn difference{V} "alan_std::differenceset" <- RootBacking :: (Set{V}, Set{V}) -> Set{V};
 export fn div{V}(a: Set{V}, b: Set{V}) = difference(a, b);
-export fn symmetricDifference{V} "symmetric_differenceset" :: (Set{V}, Set{V}) -> Set{V};
+export fn symmetricDifference{V} "alan_std::symmetric_differenceset" <- RootBacking :: (Set{V}, Set{V}) -> Set{V};
 export fn xor{V}(a: Set{V}, b: Set{V}) = symmetricDifference(a, b);
-export fn product{V} "productset" :: (Set{V}, Set{V}) -> Set{(V, V)};
+export fn product{V} "alan_std::productset" <- RootBacking :: (Set{V}, Set{V}) -> Set{(V, V)};
 export fn mul{V}(a: Set{V}, b: Set{V}) = product(a, b);
 
 /// Tree implementation
@@ -854,26 +857,26 @@ export fn now "std::time::Instant::now" :: () -> Instant;
 export fn elapsed Method{"elapsed"} :: Instant -> Duration;
 
 /// Uuid-related bindings
-export fn uuid "uuid::Uuid::new_v4" :: () -> uuid;
+export fn uuid "alan_std::Uuid::new_v4" <- RootBacking :: () -> uuid;
 export fn string "format!" :: ("{}", uuid) -> string;
 
 /// GPU-related bindings
 
 // The base bindings to create buffers of memory on the GPU, construct a plan for a compute shader,
 // execute it, and read the buffer back to the CPU
-export type BufferUsages = Binds{"wgpu::BufferUsages"};
-export type GBuffer = Binds{"GBuffer"};
-export type GPGPU = Binds{"GPGPU"};
-export fn mapReadBuffer "map_read_buffer_type" :: () -> BufferUsages;
-export fn storageBuffer "storage_buffer_type" :: () -> BufferUsages;
-export fn GBuffer "create_buffer_init" :: (BufferUsages, i32[]) -> GBuffer;
-export fn GBuffer "create_empty_buffer" :: (BufferUsages, i64) -> GBuffer;
+export type BufferUsages = Binds{"alan_std::BufferUsages" <- RootBacking};
+export type GBuffer = Binds{"alan_std::GBuffer" <- RootBacking};
+export type GPGPU = Binds{"alan_std::GPGPU" <- RootBacking};
+export fn mapReadBuffer "alan_std::map_read_buffer_type" <- RootBacking :: () -> BufferUsages;
+export fn storageBuffer "alan_std::storage_buffer_type" <- RootBacking :: () -> BufferUsages;
+export fn GBuffer "alan_std::create_buffer_init" <- RootBacking :: (BufferUsages, i32[]) -> GBuffer;
+export fn GBuffer "alan_std::create_empty_buffer" <- RootBacking :: (BufferUsages, i64) -> GBuffer;
 export fn GBuffer(vals: i32[]) = GBuffer(storageBuffer(), vals);
 export fn GBuffer{T}(vals: T[]) = GBuffer(storageBuffer(), vals.map(fn (v: T) -> i32 = v.i32));
 export fn GBuffer(size: i64) = GBuffer(storageBuffer(), size);
-export fn len "bufferlen" :: GBuffer -> i64;
-export fn id "buffer_id" :: GBuffer -> string;
-export fn GPGPU "GPGPU::new" :: (Own{string}, Own{Array{Array{GBuffer}}}, Deref{i64[3]}) -> GPGPU;
+export fn len "alan_std::bufferlen" <- RootBacking :: GBuffer -> i64;
+export fn id "alan_std::buffer_id" <- RootBacking :: GBuffer -> string;
+export fn GPGPU "alan_std::GPGPU::new" <- RootBacking :: (Own{string}, Own{Array{Array{GBuffer}}}, Deref{i64[3]}) -> GPGPU;
 export fn GPGPU(src: string, buf: GBuffer) -> GPGPU {
   // In order to support larger arrays, we need to split the buffer length across them. Each of
   // indices is allowed to be up to 65535 (yes, a 16-bit integer) leading to a maximum length of
@@ -902,8 +905,8 @@ export fn GPGPU(src: string, buf: GBuffer) -> GPGPU {
   let x = max(yRem, 1);
   return GPGPU(src, [[buf]], {i64[3]}(x, y, z));
 }
-export fn run "gpu_run" :: GPGPU;
-export fn read{T} "read_buffer" :: GBuffer -> T[];
+export fn run "alan_std::gpu_run" <- RootBacking :: GPGPU;
+export fn read{T} "alan_std::read_buffer" <- RootBacking :: GBuffer -> T[];
 
 // The WgpuType provides a mechanism to build up the logic for a compute shader with normal-looking
 // Alan code, not requiring to think in two different languages at the same time. All of the GPU
