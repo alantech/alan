@@ -1,8 +1,9 @@
-use crate::compile::{compile, test, to_rs};
+use crate::compile::{compile, test, to_js, to_rs};
 use crate::program::Program;
 use clap::{Parser, Subcommand};
 
 mod compile;
+mod lntojs;
 mod lntors;
 mod parse;
 mod program;
@@ -33,6 +34,15 @@ enum Commands {
         #[arg(
             value_name = "LN_FILE",
             help = ".ln source file to transpile to Rust.",
+            default_value = "./index.ln"
+        )]
+        file: String,
+    },
+    #[command(about = "Compile .ln file(s) to Javascript")]
+    ToJs {
+        #[arg(
+            value_name = "LN_FILE",
+            help = ".ln source file to transpile to Javascript.",
             default_value = "./index.ln"
         )]
         file: String,
@@ -68,6 +78,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Some(Commands::Compile { file }) => Ok(compile(file.to_string())?),
             Some(Commands::Test { file }) => Ok(test(file.to_string())?),
             Some(Commands::ToRs { file }) => Ok(to_rs(file.to_string())?),
+            Some(Commands::ToJs { file }) => Ok(to_js(file.to_string())?),
             _ => Err("Command not yet supported".into()),
         }
     }

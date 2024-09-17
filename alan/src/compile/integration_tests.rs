@@ -25,6 +25,7 @@ macro_rules! test {
                     }
                 };
                 std::env::set_var("ALAN_TARGET", "test");
+                std::env::set_var("ALAN_OUTPUT_LANG", "rs");
                 match crate::compile::build(filename.to_string()) {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
@@ -61,6 +62,7 @@ macro_rules! test_ignore {
                     }
                 };
                 std::env::set_var("ALAN_TARGET", "test");
+                std::env::set_var("ALAN_OUTPUT_LANG", "rs");
                 match crate::compile::build(filename.to_string()) {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {

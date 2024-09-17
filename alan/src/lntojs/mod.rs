@@ -1,12 +1,12 @@
 use ordered_hash_map::OrderedHashMap;
 
-use crate::lntors::function::generate as fn_generate;
+use crate::lntojs::function::generate as fn_generate;
 use crate::program::Program;
 
 mod function;
 mod typen;
 
-pub fn lntors(
+pub fn lntojs(
     entry_file: String,
 ) -> Result<(String, OrderedHashMap<String, String>), Box<dyn std::error::Error>> {
     let program = Program::new(entry_file)?;
@@ -42,7 +42,7 @@ pub fn lntors(
     // arguments.
     assert_eq!(func.len(), 1);
     assert_eq!(func[0].args().len(), 0);
-    // Assertion proven, start emitting the Rust `main` function
+    // Assertion proven, start emitting the `main` function to run as an IIFE
     let (fns, deps) = fn_generate(
         "main".to_string(),
         &func[0],
@@ -50,5 +50,11 @@ pub fn lntors(
         OrderedHashMap::new(),
         OrderedHashMap::new(),
     )?;
-    Ok((fns.into_values().collect::<Vec<String>>().join("\n"), deps))
+    Ok((
+        format!(
+            "{}\nmain();",
+            fns.into_values().collect::<Vec<String>>().join("\n")
+        ),
+        deps,
+    ))
 }

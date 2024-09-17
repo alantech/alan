@@ -8,6 +8,7 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use dirs::config_dir;
 use fs2::FileExt;
 
+use crate::lntojs::lntojs;
 use crate::lntors::lntors;
 
 mod integration_tests;
@@ -378,6 +379,7 @@ edition = "2021"
 pub fn compile(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
     let start_time = Instant::now();
     set_var("ALAN_TARGET", "release");
+    set_var("ALAN_OUTPUT_LANG", "rs");
     build(source_file)?;
     println!("Done! Took {:.2}sec", start_time.elapsed().as_secs_f32());
     Ok(())
@@ -387,6 +389,7 @@ pub fn compile(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
 /// test mode, then immediately invokes it, and deletes the binary when done.
 pub fn test(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
     set_var("ALAN_TARGET", "test");
+    set_var("ALAN_OUTPUT_LANG", "rs");
     let binary = build(source_file)?;
     let mut run = Command::new(format!("./{}", binary))
         .current_dir(current_dir()?)
@@ -410,6 +413,7 @@ pub fn test(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
 /// file.
 pub fn to_rs(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
     set_var("ALAN_TARGET", "release");
+    set_var("ALAN_OUTPUT_LANG", "rs");
     // Generate the rust code to compile
     let (rs_str, deps) = lntors(source_file.clone())?;
     // Shove it into a temp file for rustc
@@ -439,6 +443,44 @@ pub fn to_rs(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
                 .join("\n")
         );
         write("Cargo.toml", cargo_str)?;
+    }
+    Ok(())
+}
+
+/// The `to_js` function is an thin wrapper on top of `lntojs` that shoves the output into a `.js`
+/// file.
+pub fn to_js(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
+    set_var("ALAN_TARGET", "release");
+    set_var("ALAN_OUTPUT_LANG", "js");
+    // Generate the rust code to compile
+    let (js_str, deps) = lntojs(source_file.clone())?;
+    // Shove it into a temp file for rustc
+    let out_file = match PathBuf::from(source_file.clone()).file_stem() {
+        Some(pb) => format!("{}.js", pb.to_string_lossy()),
+        None => {
+            return Err("Invalid path".into());
+        }
+    };
+    write(out_file, js_str)?;
+    if !deps.is_empty() {
+        let pkg_str = format!(
+            "{{\n  \"name\": \"{}\",\n  \"main\": \"{}.js\",\n  \"dependencies\": {{\n    {}\n  }}\n}}",
+            PathBuf::from(source_file.clone())
+                .file_stem()
+                .unwrap()
+                .to_string_lossy(),
+            PathBuf::from(source_file)
+                .file_stem()
+                .unwrap()
+                .to_string_lossy(),
+            deps.iter()
+                .map(|(k, v)| {
+                    format!("    \"{}\": \"{}\"", k, v)
+                })
+                .collect::<Vec<String>>()
+                .join(",\n")
+        );
+        write("package.json", pkg_str)?;
     }
     Ok(())
 }
