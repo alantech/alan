@@ -261,7 +261,7 @@ pub fn generate(
     Box<dyn std::error::Error>,
 > {
     let res = ctype_to_jtype(typen, deps)?;
-    if &res.0 != "" {
+    if !res.0.is_empty() {
         out.insert(typen.to_callable_string(), res.0.clone());
     }
     Ok((res.0, out, res.1))

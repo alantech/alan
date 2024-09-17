@@ -5,7 +5,6 @@ use crate::program::{ArgKind, CType, FnKind, Function, Microstatement, Scope};
 
 pub fn from_microstatement(
     microstatement: &Microstatement,
-    parent_fn: &Function,
     scope: &Scope,
     mut out: OrderedHashMap<String, String>,
     mut deps: OrderedHashMap<String, String>,
@@ -34,7 +33,7 @@ pub fn from_microstatement(
             value,
             mutable,
         } => {
-            let (val, o, d) = from_microstatement(value, parent_fn, scope, out, deps)?;
+            let (val, o, d) = from_microstatement(value, scope, out, deps)?;
             out = o;
             deps = d;
             if *mutable {
@@ -51,7 +50,7 @@ pub fn from_microstatement(
                 .collect::<Vec<String>>();
             let mut inner_statements = Vec::new();
             for ms in &function.microstatements {
-                let (val, o, d) = from_microstatement(ms, parent_fn, scope, out, deps)?;
+                let (val, o, d) = from_microstatement(ms, scope, out, deps)?;
                 out = o;
                 deps = d;
                 inner_statements.push(val);
@@ -231,7 +230,7 @@ pub fn from_microstatement(
         Microstatement::Array { vals, .. } => {
             let mut val_representations = Vec::new();
             for val in vals {
-                let (rep, o, d) = from_microstatement(val, parent_fn, scope, out, deps)?;
+                let (rep, o, d) = from_microstatement(val, scope, out, deps)?;
                 val_representations.push(rep);
                 out = o;
                 deps = d;
@@ -273,7 +272,7 @@ pub fn from_microstatement(
                     // Now call this function
                     let mut argstrs = Vec::new();
                     for arg in args {
-                        let (a, o, d) = from_microstatement(arg, parent_fn, scope, out, deps)?;
+                        let (a, o, d) = from_microstatement(arg, scope, out, deps)?;
                         out = o;
                         deps = d;
                         argstrs.push(a);
@@ -323,7 +322,7 @@ pub fn from_microstatement(
                 FnKind::Bind(jsname) | FnKind::ExternalBind(jsname, _) => {
                     let mut argstrs = Vec::new();
                     for arg in args {
-                        let (a, o, d) = from_microstatement(arg, parent_fn, scope, out, deps)?;
+                        let (a, o, d) = from_microstatement(arg, scope, out, deps)?;
                         out = o;
                         deps = d;
                         argstrs.push(a);
@@ -439,7 +438,7 @@ pub fn from_microstatement(
                     deps = d;
                     let mut argstrs = Vec::new();
                     for arg in args {
-                        let (a, o, d) = from_microstatement(arg, parent_fn, scope, out, deps)?;
+                        let (a, o, d) = from_microstatement(arg, scope, out, deps)?;
                         out = o;
                         deps = d;
                         argstrs.push(a.to_string());
@@ -1090,7 +1089,7 @@ pub fn from_microstatement(
         Microstatement::VarCall { name, args, .. } => {
             let mut argstrs = Vec::new();
             for arg in args {
-                let (a, o, d) = from_microstatement(arg, parent_fn, scope, out, deps)?;
+                let (a, o, d) = from_microstatement(arg, scope, out, deps)?;
                 out = o;
                 deps = d;
                 argstrs.push(a);
@@ -1103,7 +1102,7 @@ pub fn from_microstatement(
         }
         Microstatement::Return { value } => match value {
             Some(val) => {
-                let (retval, o, d) = from_microstatement(val, parent_fn, scope, out, deps)?;
+                let (retval, o, d) = from_microstatement(val, scope, out, deps)?;
                 out = o;
                 deps = d;
                 Ok((format!("return {}", retval), out, deps))
