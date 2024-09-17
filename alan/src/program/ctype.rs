@@ -79,29 +79,77 @@ impl CType {
     // TODO: Find a better way to handle these primitive types
     pub fn i64() -> CType {
         match std::env::var("ALAN_OUTPUT_LANG").unwrap().as_str() {
-            "rs" => CType::Binds(Box::new(CType::TString("i64".to_string())), Vec::new()),
-            "js" => CType::Binds(Box::new(CType::TString("BigInt".to_string())), Vec::new()),
+            "rs" => CType::Type(
+                "i64".to_string(),
+                Box::new(CType::Binds(
+                    Box::new(CType::TString("i64".to_string())),
+                    Vec::new(),
+                )),
+            ),
+            "js" => CType::Type(
+                "i64".to_string(),
+                Box::new(CType::Binds(
+                    Box::new(CType::TString("BigInt".to_string())),
+                    Vec::new(),
+                )),
+            ),
             _ => unreachable!(),
         }
     }
     pub fn f64() -> CType {
         match std::env::var("ALAN_OUTPUT_LANG").unwrap().as_str() {
-            "rs" => CType::Binds(Box::new(CType::TString("f64".to_string())), Vec::new()),
-            "js" => CType::Binds(Box::new(CType::TString("Number".to_string())), Vec::new()),
+            "rs" => CType::Type(
+                "f64".to_string(),
+                Box::new(CType::Binds(
+                    Box::new(CType::TString("f64".to_string())),
+                    Vec::new(),
+                )),
+            ),
+            "js" => CType::Type(
+                "f64".to_string(),
+                Box::new(CType::Binds(
+                    Box::new(CType::TString("Number".to_string())),
+                    Vec::new(),
+                )),
+            ),
             _ => unreachable!(),
         }
     }
     pub fn bool() -> CType {
         match std::env::var("ALAN_OUTPUT_LANG").unwrap().as_str() {
-            "rs" => CType::Binds(Box::new(CType::TString("bool".to_string())), Vec::new()),
-            "js" => CType::Binds(Box::new(CType::TString("Boolean".to_string())), Vec::new()),
+            "rs" => CType::Type(
+                "bool".to_string(),
+                Box::new(CType::Binds(
+                    Box::new(CType::TString("bool".to_string())),
+                    Vec::new(),
+                )),
+            ),
+            "js" => CType::Type(
+                "bool".to_string(),
+                Box::new(CType::Binds(
+                    Box::new(CType::TString("Boolean".to_string())),
+                    Vec::new(),
+                )),
+            ),
             _ => unreachable!(),
         }
     }
     pub fn string() -> CType {
         match std::env::var("ALAN_OUTPUT_LANG").unwrap().as_str() {
-            "rs" => CType::Binds(Box::new(CType::TString("String".to_string())), Vec::new()),
-            "js" => CType::Binds(Box::new(CType::TString("String".to_string())), Vec::new()),
+            "rs" => CType::Type(
+                "string".to_string(),
+                Box::new(CType::Binds(
+                    Box::new(CType::TString("String".to_string())),
+                    Vec::new(),
+                )),
+            ),
+            "js" => CType::Type(
+                "string".to_string(),
+                Box::new(CType::Binds(
+                    Box::new(CType::TString("String".to_string())),
+                    Vec::new(),
+                )),
+            ),
             _ => unreachable!(),
         }
     }
