@@ -1158,7 +1158,7 @@ pub fn generate(
     )
     .to_string();
     for microstatement in &function.microstatements {
-        let (stmt, o, d) = from_microstatement(microstatement, function, scope, out, deps)?;
+        let (stmt, o, d) = from_microstatement(microstatement, scope, out, deps)?;
         out = o;
         deps = d;
         fn_string = format!("{}    {};\n", fn_string, stmt);
