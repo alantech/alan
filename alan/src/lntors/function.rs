@@ -63,8 +63,7 @@ pub fn from_microstatement(
                         Some(s) => s,
                         None => &val,
                     }
-                )
-                .to_string(),
+                ),
                 out,
                 deps,
             ))
@@ -179,8 +178,7 @@ pub fn from_microstatement(
                                 }
                                 // Come up with a function name that is unique so Rust doesn't choke on
                                 // duplicate function names that are allowed in Alan
-                                let rustname =
-                                    format!("{}_{}", fun.name, arg_strs.join("_")).to_string();
+                                let rustname = format!("{}_{}", fun.name, arg_strs.join("_"));
                                 // Make the function we need, but with the name we're
                                 let res = generate(rustname.clone(), fun, scope, out, deps)?;
                                 out = res.0;
@@ -282,7 +280,7 @@ pub fn from_microstatement(
                 deps = d;
             }
             Ok((
-                format!("vec![{}]", val_representations.join(", ")).to_string(),
+                format!("vec![{}]", val_representations.join(", ")),
                 out,
                 deps,
             ))
@@ -1554,8 +1552,7 @@ pub fn from_microstatement(
                             Some(v) => v,
                             None => &retval,
                         }
-                    )
-                    .to_string(),
+                    ),
                     out,
                     deps,
                 ))

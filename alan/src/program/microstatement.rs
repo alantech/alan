@@ -277,25 +277,13 @@ pub fn baseassignablelist_to_microstatements<'a>(
                 match c {
                     parse::Constants::Bool(b) => {
                         prior_value = Some(Microstatement::Value {
-                            typen: CType::Type(
-                                "bool".to_string(),
-                                Box::new(CType::Binds(
-                                    Box::new(CType::TString("bool".to_string())),
-                                    Vec::new(),
-                                )),
-                            ),
+                            typen: CType::bool(),
                             representation: b.clone(),
                         });
                     }
                     parse::Constants::Strn(s) => {
                         prior_value = Some(Microstatement::Value {
-                            typen: CType::Type(
-                                "string".to_string(),
-                                Box::new(CType::Binds(
-                                    Box::new(CType::TString("String".to_string())),
-                                    Vec::new(),
-                                )),
-                            ),
+                            typen: CType::string(),
                             representation: if s.starts_with('"') {
                                 s.clone()
                             } else {
@@ -312,13 +300,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                             prior_value = Some(Microstatement::Value {
                                 // TODO: Replace this with the `CType::Float` and have built-ins
                                 // that accept them
-                                typen: CType::Type(
-                                    "f64".to_string(),
-                                    Box::new(CType::Binds(
-                                        Box::new(CType::TString("f64".to_string())),
-                                        Vec::new(),
-                                    )),
-                                ),
+                                typen: CType::f64(),
                                 representation: r.clone(),
                             });
                         }
@@ -326,13 +308,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                             prior_value = Some(Microstatement::Value {
                                 // TODO: Replace this with `CType::Int` and have built-ins that
                                 // accept them
-                                typen: CType::Type(
-                                    "i64".to_string(),
-                                    Box::new(CType::Binds(
-                                        Box::new(CType::TString("i64".to_string())),
-                                        Vec::new(),
-                                    )),
-                                ),
+                                typen: CType::i64(),
                                 representation: i.clone(),
                             });
                         }

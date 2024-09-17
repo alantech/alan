@@ -1,0 +1,25 @@
+{
+  "name": "alan_std",
+  "version": "0.2.0",
+  "description": "The Alan Language standard library backing for Javascript",
+  "main": "alan_std.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alantech/alan.git"
+  },
+  "keywords": [
+    "alan",
+    "std",
+    "gpgpu",
+    "webgpu"
+  ],
+  "author": "David Ellis <isv.damocles@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/alantech/alan/issues"
+  },
+  "homepage": "https://github.com/alantech/alan#readme"
+}
