@@ -24,9 +24,15 @@ macro_rules! test {
                         return Err(format!("Unable to write {} to disk. {:?}", filename, e).into());
                     }
                 };
-                std::env::set_var("ALAN_TARGET", "test");
-                std::env::set_var("ALAN_OUTPUT_LANG", "rs");
-                match crate::compile::build(filename.to_string()) {
+                match std::process::Command::new("cargo")
+                    .env("ALAN_TARGET", "test")
+                    .env_remove("ALAN_OUTPUT_LANG")
+                    .arg("run")
+                    .arg("--release")
+                    .arg("--")
+                    .arg("compile")
+                    .arg(filename.clone())
+                    .output() {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
                         std::fs::remove_file(&filename)?;
@@ -47,12 +53,11 @@ macro_rules! test {
         }
     }
 }
-macro_rules! test_ignore {
+macro_rules! test_full {
     ( $rule: ident => $code:expr; $( $type:ident $test_val:expr);+ $(;)? ) => {
         #[cfg(test)]
         mod $rule {
             #[test]
-            #[ignore]
             fn $rule() -> Result<(), Box<dyn std::error::Error>> {
                 let filename = format!("{}.ln", stringify!($rule));
                 match std::fs::write(&filename, $code) {
@@ -61,9 +66,15 @@ macro_rules! test_ignore {
                         return Err(format!("Unable to write {} to disk. {:?}", filename, e).into());
                     }
                 };
-                std::env::set_var("ALAN_TARGET", "test");
-                std::env::set_var("ALAN_OUTPUT_LANG", "rs");
-                match crate::compile::build(filename.to_string()) {
+                match std::process::Command::new("cargo")
+                    .env("ALAN_TARGET", "test")
+                    .env_remove("ALAN_OUTPUT_LANG")
+                    .arg("run")
+                    .arg("--release")
+                    .arg("--")
+                    .arg("compile")
+                    .arg(filename.clone())
+                    .output() {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
                         std::fs::remove_file(&filename)?;
@@ -75,14 +86,61 @@ macro_rules! test_ignore {
                 } else {
                     format!("./{}", stringify!($rule))
                 };
-                let run = std::process::Command::new(cmd.clone()).output()?;
+                let run = match std::process::Command::new(cmd.clone()).output() {
+                    Ok(a) => Ok(a),
+                    Err(e) => Err(format!("Could not run the test binary {:?}", e)),
+                }?;
                 $( $type!($test_val, &run); )+
+                match std::fs::remove_file(&cmd) {
+                    Ok(a) => Ok(a),
+                    Err(e) => Err(format!("Could not remove the test binary {:?}", e)),
+                }?;
+                match std::process::Command::new("cargo")
+                    .env("ALAN_TARGET", "test")
+                    .env_remove("ALAN_OUTPUT_LANG")
+                    .arg("run")
+                    .arg("--release")
+                    .arg("--")
+                    .arg("bundle")
+                    .arg(filename.clone())
+                    .output() {
+                    Ok(_) => { /* Do nothing */ }
+                    Err(e) => {
+                        std::fs::remove_file(&filename)?;
+                        return Err(format!("Failed to compile {:?}", e).into());
+                    }
+                };
+                let cmd = if cfg!(windows) {
+                    format!(".\\{}.js", stringify!($rule))
+                } else {
+                    format!("./{}.js", stringify!($rule))
+                };
+                let run = match std::process::Command::new("node").arg(cmd.to_string()).output() {
+                    Ok(a) => Ok(a),
+                    Err(e) => Err(format!("Could not run the test JS code {:?}", e)),
+                }?;
+                $( $type!($test_val, &run); )+
+                match std::fs::remove_file(&cmd) {
+                    Ok(a) => Ok(a),
+                    Err(e) => Err(format!("Could not remove the generated JS file {:?}", e)),
+                }?;
                 std::fs::remove_file(&filename)?;
-                std::fs::remove_file(&cmd)?;
                 Ok(())
             }
         }
     }
+}
+macro_rules! test_ignore {
+    ( $rule: ident => $code:expr; $( $type:ident $test_val:expr);+ $(;)? ) => {
+        #[cfg(test)]
+        mod $rule {
+            #[test]
+            #[ignore]
+            fn $rule() -> Result<(), Box<dyn std::error::Error>> {
+                Ok(())
+            }
+        }
+    };
 }
 macro_rules! test_compile_error {
     ( $rule: ident => $code:expr; error $test_val:expr; ) => {
@@ -160,7 +218,7 @@ macro_rules! status {
 }
 
 // The gold standard test. If you can't do this, are you even a language at all? :P
-test!(hello_world => r#"
+test_full!(hello_world => r#"
     export fn main() -> () {
         print('Hello, World!');
     }"#;

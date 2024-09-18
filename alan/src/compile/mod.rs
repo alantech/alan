@@ -1,4 +1,4 @@
-use std::env::{current_dir, set_var};
+use std::env::{current_dir, set_var, var};
 use std::fs::{create_dir_all, remove_file, write, File};
 use std::io::Read;
 use std::path::PathBuf;
@@ -15,8 +15,7 @@ mod integration_tests;
 
 /// The `build` function creates a temporary directory that is a Cargo project primarily consisting
 /// of a single source file, plus a Cargo.toml file including the 3rd party dependencies in the
-/// standard library. While this *should* be some configurable thing in the standard library code
-/// instead, the contents of the Cargo.toml are just hardwired in here for now.
+/// standard library and user source code.
 pub fn build(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
     let find_process = if cfg!(windows) { "where" } else { "which" };
     // Fail if rustc is not present
@@ -378,7 +377,9 @@ edition = "2021"
 /// mode and exits, printing the time it took to run on success.
 pub fn compile(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
     let start_time = Instant::now();
-    set_var("ALAN_TARGET", "release");
+    if let Err(_) = var("ALAN_TARGET") {
+        set_var("ALAN_TARGET", "release");
+    }
     set_var("ALAN_OUTPUT_LANG", "rs");
     build(source_file)?;
     println!("Done! Took {:.2}sec", start_time.elapsed().as_secs_f32());
@@ -409,10 +410,257 @@ pub fn test(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+/// The `web` function creates a temporary directory that is an NPM project, primarily consisting
+/// of a single source file, plus a package.json file including third party dependencies in the
+/// standard library and user source code.
+pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
+    let find_process = if cfg!(windows) { "where" } else { "which" };
+    // Fail if node is not present
+    match Command::new(find_process).arg("node").output() {
+        Ok(a) => Ok(a),
+        Err(_) => {
+            Err("node not found. Please make sure you have node.js installed before using Alan!")
+        }
+    }?;
+    // Also fail if npm is not present
+    match Command::new(find_process).arg("npm").output() {
+        Ok(a) => Ok(a),
+        Err(_) => {
+            Err("npm not found. Please make sure you have node.js installed before using Alan!")
+        }
+    }?;
+    let config_dir = match config_dir() {
+        Some(c) => Ok(c),
+        None => Err("Somehow no configuration directory exists on this operating system"),
+    }?;
+    let alan_config = {
+        // All this because `push` is not chainable :/
+        let mut a = config_dir.clone();
+        a.push("alan");
+        a
+    };
+    let lockfile_path = {
+        let mut l = alan_config.clone();
+        l.push(".lockfile");
+        l
+    };
+    let project_dir = {
+        let mut p = alan_config.clone();
+        p.push("alan_generated_bundle");
+        p
+    };
+    let package_json_path = {
+        let mut c = project_dir.clone();
+        c.push("package.json");
+        c
+    };
+    let first_time = !alan_config.exists() || !lockfile_path.exists();
+    if first_time {
+        create_dir_all(alan_config.clone())?;
+        match write(
+            lockfile_path.clone(),
+            format!(
+                "{}",
+                SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs()
+            )
+            .as_bytes(),
+        ) {
+            Ok(a) => Ok(a),
+            Err(e) => Err(format!("Failed to write to lockfile: {:?}", e)),
+        }?;
+    }
+    let lockfile = File::open(lockfile_path.as_path())?;
+    if cfg!(windows) {
+        let timeout = std::time::Duration::from_secs(180);
+        let sleep_time = std::time::Duration::from_millis(100);
+        let mut now = std::time::Instant::now();
+        let expiry = now + timeout;
+        let mut locked = false;
+        while now < expiry {
+            match lockfile.lock_exclusive() {
+                Err(_) => std::thread::sleep(sleep_time),
+                Ok(_) => {
+                    locked = true;
+                    break;
+                }
+            }
+            now = std::time::Instant::now();
+        }
+        if !locked {
+            return Err("Could not lock the lockfile".into());
+        }
+    } else {
+        match lockfile.lock_exclusive() {
+            Ok(a) => Ok(a),
+            Err(e) => Err(format!("Could not acquire the lock {:?}", e)),
+        }?;
+    }
+    if first_time || !project_dir.exists() {
+        // First time initialization of the alan config directory
+        match create_dir_all(project_dir.clone()) {
+            Ok(a) => Ok(a),
+            Err(e) => {
+                lockfile.unlock()?;
+                Err(format!("Could not create the project directory {:?}", e))
+            }
+        }?;
+    }
+    // We need to remove the prior bundle, if it exists, to prevent a prior successful compilation
+    // from accidentally being treated as the output of an unsuccessful compilation.
+    match Command::new("rm")
+        .current_dir(project_dir.clone())
+        .arg("bundle.js")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+    {
+        Ok(a) => Ok(a),
+        Err(e) => {
+            lockfile.unlock()?;
+            Err(format!("Could not delete the prior bundle.js file {:?}", e))
+        }
+    }?;
+    // Generate the js code to bundle
+    let (js_str, deps) = match lntojs(source_file.clone()) {
+        Ok(s) => Ok(s),
+        Err(e) => {
+            lockfile.unlock()?;
+            Err(format!("Could not generate the Javascript code {:?}", e))
+        }
+    }?;
+    // Always write the `package.json` file, in case the cache is out-of-date from a prior version of
+    // the Alan compiler is still present.
+    match write(
+        package_json_path.clone(),
+        format!(
+            "{{\n  \"name\": \"alan_generated_bundle\",\n  \"main\": \"index.js\",\n  \"dependencies\": {{\n    {}\n  }},\n  \"devDependencies\": {{\n    \"rollup\": \"4.x\"\n  }}\n}}",
+            deps.iter()
+                .map(|(k, v)| {
+                    if v.starts_with("http") {
+                        format!("{} = {{ git = \"{}\" }}", k, v)
+                    } else {
+                        format!("{} = \"{}\"", k, v)
+                    }
+                })
+                .collect::<Vec<String>>()
+                .join("\n")
+        ),
+    ) {
+        Ok(a) => Ok(a),
+        Err(e) => {
+            lockfile.unlock()?;
+            Err(format!("Could not create the package.json file {:?}", e))
+        }
+    }?;
+    // Shove it into a temp file for rustc
+    let js_path = {
+        let mut r = project_dir.clone();
+        r.push("index.js");
+        r
+    };
+    match write(js_path, js_str) {
+        Ok(a) => Ok(a),
+        Err(e) => {
+            lockfile.unlock()?;
+            Err(format!(
+                "Could not save the generated Javascript to disk {:?}",
+                e
+            ))
+        }
+    }?;
+    // Update the npm lockfile, if necessary
+    match Command::new("npm")
+        .current_dir(project_dir.clone())
+        .arg("install")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .output()
+    {
+        Ok(a) => Ok(a),
+        Err(e) => {
+            lockfile.unlock()?;
+            Err(format!("Could not run npm install {:?}", e))
+        }
+    }?;
+    // Build the bundle
+    match Command::new("./node_modules/.bin/rollup")
+        .current_dir(project_dir.clone())
+        .arg("index.js")
+        .arg("--format")
+        .arg("iife")
+        .arg("--name")
+        .arg("alanGeneratedBundle")
+        .arg("--file")
+        .arg("bundle.js")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+    {
+        Ok(o) => match o {
+            o if !o.status.success() => {
+                eprintln!("Compilation failed after successful translation to Javascript. Likely something is wrong with the bindings.");
+                eprintln!("{}", String::from_utf8(o.stdout).unwrap());
+                eprintln!("{}", String::from_utf8(o.stderr).unwrap());
+                Err("Javascript compilation error".to_string())
+            }
+            _ => Ok(o),
+        },
+        Err(e) => {
+            lockfile.unlock()?;
+            Err(format!("Could not generate the bundle.js file {:?}", e))
+        }
+    }?;
+    // Copy the bundle from the temp directory to the current directory
+    let project_name_path = PathBuf::from(source_file);
+    let project_name_str = match project_name_path.file_stem() {
+        None => panic!("Somehow can't parse the source file name as a path?"),
+        Some(n) => n.to_string_lossy().to_string(),
+    };
+    match Command::new("cp")
+        .current_dir(project_dir)
+        .arg("bundle.js")
+        .arg(format!(
+            "{}/{}.js",
+            current_dir()?.to_string_lossy(),
+            project_name_str
+        ))
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+    {
+        Ok(a) => Ok(a),
+        Err(e) => {
+            lockfile.unlock()?;
+            Err(format!(
+                "Could not copy the bundled Javascript to the PWD {:?}",
+                e
+            ))
+        }
+    }?;
+    // Drop the lockfile
+    lockfile.unlock()?;
+    Ok(project_name_str)
+}
+
+/// The `bundle` function is a thin wrapper on top of `web` that builds an executable in release
+/// mode and exits, printing the time it took to run on success.
+pub fn bundle(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
+    let start_time = Instant::now();
+    if let Err(_) = var("ALAN_TARGET") {
+        set_var("ALAN_TARGET", "release");
+    }
+    set_var("ALAN_OUTPUT_LANG", "js");
+    web(source_file)?;
+    println!("Done! Took {:.2}sec", start_time.elapsed().as_secs_f32());
+    Ok(())
+}
+
 /// The `to_rs` function is an thin wrapper on top of `lntors` that shoves the output into a `.rs`
 /// file.
 pub fn to_rs(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
-    set_var("ALAN_TARGET", "release");
+    if let Err(_) = var("ALAN_TARGET") {
+        set_var("ALAN_TARGET", "release");
+    }
     set_var("ALAN_OUTPUT_LANG", "rs");
     // Generate the rust code to compile
     let (rs_str, deps) = lntors(source_file.clone())?;
@@ -450,7 +698,9 @@ pub fn to_rs(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
 /// The `to_js` function is an thin wrapper on top of `lntojs` that shoves the output into a `.js`
 /// file.
 pub fn to_js(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
-    set_var("ALAN_TARGET", "release");
+    if let Err(_) = var("ALAN_TARGET") {
+        set_var("ALAN_TARGET", "release");
+    }
     set_var("ALAN_OUTPUT_LANG", "js");
     // Generate the rust code to compile
     let (js_str, deps) = lntojs(source_file.clone())?;
