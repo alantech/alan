@@ -7,7 +7,7 @@ pub fn ctype_to_jtype(
     mut deps: OrderedHashMap<String, String>,
 ) -> Result<(String, OrderedHashMap<String, String>), Box<dyn std::error::Error>> {
     match ctype {
-        CType::Void => Ok(("null".to_string(), deps)),
+        CType::Void => Ok(("".to_string(), deps)),
         CType::Infer(s, _) => Err(format!(
             "Inferred type matching {} was not realized before code generation",
             s
@@ -81,7 +81,7 @@ pub fn ctype_to_jtype(
                 ))
             }
             CType::Binds(name, _) => match &**name {
-                CType::TString(s) => Ok((s.clone(), deps)),
+                CType::TString(_) => Ok(("".to_string(), deps)),
                 CType::Import(n, d) => {
                     match &**d {
                             CType::Type(_, t) => match &**t {
@@ -117,14 +117,14 @@ pub fn ctype_to_jtype(
                             }
                             otherwise => CType::fail(&format!("Native imports compiled to Javascript *must* be declared Node{{D}} dependencies: {:?}", otherwise))
                         }
-                    let native_type = match &**n {
+                    match &**n {
                         CType::TString(s) => s.clone(),
                         _ => CType::fail("Native import names must be strings"),
                     };
-                    Ok((native_type, deps))
+                    Ok(("".to_string(), deps))
                 }
                 otherwise => CType::fail(&format!(
-                    "3. Bound types must be strings or node.js imports: {:?}",
+                    "Bound types must be strings or node.js imports: {:?}",
                     otherwise
                 )),
             },
@@ -180,12 +180,12 @@ pub fn ctype_to_jtype(
                     Ok((native_type, deps))
                 }
                 otherwise => CType::fail(&format!(
-                    "4. Bound types must be strings or node.js imports: {:?}",
+                    "Bound types must be strings or node.js imports: {:?}",
                     otherwise
                 )),
             }
         }
-        CType::IntrinsicGeneric(name, _) => Ok((name.clone(), deps)), // How?
+        CType::IntrinsicGeneric(..) => Ok(("".to_string(), deps)),
         CType::Int(i) => Ok((i.to_string(), deps)),
         CType::Float(f) => Ok((f.to_string(), deps)),
         CType::Bool(b) => Ok((b.to_string(), deps)),

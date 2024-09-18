@@ -341,27 +341,27 @@ test_full!(i8_div => r#"
     export fn main = ExitCode(div(i8(6), i8(2)));"#;
     status 3;
 );
-test!(i8_mod => r#"
+test_full!(i8_mod => r#"
     export fn main = ExitCode(mod(i8(6), i8(4)));"#;
     status 2;
 );
-test!(i8_pow => r#"
+test_full!(i8_pow => r#"
     export fn main = ExitCode(pow(i8(6), i8(2)));"#;
     status 36;
 );
-test!(i8_min => r#"
+test_full!(i8_min => r#"
     export fn main {
       print(min(i8(3), i8(5)));
     }"#;
     stdout "3\n";
 );
-test!(i8_max => r#"
+test_full!(i8_max => r#"
     export fn main {
       print(max(i8(3), i8(5)));
     }"#;
     stdout "5\n";
 );
-test!(i8_neg => r#"
+test_full!(i8_neg => r#"
     export fn main = print(neg(i8(3)));"#;
     stdout "-3\n";
 );
@@ -883,7 +883,7 @@ test!(gpu_if => r#"
 
 // Bitwise Math
 
-test!(i8_bitwise => r#"
+test_full!(i8_bitwise => r#"
     prefix i8 as ~ precedence 10
 
     export fn main {

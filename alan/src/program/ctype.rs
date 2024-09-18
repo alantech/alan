@@ -89,7 +89,7 @@ impl CType {
             "js" => CType::Type(
                 "i64".to_string(),
                 Box::new(CType::Binds(
-                    Box::new(CType::TString("BigInt".to_string())),
+                    Box::new(CType::TString("i64 = BigInt".to_string())),
                     Vec::new(),
                 )),
             ),
@@ -108,7 +108,7 @@ impl CType {
             "js" => CType::Type(
                 "f64".to_string(),
                 Box::new(CType::Binds(
-                    Box::new(CType::TString("Number".to_string())),
+                    Box::new(CType::TString("f64 = Number".to_string())),
                     Vec::new(),
                 )),
             ),
