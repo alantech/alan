@@ -225,7 +225,7 @@ test_full!(hello_world => r#"
     stdout "Hello, World!\n";
     status 0;
 );
-test!(multi_line_hello_world => r#"
+test_full!(multi_line_hello_world => r#"
 export fn main = print(
 "Hello,
 World!");"#;
@@ -256,7 +256,7 @@ test!(non_global_memory_exit_code => r#"
 );
 
 // Unorganized Tests (TODO: Find a better grouping for these)
-test!(passing_ints_to_function => r#"
+test_full!(passing_ints_to_function => r#"
     fn aNumber(num: i64) {
       print('I got a number! '.concat(num.string));
     }
@@ -293,7 +293,7 @@ test!(scientific_notation => r#"
 "#;
     stdout "true\ntrue\ntrue\ntrue\n";
 );
-test!(void_values => r#"
+test_full!(void_values => r#"
     export fn main {
         5.print;
         5.void.print;
@@ -305,7 +305,7 @@ test!(void_values => r#"
 // Printing Tests
 
 // This one will replace the hello_world test above once the syntax is updated
-test!(print_function => r#"
+test_full!(print_function => r#"
     export fn main() {
       print('Hello, World');
       return ExitCode(0);
@@ -325,19 +325,19 @@ test!(duration_print => r#"
 
 // Basic Math Tests
 
-test!(i8_add => r#"
+test_full!(i8_add => r#"
     export fn main = ExitCode(add(i8(1), i8(2)));"#;
     status 3;
 );
-test!(i8_sub => r#"
+test_full!(i8_sub => r#"
     export fn main = ExitCode(sub(i8(2), i8(1)));"#;
     status 1;
 );
-test!(i8_mul => r#"
+test_full!(i8_mul => r#"
     export fn main = ExitCode(mul(i8(2), i8(1)));"#;
     status 2;
 );
-test!(i8_div => r#"
+test_full!(i8_div => r#"
     export fn main = ExitCode(div(i8(6), i8(2)));"#;
     status 3;
 );
