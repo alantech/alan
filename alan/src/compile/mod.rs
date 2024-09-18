@@ -377,7 +377,7 @@ edition = "2021"
 /// mode and exits, printing the time it took to run on success.
 pub fn compile(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
     let start_time = Instant::now();
-    if let Err(_) = var("ALAN_TARGET") {
+    if var("ALAN_TARGET").is_err() {
         set_var("ALAN_TARGET", "release");
     }
     set_var("ALAN_OUTPUT_LANG", "rs");
@@ -661,7 +661,7 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
 /// mode and exits, printing the time it took to run on success.
 pub fn bundle(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
     let start_time = Instant::now();
-    if let Err(_) = var("ALAN_TARGET") {
+    if var("ALAN_TARGET").is_err() {
         set_var("ALAN_TARGET", "release");
     }
     set_var("ALAN_OUTPUT_LANG", "js");
@@ -673,7 +673,7 @@ pub fn bundle(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
 /// The `to_rs` function is an thin wrapper on top of `lntors` that shoves the output into a `.rs`
 /// file.
 pub fn to_rs(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
-    if let Err(_) = var("ALAN_TARGET") {
+    if var("ALAN_TARGET").is_err() {
         set_var("ALAN_TARGET", "release");
     }
     set_var("ALAN_OUTPUT_LANG", "rs");
@@ -713,7 +713,7 @@ pub fn to_rs(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
 /// The `to_js` function is an thin wrapper on top of `lntojs` that shoves the output into a `.js`
 /// file.
 pub fn to_js(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
-    if let Err(_) = var("ALAN_TARGET") {
+    if var("ALAN_TARGET").is_err() {
         set_var("ALAN_TARGET", "release");
     }
     set_var("ALAN_OUTPUT_LANG", "js");
