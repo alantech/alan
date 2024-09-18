@@ -69,6 +69,9 @@ pub fn from_microstatement(
             typen,
             representation,
         } => match &typen {
+            CType::Type(n, _) if n == "string" => {
+                Ok((representation.replace("\n", "\\n"), out, deps))
+            }
             CType::Binds(n, _) => match &**n {
                 CType::TString(_) => Ok((representation.clone(), out, deps)),
                 CType::Import(n, d) => {

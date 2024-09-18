@@ -533,17 +533,13 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
     match write(
         package_json_path.clone(),
         format!(
-            "{{\n  \"name\": \"alan_generated_bundle\",\n  \"main\": \"index.js\",\n  \"dependencies\": {{\n    {}\n  }},\n  \"devDependencies\": {{\n    \"rollup\": \"4.x\"\n  }}\n}}",
+            "{{\n  \"name\": \"alan_generated_bundle\",\n  \"main\": \"index.js\",\n  \"dependencies\": {{\n    {}\n  }},\n  \"devDependencies\": {{\n    \"rollup\": \"4.x\",\n    \"@rollup/plugin-node-resolve\": \"15.x\"\n  }}\n}}",
             deps.iter()
                 .map(|(k, v)| {
-                    if v.starts_with("http") {
-                        format!("{} = {{ git = \"{}\" }}", k, v)
-                    } else {
-                        format!("{} = \"{}\"", k, v)
-                    }
+                    format!("    \"{}\": \"{}\"", k, v)
                 })
                 .collect::<Vec<String>>()
-                .join("\n")
+                .join(",\n")
         ),
     ) {
         Ok(a) => Ok(a),
@@ -592,6 +588,8 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
             .arg("iife")
             .arg("--name")
             .arg("alanGeneratedBundle")
+            .arg("-p")
+            .arg("@rollup/plugin-node-resolve")
             .arg("--file")
             .arg("bundle.js")
             .stdout(Stdio::piped())
@@ -605,6 +603,8 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
             .arg("iife")
             .arg("--name")
             .arg("alanGeneratedBundle")
+            .arg("-p")
+            .arg("@rollup/plugin-node-resolve")
             .arg("--file")
             .arg("bundle.js")
             .stdout(Stdio::piped())

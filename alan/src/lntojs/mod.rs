@@ -1,7 +1,7 @@
 use ordered_hash_map::OrderedHashMap;
 
 use crate::lntojs::function::generate as fn_generate;
-use crate::program::Program;
+use crate::program::{CType, Program};
 
 mod function;
 mod typen;
@@ -52,8 +52,21 @@ pub fn lntojs(
     )?;
     Ok((
         format!(
-            "{}\nmain();",
-            fns.into_values().collect::<Vec<String>>().join("\n")
+            "{}\n{}\n{}",
+            deps.keys()
+                .map(|k| format!("import * as {} from \"{}\";", k, k))
+                .collect::<Vec<String>>()
+                .join("\n"),
+            fns.into_values().collect::<Vec<String>>().join("\n"),
+            if let CType::Type(n, _) = func[0].rettype() {
+                if &n == "ExitCode" {
+                    "process.exit(main());"
+                } else {
+                    "main();"
+                }
+            } else {
+                "main();"
+            }
         ),
         deps,
     ))

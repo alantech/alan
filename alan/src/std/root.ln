@@ -774,42 +774,53 @@ export fn min (a: f64, b: f64) = if(a.lte(b), a, b);
 export fn max (a: f64, b: f64) = if(a.gte(b), a, b);
 
 /// String related bindings
-export fn string "format!" :: ("{}", i8) -> string;
-export fn string "format!" :: ("{}", i16) -> string;
-export fn string "format!" :: ("{}", i32) -> string;
-export fn string "format!" :: ("{}", i64) -> string;
-export fn string "format!" :: ("{}", u8) -> string;
-export fn string "format!" :: ("{}", u16) -> string;
-export fn string "format!" :: ("{}", u32) -> string;
-export fn string "format!" :: ("{}", u64) -> string;
-export fn string "format!" :: ("{}", f32) -> string;
-export fn string "format!" :: ("{}", f64) -> string;
+export fn{Rs} string "format!" :: ("{}", i8) -> string;
+export fn{Js} string "String" :: i8 -> string;
+export fn{Rs} string "format!" :: ("{}", i16) -> string;
+export fn{Js} string "String" :: i16 -> string;
+export fn{Rs} string "format!" :: ("{}", i32) -> string;
+export fn{Js} string "String" :: i32 -> string;
+export fn{Rs} string "format!" :: ("{}", i64) -> string;
+export fn{Js} string "String" :: i64 -> string;
+export fn{Rs} string "format!" :: ("{}", u8) -> string;
+export fn{Js} string "String" :: u8 -> string;
+export fn{Rs} string "format!" :: ("{}", u16) -> string;
+export fn{Js} string "String" :: u16 -> string;
+export fn{Rs} string "format!" :: ("{}", u32) -> string;
+export fn{Js} string "String" :: u32 -> string;
+export fn{Rs} string "format!" :: ("{}", u64) -> string;
+export fn{Js} string "String" :: u64 -> string;
+export fn{Rs} string "format!" :: ("{}", f32) -> string;
+export fn{Js} string "String" :: f32 -> string;
+export fn{Rs} string "format!" :: ("{}", f64) -> string;
+export fn{Js} string "String" :: f64 -> string;
 export fn string(b: bool) = if(b, "true", "false");
 export fn string(s: string) = s;
-export fn concat "format!" :: ("{}{}", string, string) -> string;
-export fn repeat (a: string, n: i64) = {Method{"repeat"} :: (string, Deref{Binds{"usize"}}) -> string}(
+export fn{Rs} concat "format!" :: ("{}{}", string, string) -> string;
+export fn{Js} concat Infix{"+"} :: (string, string) -> string;
+export fn{Rs} repeat (a: string, n: i64) = {Method{"repeat"} :: (string, Deref{Binds{"usize"}}) -> string}(
   a,
   {Cast{"usize"} :: Deref{i64} -> Binds{"usize"}}(n));
-export fn replace Method{"replace"} :: (string, string, string) -> string;
-export fn split "alan_std::splitstring" <- RootBacking :: (string, string) -> string[];
-export fn len (s: string) = {Cast{"i64"} :: Deref{Binds{"usize"}} -> i64}(
+export fn{Rs} replace Method{"replace"} :: (string, string, string) -> string;
+export fn{Rs} split "alan_std::splitstring" <- RootBacking :: (string, string) -> string[];
+export fn{Rs} len (s: string) = {Cast{"i64"} :: Deref{Binds{"usize"}} -> i64}(
   {Method{"len"} :: Array{Binds{"char"}} -> Binds{"usize"}}(
     {Method{"collect::<Vec<char>>"} :: Own{Binds{"std::str::Chars"}} -> Array{Binds{"char"}}}(
       {Method{"chars"} :: string -> Binds{"std::str::Chars"}}(s))));
-export fn get "alan_std::getstring" <- RootBacking :: (string, i64) -> string!;
-export fn trim Method{"trim"} :: string -> string;
-export fn index "alan_std::indexstring" <- RootBacking :: (string, string) -> i64!;
+export fn{Rs} get "alan_std::getstring" <- RootBacking :: (string, i64) -> string!;
+export fn{Rs} trim Method{"trim"} :: string -> string;
+export fn{Rs} index "alan_std::indexstring" <- RootBacking :: (string, string) -> i64!;
 // TODO: Optimize this by using `as_str` inline, but need a `Str` type, which I *really* don't want to terrorize the user with
-export fn eq Infix{"=="} :: (Own{string}, Own{string}) -> bool;
-export fn neq Infix{"!="} :: (Own{string}, Own{string}) -> bool;
-export fn lt Infix{"<"} :: (Own{string}, Own{string}) -> bool;
-export fn lte Infix{"<="} :: (Own{string}, Own{string}) -> bool;
-export fn gt Infix{">"} :: (Own{string}, Own{string}) -> bool;
-export fn gte Infix{">="} :: (Own{string}, Own{string}) -> bool;
-export fn min (a: string, b: string) = if(a.lte(b), fn () = a.clone(), fn () = b.clone());
-export fn max (a: string, b: string) = if(a.gte(b), fn () = a.clone(), fn () = b.clone());
-export fn join Method{"join"} :: (string[], string) -> string;
-export fn join{S}(a: string[S], s: string) = {Method{"join"} :: (string[S], string) -> string}(a, s);
+export fn{Rs} eq Infix{"=="} :: (Own{string}, Own{string}) -> bool;
+export fn{Rs} neq Infix{"!="} :: (Own{string}, Own{string}) -> bool;
+export fn{Rs} lt Infix{"<"} :: (Own{string}, Own{string}) -> bool;
+export fn{Rs} lte Infix{"<="} :: (Own{string}, Own{string}) -> bool;
+export fn{Rs} gt Infix{">"} :: (Own{string}, Own{string}) -> bool;
+export fn{Rs} gte Infix{">="} :: (Own{string}, Own{string}) -> bool;
+export fn{Rs} min (a: string, b: string) = if(a.lte(b), fn () = a.clone(), fn () = b.clone());
+export fn{Rs} max (a: string, b: string) = if(a.gte(b), fn () = a.clone(), fn () = b.clone());
+export fn{Rs} join Method{"join"} :: (string[], string) -> string;
+export fn{Rs} join{S}(a: string[S], s: string) = {Method{"join"} :: (string[S], string) -> string}(a, s);
 
 /// Array related bindings
 export fn get{T} "alan_std::getarray" <- RootBacking :: (T[], i64) -> T?;
