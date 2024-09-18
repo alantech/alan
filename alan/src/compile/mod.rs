@@ -569,7 +569,7 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
         }
     }?;
     // Update the npm lockfile, if necessary
-    match Command::new("npm")
+    match Command::new(if cfg!(windows) { "npm.cmd" } else { "npm" })
         .current_dir(project_dir.clone())
         .arg("install")
         .stdout(Stdio::null())
@@ -583,19 +583,34 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
         }
     }?;
     // Build the bundle
-    match Command::new("./node_modules/.bin/rollup")
-        .current_dir(project_dir.clone())
-        .arg("index.js")
-        .arg("--format")
-        .arg("iife")
-        .arg("--name")
-        .arg("alanGeneratedBundle")
-        .arg("--file")
-        .arg("bundle.js")
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .output()
-    {
+    match if cfg!(windows) {
+        Command::new("node")
+            .current_dir(project_dir.clone())
+            .arg("./node_modules/rollup/dist/bin/rollup")
+            .arg("index.js")
+            .arg("--format")
+            .arg("iife")
+            .arg("--name")
+            .arg("alanGeneratedBundle")
+            .arg("--file")
+            .arg("bundle.js")
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .output()
+    } else {
+        Command::new("./node_modules/.bin/rollup")
+            .current_dir(project_dir.clone())
+            .arg("index.js")
+            .arg("--format")
+            .arg("iife")
+            .arg("--name")
+            .arg("alanGeneratedBundle")
+            .arg("--file")
+            .arg("bundle.js")
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .output()
+    } {
         Ok(o) => match o {
             o if !o.status.success() => {
                 eprintln!("Compilation failed after successful translation to Javascript. Likely something is wrong with the bindings.");
