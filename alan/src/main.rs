@@ -1,4 +1,4 @@
-use crate::compile::{compile, test, to_js, to_rs};
+use crate::compile::{bundle, compile, test, to_js, to_rs};
 use crate::program::Program;
 use clap::{Parser, Subcommand};
 
@@ -20,6 +20,15 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
+    #[command(about = "Compile .ln file(s) to a web bundle")]
+    Bundle {
+        #[arg(
+            value_name = "LN_FILE",
+            help = ".ln source file to compile.",
+            default_value = "./index.ln"
+        )]
+        file: String,
+    },
     #[command(about = "Compile .ln file(s) to an executable")]
     Compile {
         #[arg(
@@ -75,6 +84,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Ok(())
     } else {
         match &args.commands {
+            Some(Commands::Bundle { file }) => Ok(bundle(file.to_string())?),
             Some(Commands::Compile { file }) => Ok(compile(file.to_string())?),
             Some(Commands::Test { file }) => Ok(test(file.to_string())?),
             Some(Commands::ToRs { file }) => Ok(to_rs(file.to_string())?),
