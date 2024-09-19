@@ -4,3 +4,4 @@ target/
 /dependencies
 .vscode
 *.swp
+node_modules/
