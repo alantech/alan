@@ -366,55 +366,55 @@ test_full!(i8_neg => r#"
     stdout "-3\n";
 );
 
-test!(i16_add => r#"
+test_full!(i16_add => r#"
     export fn main {
       print(add(i16(1), i16(2)));
     }"#;
     stdout "3\n";
 );
-test!(i16_sub => r#"
+test_full!(i16_sub => r#"
     export fn main {
       print(sub(i16(2), i16(1)));
     }"#;
     stdout "1\n";
 );
-test!(i16_mul => r#"
+test_full!(i16_mul => r#"
     export fn main {
       print(mul(i16(2), i16(1)));
     }"#;
     stdout "2\n";
 );
-test!(i16_div => r#"
+test_full!(i16_div => r#"
     export fn main {
       print(div(i16(6), i16(2)));
     }"#;
     stdout "3\n";
 );
-test!(i16_mod => r#"
+test_full!(i16_mod => r#"
     export fn main{
       print(mod(i16(6), i16(4)));
     }"#;
     stdout "2\n";
 );
-test!(i16_pow => r#"
+test_full!(i16_pow => r#"
     export fn main {
       print(pow(i16(6), i16(2)));
     }"#;
     stdout "36\n";
 );
-test!(i16_min => r#"
+test_full!(i16_min => r#"
     export fn main {
       min(3.i16, 5.i16).print;
     }"#;
     stdout "3\n";
 );
-test!(i16_max => r#"
+test_full!(i16_max => r#"
     export fn main {
       max(3.i16, 5.i16).print;
     }"#;
     stdout "5\n";
 );
-test!(i16_neg => r#"
+test_full!(i16_neg => r#"
     export fn main = print(-i16(3));"#;
     stdout "-3\n";
 );
@@ -897,7 +897,7 @@ test_full!(i8_bitwise => r#"
     }"#;
     stdout "0\n3\n6\n-1\n-1\n-4\n-7\n";
 );
-test!(i16_bitwise => r#"
+test_full!(i16_bitwise => r#"
     prefix i16 as ~ precedence 10
 
     export fn main {
