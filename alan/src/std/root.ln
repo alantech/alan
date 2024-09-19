@@ -127,27 +127,27 @@ export type infix Gte as >= precedence 1;
 
 // Binding the integer types
 export type{Rs} i8 = Binds{"i8"};
-export type{Js} i8 = Binds{"Number"};
+export type{Js} i8 = Binds{"i8 = Number"};
 export type{Rs} i16 = Binds{"i16"};
-export type{Js} i16 = Binds{"Number"};
+export type{Js} i16 = Binds{"i16 = Number"};
 export type{Rs} i32 = Binds{"i32"};
-export type{Js} i32 = Binds{"Number"};
+export type{Js} i32 = Binds{"i32 = Number"};
 export type{Rs} i64 = Binds{"i64"};
-export type{Js} i64 = Binds{"BigInt"};
+export type{Js} i64 = Binds{"i64 = BigInt"};
 export type{Rs} u8 = Binds{"u8"};
-export type{Js} u8 = Binds{"Number"};
+export type{Js} u8 = Binds{"u8 = Number"};
 export type{Rs} u16 = Binds{"u16"};
-export type{Js} u16 = Binds{"Number"};
+export type{Js} u16 = Binds{"u16 = Number"};
 export type{Rs} u32 = Binds{"u32"};
-export type{Js} u32 = Binds{"Number"};
+export type{Js} u32 = Binds{"u32 = Number"};
 export type{Rs} u64 = Binds{"u64"};
-export type{Js} u64 = Binds{"BigInt"};
+export type{Js} u64 = Binds{"u64 = BigInt"};
 
 // Binding the float types
 export type{Rs} f32 = Binds{"f32"};
-export type{Js} f32 = Binds{"Number"};
+export type{Js} f32 = Binds{"f32 = Number"};
 export type{Rs} f64 = Binds{"f64"};
-export type{Js} f64 = Binds{"Number"};
+export type{Js} f64 = Binds{"f64 = Number"};
 
 // Binding the string types
 export type string = Binds{"String"};
@@ -527,7 +527,7 @@ export fn{Js} or Infix{"|"} :: (i8, i8) -> i8;
 export fn{Rs} xor Infix{"^"} :: (Deref{i8}, Deref{i8}) -> i8;
 export fn{Js} xor Infix{"^"} :: (i8, i8) -> i8;
 export fn{Rs} not Prefix{"!"} :: Deref{i8} -> i8;
-export fn{Js} not Prefix{"!"} :: i8 -> i8;
+export fn{Js} not Prefix{"~"} :: i8 -> i8;
 export fn nand (a: i8, b: i8) = a.and(b).not;
 export fn nor (a: i8, b: i8) = a.or(b).not;
 export fn xnor (a: i8, b: i8) = a.xor(b).not;
