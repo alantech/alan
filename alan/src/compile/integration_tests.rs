@@ -472,39 +472,39 @@ test_full!(i32_neg => r#"
     stdout "-3\n";
 );
 
-test!(i64_add => r#"
+test_full!(i64_add => r#"
     export fn main = print(1 + 2);"#;
     stdout "3\n";
 );
-test!(i64_sub => r#"
+test_full!(i64_sub => r#"
     export fn main = print(2 - 1);"#;
     stdout "1\n";
 );
-test!(i64_mul => r#"
+test_full!(i64_mul => r#"
     export fn main = print(2 * 1);"#;
     stdout "2\n";
 );
-test!(i64_div => r#"
+test_full!(i64_div => r#"
     export fn main = print(6 / 2);"#;
     stdout "3\n";
 );
-test!(i64_mod => r#"
+test_full!(i64_mod => r#"
     export fn main = print(6 % 4);"#;
     stdout "2\n";
 );
-test!(i64_pow => r#"
+test_full!(i64_pow => r#"
     export fn main = print(6 ** 2);"#;
     stdout "36\n";
 );
-test!(i64_min => r#"
+test_full!(i64_min => r#"
     export fn main = min(3, 5).print;"#;
     stdout "3\n";
 );
-test!(i64_max => r#"
+test_full!(i64_max => r#"
     export fn main = max(3.i64, 5.i64).print;"#;
     stdout "5\n";
 );
-test!(i64_neg => r#"
+test_full!(i64_neg => r#"
     export fn main = print(- 3);"#; // You wouldn't naturally write this, but should still work
     stdout "-3\n";
 );
@@ -925,7 +925,7 @@ test_full!(i32_bitwise => r#"
     }"#;
     stdout "0\n3\n6\n-1\n-1\n-4\n-7\n";
 );
-test!(i64_bitwise => r#"
+test_full!(i64_bitwise => r#"
     export fn main {
       print(1 & 2);
       print(1 | 3);
