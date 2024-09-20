@@ -546,49 +546,49 @@ test_full!(u8_max => r#"
     stdout "5\n";
 );
 
-test!(u16_add => r#"
+test_full!(u16_add => r#"
     export fn main {
       print(add(u16(1), u16(2)));
     }"#;
     stdout "3\n";
 );
-test!(u16_sub => r#"
+test_full!(u16_sub => r#"
     export fn main {
       print(sub(u16(2), u16(1)));
     }"#;
     stdout "1\n";
 );
-test!(u16_mul => r#"
+test_full!(u16_mul => r#"
     export fn main {
       print(mul(u16(2), u16(1)));
     }"#;
     stdout "2\n";
 );
-test!(u16_div => r#"
+test_full!(u16_div => r#"
     export fn main {
       print(div(u16(6), u16(2)));
     }"#;
     stdout "3\n";
 );
-test!(u16_mod => r#"
+test_full!(u16_mod => r#"
     export fn main{
       print(mod(u16(6), u16(4)));
     }"#;
     stdout "2\n";
 );
-test!(u16_pow => r#"
+test_full!(u16_pow => r#"
     export fn main {
       print(pow(u16(6), u16(2)));
     }"#;
     stdout "36\n";
 );
-test!(u16_min => r#"
+test_full!(u16_min => r#"
     export fn main {
       min(3.u16, 5.u16).print;
     }"#;
     stdout "3\n";
 );
-test!(u16_max => r#"
+test_full!(u16_max => r#"
     export fn main {
       max(3.u16, 5.u16).print;
     }"#;
@@ -952,7 +952,7 @@ test_full!(u8_bitwise => r#"
     }"#;
     stdout "0\n3\n6\n255\n255\n252\n249\n";
 );
-test!(u16_bitwise => r#"
+test_full!(u16_bitwise => r#"
     prefix u16 as ~ precedence 10
 
     export fn main {
