@@ -151,6 +151,8 @@ assert(alanStd.wrappingModU8(5, 2) == 1, "wrappingModU8 5 % 2 = 1");
 
 assert(alanStd.wrappingPowU8(2, 8) == 0, "wrappingPowU8 2 ^ 8 = 0");
 
+assert(alanStd.notU8(0) == 255, "notU8 0 = 255");
+
 assert(alanStd.wrappingShlU8(128, 1) == 0, "wrappingShlU8 128 << 1 = 0");
 
 assert(alanStd.wrappingShrU8(128, 1) == 64, "wrappingShrU8 128 >> 1 = 64");
@@ -158,3 +160,27 @@ assert(alanStd.wrappingShrU8(128, 1) == 64, "wrappingShrU8 128 >> 1 = 64");
 assert(alanStd.rotateLeftU8(128, 1) == 1, "rotateLeftU8 128 <<< 1 = 1");
 
 assert(alanStd.rotateRightU8(64, 1) == 128, "rotateRightU8 64 >>> 1 = 128");
+
+assert(alanStd.wrappingAddU16(1, 2) === 3, "wrappingAddU16 1 + 2 = 3");
+assert(alanStd.wrappingAddU16(65_535, 1) === 0, "wrappingAddU16 65_535 + 1 = 0");
+
+assert(alanStd.wrappingSubU16(1, 2) === 65_535, "wrappingSubU16 1 - 2 = 65_535");
+assert(alanStd.wrappingSubU16(65_535, 1) === 65_534, "wrappingSubU16 65_535 - 1 = 65_534");
+
+assert(alanStd.wrappingMulU16(256, 256) === 0, "wrappingMulU16 256 * 256 = 0");
+
+assert(alanStd.wrappingDivU16(128, 2) == 64, "wrappingDivU16 128 / 2 = 64");
+
+assert(alanStd.wrappingModU16(5, 2) == 1, "wrappingModU16 5 % 2 = 1");
+
+assert(alanStd.wrappingPowU16(2, 16) == 0, "wrappingPowU16 2 ^ 8 = 0");
+
+assert(alanStd.notU16(0) == 65_535, "notU16 0 = 65_535");
+
+assert(alanStd.wrappingShlU16(32_768, 1) == 0, "wrappingShlU16 32_768 << 1 = 0");
+
+assert(alanStd.wrappingShrU16(128, 1) == 64, "wrappingShrU16 128 >> 1 = 64");
+
+assert(alanStd.rotateLeftU16(32_768, 1) == 1, "rotateLeftU16 128 <<< 1 = 1");
+
+assert(alanStd.rotateRightU16(64, 1) == 128, "rotateRightU16 64 >>> 1 = 128");
