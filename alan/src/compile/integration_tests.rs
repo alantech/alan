@@ -419,55 +419,55 @@ test_full!(i16_neg => r#"
     stdout "-3\n";
 );
 
-test!(i32_add => r#"
+test_full!(i32_add => r#"
     export fn main {
       add(1.i32(), 2.i32()).print();
     }"#;
     stdout "3\n";
 );
-test!(i32_sub => r#"
+test_full!(i32_sub => r#"
     export fn main {
       sub(2.i32, 1.i32).print;
     }"#;
     stdout "1\n";
 );
-test!(i32_mul => r#"
+test_full!(i32_mul => r#"
     export fn main {
       (2.i32 * 1.i32).print;
     }"#;
     stdout "2\n";
 );
-test!(i32_div => r#"
+test_full!(i32_div => r#"
     export fn main {
       (6.i32() / 2.i32()).print();
     }"#;
     stdout "3\n";
 );
-test!(i32_mod => r#"
+test_full!(i32_mod => r#"
     export fn main {
       mod(6.i32, 4.i32).print;
     }"#;
     stdout "2\n";
 );
-test!(i32_pow => r#"
+test_full!(i32_pow => r#"
     export fn main {
       pow(6.i32(), 2.i32()).print();
     }"#;
     stdout "36\n";
 );
-test!(i32_min => r#"
+test_full!(i32_min => r#"
     export fn main {
       min(3.i32, 5.i32).print;
     }"#;
     stdout "3\n";
 );
-test!(i32_max => r#"
+test_full!(i32_max => r#"
     export fn main {
       max(3.i32(), 5.i32()).print();
     }"#;
     stdout "5\n";
 );
-test!(i32_neg => r#"
+test_full!(i32_neg => r#"
     export fn main = print(- 3.i32);"#; // You wouldn't naturally write this, but should still work
     stdout "-3\n";
 );
@@ -911,7 +911,7 @@ test_full!(i16_bitwise => r#"
     }"#;
     stdout "0\n3\n6\n-1\n-1\n-4\n-7\n";
 );
-test!(i32_bitwise => r#"
+test_full!(i32_bitwise => r#"
     prefix i32 as ~ precedence 10
 
     export fn main {

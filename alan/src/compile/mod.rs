@@ -565,6 +565,19 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
         }
     }?;
     // Update the npm lockfile, if necessary
+    match Command::new("rm")
+        .current_dir(project_dir.clone())
+        .arg("package-lock.json")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .output()
+    {
+        Ok(a) => Ok(a),
+        Err(e) => {
+            lockfile.unlock()?;
+            Err(format!("Could not clear package-lock.json {:?}", e))
+        }
+    }?;
     match Command::new(if cfg!(windows) { "npm.cmd" } else { "npm" })
         .current_dir(project_dir.clone())
         .arg("install")
