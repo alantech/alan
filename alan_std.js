@@ -636,6 +636,17 @@ export function wrappingPowU8(a, b) {
   return v;
 }
 
+export function notU8(a) {
+  let v = ~a;
+  while (v > 255) {
+    v -= 256;
+  }
+  while (v < 0) {
+    v += 256;
+  }
+  return v;
+}
+
 export function wrappingShlU8(a, b) {
   let v = a << b;
   while (v > 255) {
@@ -686,4 +697,133 @@ export function rotateRightU8(a, b) {
   let p1 = a & lhs;
   let p2 = a & rhs;
   return wrappingShrU8(p1, 8 - c) + wrappingShlU8(p2, c);
+}
+
+export function wrappingAddU16(a, b) {
+  let v = a + b;
+  while (v > 65_535) {
+    v -= 65_536;
+  }
+  while (v < 0) {
+    v += 65_536;
+  }
+  return v;
+}
+
+export function wrappingSubU16(a, b) {
+  let v = a - b;
+  while (v > 65_535) {
+    v -= 65_536;
+  }
+  while (v < 0) {
+    v += 65_536;
+  }
+  return v;
+}
+
+export function wrappingMulU16(a, b) {
+  let v = a * b;
+  while (v > 65_535) {
+    v -= 65_536;
+  }
+  while (v < 0) {
+    v += 65_536;
+  }
+  return v;
+}
+
+export function wrappingDivU16(a, b) {
+  let v = Math.floor(a / b);
+  while (v > 65_535) {
+    v -= 65_536;
+  }
+  while (v < 0) {
+    v += 65_536;
+  }
+  return v;
+}
+
+export function wrappingModU16(a, b) {
+  let v = a % b;
+  while (v > 65_535) {
+    v -= 65_536;
+  }
+  while (v < 0) {
+    v += 65_536;
+  }
+  return v;
+}
+
+export function wrappingPowU16(a, b) {
+  let v = Math.floor(a ** b);
+  while (v > 65_535) {
+    v -= 65_536;
+  }
+  while (v < 0) {
+    v += 65_536;
+  }
+  return v;
+}
+
+export function notU16(a) {
+  let v = ~a;
+  while (v > 65_535) {
+    v -= 65_536;
+  }
+  while (v < 0) {
+    v += 65_536;
+  }
+  return v;
+}
+
+export function wrappingShlU16(a, b) {
+  let v = a << b;
+  while (v > 65_535) {
+    v -= 65_536;
+  }
+  while (v < 0) {
+    v += 65_536;
+  }
+  return v;
+}
+
+export function wrappingShrU16(a, b) {
+  let v = a >> b;
+  while (v > 65_535) {
+    v -= 65_536;
+  }
+  while (v < 0) {
+    v += 65_536;
+  }
+  return v;
+}
+
+export function rotateLeftU16(a, b) {
+  let c = b;
+  while (c > 15) {
+    c -= 16;
+  }
+  if (c == 0) {
+    return a;
+  }
+  let lhs = clampU16(65_535 << c);
+  let rhs = clampU16(65_535 ^ lhs);
+  let p1 = a & lhs;
+  let p2 = a & rhs;
+  return wrappingShrU16(p1, 16 - c) + wrappingShlU16(p2, c);
+}
+
+export function rotateRightU16(a, b) {
+  let c = b;
+  while (c > 15) {
+    c -= 16;
+  }
+  if (c == 0) {
+    return a;
+  }
+  let rhs = clampU16(65_535 << c);
+  let lhs = clampU16(65_535 ^ rhs);
+  let p1 = a & lhs;
+  let p2 = a & rhs;
+  return wrappingShrU16(p1, 16 - c) + wrappingShlU16(p2, c);
 }
