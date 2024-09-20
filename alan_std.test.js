@@ -92,3 +92,25 @@ assert(alanStd.wrappingShrI16(-32_768, 1) == 16_384, "wrappingShrI16 -32_768 >> 
 assert(alanStd.rotateLeftI16(-32_768, 1) == 1, "rotateLeftI16 -32_768 <<< 1 = 1");
 
 assert(alanStd.rotateRightI16(16_384, 1) == -32_768, "rotateRightI16 16_384 >>> 1 = -32_768");
+
+assert(alanStd.wrappingAddI32(1, 2) === 3, "wrappingAddI32 1 + 2 = 3");
+assert(alanStd.wrappingAddI32(2_147_483_647, 1) === -2_147_483_648, "wrappingAddI32 2_147_483_647 + 1 = -2_147_483_648");
+
+assert(alanStd.wrappingSubI32(1, 2) === -1, "wrappingSubI32 1 - 2 = -1");
+assert(alanStd.wrappingSubI32(-2_147_483_648, 1) === 2_147_483_647, "wrappingSubI32 -2_147_483_648 - 1 = 2_147_483_647");
+
+assert(alanStd.wrappingMulI32(65_536, 65_536) === 0, "wrappingMulI32 65_536 * 65_536 = 0");
+
+assert(alanStd.wrappingDivI32(-2_147_483_648, 2) == -1_073_741_824, "wrappingDivI32 -2_147_483_648 / 2 = -1_073_741_824");
+
+assert(alanStd.wrappingModI32(5, 2) == 1, "wrappingModI32 5 % 2 = 1");
+
+assert(alanStd.wrappingPowI32(2, 32) == 0, "wrappingPowI32 2 ^ 32 = 0");
+
+assert(alanStd.wrappingShlI32(-2_147_483_648, 1) == 0, "wrappingShlI32 -2_147_483_648 << 1 = 0");
+
+assert(alanStd.wrappingShrI32(-2_147_483_648, 1) == 1_073_741_824, "wrappingShrI32 -2_147_483_648 >> 1 = 1_073_741_824");
+
+assert(alanStd.rotateLeftI32(-2_147_483_648, 1) == 1, "rotateLeftI32 -2_147_483_648 <<< 1 = 1");
+
+assert(alanStd.rotateRightI32(1_073_741_824, 1) == -2_147_483_648, "rotateRightI32 1_073_741_824 >>> 1 = -2_147_483_648");

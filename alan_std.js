@@ -321,3 +321,131 @@ export function rotateRightI16(a, b) {
   let p2 = a & rhs;
   return wrappingShrI16(p1, 16 - c) + wrappingShlI16(p2, c);
 }
+
+export function wrappingAddI32(a, b) {
+  let v = a + b;
+  while (v > 2_147_483_647) {
+    v -= 4_294_967_296;
+  }
+  while (v < -2_147_483_648) {
+    v += 4_294_967_296;
+  }
+  return v;
+}
+
+export function wrappingSubI32(a, b) {
+  let v = a - b;
+  while (v > 2_147_483_647) {
+    v -= 4_294_967_296;
+  }
+  while (v < -2_147_483_648) {
+    v += 4_294_967_296;
+  }
+  return v;
+}
+
+export function wrappingMulI32(a, b) {
+  let v = a * b;
+  while (v > 2_147_483_647) {
+    v -= 4_294_967_296;
+  }
+  while (v < -2_147_483_648) {
+    v += 4_294_967_296;
+  }
+  return v;
+}
+
+export function wrappingDivI32(a, b) {
+  let v = Math.floor(a / b);
+  while (v > 2_147_483_647) {
+    v -= 4_294_967_296;
+  }
+  while (v < -2_147_483_648) {
+    v += 4_294_967_296;
+  }
+  return v;
+}
+
+export function wrappingModI32(a, b) {
+  let v = a % b;
+  while (v > 2_147_483_647) {
+    v -= 4_294_967_296;
+  }
+  while (v < -2_147_483_648) {
+    v += 4_294_967_296;
+  }
+  return v;
+}
+
+export function wrappingPowI32(a, b) {
+  let v = Math.floor(a ** b);
+  while (v > 2_147_483_647) {
+    v -= 4_294_967_296;
+  }
+  while (v < -2_147_483_648) {
+    v += 4_294_967_296;
+  }
+  return v;
+}
+
+export function wrappingShlI32(a, b) {
+  let c = a < 0 ? a + 4_294_967_296 : a;
+  let v = c << b;
+  while (v > 2_147_483_647) {
+    v -= 4_294_967_296;
+  }
+  while (v < -2_147_483_648) {
+    v += 4_294_967_296;
+  }
+  return v;
+}
+
+export function wrappingShrI32(a, b) {
+  // There's something broken with right-shift. MDN says it's a "sign propagating right shift"
+  // so a negative number will remain negative after the shift (which is a trash choice, but
+  // okay). However, even if I convert an i32 into a u32 inside of Number, where it's *not*
+  // negative, but the 32nd bit is 1, it will treat it as the sign bit in the operation and
+  // output a negative number.
+  //
+  // But all is not lost. I'm converting the value into a BigInt after making it a u32 and then
+  // converting back to a Number at the end to get this to work right.
+  let c = a < 0 ? BigInt(a) + 4_294_967_296n : BigInt(a);
+  let v = c >> BigInt(b);
+  while (v > 2_147_483_647n) {
+    v -= 4_294_967_296n;
+  }
+  while (v < -2_147_483_648n) {
+    v += 4_294_967_296n;
+  }
+  return Number(v);
+}
+
+export function rotateLeftI32(a, b) {
+  let c = b;
+  while (c > 31) {
+    c -= 32;
+  }
+  if (c == 0) {
+    return a;
+  }
+  let lhs = clampI32(-1 << c);
+  let rhs = clampI32(-1 ^ lhs);
+  let p1 = a & lhs;
+  let p2 = a & rhs;
+  return wrappingShrI32(p1, 32 - c) + wrappingShlI32(p2, c);
+}
+
+export function rotateRightI32(a, b) {
+  let c = b;
+  while (c > 31) {
+    c -= 32;
+  }
+  if (c == 0) {
+    return a;
+  }
+  let rhs = clampI32(-1 << c);
+  let lhs = clampI32(-1 ^ rhs);
+  let p1 = a & lhs;
+  let p2 = a & rhs;
+  return wrappingShrI32(p1, 32 - c) + wrappingShlI32(p2, c);
+}
