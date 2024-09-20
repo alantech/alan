@@ -569,3 +569,121 @@ export function rotateRightI64(a, b) {
   let p2 = a & rhs;
   return wrappingShrI64(p1, 64n - c) + wrappingShlI64(p2, c);
 }
+
+export function wrappingAddU8(a, b) {
+  let v = a + b;
+  while (v > 255) {
+    v -= 256;
+  }
+  while (v < 0) {
+    v += 256;
+  }
+  return v;
+}
+
+export function wrappingSubU8(a, b) {
+  let v = a - b;
+  while (v > 255) {
+    v -= 256;
+  }
+  while (v < 0) {
+    v += 256;
+  }
+  return v;
+}
+
+export function wrappingMulU8(a, b) {
+  let v = a * b;
+  while (v > 255) {
+    v -= 256;
+  }
+  while (v < 0) {
+    v += 256;
+  }
+  return v;
+}
+
+export function wrappingDivU8(a, b) {
+  let v = Math.floor(a / b);
+  while (v > 255) {
+    v -= 256;
+  }
+  while (v < 0) {
+    v += 256;
+  }
+  return v;
+}
+
+export function wrappingModU8(a, b) {
+  let v = a % b;
+  while (v > 255) {
+    v -= 256;
+  }
+  while (v < 0) {
+    v += 256;
+  }
+  return v;
+}
+
+export function wrappingPowU8(a, b) {
+  let v = Math.floor(a ** b);
+  while (v > 255) {
+    v -= 256;
+  }
+  while (v < 0) {
+    v += 256;
+  }
+  return v;
+}
+
+export function wrappingShlU8(a, b) {
+  let v = a << b;
+  while (v > 255) {
+    v -= 256;
+  }
+  while (v < 0) {
+    v += 256;
+  }
+  return v;
+}
+
+export function wrappingShrU8(a, b) {
+  let v = a >> b;
+  while (v > 255) {
+    v -= 256;
+  }
+  while (v < 0) {
+    v += 256;
+  }
+  return v;
+}
+
+export function rotateLeftU8(a, b) {
+  let c = b;
+  while (c > 7) {
+    c -= 8;
+  }
+  if (c == 0) {
+    return a;
+  }
+  let lhs = clampU8(255 << c);
+  let rhs = clampU8(255 ^ lhs);
+  let p1 = a & lhs;
+  let p2 = a & rhs;
+  return wrappingShrU8(p1, 8 - c) + wrappingShlU8(p2, c);
+}
+
+export function rotateRightU8(a, b) {
+  let c = b;
+  while (c > 7) {
+    c -= 8;
+  }
+  if (c == 0) {
+    return a;
+  }
+  let rhs = clampU8(255 << c);
+  let lhs = clampU8(255 ^ rhs);
+  let p1 = a & lhs;
+  let p2 = a & rhs;
+  return wrappingShrU8(p1, 8 - c) + wrappingShlU8(p2, c);
+}
