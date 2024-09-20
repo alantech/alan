@@ -699,31 +699,58 @@ export fn{Rs} wrr (a: i64, b: i64) = {Method{"rotate_right"} :: (i64, Deref{u32}
 export fn{Js} wrr "alan_std::rotateRightI64" <- RootBacking :: (i64, i64) -> i64;
 
 /// Unsigned Integer-related functions and function bindings
-export fn add Method{"wrapping_add"} :: (u8, Deref{u8}) -> u8;
-export fn sub Method{"wrapping_sub"} :: (u8, Deref{u8}) -> u8;
-export fn mul Method{"wrapping_mul"} :: (u8, Deref{u8}) -> u8;
-export fn div Method{"wrapping_div"} :: (u8, Deref{u8}) -> u8;
-export fn mod Method{"wrapping_rem"} :: (u8, Deref{u8}) -> u8;
-export fn pow (a: u8, b: u8) = {Method{"wrapping_pow"} :: (u8, Deref{u32}) -> u8}(a, b.u32);
-export fn and Infix{"&"} :: (Deref{u8}, Deref{u8}) -> u8;
-export fn or Infix{"|"} :: (Deref{u8}, Deref{u8}) -> u8;
-export fn xor Infix{"^"} :: (Deref{u8}, Deref{u8}) -> u8;
-export fn not Prefix{"!"} :: Deref{u8} -> u8;
+export fn{Rs} add Method{"wrapping_add"} :: (u8, Deref{u8}) -> u8;
+export fn{Js} add "alan_std.wrappingAddU8" <- RootBacking :: (u8, u8) -> u8;
+export fn{Rs} sub Method{"wrapping_sub"} :: (u8, Deref{u8}) -> u8;
+export fn{Js} sub "alan_std.wrappingSubU8" <- RootBacking :: (u8, u8) -> u8;
+export fn{Rs} mul Method{"wrapping_mul"} :: (u8, Deref{u8}) -> u8;
+export fn{Js} mul "alan_std.wrappingMulU8" <- RootBacking :: (u8, u8) -> u8;
+export fn{Rs} div Method{"wrapping_div"} :: (u8, Deref{u8}) -> u8;
+export fn{Js} div "alan_std.wrappingDivU8" <- RootBacking :: (u8, u8) -> u8;
+export fn{Rs} mod Method{"wrapping_rem"} :: (u8, Deref{u8}) -> u8;
+export fn{Js} mod "alan_std.wrappingModU8" <- RootBacking :: (u8, u8) -> u8;
+export fn{Rs} pow (a: u8, b: u8) = {Method{"wrapping_pow"} :: (u8, Deref{u32}) -> u8}(a, b.u32);
+export fn{Js} pow "alan_std.wrappingPowU8" <- RootBacking :: (u8, u8) -> u8;
+export fn{Rs} and Infix{"&"} :: (Deref{u8}, Deref{u8}) -> u8;
+export fn{Js} and Infix{"&"} :: (u8, u8) -> u8;
+export fn{Rs} or Infix{"|"} :: (Deref{u8}, Deref{u8}) -> u8;
+export fn{Js} or Infix{"|"} :: (u8, u8) -> u8;
+export fn{Rs} xor Infix{"^"} :: (Deref{u8}, Deref{u8}) -> u8;
+export fn{Js} xor Infix{"^"} :: (u8, u8) -> u8;
+export fn{Rs} not Prefix{"!"} :: Deref{u8} -> u8;
+export fn{Js} not (a: u8) { // TODO: Move this into the stdlib js file?
+  let v = {Prefix{"~"} :: u8 -> u8}(a);
+  return if(
+    {Infix{"<"} :: (u8, i64) -> bool}(v, 0),
+    fn = {Infix{"+"} :: (u8, i64) -> u8}(v, 256),
+    fn = v
+  );
+}
 export fn nand (a: u8, b: u8) = a.and(b).not;
 export fn nor (a: u8, b: u8) = a.or(b).not;
 export fn xnor (a: u8, b: u8) = a.xor(b).not;
-export fn eq Infix{"=="} :: (Deref{u8}, Deref{u8}) -> bool;
-export fn neq Infix{"!="} :: (Deref{u8}, Deref{u8}) -> bool;
-export fn lt Infix{"<"} :: (Deref{u8}, Deref{u8}) -> bool;
-export fn lte Infix{"<="} :: (Deref{u8}, Deref{u8}) -> bool;
-export fn gt Infix{">"} :: (Deref{u8}, Deref{u8}) -> bool;
-export fn gte Infix{">="} :: (Deref{u8}, Deref{u8}) -> bool;
+export fn{Rs} eq Infix{"=="} :: (Deref{u8}, Deref{u8}) -> bool;
+export fn{Js} eq Infix{"=="} :: (u8, u8) -> bool;
+export fn{Rs} neq Infix{"!="} :: (Deref{u8}, Deref{u8}) -> bool;
+export fn{Js} neq Infix{"!="} :: (u8, u8) -> bool;
+export fn{Rs} lt Infix{"<"} :: (Deref{u8}, Deref{u8}) -> bool;
+export fn{Js} lt Infix{"<"} :: (u8, u8) -> bool;
+export fn{Rs} lte Infix{"<="} :: (Deref{u8}, Deref{u8}) -> bool;
+export fn{Js} lte Infix{"<="} :: (u8, u8) -> bool;
+export fn{Rs} gt Infix{">"} :: (Deref{u8}, Deref{u8}) -> bool;
+export fn{Js} gt Infix{">"} :: (u8, u8) -> bool;
+export fn{Rs} gte Infix{">="} :: (Deref{u8}, Deref{u8}) -> bool;
+export fn{Js} gte Infix{">="} :: (u8, u8) -> bool;
 export fn min (a: u8, b: u8) = if(a.lte(b), a, b);
 export fn max (a: u8, b: u8) = if(a.gte(b), a, b);
-export fn shl (a: u8, b: u8) = {Method{"wrapping_shl"} :: (u8, Deref{u32}) -> u8}(a, b.u32);
-export fn shr (a: u8, b: u8) = {Method{"wrapping_shr"} :: (u8, Deref{u32}) -> u8}(a, b.u32);
-export fn wrl (a: u8, b: u8) = {Method{"rotate_left"} :: (u8, Deref{u32}) -> u8}(a, b.u32);
-export fn wrr (a: u8, b: u8) = {Method{"rotate_right"} :: (u8, Deref{u32}) -> u8}(a, b.u32);
+export fn{Rs} shl (a: u8, b: u8) = {Method{"wrapping_shl"} :: (u8, Deref{u32}) -> u8}(a, b.u32);
+export fn{Js} shl "alan_std.wrappingShlU8" <- RootBacking :: (u8, u8) -> u8;
+export fn{Rs} shr (a: u8, b: u8) = {Method{"wrapping_shr"} :: (u8, Deref{u32}) -> u8}(a, b.u32);
+export fn{Js} shr "alan_std.wrappingShrU8" <- RootBacking :: (u8, u8) -> u8;
+export fn{Rs} wrl (a: u8, b: u8) = {Method{"rotate_left"} :: (u8, Deref{u32}) -> u8}(a, b.u32);
+export fn{Js} wrl "alan_std.rotateLeftU8" <- RootBacking :: (u8, u8) -> u8;
+export fn{Rs} wrr (a: u8, b: u8) = {Method{"rotate_right"} :: (u8, Deref{u32}) -> u8}(a, b.u32);
+export fn{Js} wrr "alan_std::rotateRightU8" <- RootBacking :: (u8, u8) -> u8;
 
 export fn add Method{"wrapping_add"} :: (u16, Deref{u16}) -> u16;
 export fn sub Method{"wrapping_sub"} :: (u16, Deref{u16}) -> u16;
