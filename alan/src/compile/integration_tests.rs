@@ -509,37 +509,37 @@ test_full!(i64_neg => r#"
     stdout "-3\n";
 );
 
-test!(u8_add => r#"
+test_full!(u8_add => r#"
     export fn main() -> ExitCode = ExitCode(add(u8(1), u8(2)));"#;
     status 3;
 );
-test!(u8_sub => r#"
+test_full!(u8_sub => r#"
     export fn main() = ExitCode(sub(u8(2), u8(1)));"#;
     status 1;
 );
-test!(u8_mul => r#"
+test_full!(u8_mul => r#"
     export fn main() -> ExitCode = ExitCode(mul(u8(2), u8(1)));"#;
     status 2;
 );
-test!(u8_div => r#"
+test_full!(u8_div => r#"
     export fn main() = ExitCode(div(u8(6), u8(2)));"#;
     status 3;
 );
-test!(u8_mod => r#"
+test_full!(u8_mod => r#"
     export fn main() -> ExitCode = ExitCode(mod(u8(6), u8(4)));"#;
     status 2;
 );
-test!(u8_pow => r#"
+test_full!(u8_pow => r#"
     export fn main() = ExitCode(pow(u8(6), u8(2)));"#;
     status 36;
 );
-test!(u8_min => r#"
+test_full!(u8_min => r#"
     export fn main() {
       print(min(u8(3), u8(5)));
     }"#;
     stdout "3\n";
 );
-test!(u8_max => r#"
+test_full!(u8_max => r#"
     export fn main() {
       print(max(u8(3), u8(5)));
     }"#;
@@ -938,7 +938,7 @@ test_full!(i64_bitwise => r#"
     stdout "0\n3\n6\n-1\n-1\n-4\n-7\n";
 );
 
-test!(u8_bitwise => r#"
+test_full!(u8_bitwise => r#"
     prefix u8 as ~ precedence 10
 
     export fn main {
