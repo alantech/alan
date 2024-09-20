@@ -114,3 +114,25 @@ assert(alanStd.wrappingShrI32(-2_147_483_648, 1) == 1_073_741_824, "wrappingShrI
 assert(alanStd.rotateLeftI32(-2_147_483_648, 1) == 1, "rotateLeftI32 -2_147_483_648 <<< 1 = 1");
 
 assert(alanStd.rotateRightI32(1_073_741_824, 1) == -2_147_483_648, "rotateRightI32 1_073_741_824 >>> 1 = -2_147_483_648");
+
+assert(alanStd.wrappingAddI64(1n, 2n) === 3n, "wrappingAddI64 1 + 2 = 3");
+assert(alanStd.wrappingAddI64(9_223_372_036_854_775_807n, 1n) === -9_223_372_036_854_775_808n, "wrappingAddI64 9_223_372_036_854_775_807 + 1 = -9_223_372_036_854_775_808");
+
+assert(alanStd.wrappingSubI64(1n, 2n) === -1n, "wrappingSubI64 1 - 2 = -1");
+assert(alanStd.wrappingSubI64(-9_223_372_036_854_775_808n, 1n) === 9_223_372_036_854_775_807n, "wrappingSubI64 -9_223_372_036_854_775_808 - 1 = 9_223_372_036_854_775_807");
+
+assert(alanStd.wrappingMulI64(4_294_967_296n, 4_294_967_296n) === 0n, "wrappingMulI64 4_294_967_296 * 4_294_967_296 = 0");
+
+assert(alanStd.wrappingDivI64(-9_223_372_036_854_775_808n, 2n) == -4_611_686_018_427_387_904n, "wrappingDivI64 -9_223_372_036_854_775_808 / 2 = −4_611_686_018_427_387_904");
+
+assert(alanStd.wrappingModI64(5n, 2n) == 1n, "wrappingModI64 5 % 2 = 1");
+
+assert(alanStd.wrappingPowI64(2n, 64n) == 0n, "wrappingPowI64 2 ^ 64 = 0");
+
+assert(alanStd.wrappingShlI64(-9_223_372_036_854_775_808n, 1n) == 0n, "wrappingShlI64 -9_223_372_036_854_775_808 << 1 = 0");
+
+assert(alanStd.wrappingShrI64(-9_223_372_036_854_775_808n, 1n) == 4_611_686_018_427_387_904n, "wrappingShrI64 -9_223_372_036_854_775_808 >> 1 = 4_611_686_018_427_387_904");
+
+assert(alanStd.rotateLeftI64(-9_223_372_036_854_775_808n, 1n) == 1n, "rotateLeftI64 -9_223_372_036_854_775_808 <<< 1 = 1");
+
+assert(alanStd.rotateRightI64(4_611_686_018_427_387_904n, 1n) == -9_223_372_036_854_775_808n, "rotateRightI64 4_611_686_018_427_387_904 >>> 1 = -9_223_372_036_854_775_808");

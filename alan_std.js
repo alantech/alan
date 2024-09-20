@@ -449,3 +449,123 @@ export function rotateRightI32(a, b) {
   let p2 = a & rhs;
   return wrappingShrI32(p1, 32 - c) + wrappingShlI32(p2, c);
 }
+
+export function wrappingAddI64(a, b) {
+  let v = a + b;
+  while (v > 9_223_372_036_854_775_807n) {
+    v -= 18_446_744_073_709_551_616n;
+  }
+  while (v < -9_223_372_036_854_775_808n) {
+    v += 18_446_744_073_709_551_616n;
+  }
+  return v;
+}
+
+export function wrappingSubI64(a, b) {
+  let v = a - b;
+  while (v > 9_223_372_036_854_775_807n) {
+    v -= 18_446_744_073_709_551_616n;
+  }
+  while (v < -9_223_372_036_854_775_808n) {
+    v += 18_446_744_073_709_551_616n;
+  }
+  return v;
+}
+
+export function wrappingMulI64(a, b) {
+  let v = a * b;
+  while (v > 9_223_372_036_854_775_807n) {
+    v -= 18_446_744_073_709_551_616n;
+  }
+  while (v < -9_223_372_036_854_775_808n) {
+    v += 18_446_744_073_709_551_616n;
+  }
+  return v;
+}
+
+export function wrappingDivI64(a, b) {
+  let v = a / b;
+  while (v > 9_223_372_036_854_775_807n) {
+    v -= 18_446_744_073_709_551_616n;
+  }
+  while (v < -9_223_372_036_854_775_808n) {
+    v += 18_446_744_073_709_551_616n;
+  }
+  return v;
+}
+
+export function wrappingModI64(a, b) {
+  let v = a % b;
+  while (v > 9_223_372_036_854_775_807n) {
+    v -= 18_446_744_073_709_551_616n;
+  }
+  while (v < -9_223_372_036_854_775_808n) {
+    v += 18_446_744_073_709_551_616n;
+  }
+  return v;
+}
+
+export function wrappingPowI64(a, b) {
+  let v = a ** b;
+  while (v > 9_223_372_036_854_775_807n) {
+    v -= 18_446_744_073_709_551_616n;
+  }
+  while (v < -9_223_372_036_854_775_808n) {
+    v += 18_446_744_073_709_551_616n;
+  }
+  return v;
+}
+
+export function wrappingShlI64(a, b) {
+  let c = a < 0n ? a + 18_446_744_073_709_551_616n : a;
+  let v = c << b;
+  while (v > 9_223_372_036_854_775_807n) {
+    v -= 18_446_744_073_709_551_616n;
+  }
+  while (v < -9_223_372_036_854_775_808n) {
+    v += 18_446_744_073_709_551_616n;
+  }
+  return v;
+}
+
+export function wrappingShrI64(a, b) {
+  let c = a < 0n ? a + 18_446_744_073_709_551_616n : a;
+  let v = c >> b;
+  while (v > 9_223_372_036_854_775_807n) {
+    v -= 18_446_744_073_709_551_616n;
+  }
+  while (v < -9_223_372_036_854_775_808n) {
+    v += 18_446_744_073_709_551_616n;
+  }
+  return v;
+}
+
+export function rotateLeftI64(a, b) {
+  let c = b;
+  while (c > 63n) {
+    c -= 64n;
+  }
+  if (c == 0n) {
+    return a;
+  }
+  let lhs = clampI64(-1n << c);
+  let rhs = clampI64(-1n ^ lhs);
+  let p1 = a & lhs;
+  let p2 = a & rhs;
+  return wrappingShrI64(p1, 64n - c) + wrappingShlI64(p2, c);
+}
+
+export function rotateRightI64(a, b) {
+  let c = b;
+  while (c > 63n) {
+    c -= 64n;
+  }
+  if (c == 0n) {
+    return a;
+  }
+  let rhs = clampI64(-1n << c);
+  let lhs = clampI64(-1n ^ rhs);
+  let p1 = a & lhs;
+  let p2 = a & rhs;
+  return wrappingShrI64(p1, 64n - c) + wrappingShlI64(p2, c);
+}
