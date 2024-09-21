@@ -644,35 +644,35 @@ test_full!(u32_max => r#"
     stdout "5\n";
 );
 
-test!(u64_add => r#"
+test_full!(u64_add => r#"
     export fn main = print(1.u64 + 2.u64);"#;
     stdout "3\n";
 );
-test!(u64_sub => r#"
+test_full!(u64_sub => r#"
     export fn main = print(2.u64 - 1.u64);"#;
     stdout "1\n";
 );
-test!(u64_mul => r#"
+test_full!(u64_mul => r#"
     export fn main = print(2.u64 * 1.u64);"#;
     stdout "2\n";
 );
-test!(u64_div => r#"
+test_full!(u64_div => r#"
     export fn main = print(6.u64 / 2.u64);"#;
     stdout "3\n";
 );
-test!(u64_mod => r#"
+test_full!(u64_mod => r#"
     export fn main = print(6.u64 % 4.u64);"#;
     stdout "2\n";
 );
-test!(u64_pow => r#"
+test_full!(u64_pow => r#"
     export fn main = print(6.u64 ** 2.u64);"#;
     stdout "36\n";
 );
-test!(u64_min => r#"
+test_full!(u64_min => r#"
     export fn main = min(3.u64, 5.u64).print;"#;
     stdout "3\n";
 );
-test!(u64_max => r#"
+test_full!(u64_max => r#"
     export fn main = max(3.u64, 5.u64).print;"#;
     stdout "5\n";
 );
@@ -980,7 +980,7 @@ test_full!(u32_bitwise => r#"
     }"#;
     stdout "0\n3\n6\n4294967295\n4294967295\n4294967292\n4294967289\n";
 );
-test!(u64_bitwise => r#"
+test_full!(u64_bitwise => r#"
     prefix u64 as ~ precedence 10
 
     export fn main {
