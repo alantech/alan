@@ -79,7 +79,7 @@ pub fn from_microstatement(
                 }
             }
             CType::Type(n, _) if n == "i64" || n == "u64" => {
-                if representation.parse::<i128>().is_ok() {
+                if representation.replace("_", "").parse::<i128>().is_ok() {
                     Ok((format!("{}n", representation), out, deps))
                 } else {
                     Ok((representation.clone(), out, deps))
