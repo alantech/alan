@@ -267,13 +267,13 @@ test_full!(passing_ints_to_function => r#"
     stdout "I got a number! 5\n";
     status 0;
 );
-test!(underscores_in_numbers => r#"
+test_full!(underscores_in_numbers => r#"
     export fn main = print(1_000_000 * 2);
 "#;
     stdout "2000000\n";
     status 0;
 );
-test!(other_integer_syntaxes => r#"
+test_full!(other_integer_syntaxes => r#"
     export fn main {
       print(0b10 == 2);
       print(0o10 == 8);
@@ -283,7 +283,7 @@ test!(other_integer_syntaxes => r#"
 "#;
     stdout "true\ntrue\ntrue\ntrue\n";
 );
-test!(scientific_notation => r#"
+test_full!(scientific_notation => r#"
     export fn main {
       print(15.0 == 1.5e1);
       print(-5.0 == -5e0);
@@ -783,7 +783,7 @@ test_full!(f64_neg => r#"
     stdout "-3\n";
 );
 
-test!(grouping => r#"
+test_full!(grouping => r#"
     export fn main {
       print(2 / (3));
       print(3 / (1 + 2));
@@ -791,13 +791,13 @@ test!(grouping => r#"
     stdout "0\n1\n";
 );
 
-test!(string_min => r#"
+test_full!(string_min => r#"
     export fn main {
       min(3.string, 5.string).print;
     }"#;
     stdout "3\n";
 );
-test!(string_max => r#"
+test_full!(string_max => r#"
     export fn main {
       max(3.string, 5.string).print;
     }"#;
@@ -1084,7 +1084,7 @@ true
 
 // String Manipulation
 
-test!(string_ops => r#"
+test_full!(string_ops => r#"
     export fn main {
       concat('Hello, ', 'World!').print;
 
@@ -1116,14 +1116,14 @@ Hello
 Hello
 "#;
 );
-test!(string_const_vs_computed_equality => r#"
+test_full!(string_const_vs_computed_equality => r#"
     export fn main {
       const foo = 'foo';
       print(foo.trim == foo);
     }"#;
     stdout "true\n";
 );
-test!(string_chars_direct => r#"
+test_full!(string_chars_direct => r#"
     export fn main {
         const foo = 'foo';
         print(#foo);
@@ -1600,7 +1600,7 @@ test!(bitshifting => r#"
 
 // Functions and Custom Operators
 
-test!(basic_function_usage => r#"
+test_full!(basic_function_usage => r#"
     fn foo() = print('foo');
 
     fn bar(s: string) = s.concat("bar");
@@ -1614,7 +1614,7 @@ foobar
 "#;
 );
 
-test!(functions_and_custom_operators => r#"
+test_full!(functions_and_custom_operators => r#"
     fn foo() {
       print('foo');
     }
@@ -1654,6 +1654,7 @@ to barto bar3
 "#;
 );
 
+// TODO: Need to figure out how to get this working in JS-land
 test!(mutable_functions => r#"
     fn addeq (a: Mut{i64}, b: i64) {
         a = a.clone() + b;
@@ -1672,7 +1673,7 @@ test!(mutable_functions => r#"
 
 // Conditionals
 
-test!(if_fn => r#"
+test_full!(if_fn => r#"
     export fn main {
         if(1 == 0, fn = print('What!?'), fn = print('Math is sane...'));
         if(1 == 2, fn = 'Uhh...').print;
@@ -1778,7 +1779,7 @@ test_ignore!(conditional_let_assignment => r#"
     stdout "1\n";
 );
 
-test!(conditional_compilation => r#"
+test_full!(conditional_compilation => r#"
     type{true} foo = string;
     type{false} foo = i64;
 
@@ -1805,7 +1806,7 @@ test!(conditional_compilation => r#"
     }"#;
     stdout "Hello, World!\n9\n9\ntrue\n";
 );
-test!(library_testing => r#"
+test_full!(library_testing => r#"
     export fn add1(a: i64) -> i64 = a + 1;
     export postfix add1 as ++ precedence 5;
 
@@ -1828,7 +1829,7 @@ test_compile_error!(object_constructor_compiler_checks => r#"
     }"#;
     error "Could not find a function with a call signature of Foo(f64)";
 );
-test!(array_literals => r#"
+test_full!(array_literals => r#"
     export fn main {
       const test3 = [ 1, 2, 4, 8, 16, 32, 64 ];
       print(test3[0]);
@@ -1837,7 +1838,7 @@ test!(array_literals => r#"
     }"#;
     stdout "1\n2\n4\n";
 );
-test!(object_literals => r#"
+test_full!(object_literals => r#"
     type MyType =
       foo: string,
       bar: bool;

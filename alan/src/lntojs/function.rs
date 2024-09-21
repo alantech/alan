@@ -21,13 +21,10 @@ pub fn from_microstatement(
             name: _,
             kind,
             typen: _,
-        } => {
-            if let ArgKind::Ref = kind {
-                Ok(("".to_string(), out, deps))
-            } else {
-                Err("Targeting JS does not allow for Mut{T}, Own{T}, or Deref{T}".into())
-            }
-        }
+        } => match kind {
+            ArgKind::Ref | ArgKind::Mut => Ok(("".to_string(), out, deps)),
+            _ => Err("Targeting JS does not allow for Own{T} or Deref{T}".into()),
+        },
         Microstatement::Assignment {
             name,
             value,
@@ -36,10 +33,15 @@ pub fn from_microstatement(
             let (val, o, d) = from_microstatement(value, scope, out, deps)?;
             out = o;
             deps = d;
-            if *mutable {
-                Ok((format!("let {} = {}", name, val), out, deps))
+            let n = if name.as_str() == "var" {
+                "__var__"
             } else {
-                Ok((format!("const {} = {}", name, val), out, deps))
+                name.as_str()
+            };
+            if *mutable {
+                Ok((format!("let {} = {}", n, val), out, deps))
+            } else {
+                Ok((format!("const {} = {}", n, val), out, deps))
             }
         }
         Microstatement::Closure { function } => {
@@ -70,7 +72,18 @@ pub fn from_microstatement(
             representation,
         } => match &typen {
             CType::Type(n, _) if n == "string" => {
-                Ok((representation.replace("\n", "\\n"), out, deps))
+                if representation.starts_with("\"") {
+                    Ok((representation.replace("\n", "\\n"), out, deps))
+                } else {
+                    Ok((representation.clone(), out, deps))
+                }
+            }
+            CType::Type(n, _) if n == "i64" || n == "u64" => {
+                if representation.parse::<i128>().is_ok() {
+                    Ok((format!("{}n", representation), out, deps))
+                } else {
+                    Ok((representation.clone(), out, deps))
+                }
             }
             CType::Binds(n, _) => match &**n {
                 CType::TString(_) => Ok((representation.clone(), out, deps)),
@@ -116,7 +129,7 @@ pub fn from_microstatement(
                     Ok((representation.clone(), out, deps))
                 }
                 otherwise => CType::fail(&format!(
-                    "1. Bound types must be strings or node.js imports: {:?}",
+                    "Bound types must be strings or node.js imports: {:?}",
                     otherwise
                 )),
             },
@@ -228,7 +241,13 @@ pub fn from_microstatement(
                     },
                 }
             }
-            _ => Ok((representation.clone(), out, deps)),
+            _ => {
+                if representation.as_str() == "var" {
+                    Ok(("__var__".to_string(), out, deps))
+                } else {
+                    Ok((representation.clone(), out, deps))
+                }
+            }
         },
         Microstatement::Array { vals, .. } => {
             let mut val_representations = Vec::new();
@@ -278,7 +297,11 @@ pub fn from_microstatement(
                         let (a, o, d) = from_microstatement(arg, scope, out, deps)?;
                         out = o;
                         deps = d;
-                        argstrs.push(a);
+                        if a.as_str() == "var" {
+                            argstrs.push("__var__".to_string());
+                        } else {
+                            argstrs.push(a);
+                        }
                     }
                     if let FnKind::External(d) = &function.kind {
                         match &*d {
@@ -543,7 +566,7 @@ pub fn from_microstatement(
                                                 if function.name == "Error" {
                                                     return Ok((
                                                         format!(
-                                                            "({} instanceof AlanError ? {} : null)",
+                                                            "({} instanceof alan_std.AlanError ? {} : null)",
                                                             argstrs[0], argstrs[0]
                                                         ),
                                                         out,
@@ -552,7 +575,7 @@ pub fn from_microstatement(
                                                 } else {
                                                     return Ok((
                                                         format!(
-                                                            "({} instanceof AlanError ? null : {})",
+                                                            "(!({} instanceof alan_std.AlanError) ? {} : null)",
                                                             argstrs[0], argstrs[0]
                                                         ),
                                                         out,

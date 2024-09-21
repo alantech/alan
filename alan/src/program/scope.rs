@@ -92,9 +92,9 @@ impl<'a> Scope<'a> {
                                 "Type" | "Generic" | "Int" | "Float" | "Bool" | "String" => {
                                     /* Do nothing for the 'structural' types */
                                 }
-                                g @ ("Group" | "Infix" | "Prefix" | "Method" | "Cast" | "Own"
-                                | "Deref" | "Mut" | "Rust" | "Node" | "From" | "Array" | "Fail"
-                                | "Neg" | "Len" | "Size" | "FileStr" | "Env" | "EnvExists"
+                                g @ ("Group" | "Infix" | "Prefix" | "Method" | "Property" | "Cast"
+                                | "Own" | "Deref" | "Mut" | "Rust" | "Node" | "From" | "Array"
+                                | "Fail" | "Neg" | "Len" | "Size" | "FileStr" | "Env" | "EnvExists"
                                 | "Not") => s = CType::from_generic(s, g, 1),
                                 g @ ("Function" | "Call" | "Dependency" | "Import" | "Field"
                                 | "Prop" | "Buffer" | "Add" | "Sub" | "Mul" | "Div" | "Mod"

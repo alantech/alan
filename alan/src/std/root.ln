@@ -19,6 +19,7 @@ export ctype Call{N, F}; // A reference to a function call (or method, etc) in t
 export ctype Infix{O}; // A reference to a native infix operation in the platform language
 export ctype Prefix{O}; // A reference to a native prefix operation in the platform language
 export ctype Method{F}; // A reference to a native method in the platform language
+export ctype Property{P}; // A reference to a native property in the platform language
 export ctype Cast{T}; // A reference to a native type in the platform language to cast to
 export ctype Own{T}; // Specifying that the native code needs an owned version of the type
 export ctype Deref{T}; // Specifying that the native code needs an owned version of the type and it is safe to dereference the reference
@@ -192,7 +193,7 @@ export fn{Rs} hash "alan_std::hashstring" <- RootBacking :: string -> i64;
 export fn void{T}(v: T) -> void {}
 export fn void() -> void {}
 export fn{Rs} store{T} (a: Mut{T}, b: T) -> T = {"std::mem::replace" :: (Mut{T}, Own{T}) -> T}(a, b);
-export fn{Js} store{T} (a: Mut{T}, b: T) -> T = {Infix{"="} :: (T, T) -> T}(a, b);
+export fn{Js} store{T} (a: Mut{T}, b: T) -> T = {Infix{"="} :: (Mut{T}, T) -> T}(a, b);
 
 /// Fallible, Maybe, and Either functions
 export fn{Rs} Maybe{T}(v: T!) = {Method{"ok"} :: T! -> T?}(v);
@@ -201,14 +202,18 @@ export fn{Rs} getOr{T, U}(v: U, d: T) = {T}(v).getOr(d);
 export fn{Rs} getOr{T} (v: T?, d: T) = {Method{"unwrap_or"} :: (Own{T?}, Own{T}) -> T}(v, d);
 export fn{Rs} getOr{T} (v: T!, d: T) = {Method{"unwrap_or"} :: (Own{T!}, Own{T}) -> T}(v, d);
 export fn{Rs} getOrExit{T} (v: T!) = {Method{"unwrap"} :: Own{T!} -> T}(v);
+export fn{Js} getOrExit{T} (v: T!) = {"((a) => a)" :: T! -> T}(v); // TODO: How to really represent this?
 export fn{Rs} getOrExit{T} (v: T?) = {Method{"unwrap"} :: Own{T?} -> T}(v);
+export fn{Js} getOrExit{T} (v: T?) = {"((a) => a)" :: T? -> T}(v); // TODO: How to really represent this?
 export fn{Rs} Error{T} (e: string) = {"Err" :: Own{Error} -> T!}(
   {Method{"into"} :: Own{string} -> Error}(e));
 export fn{Rs} Error (e: string) = {Method{"into"} :: Own{string} -> Error}(e);
+export fn{Js} Error{T} "new alan_std.AlanError" <- RootBacking :: string -> T!;
 export fn{Js} Error "new alan_std.AlanError" <- RootBacking :: string -> Error;
 export fn{Rs} exists{T} (m: T?) = {Method{"is_some"} :: T? -> bool}(m);
+export fn{Js} exists{T} (m: T?) = {"((a) => a !== null)" :: T? -> bool}(m);
 export fn{Rs} string(e: Error) = {"format!" :: ("{}", Error) -> string}(e);
-export fn{Js} string Method{"message"} :: Error -> string;
+export fn{Js} string Property{"message"} :: Error -> string;
 
 /// Primitive type casting functions
 export fn i8(i: i8) = i;
@@ -962,31 +967,52 @@ export fn{Js} concat Infix{"+"} :: (string, string) -> string;
 export fn{Rs} repeat (a: string, n: i64) = {Method{"repeat"} :: (string, Deref{Binds{"usize"}}) -> string}(
   a,
   {Cast{"usize"} :: Deref{i64} -> Binds{"usize"}}(n));
-export fn{Rs} replace Method{"replace"} :: (string, string, string) -> string;
+export fn{Js} repeat (a: string, n: i64) = {Method{"repeat"} :: (string, i32) -> string}(a, n.i32);
+export fn replace Method{"replace"} :: (string, string, string) -> string;
 export fn{Rs} split "alan_std::splitstring" <- RootBacking :: (string, string) -> string[];
+export fn{Js} split Method{"split"} :: (string, string) -> string[];
 export fn{Rs} len (s: string) = {Cast{"i64"} :: Deref{Binds{"usize"}} -> i64}(
   {Method{"len"} :: Array{Binds{"char"}} -> Binds{"usize"}}(
     {Method{"collect::<Vec<char>>"} :: Own{Binds{"std::str::Chars"}} -> Array{Binds{"char"}}}(
       {Method{"chars"} :: string -> Binds{"std::str::Chars"}}(s))));
+export fn{Js} len (s: string) = {Property{"length"} :: string -> i32}(s).i64;
 export fn{Rs} get "alan_std::getstring" <- RootBacking :: (string, i64) -> string!;
-export fn{Rs} trim Method{"trim"} :: string -> string;
+export fn{Js} get (s: string, i: i64) = if(i.gte(0).and(i.lt(s.len)),
+  fn = Fallible{string}({Method{"at"} :: (string, i32) -> string}(s, i.i32)),
+  fn = Error{string}("Index ".concat(i.string).concat(" is out-of-bounds for a string length of ").concat(s.len.string)));
+export fn trim Method{"trim"} :: string -> string;
 export fn{Rs} index "alan_std::indexstring" <- RootBacking :: (string, string) -> i64!;
+export fn{Js} index (a: string, b: string) -> i64! {
+  let i = {Method{"indexOf"} :: (string, string) -> i64}(a, b);
+  return if(i.lt(0),
+    fn = Error{i64}("Could not find ".concat(b).concat(" in ").concat(a)),
+    fn = Fallible{i64}(i));
+}
 // TODO: Optimize this by using `as_str` inline, but need a `Str` type, which I *really* don't want to terrorize the user with
 export fn{Rs} eq Infix{"=="} :: (Own{string}, Own{string}) -> bool;
+export fn{Js} eq Infix{"=="} :: (string, string) -> bool;
 export fn{Rs} neq Infix{"!="} :: (Own{string}, Own{string}) -> bool;
+export fn{Js} neq Infix{"!="} :: (string, string) -> bool;
 export fn{Rs} lt Infix{"<"} :: (Own{string}, Own{string}) -> bool;
+export fn{Js} lt Infix{"<"} :: (string, string) -> bool;
 export fn{Rs} lte Infix{"<="} :: (Own{string}, Own{string}) -> bool;
+export fn{Js} lte Infix{"<="} :: (string, string) -> bool;
 export fn{Rs} gt Infix{">"} :: (Own{string}, Own{string}) -> bool;
+export fn{Js} gt Infix{">"} :: (string, string) -> bool;
 export fn{Rs} gte Infix{">="} :: (Own{string}, Own{string}) -> bool;
-export fn{Rs} min (a: string, b: string) = if(a.lte(b), fn () = a.clone(), fn () = b.clone());
-export fn{Rs} max (a: string, b: string) = if(a.gte(b), fn () = a.clone(), fn () = b.clone());
-export fn{Rs} join Method{"join"} :: (string[], string) -> string;
+export fn{Js} gte Infix{">="} :: (string, string) -> bool;
+export fn min (a: string, b: string) = if(a.lte(b), fn () = a.clone(), fn () = b.clone());
+export fn max (a: string, b: string) = if(a.gte(b), fn () = a.clone(), fn () = b.clone());
+export fn join Method{"join"} :: (string[], string) -> string;
 export fn{Rs} join{S}(a: string[S], s: string) = {Method{"join"} :: (string[S], string) -> string}(a, s);
 
 /// Array related bindings
-export fn get{T} "alan_std::getarray" <- RootBacking :: (T[], i64) -> T?;
-export fn len{T} (a: T[]) -> i64 = {Cast{"i64"} :: Deref{Binds{"usize"}} -> i64}(
+export fn{Rs} len{T} (a: T[]) = {Cast{"i64"} :: Deref{Binds{"usize"}} -> i64}(
   {Method{"len"} :: T[] -> Binds{"usize"}}(a));
+export fn{Js} len{T} (a: T[]) = {Property{"length"} :: T[] -> i32}(a).i64;
+export fn{Rs} get{T} "alan_std::getarray" <- RootBacking :: (T[], i64) -> T?;
+export fn{Js} get{T} (a: T[], i: i64) = if(i.gte(0).and(i.lt(a.len)),
+  fn = {Method{"at"} :: (T[], i32) -> T}(a, i.i32));
 export fn push{T} (a: Mut{T[]}, v: T) = {Method{"push"} :: (Mut{T[]}, Own{T})}(a, v);
 export fn pop{T} (a: Mut{T[]}) -> T? = {Method{"pop"} :: Mut{T[]} -> T?}(a);
 export fn map{T, U} "alan_std::map_onearg" <- RootBacking :: (T[], T -> U) -> U[];
@@ -4164,7 +4190,10 @@ export fn ExitCode(e: i64) = ExitCode(e.u8);
 /// Stdout/stderr-related bindings
 // TODO: Rework this to just print anything that can be converted to `string` via interfaces
 export fn{Rs} print{T}(v: T) = {"println!" :: ("{}", string)}(v.string);
-export fn{Js} print{T}(v: T) = {"console.log" :: string}(v.string);
+export fn{Js} print{T}(v: T) = {"console.log" :: T}(v);
+export fn{Js} print (i: i64) = i.string.print;
+export fn{Js} print (u: u64) = u.string.print;
+export fn{Js} print (e: Error) = "Error: ".concat(e.string).print;
 export fn{Rs} print (d: Duration) = {"println!" :: ("{}.{:0>9}", u64, u32)}(
   {Method{"as_secs"} :: Duration -> u64}(d),
   {Method{"subsec_nanos"} :: Duration -> u32}(d));
@@ -4173,10 +4202,10 @@ export fn{Js} print(v: void) = {"console.log" :: "void"}();
 export fn{Rs} print(s: string) = {"println!" :: ("{}", string)}(s);
 export fn{Rs} print{T, N}(a: T[N]) = "[".concat(a.map(fn (v: T) = v.string).join(", ")).concat("]").print;
 export fn{Rs} print{T}(a: T[]) = "[".concat(a.map(fn (v: T) = v.string).join(", ")).concat("]").print;
-export fn{Rs} print{T}(v: T?) = if(v.exists,
+export fn print{T}(v: T?) = if(v.exists,
   fn = v.getOrExit.print,
   fn = print("void"));
-export fn{Rs} print{T}(v: T!) = if({T}(v).exists,
+export fn print{T}(v: T!) = if({T}(v).exists,
   fn = v.getOrExit.print,
   fn = v.Error.getOrExit.print);
 export fn{Rs} eprint{T}(v: T) = {"eprintln!" :: ("{}", string)}(v.string);
