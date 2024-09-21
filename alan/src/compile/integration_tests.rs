@@ -677,108 +677,108 @@ test_full!(u64_max => r#"
     stdout "5\n";
 );
 
-test!(f32_add => r#"
+test_full!(f32_add => r#"
     export fn main {
       print(f32(1) + f32(2));
     }"#;
     stdout "3\n";
 );
-test!(f32_sub => r#"
+test_full!(f32_sub => r#"
     export fn main {
       print(f32(2) - f32(1));
     }"#;
     stdout "1\n";
 );
-test!(f32_mul => r#"
+test_full!(f32_mul => r#"
     export fn main {
       print(f32(2) * f32(1));
     }"#;
     stdout "2\n";
 );
-test!(f32_div => r#"
+test_full!(f32_div => r#"
     export fn main {
       print(f32(6) / f32(2));
     }"#;
     stdout "3\n";
 );
-test!(f32_sqrt => r#"
+test_full!(f32_sqrt => r#"
     export fn main {
       print(sqrt(f32(36)));
     }"#;
     stdout "6\n";
 );
-test!(f32_pow => r#"
+test_full!(f32_pow => r#"
     export fn main {
       print(f32(6) ** f32(2));
     }"#;
     stdout "36\n";
 );
-test!(f32_min => r#"
+test_full!(f32_min => r#"
     export fn main {
       min(3.f32, 5.f32).print;
     }"#;
     stdout "3\n";
 );
-test!(f32_max => r#"
+test_full!(f32_max => r#"
     export fn main {
       max(3.f32, 5.f32).print;
     }"#;
     stdout "5\n";
 );
-test!(f32_neg => r#"
+test_full!(f32_neg => r#"
     export fn main = print(- 3.f32);"#; // You wouldn't naturally write this, but should still work
     stdout "-3\n";
 );
 
-test!(f64_add => r#"
+test_full!(f64_add => r#"
     export fn main {
       (1.0 + 2.0).print;
     }"#;
     stdout "3\n";
 );
-test!(f64_sub => r#"
+test_full!(f64_sub => r#"
     export fn main {
       (2.0 - 1.0).print;
     }"#;
     stdout "1\n";
 );
-test!(f64_mul => r#"
+test_full!(f64_mul => r#"
     export fn main {
       (2.0 * 1.0).print;
     }"#;
     stdout "2\n";
 );
-test!(f64_div => r#"
+test_full!(f64_div => r#"
     export fn main {
       (6.0 / 2.0).print;
     }"#;
     stdout "3\n";
 );
-test!(f64_sqrt => r#"
+test_full!(f64_sqrt => r#"
     export fn main {
       sqrt(36.0).print;
     }"#;
     stdout "6\n";
 );
-test!(f64_pow => r#"
+test_full!(f64_pow => r#"
     export fn main {
       (6.0 ** 2.0).print;
     }"#;
     stdout "36\n";
 );
-test!(f64_min => r#"
+test_full!(f64_min => r#"
     export fn main {
       min(3.f64, 5.f64).print;
     }"#;
     stdout "3\n";
 );
-test!(f64_max => r#"
+test_full!(f64_max => r#"
     export fn main {
       max(3.f64, 5.f64).print;
     }"#;
     stdout "5\n";
 );
-test!(f64_neg => r#"
+test_full!(f64_neg => r#"
     export fn main = print(- 3.f64);"#; // You wouldn't naturally write this, but should still work
     stdout "-3\n";
 );
