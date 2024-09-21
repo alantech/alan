@@ -28,6 +28,7 @@ pub enum CType {
     Infix(Box<CType>),
     Prefix(Box<CType>),
     Method(Box<CType>),
+    Property(Box<CType>),
     Cast(Box<CType>),
     Own(Box<CType>),
     Deref(Box<CType>),
@@ -207,6 +208,7 @@ impl CType {
             CType::Infix(o) => format!("Infix{{{}}}", o.to_strict_string(strict)),
             CType::Prefix(o) => format!("Prefix{{{}}}", o.to_strict_string(strict)),
             CType::Method(f) => format!("Method{{{}}}", f.to_strict_string(strict)),
+            CType::Property(p) => format!("Property{{{}}}", p.to_strict_string(strict)),
             CType::Cast(t) => format!("Cast{{{}}}", t.to_strict_string(strict)),
             CType::Own(t) => {
                 if strict {
@@ -471,6 +473,7 @@ impl CType {
             CType::Infix(o) => format!("Infix{{{}}}", o.to_functional_string()),
             CType::Prefix(o) => format!("Prefix{{{}}}", o.to_functional_string()),
             CType::Method(f) => format!("Method{{{}}}", f.to_functional_string()),
+            CType::Property(p) => format!("Property{{{}}}", p.to_functional_string()),
             CType::Cast(t) => format!("Cast{{{}}}", t.to_functional_string()),
             CType::Own(t) => format!("Own{{{}}}", t.to_functional_string()),
             CType::Deref(t) => format!("Deref{{{}}}", t.to_functional_string()),
@@ -733,6 +736,7 @@ impl CType {
             CType::Infix(o) => CType::Infix(Box::new((*o).degroup())),
             CType::Prefix(o) => CType::Prefix(Box::new((*o).degroup())),
             CType::Method(f) => CType::Method(Box::new((*f).degroup())),
+            CType::Property(p) => CType::Property(Box::new((*p).degroup())),
             CType::Cast(t) => CType::Cast(Box::new((*t).degroup())),
             CType::Own(t) => CType::Own(Box::new((*t).degroup())),
             CType::Deref(t) => CType::Deref(Box::new((*t).degroup())),
@@ -946,6 +950,10 @@ impl CType {
                     (Some(CType::Method(f1)), Some(CType::Method(f2))) => {
                         arg.push(f1);
                         input.push(f2);
+                    }
+                    (Some(CType::Property(p1)), Some(CType::Property(p2))) => {
+                        arg.push(p1);
+                        input.push(p2);
                     }
                     (Some(CType::Cast(t1)), Some(CType::Cast(t2))) => {
                         arg.push(t1);
@@ -1936,6 +1944,50 @@ impl CType {
                                 otherwise
                             )),
                         },
+                        CType::Property(p) => match &**p {
+                            CType::TString(s) => {
+                                if args.len() > 1 {
+                                    CType::fail(&format!("Property bindings may only have one argument, the value the property is accessed from. Not {:?}", args))
+                                } else {
+                                    let arg_car = args[0].clone();
+                                    microstatements.push(Microstatement::Return {
+                                        value: Some(Box::new(Microstatement::Value {
+                                            typen: rettype.clone(),
+                                            representation: format!(
+                                                "{}.{}",
+                                                match &arg_car.2 {
+                                                    CType::Int(i) => {
+                                                        trimmed_args = true;
+                                                        format!("{}", i)
+                                                    }
+                                                    CType::Float(f) => {
+                                                        trimmed_args = true;
+                                                        format!("{}", f)
+                                                    }
+                                                    CType::Bool(b) => {
+                                                        trimmed_args = true;
+                                                        match b {
+                                                            true => "true".to_string(),
+                                                            false => "false".to_string(),
+                                                        }
+                                                    }
+                                                    CType::TString(s) => {
+                                                        trimmed_args = true;
+                                                        format!("\"{}\"", s.replace("\"", "\\\""))
+                                                    }
+                                                    _ => arg_car.0.clone(),
+                                                },
+                                                s,
+                                            ),
+                                        })),
+                                    });
+                                }
+                            }
+                            otherwise => CType::fail(&format!(
+                                "Unsupported native method declaration {:?}",
+                                otherwise
+                            )),
+                        },
                         CType::Cast(t) => match &**t {
                             CType::TString(s) => {
                                 if args.len() != 1 {
@@ -2657,6 +2709,7 @@ impl CType {
             CType::Infix(o) => CType::Infix(Box::new(o.swap_subtype(old_type, new_type))),
             CType::Prefix(o) => CType::Prefix(Box::new(o.swap_subtype(old_type, new_type))),
             CType::Method(f) => CType::Method(Box::new(f.swap_subtype(old_type, new_type))),
+            CType::Property(p) => CType::Property(Box::new(p.swap_subtype(old_type, new_type))),
             CType::Cast(t) => CType::Cast(Box::new(t.swap_subtype(old_type, new_type))),
             CType::Own(t) => CType::Own(Box::new(t.swap_subtype(old_type, new_type))),
             CType::Deref(t) => CType::Deref(Box::new(t.swap_subtype(old_type, new_type))),
@@ -3962,6 +4015,7 @@ pub fn typebaselist_to_ctype(
                                         "Infix" => CType::Infix(Box::new(args[0].clone())),
                                         "Prefix" => CType::Prefix(Box::new(args[0].clone())),
                                         "Method" => CType::Method(Box::new(args[0].clone())),
+                                        "Property" => CType::Property(Box::new(args[0].clone())),
                                         "Cast" => CType::Cast(Box::new(args[0].clone())),
                                         "Own" => CType::Own(Box::new(args[0].clone())),
                                         "Deref" => CType::Deref(Box::new(args[0].clone())),
