@@ -595,49 +595,49 @@ test_full!(u16_max => r#"
     stdout "5\n";
 );
 
-test!(u32_add => r#"
+test_full!(u32_add => r#"
     export fn main {
       add(1.u32(), 2.u32()).print();
     }"#;
     stdout "3\n";
 );
-test!(u32_sub => r#"
+test_full!(u32_sub => r#"
     export fn main {
       sub(2.u32, 1.u32).print;
     }"#;
     stdout "1\n";
 );
-test!(u32_mul => r#"
+test_full!(u32_mul => r#"
     export fn main {
       (2.u32 * 1.u32).print;
     }"#;
     stdout "2\n";
 );
-test!(u32_div => r#"
+test_full!(u32_div => r#"
     export fn main {
       (6.u32() / 2.u32()).print();
     }"#;
     stdout "3\n";
 );
-test!(u32_mod => r#"
+test_full!(u32_mod => r#"
     export fn main {
       mod(6.u32, 4.u32).print;
     }"#;
     stdout "2\n";
 );
-test!(u32_pow => r#"
+test_full!(u32_pow => r#"
     export fn main {
       pow(6.u32(), 2.u32()).print();
     }"#;
     stdout "36\n";
 );
-test!(u32_min => r#"
+test_full!(u32_min => r#"
     export fn main {
       min(3.u32, 5.u32).print;
     }"#;
     stdout "3\n";
 );
-test!(u32_max => r#"
+test_full!(u32_max => r#"
     export fn main {
       max(3.u32(), 5.u32()).print();
     }"#;
@@ -966,7 +966,7 @@ test_full!(u16_bitwise => r#"
     }"#;
     stdout "0\n3\n6\n65535\n65535\n65532\n65529\n";
 );
-test!(u32_bitwise => r#"
+test_full!(u32_bitwise => r#"
     prefix u32 as ~ precedence 10
 
     export fn main {
