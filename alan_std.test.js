@@ -208,3 +208,27 @@ assert(alanStd.wrappingShrU32(128, 1) == 64, "wrappingShrU32 128 >> 1 = 64");
 assert(alanStd.rotateLeftU32(2_147_483_648, 1) == 1, "rotateLeftU32 2_147_483_648 <<< 1 = 1");
 
 assert(alanStd.rotateRightU32(64, 1) == 128, "rotateRightU32 64 >>> 1 = 128");
+
+assert(alanStd.wrappingAddU64(1n, 2n) === 3n, "wrappingAddU64 1 + 2 = 3");
+assert(alanStd.wrappingAddU64(18_446_744_073_709_551_615n, 1n) === 0n, "wrappingAddU64 18_446_744_073_709_551_615 + 1 = 0");
+
+assert(alanStd.wrappingSubU64(1n, 2n) === 18_446_744_073_709_551_615n, "wrappingSubU64 1 - 2 = 18_446_744_073_709_551_615");
+assert(alanStd.wrappingSubU64(18_446_744_073_709_551_615n, 1n) === 18_446_744_073_709_551_614n, "wrappingSubU64 18_446_744_073_709_551_615 - 1 = 18_446_744_073_709_551_614");
+
+assert(alanStd.wrappingMulU64(4_294_967_296n, 4_294_967_296n) === 0n, "wrappingMulU64 4_294_967_296 * 4_294_967_296 = 0");
+
+assert(alanStd.wrappingDivU64(128n, 2n) == 64n, "wrappingDivU64 128 / 2 = 64");
+
+assert(alanStd.wrappingModU64(5n, 2n) == 1n, "wrappingModU64 5 % 2 = 1");
+
+assert(alanStd.wrappingPowU64(2n, 64n) == 0n, "wrappingPowU64 2 ^ 64 = 0");
+
+assert(alanStd.notU64(0n) == 18_446_744_073_709_551_615n, "notU64 0 = 18_446_744_073_709_551_615");
+
+assert(alanStd.wrappingShlU64(9_223_372_036_854_775_808n, 1n) == 0n, "wrappingShlU64 9_223_372_036_854_775_808 << 1 = 0");
+
+assert(alanStd.wrappingShrU64(128n, 1n) == 64n, "wrappingShrU64 128 >> 1 = 64");
+
+assert(alanStd.rotateLeftU64(9_223_372_036_854_775_808n, 1n) == 1n, "rotateLeftU64 9_223_372_036_854_775_808 <<< 1 = 1");
+
+assert(alanStd.rotateRightU64(64n, 1n) == 128n, "rotateRightU64 64 >>> 1 = 128");

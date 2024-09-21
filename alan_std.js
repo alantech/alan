@@ -965,3 +965,132 @@ export function rotateRightU32(a, b) {
   let p2 = BigInt(a) & rhs;
   return wrappingShrU32(Number(p1), 32 - Number(c)) + wrappingShlU32(Number(p2), Number(c));
 }
+
+export function wrappingAddU64(a, b) {
+  let v = a + b;
+  while (v > 18_446_744_073_709_551_615n) {
+    v -= 18_446_744_073_709_551_616n;
+  }
+  while (v < 0n) {
+    v += 18_446_744_073_709_551_616n;
+  }
+  return v;
+}
+
+export function wrappingSubU64(a, b) {
+  let v = a - b;
+  while (v > 18_446_744_073_709_551_615n) {
+    v -= 18_446_744_073_709_551_616n;
+  }
+  while (v < 0n) {
+    v += 18_446_744_073_709_551_616n;
+  }
+  return v;
+}
+
+export function wrappingMulU64(a, b) {
+  let v = a * b;
+  while (v > 18_446_744_073_709_551_615n) {
+    v -= 18_446_744_073_709_551_616n;
+  }
+  while (v < 0n) {
+    v += 18_446_744_073_709_551_616n;
+  }
+  return v;
+}
+
+export function wrappingDivU64(a, b) {
+  let v = a / b;
+  while (v > 18_446_744_073_709_551_615n) {
+    v -= 18_446_744_073_709_551_616n;
+  }
+  while (v < 0n) {
+    v += 18_446_744_073_709_551_616n;
+  }
+  return v;
+}
+
+export function wrappingModU64(a, b) {
+  let v = a % b;
+  while (v > 18_446_744_073_709_551_615n) {
+    v -= 18_446_744_073_709_551_616n;
+  }
+  while (v < 0n) {
+    v += 18_446_744_073_709_551_616n;
+  }
+  return v;
+}
+
+export function wrappingPowU64(a, b) {
+  let v = a ** b;
+  while (v > 18_446_744_073_709_551_615n) {
+    v -= 18_446_744_073_709_551_616n;
+  }
+  while (v < 0n) {
+    v += 18_446_744_073_709_551_616n;
+  }
+  return v;
+}
+
+export function notU64(a) {
+  let v = ~a;
+  while (v > 18_446_744_073_709_551_615n) {
+    v -= 18_446_744_073_709_551_616n;
+  }
+  while (v < 0n) {
+    v += 18_446_744_073_709_551_616n;
+  }
+  return v;
+}
+
+export function wrappingShlU64(a, b) {
+  let v = a << b;
+  while (v > 18_446_744_073_709_551_615n) {
+    v -= 18_446_744_073_709_551_616n;
+  }
+  while (v < 0n) {
+    v += 18_446_744_073_709_551_616n;
+  }
+  return v;
+}
+
+export function wrappingShrU64(a, b) {
+  let v = a >> b;
+  while (v > 18_446_744_073_709_551_615n) {
+    v -= 18_446_744_073_709_551_616n;
+  }
+  while (v < 0n) {
+    v += 18_446_744_073_709_551_616n;
+  }
+  return v;
+}
+
+export function rotateLeftU64(a, b) {
+  let c = b;
+  while (c > 63n) {
+    c -= 64n;
+  }
+  if (c == 0n) {
+    return a;
+  }
+  let lhs = clampU64(18_446_744_073_709_551_615n << c);
+  let rhs = clampU64(18_446_744_073_709_551_615n ^ lhs);
+  let p1 = a & lhs;
+  let p2 = a & rhs;
+  return wrappingShrU64(p1, 64n - c) + wrappingShlU64(p2, c);
+}
+
+export function rotateRightU64(a, b) {
+  let c = b;
+  while (c > 63n) {
+    c -= 64n;
+  }
+  if (c == 0n) {
+    return a;
+  }
+  let rhs = clampU64(18_446_744_073_709_551_615n << c);
+  let lhs = clampU64(18_446_744_073_709_551_615n ^ rhs);
+  let p1 = a & lhs;
+  let p2 = a & rhs;
+  return wrappingShrU64(p1, 64n - c) + wrappingShlU64(p2, c);
+}
