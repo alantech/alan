@@ -165,7 +165,6 @@ export type{Js} ExitCode = Binds{"Number"};
 export type{Rs} Instant = Binds{"std::time::Instant"};
 export type{Rs} Duration = Binds{"std::time::Duration"};
 export type{Js} Performance = Binds{"Performance"}
-export type{Js} DOMHighResTimeStamp = Binds{"DOMHighResTimeStamp"};
 
 // Binding the uuid type
 export type{Rs} uuid = Binds{"alan_std::Uuid" <- RootBacking};
@@ -498,7 +497,7 @@ export fn{Js} and Infix{"&&"} :: (bool, bool) -> bool;
 export fn{Rs} or Infix{"||"} :: (Deref{bool}, Deref{bool}) -> bool;
 export fn{Js} or Infix{"||"} :: (bool, bool) -> bool;
 export fn{Rs} xor Infix{"^"} :: (Deref{bool}, Deref{bool}) -> bool;
-export fn{Js} xor Infix{"^"} :: (bool, bool) -> bool;
+export fn{Js} xor (a: bool, b: bool) = {Prefix{"!!"} :: bool -> bool}({Infix{"^"} :: (bool, bool) -> bool}(a, b));
 export fn{Rs} not Prefix{"!"} :: Deref{bool} -> bool;
 export fn{Js} not Prefix{"!"} :: bool -> bool;
 export fn nand (a: bool, b: bool) = a.and(b).not;
@@ -559,7 +558,7 @@ export fn{Js} shr "alan_std.wrappingShrI8" <- RootBacking :: (i8, i8) -> i8;
 export fn{Rs} wrl (a: i8, b: i8) = {Method{"rotate_left"} :: (i8, Deref{u32}) -> i8}(a, b.u32);
 export fn{Js} wrl "alan_std.rotateLeftI8" <- RootBacking :: (i8, i8) -> i8;
 export fn{Rs} wrr (a: i8, b: i8) = {Method{"rotate_right"} :: (i8, Deref{u32}) -> i8}(a, b.u32);
-export fn{Js} wrr "alan_std::rotateRightI8" <- RootBacking :: (i8, i8) -> i8;
+export fn{Js} wrr "alan_std.rotateRightI8" <- RootBacking :: (i8, i8) -> i8;
 
 export fn{Rs} add Method{"wrapping_add"} :: (i16, Deref{i16}) -> i16;
 export fn{Js} add "alan_std.wrappingAddI16" <- RootBacking :: (i16, i16) -> i16;
@@ -607,7 +606,7 @@ export fn{Js} shr "alan_std.wrappingShrI16" <- RootBacking :: (i16, i16) -> i16;
 export fn{Rs} wrl (a: i16, b: i16) = {Method{"rotate_left"} :: (i16, Deref{u32}) -> i16}(a, b.u32);
 export fn{Js} wrl "alan_std.rotateLeftI16" <- RootBacking :: (i16, i16) -> i16;
 export fn{Rs} wrr (a: i16, b: i16) = {Method{"rotate_right"} :: (i16, Deref{u32}) -> i16}(a, b.u32);
-export fn{Js} wrr "alan_std::rotateRightI16" <- RootBacking :: (i16, i16) -> i16;
+export fn{Js} wrr "alan_std.rotateRightI16" <- RootBacking :: (i16, i16) -> i16;
 
 export fn{Rs} add Method{"wrapping_add"} :: (i32, Deref{i32}) -> i32;
 export fn{Js} add "alan_std.wrappingAddI32" <- RootBacking :: (i32, i32) -> i32;
@@ -655,7 +654,7 @@ export fn{Js} shr "alan_std.wrappingShrI32" <- RootBacking :: (i32, i32) -> i32;
 export fn{Rs} wrl (a: i32, b: i32) = {Method{"rotate_left"} :: (i32, Deref{u32}) -> i32}(a, b.u32);
 export fn{Js} wrl "alan_std.rotateLeftI32" <- RootBacking :: (i32, i32) -> i32;
 export fn{Rs} wrr (a: i32, b: i32) = {Method{"rotate_right"} :: (i32, Deref{u32}) -> i32}(a, b.u32);
-export fn{Js} wrr "alan_std::rotateRightI32" <- RootBacking :: (i32, i32) -> i32;
+export fn{Js} wrr "alan_std.rotateRightI32" <- RootBacking :: (i32, i32) -> i32;
 
 export fn{Rs} add Method{"wrapping_add"} :: (i64, Deref{i64}) -> i64;
 export fn{Js} add "alan_std.wrappingAddI64" <- RootBacking :: (i64, i64) -> i64;
@@ -703,7 +702,7 @@ export fn{Js} shr "alan_std.wrappingShrI64" <- RootBacking :: (i64, i64) -> i64;
 export fn{Rs} wrl (a: i64, b: i64) = {Method{"rotate_left"} :: (i64, Deref{u32}) -> i64}(a, b.u32);
 export fn{Js} wrl "alan_std.rotateLeftI64" <- RootBacking :: (i64, i64) -> i64;
 export fn{Rs} wrr (a: i64, b: i64) = {Method{"rotate_right"} :: (i64, Deref{u32}) -> i64}(a, b.u32);
-export fn{Js} wrr "alan_std::rotateRightI64" <- RootBacking :: (i64, i64) -> i64;
+export fn{Js} wrr "alan_std.rotateRightI64" <- RootBacking :: (i64, i64) -> i64;
 
 /// Unsigned Integer-related functions and function bindings
 export fn{Rs} add Method{"wrapping_add"} :: (u8, Deref{u8}) -> u8;
@@ -750,7 +749,7 @@ export fn{Js} shr "alan_std.wrappingShrU8" <- RootBacking :: (u8, u8) -> u8;
 export fn{Rs} wrl (a: u8, b: u8) = {Method{"rotate_left"} :: (u8, Deref{u32}) -> u8}(a, b.u32);
 export fn{Js} wrl "alan_std.rotateLeftU8" <- RootBacking :: (u8, u8) -> u8;
 export fn{Rs} wrr (a: u8, b: u8) = {Method{"rotate_right"} :: (u8, Deref{u32}) -> u8}(a, b.u32);
-export fn{Js} wrr "alan_std::rotateRightU8" <- RootBacking :: (u8, u8) -> u8;
+export fn{Js} wrr "alan_std.rotateRightU8" <- RootBacking :: (u8, u8) -> u8;
 
 export fn{Rs} add Method{"wrapping_add"} :: (u16, Deref{u16}) -> u16;
 export fn{Js} add "alan_std.wrappingAddU16" <- RootBacking :: (u16, u16) -> u16;
@@ -796,7 +795,7 @@ export fn{Js} shr "alan_std.wrappingShrU16" <- RootBacking :: (u16, u16) -> u16;
 export fn{Rs} wrl (a: u16, b: u16) = {Method{"rotate_left"} :: (u16, Deref{u32}) -> u16}(a, b.u32);
 export fn{Js} wrl "alan_std.rotateLeftU16" <- RootBacking :: (u16, u16) -> u16;
 export fn{Rs} wrr (a: u16, b: u16) = {Method{"rotate_right"} :: (u16, Deref{u32}) -> u16}(a, b.u32);
-export fn{Js} wrr "alan_std::rotateRightU16" <- RootBacking :: (u16, u16) -> u16;
+export fn{Js} wrr "alan_std.rotateRightU16" <- RootBacking :: (u16, u16) -> u16;
 
 export fn{Rs} add Method{"wrapping_add"} :: (u32, Deref{u32}) -> u32;
 export fn{Js} add "alan_std.wrappingAddU32" <- RootBacking :: (u32, u32) -> u32;
@@ -842,7 +841,7 @@ export fn{Js} shr "alan_std.wrappingShrU32" <- RootBacking :: (u32, u32) -> u32;
 export fn{Rs} wrl (a: u32, b: u32) = {Method{"rotate_left"} :: (u32, Deref{u32}) -> u32}(a, b.u32);
 export fn{Js} wrl "alan_std.rotateLeftU32" <- RootBacking :: (u32, u32) -> u32;
 export fn{Rs} wrr (a: u32, b: u32) = {Method{"rotate_right"} :: (u32, Deref{u32}) -> u32}(a, b.u32);
-export fn{Js} wrr "alan_std::rotateRightU32" <- RootBacking :: (u32, u32) -> u32;
+export fn{Js} wrr "alan_std.rotateRightU32" <- RootBacking :: (u32, u32) -> u32;
 
 export fn{Rs} add Method{"wrapping_add"} :: (u64, Deref{u64}) -> u64;
 export fn{Js} add "alan_std.wrappingAddU64" <- RootBacking :: (u64, u64) -> u64;
@@ -888,7 +887,7 @@ export fn{Js} shr "alan_std.wrappingShrU64" <- RootBacking :: (u64, u64) -> u64;
 export fn{Rs} wrl (a: u64, b: u64) = {Method{"rotate_left"} :: (u64, Deref{u32}) -> u64}(a, b.u32);
 export fn{Js} wrl "alan_std.rotateLeftU64" <- RootBacking :: (u64, u64) -> u64;
 export fn{Rs} wrr (a: u64, b: u64) = {Method{"rotate_right"} :: (u64, Deref{u32}) -> u64}(a, b.u32);
-export fn{Js} wrr "alan_std::rotateRightU64" <- RootBacking :: (u64, u64) -> u64;
+export fn{Js} wrr "alan_std.rotateRightU64" <- RootBacking :: (u64, u64) -> u64;
 
 /// Float-related functions and function bindings
 export fn add Infix{"+"} :: (f32, f32) -> f32;
@@ -1281,7 +1280,9 @@ export fn{Rs} wait (t: i64) = {"std::thread::sleep" :: Own{Duration}}(
 
 /// Time-related bindings
 export fn{Rs} now "std::time::Instant::now" :: () -> Instant;
+export fn{Js} now "performance.now" :: () -> Performance;
 export fn{Rs} elapsed Method{"elapsed"} :: Instant -> Duration;
+export fn{Js} elapsed "((p) => performance.now() - p)" :: Performance -> f64;
 
 /// Uuid-related bindings
 export fn{Rs} uuid "alan_std::Uuid::new_v4" <- RootBacking :: () -> uuid;
