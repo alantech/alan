@@ -1014,22 +1014,35 @@ export fn{Rs} get{T} "alan_std::getarray" <- RootBacking :: (T[], i64) -> T?;
 export fn{Js} get{T} (a: T[], i: i64) = if(i.gte(0).and(i.lt(a.len)),
   fn = {Method{"at"} :: (T[], i32) -> T}(a, i.i32));
 export fn push{T} (a: Mut{T[]}, v: T) = {Method{"push"} :: (Mut{T[]}, Own{T})}(a, v);
-export fn pop{T} (a: Mut{T[]}) -> T? = {Method{"pop"} :: Mut{T[]} -> T?}(a);
-export fn map{T, U} "alan_std::map_onearg" <- RootBacking :: (T[], T -> U) -> U[];
-export fn map{T, U} "alan_std::map_twoarg" <- RootBacking :: (T[], (T, i64) -> U) -> U[];
-export fn parmap{T, U} "alan_std::parmap_onearg" <- RootBacking :: (T[], T -> U) -> U[];
-export fn filter{T} "alan_std::filter_onearg" <- RootBacking :: (T[], T -> bool) -> T[];
-export fn filter{T} "alan_std::filter_twoarg" <- RootBacking :: (T[], (T, i64) -> bool) -> T[];
-export fn reduce{T} "alan_std::reduce_sametype" <- RootBacking :: (T[], (T, T) -> T) -> T?;
-export fn reduce{T} "alan_std::reduce_sametype_idx" <- RootBacking :: (T[], (T, T, i64) -> T) -> T?;
-export fn reduce{T, U} "alan_std::reduce_difftype" <- RootBacking :: (T[], U, (U, T) -> U) -> U;
-export fn reduce{T, U} "alan_std::reduce_difftype_idx" <- RootBacking :: (T[], U, (U, T, i64) -> U) -> U;
-export fn concat{T} "alan_std::concat" <- RootBacking :: (T[], T[]) -> T[];
-export fn append{T} "alan_std::append" <- RootBacking :: (Mut{T[]}, T[]);
-export fn filled{T} "alan_std::filled" <- RootBacking :: (T, i64) -> T[];
-export fn has{T} (a: T[], v: T) = {Method{"contains"} :: (T[], T) -> bool}(a, v);
-export fn has{T} "alan_std::hasfnarray" <- RootBacking :: (T[], T -> bool) -> bool;
-export fn find{T} "alan_std::findarray" <- RootBacking :: (T[], T -> bool) -> T?;
+export fn{Rs} pop{T} (a: Mut{T[]}) -> T? = {Method{"pop"} :: Mut{T[]} -> T?}(a);
+export fn{Js} pop{T} (a: Mut{T[]}) -> T? = {"((a) => a || null)" :: T? -> T?}({Method{"pop"} :: Mut{T[]} -> T?}(a));
+export fn{Rs} map{T, U} "alan_std::map_onearg" <- RootBacking :: (T[], T -> U) -> U[];
+export fn{Js} map{T, U} (a: T[], f: T -> U) = {Method{"map"} :: (T[], T -> U) -> U[]}(a, f);
+export fn{Rs} map{T, U} "alan_std::map_twoarg" <- RootBacking :: (T[], (T, i64) -> U) -> U[];
+export fn{Js} map{T, U} (a: T[], f: (T, i64) -> U) = {Method{"map"} :: (T[], (T, i32) -> U) -> U[]}(a, fn (v: T, i: i32) = f(v, i.i64));
+export fn{Rs} parmap{T, U} "alan_std::parmap_onearg" <- RootBacking :: (T[], T -> U) -> U[];
+export fn{Rs} filter{T} "alan_std::filter_onearg" <- RootBacking :: (T[], T -> bool) -> T[];
+export fn{Js} filter{T} (a: T[], f: T -> bool) = {Method{"filter"} :: (T[], T -> bool) -> T[]}(a, f);
+export fn{Rs} filter{T} "alan_std::filter_twoarg" <- RootBacking :: (T[], (T, i64) -> bool) -> T[];
+export fn{Js} filter{T} (a: T[], f: (T, i64) -> bool) = {Method{"filter"} :: (T[], (T, i32) -> bool) -> T[]}(a, fn (v: T, i: i32) = f(v, i.i64));
+export fn{Rs} reduce{T} "alan_std::reduce_sametype" <- RootBacking :: (T[], (T, T) -> T) -> T?;
+export fn{Js} reduce{T} (a: T[], f: (T, T) -> T) = {Method{"reduce"} :: (T[], (T, T) -> T) -> T?}(a, f);
+export fn{Rs} reduce{T} "alan_std::reduce_sametype_idx" <- RootBacking :: (T[], (T, T, i64) -> T) -> T?;
+export fn{Js} reduce{T} (a: T[], f: (T, T, i64) -> T) = {Method{"reduce"} :: (T[], (T, T, i32) -> T) -> T?}(a, fn (o: T, n: T, i: i32) = f(o, n, i.i64));
+export fn{Rs} reduce{T, U} "alan_std::reduce_difftype" <- RootBacking :: (T[], U, (U, T) -> U) -> U;
+export fn{Js} reduce{T, U} (a: T[], i: U, f: (U, T) -> U) = {Method{"reduce"} :: (T[], (U, T) -> U, U) -> U}(a, f, i);
+export fn{Rs} reduce{T, U} "alan_std::reduce_difftype_idx" <- RootBacking :: (T[], U, (U, T, i64) -> U) -> U;
+export fn{Js} reduce{T, U} (a: T[], i: U, f: (U, T, i64) -> U) = {Method{"reduce"} :: (T[], (U, T, i32) -> U, U) -> U}(a, fn (o: U, n: T, i: i32) = f(o, n, i.i64), i);
+export fn{Rs} concat{T} "alan_std::concat" <- RootBacking :: (T[], T[]) -> T[];
+export fn{Js} concat{T} (a: T[], b: T[]) -> T[] = {Method{"concat"} :: (T[], T[]) -> T[]}(a, b);
+export fn{Rs} append{T} "alan_std::append" <- RootBacking :: (Mut{T[]}, T[]);
+export fn{Rs} filled{T} "alan_std::filled" <- RootBacking :: (T, i64) -> T[];
+export fn{Rs} has{T} (a: T[], v: T) = {Method{"contains"} :: (T[], T) -> bool}(a, v);
+export fn{Js} has{T} (a: T[], v: T) = {Method{"includes"} :: (T[], T) -> bool}(a, v);
+export fn{Rs} has{T} "alan_std::hasfnarray" <- RootBacking :: (T[], T -> bool) -> bool;
+export fn{Js} has{T} (a: T[], f: T -> bool) = {Method{"findIndex"} :: (T[], T -> bool) -> i32}(a, f).lt(0.i32);
+export fn{Rs} find{T} "alan_std::findarray" <- RootBacking :: (T[], T -> bool) -> T?;
+export fn{Js} find{T} (a: T[], f: T -> bool) -> T? = {"((a) => a || null)" :: T? -> T?}({Method{"find"} :: (T[], T -> bool) -> T?}(a, f));
 // TODO: The `if` syntactic sugar will make these `if` calls much nicer
 export fn index{T}(a: Array{T}, v: T) = a.reduce(
   Maybe{i64}(),
@@ -1040,11 +1053,13 @@ export fn index{T}(a: Array{T}, f: (T) -> bool) = a.reduce(
 export fn index{T}(a: Array{T}, f: (T, i64) -> bool) = a.reduce(
   Maybe{i64}(),
   fn (out: Maybe{i64}, val: T, idx: i64) = if(out.exists, out, if(f(val, idx), idx)));
-export fn every{T} "alan_std::everyarray" <- RootBacking :: (T[], T -> bool) -> bool;
-export fn some{T} "alan_std::somearray" <- RootBacking :: (T[], T -> bool) -> bool;
-export fn repeat{T} "alan_std::repeatarray" <- RootBacking :: (T[], i64) -> T[];
-export fn store{T} "alan_std::storearray" <- RootBacking :: (Mut{T[]}, i64, T) -> void!;
-export fn delete{T} "alan_std::deletearray" <- RootBacking :: (Mut{T[]}, i64) -> T!;
+export fn{Rs} every{T} "alan_std::everyarray" <- RootBacking :: (T[], T -> bool) -> bool;
+export fn{Js} every{T} (a: T[], f: T -> bool) = {Method{"every"} :: (T[], T -> bool) -> bool}(a, f);
+export fn{Rs} some{T} "alan_std::somearray" <- RootBacking :: (T[], T -> bool) -> bool;
+export fn{Js} some{T} (a: T[], f: T -> bool) = {Method{"some"} :: (T[], T -> bool) -> bool}(a, f);
+export fn{Rs} repeat{T} "alan_std::repeatarray" <- RootBacking :: (T[], i64) -> T[];
+export fn{Rs} store{T} "alan_std::storearray" <- RootBacking :: (Mut{T[]}, i64, T) -> void!;
+export fn{Rs} delete{T} "alan_std::deletearray" <- RootBacking :: (Mut{T[]}, i64) -> T!;
 
 /// Buffer related bindings
 export fn get{T, S} "alan_std::getbuffer" <- RootBacking :: (T[S], i64) -> T?;
