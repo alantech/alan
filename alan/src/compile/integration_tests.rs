@@ -1938,8 +1938,7 @@ test_full!(array_mutable_push_pop => r#"
 void
 "#;
 );
-// TODO: Why is this not working in JS?
-test!(array_has => r#"
+test_full!(array_has => r#"
     fn even(t: i64) = t % 2 == 0;
     fn odd(t: i64) = t % 2 == 1;
     export fn main {
@@ -1951,7 +1950,7 @@ test!(array_has => r#"
     }"#;
     stdout "true\nfalse\ntrue\ntrue\n";
 );
-test!(array_map => r#"
+test_full!(array_map => r#"
     export fn main {
       const count = [1, 2, 3, 4, 5]; // Ah, ah, ahh!
       const byTwos = count.map(fn (n: i64) = n * 2);
@@ -1960,7 +1959,7 @@ test!(array_map => r#"
     }"#;
     stdout "1, 2, 3, 4, 5\n2, 4, 6, 8, 10\n";
 );
-test!(array_repeat => r#"
+test_full!(array_repeat => r#"
     export fn main {
       const arr = [1, 2, 3].repeat(3);
       const out = arr.map(fn (x: i64) = x.string).join(', ');
@@ -1968,7 +1967,7 @@ test!(array_repeat => r#"
     }"#;
     stdout "1, 2, 3, 1, 2, 3, 1, 2, 3\n";
 );
-test!(array_find => r#"
+test_full!(array_find => r#"
     fn odd(x: i64) = x % 2 == 1;
     export fn main {
         const test = [ 1, 1, 2, 3, 5, 8 ];
@@ -1976,7 +1975,7 @@ test!(array_find => r#"
     }"#;
     stdout "1\n";
 );
-test!(array_every => r#"
+test_full!(array_every => r#"
     fn odd(x: i64) = x % 2 == 1;
 
     export fn main {
@@ -1985,7 +1984,7 @@ test!(array_every => r#"
     }"#;
     stdout "false\n";
 );
-test!(array_some => r#"
+test_full!(array_some => r#"
     fn odd(x: i64) = x % 2 == 1;
 
     export fn main {
@@ -1994,6 +1993,7 @@ test!(array_some => r#"
     }"#;
     stdout "true\n";
 );
+// TODO: Why is this failing in JS?
 test!(array_index => r#"
     fn odd(x: i64) = x % 2 == 1;
 
@@ -2003,7 +2003,7 @@ test!(array_index => r#"
     }"#;
     stdout "0\n";
 );
-test!(array_concat => r#"
+test_full!(array_concat => r#"
     export fn main {
         const test = [ 1, 1, 2, 3, 5, 8 ];
         const test2 = [ 4, 5, 6 ];
@@ -2011,7 +2011,7 @@ test!(array_concat => r#"
     }"#;
     stdout "1, 1, 2, 3, 5, 8, 4, 5, 6\n";
 );
-test!(array_reduce_filter_concat => r#"
+test_full!(array_reduce_filter_concat => r#"
     export fn main {
       const test = [ 1, 1, 2, 3, 5, 8 ];
       const test2 = [ 4, 5, 6 ];
@@ -2036,7 +2036,7 @@ concat test
 1, 1, 2, 3, 5, 8, 4, 5, 6
 "#;
 );
-test!(array_store_and_delete => r#"
+test_full!(array_store_and_delete => r#"
     export fn main {
         const test = [ 1, 2, 5 ];
         test.store(2, 3);
@@ -2047,7 +2047,7 @@ test!(array_store_and_delete => r#"
     }"#;
     stdout "[1, 2, 3, 4, 5]\n5\n[1, 2, 3, 4]\n";
 );
-test!(array_custom_types => r#"
+test_full!(array_custom_types => r#"
     type Foo =
       foo: string,
       bar: bool;
