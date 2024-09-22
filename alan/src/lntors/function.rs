@@ -159,11 +159,23 @@ pub fn from_microstatement(
                 // We need to make sure this function we're referencing exists
                 let f = scope.resolve_function_by_type(representation, typen);
                 match f {
-                    None => Err(format!(
-                        "Somehow can't find a definition for function {}, {:?}",
-                        representation, typen
-                    )
-                    .into()),
+                    None => {
+                        let args = parent_fn.args();
+                        for (name, _, typen) in args {
+                            if &name == representation {
+                                if let CType::Function(_, _) = typen {
+                                    // TODO: Do we need better matching? The upper stage should
+                                    // have taken care of this
+                                    return Ok((representation.clone(), out, deps));
+                                }
+                            }
+                        }
+                        Err(format!(
+                            "Somehow can't find a definition for function {}, {:?}",
+                            representation, typen
+                        )
+                        .into())
+                    }
                     Some(fun) => {
                         match &fun.kind {
                             FnKind::Normal

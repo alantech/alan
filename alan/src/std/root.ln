@@ -198,9 +198,11 @@ export fn{Js} store{T} (a: Mut{T}, b: T) -> T = {Infix{"="} :: (Mut{T}, T) -> T}
 /// Fallible, Maybe, and Either functions
 export fn{Rs} Maybe{T}(v: T!) = {Method{"ok"} :: T! -> T?}(v);
 export fn{Rs} Fallible{T}(v: T?, e: Error) = {Method{"ok_or"} :: (T?, Error) -> T!}(v, e);
-export fn{Rs} getOr{T, U}(v: U, d: T) = {T}(v).getOr(d);
+export fn getOr{T, U}(v: U, d: T) = {T}(v).getOr(d);
 export fn{Rs} getOr{T} (v: T?, d: T) = {Method{"unwrap_or"} :: (Own{T?}, Own{T}) -> T}(v, d);
+export fn{Js} getOr{T} (v: T?, d: T) = {"((v, d) => v ?? d)" :: (T?, T) -> T}(v, d);
 export fn{Rs} getOr{T} (v: T!, d: T) = {Method{"unwrap_or"} :: (Own{T!}, Own{T}) -> T}(v, d);
+export fn{Js} getOr{T} (v: T!, d: T) = {"((v, d) => v instanceof alan_std.AlanError ? d : v)" :: (T!, T) -> T}(v, d);
 export fn{Rs} getOrExit{T} (v: T!) = {Method{"unwrap"} :: Own{T!} -> T}(v);
 export fn{Js} getOrExit{T} (v: T!) = {"((a) => a)" :: T! -> T}(v); // TODO: How to really represent this?
 export fn{Rs} getOrExit{T} (v: T?) = {Method{"unwrap"} :: Own{T?} -> T}(v);
@@ -1040,14 +1042,14 @@ export fn{Rs} filled{T} "alan_std::filled" <- RootBacking :: (T, i64) -> T[];
 export fn{Rs} has{T} (a: T[], v: T) = {Method{"contains"} :: (T[], T) -> bool}(a, v);
 export fn{Js} has{T} (a: T[], v: T) = {Method{"includes"} :: (T[], T) -> bool}(a, v);
 export fn{Rs} has{T} "alan_std::hasfnarray" <- RootBacking :: (T[], T -> bool) -> bool;
-export fn{Js} has{T} (a: T[], f: T -> bool) = {Method{"findIndex"} :: (T[], T -> bool) -> i32}(a, f).lt(0.i32);
+export fn{Js} has{T} (a: T[], f: T -> bool) = {Method{"findIndex"} :: (T[], T -> bool) -> i32}(a, f).gte(0.i32);
 export fn{Rs} find{T} "alan_std::findarray" <- RootBacking :: (T[], T -> bool) -> T?;
 export fn{Js} find{T} (a: T[], f: T -> bool) -> T? = {"((a) => a || null)" :: T? -> T?}({Method{"find"} :: (T[], T -> bool) -> T?}(a, f));
 // TODO: The `if` syntactic sugar will make these `if` calls much nicer
 export fn index{T}(a: Array{T}, v: T) = a.reduce(
   Maybe{i64}(),
   fn (out: Maybe{i64}, val: T, idx: i64) = if(out.exists, out, if(val.eq(v), Maybe(idx), out)));
-export fn index{T}(a: Array{T}, f: (T) -> bool) = a.reduce(
+export fn index{T}(a: Array{T}, f: T -> bool) = a.reduce(
   Maybe{i64}(),
   fn (out: Maybe{i64}, val: T, idx: i64) = if(out.exists, out, if(f(val), idx)));
 export fn index{T}(a: Array{T}, f: (T, i64) -> bool) = a.reduce(
@@ -1058,8 +1060,11 @@ export fn{Js} every{T} (a: T[], f: T -> bool) = {Method{"every"} :: (T[], T -> b
 export fn{Rs} some{T} "alan_std::somearray" <- RootBacking :: (T[], T -> bool) -> bool;
 export fn{Js} some{T} (a: T[], f: T -> bool) = {Method{"some"} :: (T[], T -> bool) -> bool}(a, f);
 export fn{Rs} repeat{T} "alan_std::repeatarray" <- RootBacking :: (T[], i64) -> T[];
+export fn{Js} repeat{T} (a: T[], c: i64) = {"((a, c) => { let out = []; for (let i = 0n; i < c; i++) { out.push(...a); } return out; })" :: (T[], i64) -> T[]}(a, c);
 export fn{Rs} store{T} "alan_std::storearray" <- RootBacking :: (Mut{T[]}, i64, T) -> void!;
+export fn{Js} store{T} (a: T[], i: i64, v: T) = {"((a, i, v) => { if (i < 0n || i > BigInt(a.length)) { return new alan_std.AlanError(`Provided array index ${i.toString()} is greater than the length of the array`); } else { a.splice(Number(i), 0, v); } })" :: (T[], i64, T) -> void!}(a, i, v);
 export fn{Rs} delete{T} "alan_std::deletearray" <- RootBacking :: (Mut{T[]}, i64) -> T!;
+export fn{Js} delete{T} (a: T[], i: i64) = {"((a, i) => { if (i < 0n || i >= BigInt(a.length)) { return new alan_std.AlanError(`Provided array index ${i.toString()} is beyond the bounds of the array`); } else { return a.splice(Number(i), 1)[0]; } })" :: (T[], i64) -> T!}(a, i);
 
 /// Buffer related bindings
 export fn get{T, S} "alan_std::getbuffer" <- RootBacking :: (T[S], i64) -> T?;
@@ -4208,6 +4213,8 @@ export fn{Rs} print{T}(v: T) = {"println!" :: ("{}", string)}(v.string);
 export fn{Js} print{T}(v: T) = {"console.log" :: T}(v);
 export fn{Js} print (i: i64) = i.string.print;
 export fn{Js} print (u: u64) = u.string.print;
+export fn{Js} print (i: i64[]) = "[".concat(i.map(string).join(", ")).concat("]").print;
+export fn{Js} print (u: u64[]) = "[".concat(u.map(string).join(", ")).concat("]").print;
 export fn{Js} print (e: Error) = "Error: ".concat(e.string).print;
 export fn{Rs} print (d: Duration) = {"println!" :: ("{}.{:0>9}", u64, u32)}(
   {Method{"as_secs"} :: Duration -> u64}(d),
@@ -4215,8 +4222,8 @@ export fn{Rs} print (d: Duration) = {"println!" :: ("{}.{:0>9}", u64, u32)}(
 export fn{Rs} print(v: void) = {"println!" :: "void"}();
 export fn{Js} print(v: void) = {"console.log" :: "void"}();
 export fn{Rs} print(s: string) = {"println!" :: ("{}", string)}(s);
-export fn{Rs} print{T, N}(a: T[N]) = "[".concat(a.map(fn (v: T) = v.string).join(", ")).concat("]").print;
-export fn{Rs} print{T}(a: T[]) = "[".concat(a.map(fn (v: T) = v.string).join(", ")).concat("]").print;
+export fn{Rs} print{T, N}(a: T[N]) = "[".concat(a.map(string).join(", ")).concat("]").print;
+export fn{Rs} print{T}(a: T[]) = "[".concat(a.map(string).join(", ")).concat("]").print;
 export fn print{T}(v: T?) = if(v.exists,
   fn = v.getOrExit.print,
   fn = print("void"));
@@ -4228,7 +4235,7 @@ export fn{Js} eprint{T}(v: T) = {"console.error" :: string}(v.string);
 export fn{Rs} eprint(v: void) = {"eprintln!" :: "void"}();
 export fn{Js} eprint(v: void) = {"console.error" :: "void"}();
 export fn{Rs} eprint(s: string) = {"eprintln!" :: ("{}", string)}(s);
-export fn{Rs} eprint{T}(a: T[]) = "[".concat(a.map(fn (v: T) = v.string).join(", ")).concat("]").eprint;
+export fn{Rs} eprint{T}(a: T[]) = "[".concat(a.map(string).join(", ")).concat("]").eprint;
 export fn{Rs} eprint{T}(v: T?) = if(v.exists,
   fn = v.getOrExit.eprint,
   fn = eprint("void"));
