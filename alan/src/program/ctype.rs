@@ -3076,7 +3076,10 @@ impl CType {
                         CType::Buffer(Box::new(anything.clone()), Box::new(CType::Int(*size)))
                     }
                 }
-                _ => CType::fail("The buffer size must be a positive integer"),
+                otherwise => CType::fail(&format!(
+                    "The buffer size must be a positive integer {:?}",
+                    otherwise
+                )),
             }
         }
     }

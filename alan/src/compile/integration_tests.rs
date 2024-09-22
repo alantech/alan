@@ -2061,7 +2061,7 @@ test_full!(array_custom_types => r#"
     stdout "2, 4\n";
 );
 // Buffers
-test!(buffer_map => r#"
+test_full!(buffer_map => r#"
     fn double(x: i64) = x * 2;
     export fn main {
         const b = Buffer{i64, 3}(1, 2, 3);
@@ -2072,14 +2072,14 @@ test!(buffer_map => r#"
     }"#;
     stdout "[1, 2, 3]\n3\n[2, 4, 6]\n[1, 3, 5]\n";
 );
-test!(buffer_join => r#"
+test_full!(buffer_join => r#"
     export fn main {
         const b = {string[2]}("Hello", "World!");
         b.join(", ").print;
     }"#;
     stdout "Hello, World!\n";
 );
-test!(buffer_reduce => r#"
+test_full!(buffer_reduce => r#"
     fn concat(s: string, i: i64) = s.concat(i.string);
     export fn main {
         const b = {i64[5]}(1, 2, 3, 4, 5);
@@ -2088,7 +2088,7 @@ test!(buffer_reduce => r#"
     }"#;
     stdout "15\n012345\n";
 );
-test!(buffer_has => r#"
+test_full!(buffer_has => r#"
     fn even(t: i64) = t % 2 == 0;
     fn odd(t: i64) = t % 2 == 1;
     export fn main {
@@ -2100,7 +2100,7 @@ test!(buffer_has => r#"
     }"#;
     stdout "true\nfalse\ntrue\ntrue\n";
 );
-test!(buffer_find => r#"
+test_full!(buffer_find => r#"
     fn odd(x: i64) = x % 2 == 1;
     export fn main {
         const test = {i64[6]}(1, 1, 2, 3, 5, 8);
@@ -2108,7 +2108,7 @@ test!(buffer_find => r#"
     }"#;
     stdout "1\n";
 );
-test!(buffer_every => r#"
+test_full!(buffer_every => r#"
     fn odd(x: i64) = x % 2 == 1;
 
     export fn main {
@@ -2125,7 +2125,7 @@ test!(buffer_concat => r#"
     }"#;
     stdout "1, 1, 2, 3, 5, 8, 4, 5, 6\n";
 );
-test!(buffer_repeat => r#"
+test_full!(buffer_repeat => r#"
     export fn main {
       const buf = {i64[3]}(1, 2, 3).repeat(3);
       const out = buf.map(string).join(', ');
@@ -2133,7 +2133,7 @@ test!(buffer_repeat => r#"
     }"#;
     stdout "1, 2, 3, 1, 2, 3, 1, 2, 3\n";
 );
-test!(buffer_store => r#"
+test_full!(buffer_store => r#"
     export fn main {
         let buf = {i64[3]}(1, 2, 5);
         print(buf);
