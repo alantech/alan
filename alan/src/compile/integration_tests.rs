@@ -1875,7 +1875,7 @@ test!(object_and_array_reassignment => r#"
 
 // Arrays
 
-test!(array_accessor_and_length => r#"
+test_full!(array_accessor_and_length => r#"
     export fn main {
       print('Testing...');
       const test = '1,2,3'.split(',');
@@ -1892,7 +1892,7 @@ test!(array_accessor_and_length => r#"
 "#;
 );
 
-test!(array_literal_syntax => r#"
+test_full!(array_literal_syntax => r#"
     export fn main {
       print('Testing...');
       const test = Array{i64}(1, 2, 3);
@@ -1913,7 +1913,7 @@ test!(array_literal_syntax => r#"
 6
 "#;
 );
-test!(array_mutable_push_pop => r#"
+test_full!(array_mutable_push_pop => r#"
     export fn main {
       print('Testing...');
       let test = Array{i64}();
@@ -1938,6 +1938,7 @@ test!(array_mutable_push_pop => r#"
 void
 "#;
 );
+// TODO: Why is this not working in JS?
 test!(array_has => r#"
     fn even(t: i64) = t % 2 == 0;
     fn odd(t: i64) = t % 2 == 1;
