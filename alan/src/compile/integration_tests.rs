@@ -2189,7 +2189,7 @@ test!(hash => r#"
 -8231513229892369092
 "#;
 );
-test!(basic_dict => r#"
+test_full!(basic_dict => r#"
     export fn main {
       let test = Dict('foo', 1);
       // Equivalent to:
@@ -2232,7 +2232,7 @@ key: bay
 val: 4
 "#;
 );
-test!(keyval_array_to_dict => r#"
+test_full!(keyval_array_to_dict => r#"
     export fn main {
       // TODO: Improve this with anonymous tuple support
       // const kva = [ (1, 'foo'), (2, 'bar'), (3, 'baz') ];
@@ -2252,7 +2252,7 @@ val: baz
 foo
 "#;
 );
-test!(dict_double_store => r#"
+test_full!(dict_double_store => r#"
     export fn main {
       let test = Dict('foo', 'bar');
       test.get('foo').print;
@@ -2261,7 +2261,7 @@ test!(dict_double_store => r#"
     }"#;
     stdout "bar\nbaz\n";
 );
-test!(basic_set => r#"
+test_full!(basic_set => r#"
     export fn main {
         let test = Set(0);
         test.len.print;
@@ -2281,7 +2281,7 @@ test!(basic_set => r#"
 
 // Generics
 
-test!(generics => r#"
+test_full!(generics => r#"
     type box{V} =
       val: V,
       set: bool;
@@ -2312,7 +2312,7 @@ true
 hello, nested generics!
 "#;
 );
-test!(generic_functions => r#"
+test_full!(generic_functions => r#"
     fn empty{T}() = Array{T}(); // Pointless, but just for testing
 
     export fn main {
@@ -2620,7 +2620,7 @@ test_ignore!(basic_interfaces => r#"
 
 // Maybe, Result, and Either
 
-test!(maybe_exists => r#"
+test_full!(maybe_exists => r#"
     export fn main {
         const maybe5 = Maybe{i64}(5);
         maybe5.exists.print;
@@ -2631,6 +2631,7 @@ test!(maybe_exists => r#"
     stdout "true\nfalse\ntrue\n";
 );
 
+// TODO: Why does this fail in JS?
 test!(maybe => r#"
     // TODO: Rewrite these conditionals with conditional syntax once implemented
     fn fiver(val: f64) = if(val.i64 == 5, fn = {i64?}(5), fn = {i64?}());
@@ -2655,7 +2656,7 @@ Correctly received nothing!
 void
 "#;
 );
-test!(fallible => r#"
+test_full!(fallible => r#"
     // TODO: Rewrite these conditionals with conditional syntax once implemented
     fn reciprocal(val: f64) = if(val == 0.0, fn {
       return Error{f64}('Divide by zero error!');
@@ -2687,7 +2688,7 @@ Error: Divide by zero error!
 Error: there is no error
 "#;
 );
-test!(either => r#"
+test_full!(either => r#"
     type strOrI64 = string | i64;
     export fn main {
       const someStr = strOrI64('string');
@@ -2726,7 +2727,7 @@ void
 
 // Types
 
-test!(user_types_and_generics => r#"
+test_full!(user_types_and_generics => r#"
     type foo{A, B} =
       bar: A,
       baz: B;
@@ -2847,7 +2848,7 @@ test_ignore!(closure_creation_and_usage => r#"
     }"#;
     stdout "1\n2\n1\n";
 );
-test!(closure_by_name => r#"
+test_full!(closure_by_name => r#"
     fn double(x: i64) = x * 2;
 
     export fn main {
@@ -2965,7 +2966,7 @@ new Piece {
 
 // Module-level constants
 
-test!(module_level_constant => r#"
+test_full!(module_level_constant => r#"
     const helloWorld = 'Hello, World!';
 
     export fn main {
@@ -3523,7 +3524,7 @@ End
 
 // Clone
 
-test!(clone => r#"
+test_full!(clone => r#"
     // TODO: Implement re-assignment statements
     export fn main {
       let a = 3;
@@ -3543,7 +3544,7 @@ test!(clone => r#"
 
 // Runtime Error
 
-test!(get_or_exit => r#"
+test_full!(get_or_exit => r#"
     export fn main {
       const xs = [0, 1, 2, 5];
       const x1 = xs[1].getOrExit;
@@ -3935,7 +3936,7 @@ test_ignore!(subtree_and_nested_tree_construction => r#"
 
 // Error printing
 
-test!(eprint => r#"
+test_full!(eprint => r#"
     export fn main {
       eprint('This is an error');
     }"#;

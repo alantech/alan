@@ -172,9 +172,9 @@ export type{Rs} uuid = Binds{"alan_std::Uuid" <- RootBacking};
 
 // Binding the Dict and Set types
 export type{Rs} Dict{K, V} = Binds{"alan_std::OrderedHashMap" <- RootBacking, K, V};
-export type{Js} Dict{K, V} = Binds{"Map"}; // JS doesn't really have generic types
+export type{Js} Dict{K, V} = Binds{"Map", K, V};
 export type{Rs} Set{V} = Binds{"std::collections::HashSet", V};
-export type{Js} Set{V} = Binds{"Set"};
+export type{Js} Set{V} = Binds{"Set", V};
 
 /// Functions for (potentially) every type
 export fn{Rs} clone{T} (v: T) -> T = {Method{"clone"} :: T -> T}(v);
@@ -203,9 +203,10 @@ export fn{Js} getOr{T} (v: T?, d: T) = {"((v, d) => v ?? d)" :: (T?, T) -> T}(v,
 export fn{Rs} getOr{T} (v: T!, d: T) = {Method{"unwrap_or"} :: (Own{T!}, Own{T}) -> T}(v, d);
 export fn{Js} getOr{T} (v: T!, d: T) = {"((v, d) => v instanceof alan_std.AlanError ? d : v)" :: (T!, T) -> T}(v, d);
 export fn{Rs} getOrExit{T} (v: T!) = {Method{"unwrap"} :: Own{T!} -> T}(v);
-export fn{Js} getOrExit{T} (v: T!) = {"((a) => a)" :: T! -> T}(v); // TODO: How to really represent this?
+export fn{Js} getOrExit{T} (v: T!) = {"((a) => { if (!(a instanceof alan_std.AlanError)) { return a; } else { process.exit(101); } })" :: T! -> T}(v);
 export fn{Rs} getOrExit{T} (v: T?) = {Method{"unwrap"} :: Own{T?} -> T}(v);
-export fn{Js} getOrExit{T} (v: T?) = {"((a) => a)" :: T? -> T}(v); // TODO: How to really represent this?
+export fn{Js} getOrExit{T} (v: T?) = {"((a) => a)" :: T? -> T}(v);
+export fn{Js} getOrExit{T} (v: T?) = {"((a) => { if (a !== null && a !== undefined) { return a; } else { process.exit(101); } })" :: T? -> T}(v);
 export fn{Rs} Error{T} (e: string) = {"Err" :: Own{Error} -> T!}(
   {Method{"into"} :: Own{string} -> Error}(e));
 export fn{Rs} Error (e: string) = {Method{"into"} :: Own{string} -> Error}(e);
@@ -1106,7 +1107,8 @@ export fn{Rs} store{T, S} "alan_std::storebuffer" <- RootBacking :: (Mut{T[S]}, 
 export fn{Js} store{T, S} (a: T[S], i: i64, v: T) = {"((a, i, v) => { if (i < 0n || i > BigInt(a.length)) { return new alan_std.AlanError(`Provided array index ${i.toString()} is greater than the length of the array`); } else { let out = a[Number(i)]; a[Number(i)] = v; return out; } })" :: (T[S], i64, T) -> T!}(a, i, v);
 
 /// Dictionary-related bindings
-export fn Dict{K, V} "alan_std::OrderedHashMap::new" <- RootBacking :: () -> Dict{K, V};
+export fn{Rs} Dict{K, V} "alan_std::OrderedHashMap::new" <- RootBacking :: () -> Dict{K, V};
+export fn{Js} Dict{K, V} "new Map" :: () -> Dict{K, V};
 export fn Dict{K, V}(k: K, v: V) {
   let out = Dict{K, V}();
   out.store(k, v);
@@ -1116,17 +1118,31 @@ export fn Dict{K, V}(a: Array{(K, V)}) = a.reduce(Dict{K, V}(), fn (d: Dict{K, V
   d.store(v.0, v.1);
   return d;
 });
-export fn store{K, V} (d: Mut{Dict{K, V}}, k: K, v: V) {
+export fn{Rs} has{K, V} (d: Dict{K, V}, k: K) = {Method{"contains_key"} :: (Dict{K, V}, K) -> bool}(d, k);
+export fn{Js} has{K, V} (d: Dict{K, V}, k: K) = {Method{"has"} :: (Dict{K, V}, K) -> bool}(d, k);
+export fn{Rs} get{K, V} "alan_std::getdict" <- RootBacking :: (Dict{K, V}, K) -> V?;
+export fn{Js} get{K, V} (d: Dict{K, V}, k: K) = {"((a) => a || null)" :: V? -> V?}({Method{"get"} :: (Dict{K, V}, K) -> V?}(d, k));
+export fn{Rs} store{K, V} (d: Mut{Dict{K, V}}, k: K, v: V) {
   {Method{"insert"} :: (Mut{Dict{K, V}}, Own{K}, Own{V}) -> V?}(d, k, v);
 }
-export fn get{K, V} "alan_std::getdict" <- RootBacking :: (Dict{K, V}, K) -> V?;
-export fn has{K, V} (d: Dict{K, V}, k: K) = {Method{"contains_key"} :: (Dict{K, V}, K) -> bool}(d, k);
-export fn len{K, V} (d: Dict{K, V}) = {Cast{"i64"} :: Deref{Binds{"usize"}} -> i64}(
+export fn{Js} store{K, V} (d: Mut{Dict{K, V}}, k: K, v: V) {
+  let out = d.get(k);
+  {Method{"set"} :: (Dict{K, V}, K, V) -> void}(d, k, v);
+  return out;
+}
+export fn{Rs} len{K, V} (d: Dict{K, V}) = {Cast{"i64"} :: Deref{Binds{"usize"}} -> i64}(
   {Method{"len"} :: Dict{K, V} -> Binds{"usize"}}(d));
-export fn keys{K, V} "alan_std::keysdict" <- RootBacking :: Dict{K, V} -> K[];
-export fn vals{K, V} "alan_std::valsdict" <- RootBacking :: Dict{K, V} -> V[];
-export fn Array{K, V} "alan_std::arraydict" <- RootBacking :: Dict{K, V} -> (K, V)[];
-export fn concat{K, V} "alan_std::concatdict" <- RootBacking :: (Dict{K, V}, Dict{K, V}) -> Dict{K, V};
+export fn{Js} len{K, V} (d: Dict{K, V}) = {Property{"size"} :: Dict{K, V} -> i32}(d).i64;
+export fn{Rs} keys{K, V} "alan_std::keysdict" <- RootBacking :: Dict{K, V} -> K[];
+export fn{Js} keys{K, V} (d: Dict{K, V}) = {"Array.from" :: K[] -> K[]}({Method{"keys"} :: Dict{K, V} -> K[]}(d));
+export fn{Rs} vals{K, V} "alan_std::valsdict" <- RootBacking :: Dict{K, V} -> V[];
+export fn{Js} vals{K, V} (d: Dict{K, V}) = {"Array.from" :: V[] -> V[]}({Method{"values"} :: Dict{K, V} -> V[]}(d));
+export fn{Rs} Array{K, V} "alan_std::arraydict" <- RootBacking :: Dict{K, V} -> (K, V)[];
+// export fn{Js} Array{K, V} "Array.from" :: Dict{K, V} -> (K, V)[];
+// TODO: Figure out how to avoid this map
+export fn{Js} Array{K, V} "((d) => Array.from(d).map(kv => ({ arg0: kv[0], arg1: kv[1] })))" :: Dict{K, V} -> (K, V)[];
+export fn{Rs} concat{K, V} "alan_std::concatdict" <- RootBacking :: (Dict{K, V}, Dict{K, V}) -> Dict{K, V};
+export fn{Js} concat{K, V} "((a, b) => new Map([...a, ...b]))" :: (Dict{K, V}, Dict{K, V}) -> Dict{K, V};
 
 /// Set-related bindings
 export fn Set{V}(v: V) {
@@ -1138,23 +1154,35 @@ export fn Set{V}(a: Array{V}) = a.reduce(Set{V}(), fn (s: Set{V}, v: V) {
   s.store(v);
   return s;
 });
-export fn Set{V} "std::collections::HashSet::new" :: () -> Set{V};
-export fn store{V} (s: Mut{Set{V}}, v: V) {
+export fn{Rs} Set{V} "std::collections::HashSet::new" :: () -> Set{V};
+export fn{Js} Set{V} "new Set" :: () -> Set{V};
+export fn{Rs} store{V} (s: Mut{Set{V}}, v: V) {
   {Method{"insert"} :: (Mut{Set{V}}, Own{V}) -> bool}(s, v);
 }
-export fn has{V} (s: Set{V}, v: V) = {Method{"contains"} :: (Set{V}, V) -> bool}(s, v);
-export fn len{V} (s: Set{V}) = {Cast{"i64"} :: Deref{Binds{"usize"}} -> i64}(
+export fn{Js} store{V} (s: Mut{Set{V}}, v: V) {
+  {Method{"add"} :: (Set{V}, V) -> Set{V}}(s, v);
+}
+export fn{Rs} has{V} (s: Set{V}, v: V) = {Method{"contains"} :: (Set{V}, V) -> bool}(s, v);
+export fn{Js} has{V} (s: Set{V}, v: V) = {Method{"has"} :: (Set{V}, V) -> bool}(s, v);
+export fn{Rs} len{V} (s: Set{V}) = {Cast{"i64"} :: Deref{Binds{"usize"}} -> i64}(
   {Method{"len"} :: Set{V} -> Binds{"usize"}}(s));
-export fn Array{V} "alan_std::arrayset" <- RootBacking :: Set{V} -> V[];
-export fn union{V} "alan_std::unionset" <- RootBacking :: (Set{V}, Set{V}) -> Set{V};
+export fn{Js} len{V} (s: Set{V}) = {Property{"size"} :: Set{V} -> i32}(s).i64;
+export fn{Rs} Array{V} "alan_std::arrayset" <- RootBacking :: Set{V} -> V[];
+export fn{Js} Array{V} "Array.from" :: Set{V} -> V[];
+export fn{Rs} union{V} "alan_std::unionset" <- RootBacking :: (Set{V}, Set{V}) -> Set{V};
+export fn{Js} union{V} (a: Set{V}, b: Set{V}) = {Method{"union"} :: (Set{V}, Set{V}) -> Set{V}}(a, b);
 export fn or{V}(a: Set{V}, b: Set{V}) = union(a, b);
-export fn intersect{V} "alan_std::intersectset" <- RootBacking :: (Set{V}, Set{V}) -> Set{V};
+export fn{Rs} intersect{V} "alan_std::intersectset" <- RootBacking :: (Set{V}, Set{V}) -> Set{V};
+export fn{Js} intersect{V} (a: Set{V}, b: Set{V}) = {Method{"intersection"} :: (Set{V}, Set{V}) -> Set{V}}(a, b);
 export fn and{V}(a: Set{V}, b: Set{V}) = intersect(a, b);
-export fn difference{V} "alan_std::differenceset" <- RootBacking :: (Set{V}, Set{V}) -> Set{V};
+export fn{Rs} difference{V} "alan_std::differenceset" <- RootBacking :: (Set{V}, Set{V}) -> Set{V};
+export fn{Js} difference{V} (a: Set{V}, b: Set{V}) = {Method{"difference"} :: (Set{V}, Set{V}) -> Set{V}}(a, b);
 export fn div{V}(a: Set{V}, b: Set{V}) = difference(a, b);
-export fn symmetricDifference{V} "alan_std::symmetric_differenceset" <- RootBacking :: (Set{V}, Set{V}) -> Set{V};
+export fn{Rs} symmetricDifference{V} "alan_std::symmetric_differenceset" <- RootBacking :: (Set{V}, Set{V}) -> Set{V};
+export fn{Js} symmetricDifference{V} (a: Set{V}, b: Set{V}) = {Method{"symmetricDifference"} :: (Set{V}, Set{V}) -> Set{V}}(a, b);
 export fn xor{V}(a: Set{V}, b: Set{V}) = symmetricDifference(a, b);
-export fn product{V} "alan_std::productset" <- RootBacking :: (Set{V}, Set{V}) -> Set{(V, V)};
+export fn{Rs} product{V} "alan_std::productset" <- RootBacking :: (Set{V}, Set{V}) -> Set{(V, V)};
+export fn{Js} product{V} "((a, b) => { let out = new Set(); for (let arg0 of a) { for (let arg1 of b) { out.add({ arg0, arg1 }); } } return out; })" :: (Set{V}, Set{V}) -> Set{(V, V)};
 export fn mul{V}(a: Set{V}, b: Set{V}) = product(a, b);
 
 /// Tree implementation
