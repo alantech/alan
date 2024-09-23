@@ -173,33 +173,27 @@ export function wrappingShrI8(a, b) {
 }
 
 export function rotateLeftI8(a, b) {
-  let c = b;
-  while (c > 7) {
-    c -= 8;
+  // Because this bitwise arithmetic in JS Number is a bit of a mess, let's convert to u8, do the
+  // work there, then convert back
+  let v = rotateLeftU8(a < 0 ? a + 256 : a, b < 0 ? b + 256 : b);
+  while (v > 127) {
+    v -= 256;
   }
-  if (c == 0) {
-    return a;
+  while (v < -128) {
+    v += 256;
   }
-  let lhs = clampI8(-1 << c);
-  let rhs = clampI8(-1 ^ lhs);
-  let p1 = a & lhs;
-  let p2 = a & rhs;
-  return wrappingShrI8(p1, 8 - c) + wrappingShlI8(p2, c);
+  return v;
 }
 
 export function rotateRightI8(a, b) {
-  let c = b;
-  while (c > 7) {
-    c -= 8;
+  let v = rotateLeftU8(a < 0 ? a + 256 : a, b < 0 ? b + 256 : b);
+  while (v > 127) {
+    v -= 256;
   }
-  if (c == 0) {
-    return a;
+  while (v < -128) {
+    v += 256;
   }
-  let rhs = clampI8(-1 << c);
-  let lhs = clampI8(-1 ^ rhs);
-  let p1 = a & lhs;
-  let p2 = a & rhs;
-  return wrappingShrI8(p1, 8 - c) + wrappingShlI8(p2, c);
+  return v;
 }
 
 export function wrappingAddI16(a, b) {
@@ -677,8 +671,8 @@ export function rotateLeftU8(a, b) {
   if (c == 0) {
     return a;
   }
-  let lhs = clampU8(255 << c);
-  let rhs = clampU8(255 ^ lhs);
+  let lhs = 255 & (255 << 8 - c);
+  let rhs = 255 & (255 ^ lhs);
   let p1 = a & lhs;
   let p2 = a & rhs;
   return wrappingShrU8(p1, 8 - c) + wrappingShlU8(p2, c);
@@ -692,11 +686,11 @@ export function rotateRightU8(a, b) {
   if (c == 0) {
     return a;
   }
-  let rhs = clampU8(255 << c);
-  let lhs = clampU8(255 ^ rhs);
+  let rhs = 255 & (255 << c);
+  let lhs = 255 & (255 ^ rhs);
   let p1 = a & lhs;
   let p2 = a & rhs;
-  return wrappingShrU8(p1, 8 - c) + wrappingShlU8(p2, c);
+  return wrappingShlU8(p1, 8 - c) + wrappingShrU8(p2, c);
 }
 
 export function wrappingAddU16(a, b) {
@@ -806,8 +800,8 @@ export function rotateLeftU16(a, b) {
   if (c == 0) {
     return a;
   }
-  let lhs = clampU16(65_535 << c);
-  let rhs = clampU16(65_535 ^ lhs);
+  let lhs = 65_535 & (65_535 << 16 - c);
+  let rhs = 65_535 & (65_535 ^ lhs);
   let p1 = a & lhs;
   let p2 = a & rhs;
   return wrappingShrU16(p1, 16 - c) + wrappingShlU16(p2, c);
@@ -821,11 +815,11 @@ export function rotateRightU16(a, b) {
   if (c == 0) {
     return a;
   }
-  let rhs = clampU16(65_535 << c);
-  let lhs = clampU16(65_535 ^ rhs);
+  let rhs = 65_535 & (65_535 << c);
+  let lhs = 65_535 & (65_535 ^ rhs);
   let p1 = a & lhs;
   let p2 = a & rhs;
-  return wrappingShrU16(p1, 16 - c) + wrappingShlU16(p2, c);
+  return wrappingShlU16(p1, 16 - c) + wrappingShrU16(p2, c);
 }
 
 export function wrappingAddU32(a, b) {
@@ -944,8 +938,8 @@ export function rotateLeftU32(a, b) {
   if (c == 0n) {
     return a;
   }
-  let lhs = BigInt(clampU32(4_294_967_295n << c));
-  let rhs = BigInt(clampU32(4_294_967_295n ^ lhs));
+  let lhs = 4_294_967_295n & (4_294_967_295n << c);
+  let rhs = 4_294_967_295n & (4_294_967_295n ^ lhs);
   let p1 = BigInt(a) & lhs;
   let p2 = BigInt(a) & rhs;
   return wrappingShrU32(Number(p1), 32 - Number(c)) + wrappingShlU32(Number(p2), Number(c));
@@ -963,7 +957,7 @@ export function rotateRightU32(a, b) {
   let lhs = BigInt(clampU32(4_294_967_295n ^ rhs));
   let p1 = BigInt(a) & lhs;
   let p2 = BigInt(a) & rhs;
-  return wrappingShrU32(Number(p1), 32 - Number(c)) + wrappingShlU32(Number(p2), Number(c));
+  return wrappingShlU32(Number(p1), 32 - Number(c)) + wrappingShrU32(Number(p2), Number(c));
 }
 
 export function wrappingAddU64(a, b) {
@@ -1073,8 +1067,8 @@ export function rotateLeftU64(a, b) {
   if (c == 0n) {
     return a;
   }
-  let lhs = clampU64(18_446_744_073_709_551_615n << c);
-  let rhs = clampU64(18_446_744_073_709_551_615n ^ lhs);
+  let lhs = 18_446_744_073_709_551_615n & (18_446_744_073_709_551_615n << c);
+  let rhs = 18_446_744_073_709_551_615n & (18_446_744_073_709_551_615n ^ lhs);
   let p1 = a & lhs;
   let p2 = a & rhs;
   return wrappingShrU64(p1, 64n - c) + wrappingShlU64(p2, c);
@@ -1088,9 +1082,9 @@ export function rotateRightU64(a, b) {
   if (c == 0n) {
     return a;
   }
-  let rhs = clampU64(18_446_744_073_709_551_615n << c);
-  let lhs = clampU64(18_446_744_073_709_551_615n ^ rhs);
+  let rhs = 18_446_744_073_709_551_615n & (18_446_744_073_709_551_615n << c);
+  let lhs = 18_446_744_073_709_551_615n & (18_446_744_073_709_551_615n ^ rhs);
   let p1 = a & lhs;
   let p2 = a & rhs;
-  return wrappingShrU64(p1, 64n - c) + wrappingShlU64(p2, c);
+  return wrappingShlU64(p1, 64n - c) + wrappingShrU64(p2, c);
 }
