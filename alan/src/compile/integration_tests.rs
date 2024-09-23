@@ -45,7 +45,7 @@ macro_rules! test {
                     format!("./{}", stringify!($rule))
                 };
                 let run = std::process::Command::new(cmd.clone()).output()?;
-                $( $type!($test_val, &run); )+
+                $( $type!($test_val, true, &run); )+
                 std::fs::remove_file(&filename)?;
                 std::fs::remove_file(&cmd)?;
                 Ok(())
@@ -90,7 +90,7 @@ macro_rules! test_full {
                     Ok(a) => Ok(a),
                     Err(e) => Err(format!("Could not run the test binary {:?}", e)),
                 }?;
-                $( $type!($test_val, &run); )+
+                $( $type!($test_val, true, &run); )+
                 match std::fs::remove_file(&cmd) {
                     Ok(a) => Ok(a),
                     Err(e) => Err(format!("Could not remove the test binary {:?}", e)),
@@ -119,7 +119,7 @@ macro_rules! test_full {
                     Ok(a) => Ok(a),
                     Err(e) => Err(format!("Could not run the test JS code {:?}", e)),
                 }?;
-                $( $type!($test_val, &run); )+
+                $( $type!($test_val, false, &run); )+
                 match std::fs::remove_file(&cmd) {
                     Ok(a) => Ok(a),
                     Err(e) => Err(format!("Could not remove the generated JS file {:?}", e)),
@@ -178,7 +178,7 @@ macro_rules! test_compile_error {
 }
 #[cfg(test)]
 macro_rules! stdout {
-    ( $test_val:expr, $real_val:expr ) => {
+    ( $test_val:expr, $in_rs:expr, $real_val:expr ) => {
         let std_out = if cfg!(windows) {
             String::from_utf8($real_val.stdout.clone())?.replace("\r\n", "\n")
         } else {
@@ -188,8 +188,34 @@ macro_rules! stdout {
     };
 }
 #[cfg(test)]
+macro_rules! stdout_rs {
+    ( $test_val:expr, $in_rs:expr, $real_val:expr ) => {
+        if $in_rs {
+            let std_out = if cfg!(windows) {
+                String::from_utf8($real_val.stdout.clone())?.replace("\r\n", "\n")
+            } else {
+                String::from_utf8($real_val.stdout.clone())?
+            };
+            assert_eq!($test_val, &std_out);
+        }
+    };
+}
+#[cfg(test)]
+macro_rules! stdout_js {
+    ( $test_val:expr, $in_rs:expr, $real_val:expr ) => {
+        if !$in_rs {
+            let std_out = if cfg!(windows) {
+                String::from_utf8($real_val.stdout.clone())?.replace("\r\n", "\n")
+            } else {
+                String::from_utf8($real_val.stdout.clone())?
+            };
+            assert_eq!($test_val, &std_out);
+        }
+    };
+}
+#[cfg(test)]
 macro_rules! stdout_contains {
-    ( $test_val:expr, $real_val:expr ) => {
+    ( $test_val:expr, $in_rs:expr, $real_val:expr ) => {
         let std_out = if cfg!(windows) {
             String::from_utf8($real_val.stdout.clone())?.replace("\r\n", "\n")
         } else {
@@ -200,7 +226,7 @@ macro_rules! stdout_contains {
 }
 #[cfg(test)]
 macro_rules! stderr {
-    ( $test_val:expr, $real_val:expr ) => {
+    ( $test_val:expr, $in_rs:expr, $real_val:expr ) => {
         let std_err = if cfg!(windows) {
             String::from_utf8($real_val.stderr.clone())?.replace("\r\n", "\n")
         } else {
@@ -211,7 +237,7 @@ macro_rules! stderr {
 }
 #[cfg(test)]
 macro_rules! status {
-    ( $test_val:expr, $real_val:expr ) => {
+    ( $test_val:expr, $in_rs:expr, $real_val:expr ) => {
         let status = $real_val.status.code().unwrap();
         assert_eq!($test_val, status);
     };
@@ -237,17 +263,17 @@ World!
 
 // Exit Tests
 
-test!(normal_exit_code => r#"
+test_full!(normal_exit_code => r#"
     export fn main() -> ExitCode {
         return ExitCode(0);
     }"#;
     status 0;
 );
-test!(error_exit_code => r#"
+test_full!(error_exit_code => r#"
     export fn main() = ExitCode(1);"#;
     status 1;
 );
-test!(non_global_memory_exit_code => r#"
+test_full!(non_global_memory_exit_code => r#"
     export fn main() {
       let x: i64 = 0;
       return x.ExitCode;
@@ -313,6 +339,7 @@ test_full!(print_function => r#"
     stdout "Hello, World\n";
     status 0;
 );
+// TODO: Figure out how to deal with the JS function color problem so `wait` can be implemented
 test!(duration_print => r#"
     export fn main() -> void {
         const i = now();
@@ -803,7 +830,7 @@ test_full!(string_max => r#"
     }"#;
     stdout "5\n";
 );
-test!(string_parse => r#"
+test_full!(string_parse => r#"
     export fn main {
       "8".i8.print;
       "foo".i8.print;
@@ -814,7 +841,8 @@ test!(string_parse => r#"
       "64".i64.print;
       "foo".i64.print;
     }"#;
-    stdout "8\nError: invalid digit found in string\n16\nError: invalid digit found in string\n32\nError: invalid digit found in string\n64\nError: invalid digit found in string\n";
+    stdout_rs "8\nError: invalid digit found in string\n16\nError: invalid digit found in string\n32\nError: invalid digit found in string\n64\nError: invalid digit found in string\n";
+    stdout_js "8\nError: Not a Number\n16\nError: Not a Number\n32\nError: Not a Number\n64\nError: Cannot convert foo to a BigInt\n";
 );
 
 // GPGPU
@@ -997,7 +1025,7 @@ test_full!(u64_bitwise => r#"
 
 // Boolean Logic
 
-test!(boolean_logic => r#"
+test_full!(boolean_logic => r#"
     export fn main {
       print(true);
       print(false);
@@ -1162,7 +1190,7 @@ test_ignore!(string_templating => r#"
 
 // Comparators
 
-test!(equality => r#"
+test_full!(equality => r#"
     export fn main {
       print(i8(0) == i8(0));
       print(i8(1).eq(i8(0)));
@@ -1226,7 +1254,7 @@ true
 false
 "#;
 );
-test!(not_equals => r#"
+test_full!(not_equals => r#"
     export fn main {
       print(i8(0) != i8(0));
       print(i8(1).neq(i8(0)));
@@ -1290,7 +1318,7 @@ false
 true
 "#;
 );
-test!(less_than => r#"
+test_full!(less_than => r#"
     export fn main {
       print(i8(0) < i8(1));
       print(i8(1).lt(i8(0)));
@@ -1349,7 +1377,7 @@ false
 true
 "#;
 );
-test!(less_than_or_equal => r#"
+test_full!(less_than_or_equal => r#"
     export fn main {
       print(i8(0) <= i8(1));
       print(i8(1).lte(i8(0)));
@@ -1408,7 +1436,7 @@ true
 true
 "#;
 );
-test!(greater_than => r#"
+test_full!(greater_than => r#"
     export fn main {
       print(i8(0) > i8(1));
       print(i8(1).gt(i8(0)));
@@ -1467,7 +1495,7 @@ false
 false
 "#;
 );
-test!(greater_than_or_equal => r#"
+test_full!(greater_than_or_equal => r#"
     export fn main {
       print(i8(0) >= i8(1));
       print(i8(1).gte(i8(0)));
