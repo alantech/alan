@@ -173,33 +173,27 @@ export function wrappingShrI8(a, b) {
 }
 
 export function rotateLeftI8(a, b) {
-  let c = b;
-  while (c > 7) {
-    c -= 8;
+  // Because this bitwise arithmetic in JS Number is a bit of a mess, let's convert to u8, do the
+  // work there, then convert back
+  let v = rotateLeftU8(a < 0 ? a + 256 : a, b < 0 ? b + 256 : b);
+  while (v > 127) {
+    v -= 256;
   }
-  if (c == 0) {
-    return a;
+  while (v < -128) {
+    v += 256;
   }
-  let lhs = clampI8(-1 << c);
-  let rhs = clampI8(-1 ^ lhs);
-  let p1 = a & lhs;
-  let p2 = a & rhs;
-  return wrappingShrI8(p1, 8 - c) + wrappingShlI8(p2, c);
+  return v;
 }
 
 export function rotateRightI8(a, b) {
-  let c = b;
-  while (c > 7) {
-    c -= 8;
+  let v = rotateLeftU8(a < 0 ? a + 256 : a, b < 0 ? b + 256 : b);
+  while (v > 127) {
+    v -= 256;
   }
-  if (c == 0) {
-    return a;
+  while (v < -128) {
+    v += 256;
   }
-  let rhs = clampI8(-1 << c);
-  let lhs = clampI8(-1 ^ rhs);
-  let p1 = a & lhs;
-  let p2 = a & rhs;
-  return wrappingShrI8(p1, 8 - c) + wrappingShlI8(p2, c);
+  return v;
 }
 
 export function wrappingAddI16(a, b) {
@@ -293,33 +287,25 @@ export function wrappingShrI16(a, b) {
 }
 
 export function rotateLeftI16(a, b) {
-  let c = b;
-  while (c > 15) {
-    c -= 16;
+  let v = rotateLeftU16(a < 0 ? a + 65_536 : a, b < 0 ? b + 65_536 : b);
+  while (v > 32_767) {
+    v -= 65_536;
   }
-  if (c == 0) {
-    return a;
+  while (v < -32_768) {
+    v += 65_536;
   }
-  let lhs = clampI16(-1 << c);
-  let rhs = clampI16(-1 ^ lhs);
-  let p1 = a & lhs;
-  let p2 = a & rhs;
-  return wrappingShrI16(p1, 16 - c) + wrappingShlI16(p2, c);
+  return v;
 }
 
 export function rotateRightI16(a, b) {
-  let c = b;
-  while (c > 15) {
-    c -= 16;
+  let v = rotateRightU16(a < 0 ? a + 65_536 : a, b < 0 ? b + 65_536 : b);
+  while (v > 32_767) {
+    v -= 65_536;
   }
-  if (c == 0) {
-    return a;
+  while (v < -32_768) {
+    v += 65_536;
   }
-  let rhs = clampI16(-1 << c);
-  let lhs = clampI16(-1 ^ rhs);
-  let p1 = a & lhs;
-  let p2 = a & rhs;
-  return wrappingShrI16(p1, 16 - c) + wrappingShlI16(p2, c);
+  return v;
 }
 
 export function wrappingAddI32(a, b) {
@@ -421,33 +407,25 @@ export function wrappingShrI32(a, b) {
 }
 
 export function rotateLeftI32(a, b) {
-  let c = b;
-  while (c > 31) {
-    c -= 32;
+  let v = rotateLeftU32(a < 0 ? a + 4_294_967_296 : a, b < 0 ? b + 4_294_967_296 : b);
+  while (v > 2_147_483_647) {
+    v -= 4_294_967_296;
   }
-  if (c == 0) {
-    return a;
+  while (v < -2_147_483_648) {
+    v += 4_294_967_296;
   }
-  let lhs = clampI32(-1 << c);
-  let rhs = clampI32(-1 ^ lhs);
-  let p1 = a & lhs;
-  let p2 = a & rhs;
-  return wrappingShrI32(p1, 32 - c) + wrappingShlI32(p2, c);
+  return v;
 }
 
 export function rotateRightI32(a, b) {
-  let c = b;
-  while (c > 31) {
-    c -= 32;
+  let v = rotateRightU32(a < 0 ? a + 4_294_967_296 : a, b < 0 ? b + 4_294_967_296 : b);
+  while (v > 2_147_483_647) {
+    v -= 4_294_967_296;
   }
-  if (c == 0) {
-    return a;
+  while (v < -2_147_483_648) {
+    v += 4_294_967_296;
   }
-  let rhs = clampI32(-1 << c);
-  let lhs = clampI32(-1 ^ rhs);
-  let p1 = a & lhs;
-  let p2 = a & rhs;
-  return wrappingShrI32(p1, 32 - c) + wrappingShlI32(p2, c);
+  return v;
 }
 
 export function wrappingAddI64(a, b) {
@@ -541,33 +519,25 @@ export function wrappingShrI64(a, b) {
 }
 
 export function rotateLeftI64(a, b) {
-  let c = b;
-  while (c > 63n) {
-    c -= 64n;
+  let v = rotateLeftU64(a < 0n ? a + 18_446_744_073_709_551_616n : a, b < 0n ? b + 18_446_744_073_709_551_616n : b);
+  while (v > 9_223_372_036_854_775_807n) {
+    v -= 18_446_744_073_709_551_616n;
   }
-  if (c == 0n) {
-    return a;
+  while (v < -9_223_372_036_854_775_808n) {
+    v += 18_446_744_073_709_551_616n;
   }
-  let lhs = clampI64(-1n << c);
-  let rhs = clampI64(-1n ^ lhs);
-  let p1 = a & lhs;
-  let p2 = a & rhs;
-  return wrappingShrI64(p1, 64n - c) + wrappingShlI64(p2, c);
+  return v;
 }
 
 export function rotateRightI64(a, b) {
-  let c = b;
-  while (c > 63n) {
-    c -= 64n;
+  let v = rotateRightU64(a < 0n ? a + 18_446_744_073_709_551_616n : a, b < 0n ? b + 18_446_744_073_709_551_616n : b);
+  while (v > 9_223_372_036_854_775_807n) {
+    v -= 18_446_744_073_709_551_616n;
   }
-  if (c == 0n) {
-    return a;
+  while (v < -9_223_372_036_854_775_808n) {
+    v += 18_446_744_073_709_551_616n;
   }
-  let rhs = clampI64(-1n << c);
-  let lhs = clampI64(-1n ^ rhs);
-  let p1 = a & lhs;
-  let p2 = a & rhs;
-  return wrappingShrI64(p1, 64n - c) + wrappingShlI64(p2, c);
+  return v;
 }
 
 export function wrappingAddU8(a, b) {
@@ -677,8 +647,8 @@ export function rotateLeftU8(a, b) {
   if (c == 0) {
     return a;
   }
-  let lhs = clampU8(255 << c);
-  let rhs = clampU8(255 ^ lhs);
+  let lhs = 255 & (255 << 8 - c);
+  let rhs = 255 & (255 ^ lhs);
   let p1 = a & lhs;
   let p2 = a & rhs;
   return wrappingShrU8(p1, 8 - c) + wrappingShlU8(p2, c);
@@ -692,11 +662,11 @@ export function rotateRightU8(a, b) {
   if (c == 0) {
     return a;
   }
-  let rhs = clampU8(255 << c);
-  let lhs = clampU8(255 ^ rhs);
+  let rhs = 255 & (255 << c);
+  let lhs = 255 & (255 ^ rhs);
   let p1 = a & lhs;
   let p2 = a & rhs;
-  return wrappingShrU8(p1, 8 - c) + wrappingShlU8(p2, c);
+  return wrappingShlU8(p1, 8 - c) + wrappingShrU8(p2, c);
 }
 
 export function wrappingAddU16(a, b) {
@@ -806,8 +776,8 @@ export function rotateLeftU16(a, b) {
   if (c == 0) {
     return a;
   }
-  let lhs = clampU16(65_535 << c);
-  let rhs = clampU16(65_535 ^ lhs);
+  let lhs = 65_535 & (65_535 << 16 - c);
+  let rhs = 65_535 & (65_535 ^ lhs);
   let p1 = a & lhs;
   let p2 = a & rhs;
   return wrappingShrU16(p1, 16 - c) + wrappingShlU16(p2, c);
@@ -821,11 +791,11 @@ export function rotateRightU16(a, b) {
   if (c == 0) {
     return a;
   }
-  let rhs = clampU16(65_535 << c);
-  let lhs = clampU16(65_535 ^ rhs);
+  let rhs = 65_535 & (65_535 << c);
+  let lhs = 65_535 & (65_535 ^ rhs);
   let p1 = a & lhs;
   let p2 = a & rhs;
-  return wrappingShrU16(p1, 16 - c) + wrappingShlU16(p2, c);
+  return wrappingShlU16(p1, 16 - c) + wrappingShrU16(p2, c);
 }
 
 export function wrappingAddU32(a, b) {
@@ -944,8 +914,8 @@ export function rotateLeftU32(a, b) {
   if (c == 0n) {
     return a;
   }
-  let lhs = BigInt(clampU32(4_294_967_295n << c));
-  let rhs = BigInt(clampU32(4_294_967_295n ^ lhs));
+  let lhs = 4_294_967_295n & (4_294_967_295n << c);
+  let rhs = 4_294_967_295n & (4_294_967_295n ^ lhs);
   let p1 = BigInt(a) & lhs;
   let p2 = BigInt(a) & rhs;
   return wrappingShrU32(Number(p1), 32 - Number(c)) + wrappingShlU32(Number(p2), Number(c));
@@ -963,7 +933,7 @@ export function rotateRightU32(a, b) {
   let lhs = BigInt(clampU32(4_294_967_295n ^ rhs));
   let p1 = BigInt(a) & lhs;
   let p2 = BigInt(a) & rhs;
-  return wrappingShrU32(Number(p1), 32 - Number(c)) + wrappingShlU32(Number(p2), Number(c));
+  return wrappingShlU32(Number(p1), 32 - Number(c)) + wrappingShrU32(Number(p2), Number(c));
 }
 
 export function wrappingAddU64(a, b) {
@@ -1073,8 +1043,8 @@ export function rotateLeftU64(a, b) {
   if (c == 0n) {
     return a;
   }
-  let lhs = clampU64(18_446_744_073_709_551_615n << c);
-  let rhs = clampU64(18_446_744_073_709_551_615n ^ lhs);
+  let lhs = 18_446_744_073_709_551_615n & (18_446_744_073_709_551_615n << c);
+  let rhs = 18_446_744_073_709_551_615n & (18_446_744_073_709_551_615n ^ lhs);
   let p1 = a & lhs;
   let p2 = a & rhs;
   return wrappingShrU64(p1, 64n - c) + wrappingShlU64(p2, c);
@@ -1088,9 +1058,9 @@ export function rotateRightU64(a, b) {
   if (c == 0n) {
     return a;
   }
-  let rhs = clampU64(18_446_744_073_709_551_615n << c);
-  let lhs = clampU64(18_446_744_073_709_551_615n ^ rhs);
+  let rhs = 18_446_744_073_709_551_615n & (18_446_744_073_709_551_615n << c);
+  let lhs = 18_446_744_073_709_551_615n & (18_446_744_073_709_551_615n ^ rhs);
   let p1 = a & lhs;
   let p2 = a & rhs;
-  return wrappingShrU64(p1, 64n - c) + wrappingShlU64(p2, c);
+  return wrappingShlU64(p1, 64n - c) + wrappingShrU64(p2, c);
 }
