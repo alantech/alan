@@ -821,15 +821,59 @@ pub fn from_microstatement(
                                     Some(t) => t.2.degroup(),
                                     None => CType::Void,
                                 };
-                                let enum_name = match enum_type {
+                                let enum_name = match &enum_type {
                                     CType::Field(n, _) => Ok(n.clone()),
                                     CType::Type(n, _) => Ok(n.clone()),
                                     _ => Err(format!("Cannot generate an constructor function for {} type as the input type has no name?", function.name)),
                                 }?;
                                 for t in &ts {
-                                    let inner_type = t.degroup();
+                                    let mut inner_type = t.degroup();
+                                    if let CType::Tuple(ts) = &inner_type {
+                                        if ts.len() == 1 {
+                                            inner_type = ts[0].clone();
+                                        }
+                                    }
                                     match &inner_type {
                                         CType::Field(n, _) if *n == enum_name => {
+                                            // Special-casing for Option and Result mapping. TODO:
+                                            // Make this more centralized
+                                            if ts.len() == 2 {
+                                                if let CType::Void = &ts[1] {
+                                                    if let CType::Void = t {
+                                                        return Ok(("null".to_string(), out, deps));
+                                                    } else {
+                                                        return Ok((argstrs[0].clone(), out, deps));
+                                                    }
+                                                } else if let CType::Type(name, _) = &ts[1] {
+                                                    if name == "Error" {
+                                                        let (_, d) =
+                                                            typen::ctype_to_jtype(&ts[0], deps)?;
+                                                        deps = d;
+                                                        let (_, d) =
+                                                            typen::ctype_to_jtype(&ts[1], deps)?;
+                                                        deps = d;
+                                                        if let CType::Binds(..) = t {
+                                                            return Ok((
+                                                                argstrs[0].clone(),
+                                                                out,
+                                                                deps,
+                                                            ));
+                                                        } else {
+                                                            return Ok((
+                                                                argstrs[0].clone(),
+                                                                out,
+                                                                deps,
+                                                            ));
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            return Ok((argstrs[0].clone(), out, deps));
+                                        }
+                                        CType::Field(_, f)
+                                            if f.to_functional_string()
+                                                == enum_type.to_functional_string() =>
+                                        {
                                             // Special-casing for Option and Result mapping. TODO:
                                             // Make this more centralized
                                             if ts.len() == 2 {
@@ -902,7 +946,7 @@ pub fn from_microstatement(
                                             return Ok((argstrs[0].clone(), out, deps));
                                         }
                                         CType::Binds(n, ..) => match &**n {
-                                            CType::TString(s) if s == &enum_name => {
+                                            CType::TString(s) if *s == enum_name => {
                                                 // Special-casing for Option and Result mapping. TODO:
                                                 // Make this more centralized
                                                 if ts.len() == 2 {

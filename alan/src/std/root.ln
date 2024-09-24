@@ -235,10 +235,10 @@ export fn{Rs} i8 Cast{"i8"} :: Deref{u64} -> i8;
 export fn{Js} i8 "alan_std.clampI8" <- RootBacking :: u64 -> i8;
 export fn{Rs} i8 Cast{"i8"} :: Deref{f32} -> i8;
 export fn{Js} i8 (f: f32) -> i8 = {"alan_std.clampI8" <- RootBacking :: f32 -> i8}(
-  {"Math.round" :: f32 -> f32}(f));
+  {"Math.floor" :: f32 -> f32}(f));
 export fn{Rs} i8 Cast{"i8"} :: Deref{f64} -> i8;
 export fn{Js} i8 (f: f64) -> i8 = {"alan_std.clampI8" <- RootBacking :: f64 -> i8}(
-  {"Math.round" :: f64 -> f64}(f));
+  {"Math.floor" :: f64 -> f64}(f));
 // TODO: LOL, what a hack
 export fn{Rs} i8 Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"} :: string -> i8!;
 export fn{Js} i8 (s: string) -> i8! = {"alan_std.nanToError" <- RootBacking :: i8 -> i8!}(
@@ -262,10 +262,10 @@ export fn{Rs} i16 Cast{"i16"} :: Deref{u64} -> i16;
 export fn{Js} i16 "alan_std.clampI16" <- RootBacking :: u64 -> i16;
 export fn{Rs} i16 Cast{"i16"} :: Deref{f32} -> i16;
 export fn{Js} i16 (f: f32) -> i16 = {"alan_std.clampI16" <- RootBacking :: f32 -> i16}(
-  {"Math.round" :: f32 -> f32}(f));
+  {"Math.floor" :: f32 -> f32}(f));
 export fn{Rs} i16 Cast{"i16"} :: Deref{f64} -> i16;
 export fn{Js} i16 (f: f64) -> i16 = {"alan_std.clampI16" <- RootBacking :: f64 -> i16}(
-  {"Math.round" :: f64 -> f64}(f));
+  {"Math.floor" :: f64 -> f64}(f));
 export fn{Rs} i16 Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"} :: string -> i16!;
 export fn{Js} i16 (s: string) -> i16! = {"alan_std.nanToError" <- RootBacking :: i16 -> i16!}(
   {"alan_std.clampI16" <- RootBacking :: i16 -> i16}(
@@ -288,10 +288,10 @@ export fn{Rs} i32 Cast{"i32"} :: Deref{u64} -> i32;
 export fn{Js} i32 "alan_std.clampI32" <- RootBacking :: u64 -> i32;
 export fn{Rs} i32 Cast{"i32"} :: Deref{f32} -> i32;
 export fn{Js} i32 (f: f32) -> i32 = {"alan_std.clampI32" <- RootBacking :: f32 -> i32}(
-  {"Math.round" :: f32 -> f32}(f));
+  {"Math.floor" :: f32 -> f32}(f));
 export fn{Rs} i32 Cast{"i32"} :: Deref{f64} -> i32;
 export fn{Js} i32 (f: f64) -> i32 = {"alan_std.clampI32" <- RootBacking :: f64 -> i32}(
-  {"Math.round" :: f64 -> f64}(f));
+  {"Math.floor" :: f64 -> f64}(f));
 export fn{Rs} i32 Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"} :: string -> i32!;
 export fn{Js} i32 (s: string) -> i32! = {"alan_std.nanToError" <- RootBacking :: i32 -> i32!}(
   {"alan_std.clampI32" <- RootBacking :: i32 -> i32}(
@@ -314,10 +314,10 @@ export fn{Rs} i64 Cast{"i64"} :: Deref{u64} -> i64;
 export fn{Js} i64 "alan_std.clampI64" <- RootBacking :: u64 -> i64;
 export fn{Rs} i64 Cast{"i64"} :: Deref{f32} -> i64;
 export fn{Js} i64 (f: f32) -> i64 = {"alan_std.clampI64" <- RootBacking :: f32 -> i64}(
-  {"Math.round" :: f32 -> f32}(f));
+  {"Math.floor" :: f32 -> f32}(f));
 export fn{Rs} i64 Cast{"i64"} :: Deref{f64} -> i64;
 export fn{Js} i64 (f: f64) -> i64 = {"alan_std.clampI64" <- RootBacking :: f64 -> i64}(
-  {"Math.round" :: f64 -> f64}(f));
+  {"Math.floor" :: f64 -> f64}(f));
 export fn{Rs} i64 Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"} :: string -> i64!;
 export fn{Js} i64 "alan_std.parseI64" <- RootBacking :: string -> i64!;
 
@@ -338,10 +338,10 @@ export fn{Rs} u8 Cast{"u8"} :: Deref{u64} -> u8;
 export fn{Js} u8 "alan_std.clampU8" <- RootBacking :: u64 -> u8;
 export fn{Rs} u8 Cast{"u8"} :: Deref{f32} -> u8;
 export fn{Js} u8 (f: f32) -> u8 = {"alan_std.clampU8" <- RootBacking :: f32 -> u8}(
-  {"Math.round" :: f32 -> f32}(f));
+  {"Math.floor" :: f32 -> f32}(f));
 export fn{Rs} u8 Cast{"u8"} :: Deref{f64} -> u8;
 export fn{Js} u8 (f: f64) -> u8 = {"alan_std.clampU8" <- RootBacking :: f64 -> u8}(
-  {"Math.round" :: f64 -> f64}(f));
+  {"Math.floor" :: f64 -> f64}(f));
 export fn{Rs} u8 Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"} :: string -> u8!;
 export fn{Js} u8 (s: string) -> u8! = {"alan_std.nanToError" <- RootBacking :: u8 -> u8!}(
   {"alan_std.clampU8" <- RootBacking :: u8 -> u8}(
@@ -364,10 +364,10 @@ export fn{Rs} u16 Cast{"u16"} :: Deref{u64} -> u16;
 export fn{Js} u16 "alan_std.clampU16" <- RootBacking :: u64 -> u16;
 export fn{Rs} u16 Cast{"u16"} :: Deref{f32} -> u16;
 export fn{Js} u16 (f: f32) -> u16 = {"alan_std.clampU16" <- RootBacking :: f32 -> u16}(
-  {"Math.round" :: f32 -> f32}(f));
+  {"Math.floor" :: f32 -> f32}(f));
 export fn{Rs} u16 Cast{"u16"} :: Deref{f64} -> u16;
 export fn{Js} u16 (f: f64) -> u16 = {"alan_std.clampU16" <- RootBacking :: f64 -> u16}(
-  {"Math.round" :: f64 -> f64}(f));
+  {"Math.floor" :: f64 -> f64}(f));
 export fn{Rs} u16 Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"} :: string -> u16!;
 export fn{Js} u16 (s: string) -> u16! = {"alan_std.nanToError" <- RootBacking :: u16 -> u16!}(
   {"alan_std.clampU16" <- RootBacking :: u16 -> u16}(
@@ -390,10 +390,10 @@ export fn{Rs} u32 Cast{"u32"} :: Deref{u64} -> u32;
 export fn{Js} u32 "alan_std.clampU32" <- RootBacking :: u64 -> u32;
 export fn{Rs} u32 Cast{"u32"} :: Deref{f32} -> u32;
 export fn{Js} u32 (f: f32) -> u32 = {"alan_std.clampU32" <- RootBacking :: f32 -> u32}(
-  {"Math.round" :: f32 -> f32}(f));
+  {"Math.floor" :: f32 -> f32}(f));
 export fn{Rs} u32 Cast{"u32"} :: Deref{f64} -> u32;
 export fn{Js} u32 (f: f64) -> u32 = {"alan_std.clampU32" <- RootBacking :: f64 -> u32}(
-  {"Math.round" :: f64 -> f64}(f));
+  {"Math.floor" :: f64 -> f64}(f));
 export fn{Rs} u32 Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"} :: string -> u32!;
 export fn{Js} u32 (s: string) -> u32! = {"alan_std.nanToError" <- RootBacking :: u32 -> u32!}(
   {"alan_std.clampU32" <- RootBacking :: u32 -> u32}(
@@ -416,10 +416,10 @@ export fn{Js} u64 "alan_std.clampU64" <- RootBacking :: u32 -> u64;
 export fn u64(u: u64) = u;
 export fn{Rs} u64 Cast{"u64"} :: Deref{f32} -> u64;
 export fn{Js} u64 (f: f32) -> u64 = {"alan_std.clampU64" <- RootBacking :: f32 -> u64}(
-  {"Math.round" :: f32 -> f32}(f));
+  {"Math.floor" :: f32 -> f32}(f));
 export fn{Rs} u64 Cast{"u64"} :: Deref{f64} -> u64;
 export fn{Js} u64 (f: f64) -> u64 = {"alan_std.clampU64" <- RootBacking :: f64 -> u64}(
-  {"Math.round" :: f64 -> f64}(f));
+  {"Math.floor" :: f64 -> f64}(f));
 export fn{Rs} u64 Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"} :: string -> u64!;
 export fn{Js} u64 "alan_std.parseU64" <- RootBacking :: string -> u64!;
 
@@ -1034,7 +1034,8 @@ export fn{Js} reduce{T} (a: T[], f: (T, T, i64) -> T) = {Method{"reduce"} :: (T[
 export fn{Rs} reduce{T, U} "alan_std::reduce_difftype" <- RootBacking :: (T[], U, (U, T) -> U) -> U;
 export fn{Js} reduce{T, U} (a: T[], i: U, f: (U, T) -> U) = {Method{"reduce"} :: (T[], (U, T) -> U, U) -> U}(a, f, i);
 export fn{Rs} reduce{T, U} "alan_std::reduce_difftype_idx" <- RootBacking :: (T[], U, (U, T, i64) -> U) -> U;
-export fn{Js} reduce{T, U} (a: T[], i: U, f: (U, T, i64) -> U) = {Method{"reduce"} :: (T[], (U, T, i32) -> U, U) -> U}(a, fn (o: U, n: T, i: i32) = f(o, n, i.i64), i);
+// TODO: Why is the compiler confused by the inner function re-using the `i` variable name?
+export fn{Js} reduce{T, U} (a: T[], i: U, f: (U, T, i64) -> U) = {Method{"reduce"} :: (T[], (U, T, i32) -> U, U) -> U}(a, fn (o: U, n: T, j: i32) = f(o, n, j.i64), i);
 export fn{Rs} concat{T} "alan_std::concat" <- RootBacking :: (T[], T[]) -> T[];
 export fn{Js} concat{T} (a: T[], b: T[]) -> T[] = {Method{"concat"} :: (T[], T[]) -> T[]}(a, b);
 export fn{Rs} append{T} "alan_std::append" <- RootBacking :: (Mut{T[]}, T[]);
