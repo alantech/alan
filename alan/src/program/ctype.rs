@@ -498,7 +498,7 @@ impl CType {
                     .collect::<Vec<String>>()
                     .join(", ")
             ),
-            CType::Field(l, t) => format!("Label{{{}, {}}}", l, t.to_functional_string()),
+            CType::Field(l, t) => format!("Field{{{}, {}}}", l, t.to_functional_string()),
             CType::Either(ts) => format!(
                 "Either{{{}}}",
                 ts.iter()

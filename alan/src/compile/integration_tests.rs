@@ -1556,7 +1556,7 @@ false
 );
 
 // Bitshifting/rotating
-test!(bitshifting => r#"
+test_full!(bitshifting => r#"
     export fn main {
       print(1.i8 >> 1.i8);
       print(1.i8 << 1.i8);
@@ -1878,6 +1878,7 @@ test_full!(object_literals => r#"
     }"#;
     stdout "foo!\ntrue\n";
 );
+// TODO: This isn't going to work until I get primitive assignment working in JS
 test!(object_and_array_reassignment => r#"
     type Foo =
       bar: bool;
@@ -2021,8 +2022,7 @@ test_full!(array_some => r#"
     }"#;
     stdout "true\n";
 );
-// TODO: Why is this failing in JS?
-test!(array_index => r#"
+test_full!(array_index => r#"
     fn odd(x: i64) = x % 2 == 1;
 
     export fn main {
@@ -2631,8 +2631,7 @@ test_full!(maybe_exists => r#"
     stdout "true\nfalse\ntrue\n";
 );
 
-// TODO: Why does this fail in JS?
-test!(maybe => r#"
+test_full!(maybe => r#"
     // TODO: Rewrite these conditionals with conditional syntax once implemented
     fn fiver(val: f64) = if(val.i64 == 5, fn = {i64?}(5), fn = {i64?}());
 
