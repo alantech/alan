@@ -429,10 +429,8 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
             Err("npm not found. Please make sure you have node.js installed before using Alan!")
         }
     }?;
-    let has_yarn = match Command::new(find_process).arg("yarn").output() {
-        Ok(a) if !a.stdout.is_empty() => true,
-        _ => false,
-    };
+    let has_yarn =
+        matches!(Command::new(find_process).arg("yarn").output(), Ok(a) if !a.stdout.is_empty());
     let config_dir = match config_dir() {
         Some(c) => Ok(c),
         None => Err("Somehow no configuration directory exists on this operating system"),
