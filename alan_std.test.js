@@ -73,7 +73,7 @@ assert(alanStd.rotateLeftI8(0b01010101, 1) == 0b10101010 - 256, "rotateLeftI8 0b
 assert(alanStd.rotateLeftI8(0b01010101, 2) == 0b01010101, "rotateLeftI8 0b01010101 <<< 2 = 0b01010101");
 assert(alanStd.rotateLeftI8(0b01010101, 3) == 0b10101010 - 256, "rotateLeftI8 0b01010101 <<< 3 = 0b10101010");
 
-assert(alanStd.rotateRightI8(64, 1) == -128, "rotateRightI8 64 >>> 1 = -128");
+assert(alanStd.rotateRightI8(64, 1) == 32, "rotateRightI8 64 >>> 1 = 32");
 assert(alanStd.rotateRightI8(0b01010101, 0) == 0b01010101, "rotateRightI8 0b01010101 <<< 0 = 0b01010101");
 assert(alanStd.rotateRightI8(0b01010101, 1) == 0b10101010 - 256, "rotateRightI8 0b01010101 <<< 1 = 0b10101010");
 assert(alanStd.rotateRightI8(0b01010101, 2) == 0b01010101, "rotateRightI8 0b01010101 <<< 2 = 0b01010101");
@@ -194,6 +194,7 @@ assert(alanStd.rotateRightU8(0b00000001, 5) == 0b00001000, "rotateRightU8 0b0000
 assert(alanStd.rotateRightU8(0b00000001, 6) == 0b00000100, "rotateRightU8 0b00000001 >>> 6 = 0b00000100");
 assert(alanStd.rotateRightU8(0b00000001, 7) == 0b00000010, "rotateRightU8 0b00000001 >>> 7 = 0b00000010");
 assert(alanStd.rotateRightU8(0b00000001, 8) == 0b00000001, "rotateRightU8 0b00000001 >>> 8 = 0b00000008");
+assert(alanStd.rotateRightU8(100, 2) == 25, "rotateRightU8 100 >>> 2 = 25");
 
 assert(alanStd.wrappingAddU16(1, 2) === 3, "wrappingAddU16 1 + 2 = 3");
 assert(alanStd.wrappingAddU16(65_535, 1) === 0, "wrappingAddU16 65_535 + 1 = 0");
@@ -264,5 +265,6 @@ assert(alanStd.wrappingShlU64(9_223_372_036_854_775_808n, 1n) == 0n, "wrappingSh
 assert(alanStd.wrappingShrU64(128n, 1n) == 64n, "wrappingShrU64 128 >> 1 = 64");
 
 assert(alanStd.rotateLeftU64(9_223_372_036_854_775_808n, 1n) == 1n, "rotateLeftU64 9_223_372_036_854_775_808 <<< 1 = 1");
+assert(alanStd.rotateLeftU64(100n, 2n) == 400n, "rotateLeftU64 100 <<< 2 = 400");
 
 assert(alanStd.rotateRightU64(64n, 1n) == 32n, "rotateRightU64 64 >>> 1 = 32");

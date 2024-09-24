@@ -186,7 +186,7 @@ export function rotateLeftI8(a, b) {
 }
 
 export function rotateRightI8(a, b) {
-  let v = rotateLeftU8(a < 0 ? a + 256 : a, b < 0 ? b + 256 : b);
+  let v = rotateRightU8(a < 0 ? a + 256 : a, b < 0 ? b + 256 : b);
   while (v > 127) {
     v -= 256;
   }
@@ -407,7 +407,7 @@ export function wrappingShrI32(a, b) {
 }
 
 export function rotateLeftI32(a, b) {
-  let v = rotateLeftU32(a < 0 ? a + 4_294_967_296 : a, b < 0 ? b + 4_294_967_296 : b);
+  let v = rotateLeftU32(a < 0 ? Number(BigInt(a) + 4_294_967_296n) : a, b < 0 ? Number(BigInt(b) + 4_294_967_296n) : b);
   while (v > 2_147_483_647) {
     v -= 4_294_967_296;
   }
@@ -418,7 +418,7 @@ export function rotateLeftI32(a, b) {
 }
 
 export function rotateRightI32(a, b) {
-  let v = rotateRightU32(a < 0 ? a + 4_294_967_296 : a, b < 0 ? b + 4_294_967_296 : b);
+  let v = rotateRightU32(a < 0 ? Number(BigInt(a) + 4_294_967_296n) : a, b < 0 ? Number(BigInt(b) + 4_294_967_296n) : b);
   while (v > 2_147_483_647) {
     v -= 4_294_967_296;
   }
@@ -914,7 +914,7 @@ export function rotateLeftU32(a, b) {
   if (c == 0n) {
     return a;
   }
-  let lhs = 4_294_967_295n & (4_294_967_295n << c);
+  let lhs = 4_294_967_295n & (4_294_967_295n << 32n - c);
   let rhs = 4_294_967_295n & (4_294_967_295n ^ lhs);
   let p1 = BigInt(a) & lhs;
   let p2 = BigInt(a) & rhs;
@@ -1043,7 +1043,7 @@ export function rotateLeftU64(a, b) {
   if (c == 0n) {
     return a;
   }
-  let lhs = 18_446_744_073_709_551_615n & (18_446_744_073_709_551_615n << c);
+  let lhs = 18_446_744_073_709_551_615n & (18_446_744_073_709_551_615n << 64n - c);
   let rhs = 18_446_744_073_709_551_615n & (18_446_744_073_709_551_615n ^ lhs);
   let p1 = a & lhs;
   let p2 = a & rhs;
