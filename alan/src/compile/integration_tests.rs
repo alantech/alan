@@ -339,15 +339,15 @@ test_full!(print_function => r#"
     stdout "Hello, World\n";
     status 0;
 );
-// TODO: Figure out how to deal with the JS function color problem so `wait` can be implemented
 test_full!(duration_print => r#"
     export fn main() -> void {
         const i = now();
-        wait(10);
+        wait(100); // Increased from 10ms to 100ms because the node.js event loop seems less
+                   // capable of guaranteeing staying below 20ms in the delay here.
         const d = i.elapsed;
         print(d);
     }"#;
-    stdout_contains "0.01";
+    stdout_contains "0.1";
 );
 
 // Basic Math Tests
