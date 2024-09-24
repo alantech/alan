@@ -60,7 +60,7 @@ pub fn lntojs(
             fns.into_values().collect::<Vec<String>>().join("\n"),
             if let CType::Type(n, _) = func[0].rettype() {
                 if &n == "ExitCode" {
-                    "process.exit(main());"
+                    "main().then(process.exit);"
                 } else {
                     "main();"
                 }

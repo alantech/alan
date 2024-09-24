@@ -1019,23 +1019,22 @@ export fn push{T} (a: Mut{T[]}, v: T) = {Method{"push"} :: (Mut{T[]}, Own{T})}(a
 export fn{Rs} pop{T} (a: Mut{T[]}) -> T? = {Method{"pop"} :: Mut{T[]} -> T?}(a);
 export fn{Js} pop{T} (a: Mut{T[]}) -> T? = {"((a) => a || null)" :: T? -> T?}({Method{"pop"} :: Mut{T[]} -> T?}(a));
 export fn{Rs} map{T, U} "alan_std::map_onearg" <- RootBacking :: (T[], T -> U) -> U[];
-export fn{Js} map{T, U} (a: T[], f: T -> U) = {Method{"map"} :: (T[], T -> U) -> U[]}(a, f);
+export fn{Js} map{T, U} (a: T[], f: T -> U) = {"Promise.all" :: U[] -> U[]}({Method{"map"} :: (T[], T -> U) -> U[]}(a, f));
 export fn{Rs} map{T, U} "alan_std::map_twoarg" <- RootBacking :: (T[], (T, i64) -> U) -> U[];
-export fn{Js} map{T, U} (a: T[], f: (T, i64) -> U) = {Method{"map"} :: (T[], (T, i32) -> U) -> U[]}(a, fn (v: T, i: i32) = f(v, i.i64));
+export fn{Js} map{T, U} (a: T[], f: (T, i64) -> U) = {"Promise.all" :: U[] -> U[]}({Method{"map"} :: (T[], (T, i32) -> U) -> U[]}(a, fn (v: T, i: i32) = f(v, i.i64)));
 export fn{Rs} parmap{T, U} "alan_std::parmap_onearg" <- RootBacking :: (T[], T -> U) -> U[];
 export fn{Rs} filter{T} "alan_std::filter_onearg" <- RootBacking :: (T[], T -> bool) -> T[];
-export fn{Js} filter{T} (a: T[], f: T -> bool) = {Method{"filter"} :: (T[], T -> bool) -> T[]}(a, f);
+export fn{Js} filter{T} (a: T[], f: T -> bool) = {"(async (a, f) => { let out = []; for (let v of a) { if (await f(v)) { out.push(v); } } return out; })" :: (T[], T -> bool) -> T[]}(a, f);
 export fn{Rs} filter{T} "alan_std::filter_twoarg" <- RootBacking :: (T[], (T, i64) -> bool) -> T[];
-export fn{Js} filter{T} (a: T[], f: (T, i64) -> bool) = {Method{"filter"} :: (T[], (T, i32) -> bool) -> T[]}(a, fn (v: T, i: i32) = f(v, i.i64));
+export fn{Js} filter{T} (a: T[], f: (T, i64) -> bool) = {"(async (a, f) => { let out = []; for (let i = 0; i < a.length; i++) { if (await f(a[i], BigInt(i))) { out.push(a[i]); } } return out; })" :: (T[], (T, i64) -> bool) -> T[]}(a, f);
 export fn{Rs} reduce{T} "alan_std::reduce_sametype" <- RootBacking :: (T[], (T, T) -> T) -> T?;
-export fn{Js} reduce{T} (a: T[], f: (T, T) -> T) = {Method{"reduce"} :: (T[], (T, T) -> T) -> T?}(a, f);
+export fn{Js} reduce{T} (a: T[], f: (T, T) -> T) = {"(async (a, f) => { if (a.length === 0) { return null; } let out = a[0]; for (let i = 1; i < a.length; i++) { out = await f(out, a[i]); } return out; })" :: (T[], (T, T) -> T) -> T?}(a, f);
 export fn{Rs} reduce{T} "alan_std::reduce_sametype_idx" <- RootBacking :: (T[], (T, T, i64) -> T) -> T?;
-export fn{Js} reduce{T} (a: T[], f: (T, T, i64) -> T) = {Method{"reduce"} :: (T[], (T, T, i32) -> T) -> T?}(a, fn (o: T, n: T, i: i32) = f(o, n, i.i64));
+export fn{Js} reduce{T} (a: T[], f: (T, T, i64) -> T) = {"(async (a, f) => { if (a.length === 0) { return null; } let out = a[0]; for (let i = 1; i < a.length; i++) { out = await f(out, a[i], BigInt(i)); } return out; })" :: (T[], (T, T, i64) -> T) -> T?}(a, f);
 export fn{Rs} reduce{T, U} "alan_std::reduce_difftype" <- RootBacking :: (T[], U, (U, T) -> U) -> U;
-export fn{Js} reduce{T, U} (a: T[], i: U, f: (U, T) -> U) = {Method{"reduce"} :: (T[], (U, T) -> U, U) -> U}(a, f, i);
+export fn{Js} reduce{T, U} (a: T[], i: U, f: (U, T) -> U) = {"(async (a, i, f) => { let out = i; for (let i = 0; i < a.length; i++) { out = await f(out, a[i]); } return out; })" :: (T[], U, (U, T) -> U) -> U}(a, i, f);
 export fn{Rs} reduce{T, U} "alan_std::reduce_difftype_idx" <- RootBacking :: (T[], U, (U, T, i64) -> U) -> U;
-// TODO: Why is the compiler confused by the inner function re-using the `i` variable name?
-export fn{Js} reduce{T, U} (a: T[], i: U, f: (U, T, i64) -> U) = {Method{"reduce"} :: (T[], (U, T, i32) -> U, U) -> U}(a, fn (o: U, n: T, j: i32) = f(o, n, j.i64), i);
+export fn{Js} reduce{T, U} (a: T[], i: U, f: (U, T, i64) -> U) = {"(async (a, i, f) => { let out = i; for (let i = 0; i < a.length; i++) { out = await f(out, a[i], BigInt(i)); } return out; })" :: (T[], U, (U, T, i64) -> U) -> U}(a, i, f);
 export fn{Rs} concat{T} "alan_std::concat" <- RootBacking :: (T[], T[]) -> T[];
 export fn{Js} concat{T} (a: T[], b: T[]) -> T[] = {Method{"concat"} :: (T[], T[]) -> T[]}(a, b);
 export fn{Rs} append{T} "alan_std::append" <- RootBacking :: (Mut{T[]}, T[]);
@@ -1043,9 +1042,9 @@ export fn{Rs} filled{T} "alan_std::filled" <- RootBacking :: (T, i64) -> T[];
 export fn{Rs} has{T} (a: T[], v: T) = {Method{"contains"} :: (T[], T) -> bool}(a, v);
 export fn{Js} has{T} (a: T[], v: T) = {Method{"includes"} :: (T[], T) -> bool}(a, v);
 export fn{Rs} has{T} "alan_std::hasfnarray" <- RootBacking :: (T[], T -> bool) -> bool;
-export fn{Js} has{T} (a: T[], f: T -> bool) = {Method{"findIndex"} :: (T[], T -> bool) -> i32}(a, f).gte(0.i32);
+export fn{Js} has{T} (a: T[], f: T -> bool) = {"(async (a, f) => { for (let v of a) { if (await f(v)) { return true; } } return false; })" :: (T[], T -> bool) -> bool}(a, f);
 export fn{Rs} find{T} "alan_std::findarray" <- RootBacking :: (T[], T -> bool) -> T?;
-export fn{Js} find{T} (a: T[], f: T -> bool) -> T? = {"((a) => a || null)" :: T? -> T?}({Method{"find"} :: (T[], T -> bool) -> T?}(a, f));
+export fn{Js} find{T} (a: T[], f: T -> bool) -> T? = {"(async (a, f) => { for (let v of a) { if (await f(v)) { return v; } } return null; })" :: (T[], T -> bool) -> T?}(a, f);
 // TODO: The `if` syntactic sugar will make these `if` calls much nicer
 export fn index{T}(a: Array{T}, v: T) = a.reduce(
   Maybe{i64}(),
@@ -1057,9 +1056,9 @@ export fn index{T}(a: Array{T}, f: (T, i64) -> bool) = a.reduce(
   Maybe{i64}(),
   fn (out: Maybe{i64}, val: T, idx: i64) = if(out.exists, out, if(f(val, idx), idx)));
 export fn{Rs} every{T} "alan_std::everyarray" <- RootBacking :: (T[], T -> bool) -> bool;
-export fn{Js} every{T} (a: T[], f: T -> bool) = {Method{"every"} :: (T[], T -> bool) -> bool}(a, f);
+export fn{Js} every{T} (a: T[], f: T -> bool) = {"(async (a, f) => { for (let v of a) { if (!(await f(v))) { return false; } } return true; })" :: (T[], T -> bool) -> bool}(a, f);
 export fn{Rs} some{T} "alan_std::somearray" <- RootBacking :: (T[], T -> bool) -> bool;
-export fn{Js} some{T} (a: T[], f: T -> bool) = {Method{"some"} :: (T[], T -> bool) -> bool}(a, f);
+export fn{Js} some{T} (a: T[], f: T -> bool) = {"(async (a, f) => { for (let v of a) { if (await f(v)) { return true; } } return false; })" :: (T[], T -> bool) -> bool}(a, f);
 export fn{Rs} repeat{T} "alan_std::repeatarray" <- RootBacking :: (T[], i64) -> T[];
 export fn{Js} repeat{T} (a: T[], c: i64) = {"((a, c) => { let out = []; for (let i = 0n; i < c; i++) { out.push(...a); } return out; })" :: (T[], i64) -> T[]}(a, c);
 export fn{Rs} store{T} "alan_std::storearray" <- RootBacking :: (Mut{T[]}, i64, T) -> void!;
@@ -1073,13 +1072,17 @@ export fn len{T, S}(T[S]) = {S}();
 export fn{Js} get{T, S} (b: T[S], i: i64) = if(i.gte(0).and(i.lt(b.len)),
   fn = {Method{"at"} :: (T[S], i32) -> T}(a, i.i32));
 export fn{Rs} map{T, S, U} "alan_std::mapbuffer_onearg" <- RootBacking :: (T[S], T -> U) -> (U[S]);
-export fn{Js} map{T, S, U} (a: T[S], f: T -> U) = {Method{"map"} :: (Buffer{T, S}, T -> U) -> Buffer{U, S}}(a, f);
+export fn{Js} map{T, S, U} (a: T[S], f: T -> U) = {"Promise.all" :: Buffer{U, S} -> Buffer{U, S}}({Method{"map"} :: (Buffer{T, S}, T -> U) -> Buffer{U, S}}(a, f));
+//export fn{Js} map{T, S, U} (a: T[S], f: T -> U) = {Method{"map"} :: (Buffer{T, S}, T -> U) -> Buffer{U, S}}(a, f);
 export fn{Rs} map{T, S, U} "alan_std::mapbuffer_twoarg" <- RootBacking :: (T[S], (T, i64) -> U) -> (U[S]);
-export fn{Js} map{T, S, U} (a: T[S], f: (T, i64) -> U) = {Method{"map"} :: (Buffer{T, S}, (T, i32) -> U) -> Buffer{U, S}}(a, fn (v: T, i: i32) = f(v, i.i64));
+export fn{Js} map{T, S, U} (a: T[S], f: (T, i64) -> U) = {"Promise.all" :: Buffer{U, S} -> Buffer{U, S}}({Method{"map"} :: (Buffer{T, S}, (T, i32) -> U) -> Buffer{U, S}}(a, fn (v: T, i: i32) = f(v, i.i64)));
+//export fn{Js} map{T, S, U} (a: T[S], f: (T, i64) -> U) = {Method{"map"} :: (Buffer{T, S}, (T, i32) -> U) -> Buffer{U, S}}(a, fn (v: T, i: i32) = f(v, i.i64));
 export fn{Rs} reduce{T, S} "alan_std::reducebuffer_sametype" <- RootBacking :: (T[S], (T, T) -> T) -> T?;
-export fn{Js} reduce{T, S} (a: T[S], f: (T, T) -> T) = {Method{"reduce"} :: (T[S], (T, T) -> T) -> T?}(a, f);
+export fn{Js} reduce{T, S} (a: T[S], f: (T, T) -> T) = {"(async (a, f) => { if (a.length === 0) { return null; } let out = a[0]; for (let i = 1; i < a.length; i++) { out = await f(out, a[i]); } return out; })" :: (T[S], (T, T) -> T) -> T?}(a, f);
+//export fn{Js} reduce{T, S} (a: T[S], f: (T, T) -> T) = {Method{"reduce"} :: (T[S], (T, T) -> T) -> T?}(a, f);
 export fn{Rs} reduce{T, S, U} "alan_std::reducebuffer_difftype" <- RootBacking :: (T[S], U, (U, T) -> U) -> U;
-export fn{Js} reduce{T, S, U} (a: T[S], i: U, f: (U, T) -> U) = {Method{"reduce"} :: (T[S], (U, T) -> U, U) -> U}(a, f, i);
+export fn{Js} reduce{T, S, U} (a: T[S], i: U, f: (U, T) -> U) = {"(async (a, i, f) => { let out = i; for (let i = 0; i < a.length; i++) { out = await f(out, a[i]); } return out; })" :: (T[S], U, (U, T) -> U) -> U}(a, i, f);
+//export fn{Js} reduce{T, S, U} (a: T[S], i: U, f: (U, T) -> U) = {Method{"reduce"} :: (T[S], (U, T) -> U, U) -> U}(a, f, i);
 export fn{Rs} has{T, S} "alan_std::hasbuffer" <- RootBacking :: (T[S], T) -> bool;
 export fn{Js} has{T, S} (a: T[S], v: T) = {Method{"includes"} :: (T[S], T) -> bool}(a, v);
 export fn{Rs} has{T, S} "alan_std::hasfnbuffer" <- RootBacking :: (T[S], T -> bool) -> bool;
@@ -1087,7 +1090,7 @@ export fn{Js} has{T, S} (a: T[S], f: T -> bool) = {Method{"findIndex"} :: (T[S],
 export fn{Rs} find{T, S} "alan_std::findbuffer" <- RootBacking :: (T[S], T -> bool) -> T?;
 export fn{Js} find{T, S} (a: T[S], f: T -> bool) -> T? = {"((a) => a || null)" :: T? -> T?}({Method{"find"} :: (T[S], T -> bool) -> T?}(a, f));
 export fn{Rs} every{T, S} "alan_std::everybuffer" <- RootBacking :: (T[S], T -> bool) -> bool;
-export fn{Js} every{T, S} (a: T[S], f: T -> bool) = {Method{"every"} :: (T[S], T -> bool) -> bool}(a, f);
+export fn{Js} every{T, S} (a: T[S], f: T -> bool) = {"(async (a, f) => { for (let v of a) { if (!(await f(v))) { return false; } } return true; })" :: (T[S], T -> bool) -> bool}(a, f);
 fn{Rs} concatInner{T, S, N} "alan_std::concatbuffer" <- RootBacking :: (Mut{T[S + N]}, T[S], T[N]);
 export fn{Rs} concat{T, S, N}(a: T[S], b: T[N]) {
   // I can't bind directly into Rust because Rust can't add const integer type parameters together.
@@ -1306,12 +1309,13 @@ export fn find{T}(t: Tree{T}, f: (T) -> bool) = t.Array.find(f);
 export fn{Rs} wait (t: i64) = {"std::thread::sleep" :: Own{Duration}}(
   {"std::time::Duration::from_millis" :: Own{u64} -> Duration}(t.u64)
 );
+export fn{Js} wait "((t) => new Promise((r) => setTimeout(() => { r(performance.now()) }, Number(t))))" :: i64 -> f64;
 
 /// Time-related bindings
 export fn{Rs} now "std::time::Instant::now" :: () -> Instant;
 export fn{Js} now "performance.now" :: () -> Performance;
 export fn{Rs} elapsed Method{"elapsed"} :: Instant -> Duration;
-export fn{Js} elapsed "((p) => performance.now() - p)" :: Performance -> f64;
+export fn{Js} elapsed "((p) => (performance.now() - p) / 1000.0)" :: Performance -> f64;
 
 /// Uuid-related bindings
 export fn{Rs} uuid "alan_std::Uuid::new_v4" <- RootBacking :: () -> uuid;
