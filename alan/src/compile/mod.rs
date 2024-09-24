@@ -429,6 +429,7 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
             Err("npm not found. Please make sure you have node.js installed before using Alan!")
         }
     }?;
+    let has_yarn = Command::new(find_process).arg("yarn").output().is_ok();
     let config_dir = match config_dir() {
         Some(c) => Ok(c),
         None => Err("Somehow no configuration directory exists on this operating system"),
@@ -570,6 +571,7 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
         .arg("-r")
         .arg("node_modules/")
         .arg("package-lock.json")
+        .arg("yarn.lock")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .output()
@@ -580,12 +582,18 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
             Err(format!("Could not clear package-lock.json {:?}", e))
         }
     }?;
-    match Command::new(if cfg!(windows) { "npm.cmd" } else { "npm" })
-        .current_dir(project_dir.clone())
-        .arg("install")
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .output()
+    match Command::new(if cfg!(windows) {
+        "npm.cmd"
+    } else if has_yarn {
+        "yarn"
+    } else {
+        "npm"
+    })
+    .current_dir(project_dir.clone())
+    .arg("install")
+    .stdout(Stdio::null())
+    .stderr(Stdio::null())
+    .output()
     {
         Ok(a) => Ok(a),
         Err(e) => {

@@ -60,7 +60,7 @@ pub fn from_microstatement(
             }
             Ok((
                 format!(
-                    "function ({}) {{\n        {};\n    }}",
+                    "async function ({}) {{\n        {};\n    }}",
                     arg_names.join(", "),
                     inner_statements.join(";\n        "),
                 ),
@@ -353,7 +353,7 @@ pub fn from_microstatement(
                         }
                     }
                     Ok((
-                        format!("{}({})", jsname, argstrs.join(", ")).to_string(),
+                        format!("await {}({})", jsname, argstrs.join(", ")).to_string(),
                         out,
                         deps,
                     ))
@@ -403,7 +403,7 @@ pub fn from_microstatement(
                         }
                     }
                     Ok((
-                        format!("{}({})", jsname, argstrs.join(", ")).to_string(),
+                        format!("await {}({})", jsname, argstrs.join(", ")).to_string(),
                         out,
                         deps,
                     ))
@@ -1178,7 +1178,7 @@ pub fn from_microstatement(
                 argstrs.push(a);
             }
             Ok((
-                format!("{}({})", name, argstrs.join(", ")).to_string(),
+                format!("await {}({})", name, argstrs.join(", ")).to_string(),
                 out,
                 deps,
             ))
@@ -1234,7 +1234,7 @@ pub fn generate(
     // be revisited, but it eliminates a whole host of generation problems that I can come back to
     // later.
     fn_string = format!(
-        "{}function {}({}) {{\n",
+        "{}async function {}({}) {{\n",
         fn_string,
         jsname.clone(),
         arg_strs.join(", "),

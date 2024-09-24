@@ -340,7 +340,7 @@ test_full!(print_function => r#"
     status 0;
 );
 // TODO: Figure out how to deal with the JS function color problem so `wait` can be implemented
-test!(duration_print => r#"
+test_full!(duration_print => r#"
     export fn main() -> void {
         const i = now();
         wait(10);
