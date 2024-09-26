@@ -82,7 +82,7 @@ pub fn from_microstatement(
                 }
             }
             CType::Type(n, _) if n == "i64" || n == "u64" => {
-                if let Ok(_) = all_consuming(integer)(representation) {
+                if all_consuming(integer)(representation).is_ok() {
                     if n == "i64" {
                         Ok((format!("new alan_std.I64({}n)", representation), out, deps))
                     } else {
