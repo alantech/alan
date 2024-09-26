@@ -1227,6 +1227,10 @@ export class Int {
   valueOf() {
     return this.val;
   }
+
+  toString() {
+    return this.val.toString();
+  }
 }
 
 export class I8 extends Int {
