@@ -1,6 +1,8 @@
+use nom::combinator::all_consuming;
 use ordered_hash_map::OrderedHashMap;
 
 use crate::lntojs::typen;
+use crate::parse::integer;
 use crate::program::{ArgKind, CType, FnKind, Function, Microstatement, Scope};
 
 pub fn from_microstatement(
@@ -80,8 +82,12 @@ pub fn from_microstatement(
                 }
             }
             CType::Type(n, _) if n == "i64" || n == "u64" => {
-                if representation.replace("_", "").parse::<i128>().is_ok() {
-                    Ok((format!("{}n", representation), out, deps))
+                if let Ok(_) = all_consuming(integer)(representation) {
+                    if n == "i64" {
+                        Ok((format!("new alan_std.I64({}n)", representation), out, deps))
+                    } else {
+                        Ok((format!("new alan_std.U64({}n)", representation), out, deps))
+                    }
                 } else {
                     Ok((representation.clone(), out, deps))
                 }
@@ -605,13 +611,40 @@ pub fn from_microstatement(
                                                 "(typeof {} === 'string' ? {} : null)",
                                                 argstrs[0], argstrs[0]
                                             ),
-                                            "i8" | "i16" | "i32" | "u8" | "u16" | "u32" | "f32"
-                                            | "f64" | "ExitCode" => format!(
+                                            "f32" | "f64" | "ExitCode" => format!(
                                                 "(typeof {} === 'number' ? {} : null)",
                                                 argstrs[0], argstrs[0]
                                             ),
-                                            "i64" | "u64" => format!(
-                                                "(typeof {} === 'bigint' ? {} : null)",
+                                            "i8" => format!(
+                                                "({} instanceof alan_std.I8 ? {} : null)",
+                                                argstrs[0], argstrs[0]
+                                            ),
+                                            "i16" => format!(
+                                                "({} instanceof alan_std.I16 ? {} : null)",
+                                                argstrs[0], argstrs[0]
+                                            ),
+                                            "i32" => format!(
+                                                "({} instanceof alan_std.I32 ? {} : null)",
+                                                argstrs[0], argstrs[0]
+                                            ),
+                                            "i64" => format!(
+                                                "({} instanceof alan_std.I64 ? {} : null)",
+                                                argstrs[0], argstrs[0]
+                                            ),
+                                            "u8" => format!(
+                                                "({} instanceof alan_std.U8 ? {} : null)",
+                                                argstrs[0], argstrs[0]
+                                            ),
+                                            "u16" => format!(
+                                                "({} instanceof alan_std.U16 ? {} : null)",
+                                                argstrs[0], argstrs[0]
+                                            ),
+                                            "u32" => format!(
+                                                "({} instanceof alan_std.U32 ? {} : null)",
+                                                argstrs[0], argstrs[0]
+                                            ),
+                                            "u64" => format!(
+                                                "({} instanceof alan_std.U64 ? {} : null)",
                                                 argstrs[0], argstrs[0]
                                             ),
                                             "bool" => format!(
