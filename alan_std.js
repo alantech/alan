@@ -13,7 +13,7 @@ export function nanToError(n) {
 }
 
 export function ifbool(b, t, f) {
-  if (b) {
+  if (b?.val ?? b) {
     return t();
   } else {
     return f();
