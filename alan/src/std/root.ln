@@ -194,7 +194,7 @@ export fn{Rs} hash "alan_std::hashstring" <- RootBacking :: string -> i64;
 export fn void{T}(v: T) -> void {}
 export fn void() -> void {}
 export fn{Rs} store{T} (a: Mut{T}, b: T) -> T = {"std::mem::replace" :: (Mut{T}, Own{T}) -> T}(a, b);
-export fn{Js} store{T} (a: Mut{T}, b: T) -> T = {Infix{"="} :: (Mut{T}, T) -> T}(a, b);
+export fn{Js} store{T} (a: Mut{T}, b: T) -> T = {"((a, b) => Object.keys(b).forEach((k) => a[k] = b[k]))" :: (Mut{T}, T) -> T}(a, b);
 
 /// Fallible, Maybe, and Either functions
 export fn{Rs} Maybe{T}(v: T!) = {Method{"ok"} :: T! -> T?}(v);
