@@ -285,7 +285,7 @@ export class Float {
 
 export class F32 extends Float {
   constructor(v) {
-    super(v, 32);
+      super(Number(v), 32);
   }
 
   build(v) {
@@ -295,7 +295,7 @@ export class F32 extends Float {
 
 export class F64 extends Float {
   constructor(v) {
-    super(v, 64);
+      super(Number(v), 64);
   }
 
   build(v) {
@@ -305,7 +305,7 @@ export class F64 extends Float {
 
 export class Bool {
   constructor(val) {
-    this.val = val;
+    this.val = Boolean(val);
   }
 
   valueOf() {
@@ -319,7 +319,7 @@ export class Bool {
 
 export class Str {
   constructor(val) {
-    this.val = val;
+    this.val = String(val);
   }
 
   valueOf() {
