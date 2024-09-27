@@ -90,7 +90,18 @@ impl CType {
             "js" => CType::Type(
                 "i64".to_string(),
                 Box::new(CType::Binds(
-                    Box::new(CType::TString("i64 = BigInt".to_string())),
+                    Box::new(CType::Import(
+                        Box::new(CType::TString("alan_std.I64".to_string())),
+                        Box::new(CType::Type(
+                            "RootBacking".to_string(),
+                            Box::new(CType::Node(Box::new(CType::Dependency(
+                                Box::new(CType::TString("alan_std".to_string())),
+                                Box::new(CType::TString(
+                                    "https://github.com/alantech/alan.git".to_string(),
+                                )),
+                            )))),
+                        )),
+                    )),
                     Vec::new(),
                 )),
             ),
