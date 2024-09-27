@@ -2,7 +2,7 @@ use nom::combinator::all_consuming;
 use ordered_hash_map::OrderedHashMap;
 
 use crate::lntojs::typen;
-use crate::parse::integer;
+use crate::parse::{booln, integer, real};
 use crate::program::{ArgKind, CType, FnKind, Function, Microstatement, Scope};
 
 pub fn from_microstatement(
@@ -76,7 +76,11 @@ pub fn from_microstatement(
         } => match &typen {
             CType::Type(n, _) if n == "string" => {
                 if representation.starts_with("\"") {
-                    Ok((representation.replace("\n", "\\n"), out, deps))
+                    Ok((
+                        format!("new alan_std.Str({})", representation.replace("\n", "\\n")),
+                        out,
+                        deps,
+                    ))
                 } else {
                     Ok((representation.clone(), out, deps))
                 }
@@ -88,6 +92,20 @@ pub fn from_microstatement(
                     } else {
                         Ok((format!("new alan_std.U64({}n)", representation), out, deps))
                     }
+                } else {
+                    Ok((representation.clone(), out, deps))
+                }
+            }
+            CType::Type(n, _) if n == "f64" => {
+                if all_consuming(real)(representation).is_ok() {
+                    Ok((format!("new alan_std.F64({})", representation), out, deps))
+                } else {
+                    Ok((representation.clone(), out, deps))
+                }
+            }
+            CType::Type(n, _) if n == "bool" => {
+                if all_consuming(booln)(representation).is_ok() {
+                    Ok((format!("new alan_std.Bool({})", representation), out, deps))
                 } else {
                     Ok((representation.clone(), out, deps))
                 }
@@ -301,7 +319,12 @@ pub fn from_microstatement(
                     deps = d;
                     let mut arg_strs = Vec::new();
                     for arg in &function.args() {
-                        arg_strs.push(arg.2.to_callable_string());
+                        let arg_str = arg.2.to_callable_string();
+                        if &arg_str == "var" {
+                            arg_strs.push("__var__".to_string());
+                        } else {
+                            arg_strs.push(arg_str);
+                        }
                     }
                     // Come up with a function name that is unique so Javascript doesn't choke on
                     // duplicate function names that are allowed in Alan
@@ -370,7 +393,11 @@ pub fn from_microstatement(
                         let (a, o, d) = from_microstatement(arg, scope, parent_fn, out, deps)?;
                         out = o;
                         deps = d;
-                        argstrs.push(a);
+                        if a.as_str() == "var" {
+                            argstrs.push("__var__".to_string());
+                        } else {
+                            argstrs.push(a);
+                        }
                     }
                     if let FnKind::ExternalBind(_, d) = &function.kind {
                         match &*d {
@@ -470,6 +497,18 @@ pub fn from_microstatement(
                                     otherwise
                                 )),
                             },
+                            CType::Type(n, _) if n == "string" => {
+                                Ok((format!("new alan_std.Str({})", representation), out, deps))
+                            }
+                            CType::Type(n, _) if n == "bool" => {
+                                Ok((format!("new alan_std.Bool({})", representation), out, deps))
+                            }
+                            CType::Type(n, _) if n == "i64" => {
+                                Ok((format!("new alan_std.I64({})", representation), out, deps))
+                            }
+                            CType::Type(n, _) if n == "f64" => {
+                                Ok((format!("new alan_std.F64({})", representation), out, deps))
+                            }
                             _ => Ok((representation.clone(), out, deps)),
                         },
                         _ => unreachable!(),
@@ -486,7 +525,11 @@ pub fn from_microstatement(
                         let (a, o, d) = from_microstatement(arg, scope, parent_fn, out, deps)?;
                         out = o;
                         deps = d;
-                        argstrs.push(a.to_string());
+                        if a.as_str() == "var" {
+                            argstrs.push("__var__".to_string());
+                        } else {
+                            argstrs.push(a);
+                        }
                     }
                     // The behavior of the generated code depends on the structure of the
                     // return type and the input types. We also do some logic based on the name
@@ -608,11 +651,19 @@ pub fn from_microstatement(
                                     return Ok((
                                         match function.name.as_str() {
                                             "string" | "String" => format!(
-                                                "(typeof {} === 'string' ? {} : null)",
+                                                "({} instanceof alan_std.Str ? {} : null)",
                                                 argstrs[0], argstrs[0]
                                             ),
-                                            "f32" | "f64" | "ExitCode" => format!(
+                                            "ExitCode" => format!(
                                                 "(typeof {} === 'number' ? {} : null)",
+                                                argstrs[0], argstrs[0]
+                                            ),
+                                            "f32" => format!(
+                                                "({} instanceof alan_std.F32 ? {} : null)",
+                                                argstrs[0], argstrs[0]
+                                            ),
+                                            "f64" => format!(
+                                                "({} instanceof alan_std.F64 ? {} : null)",
                                                 argstrs[0], argstrs[0]
                                             ),
                                             "i8" => format!(
@@ -648,7 +699,7 @@ pub fn from_microstatement(
                                                 argstrs[0], argstrs[0]
                                             ),
                                             "bool" => format!(
-                                                "(typeof {} === 'boolean' ? {} : null)",
+                                                "({} instanceof alan_std.Bool ? {} : null)",
                                                 argstrs[0], argstrs[0]
                                             ),
                                             _ => format!(
