@@ -267,3 +267,66 @@ export class U64 extends Int {
     return new U64(this.wrap(v));
   }
 }
+
+export class Float {
+  constructor(val, bits) {
+    this.val = val;
+    this.bits = bits;
+  }
+
+  valueOf() {
+    return this.val;
+  }
+
+  toString() {
+    return this.val.toString();
+  }
+}
+
+export class F32 extends Float {
+  constructor(v) {
+    super(v, 32);
+  }
+
+  build(v) {
+    return new F32(v);
+  }
+}
+
+export class F64 extends Float {
+  constructor(v) {
+    super(v, 64);
+  }
+
+  build(v) {
+    return new F64(v);
+  }
+}
+
+export class Bool {
+  constructor(val) {
+    this.val = val;
+  }
+
+  valueOf() {
+    return this.val;
+  }
+
+  toString() {
+    return this.val.toString();
+  }
+}
+
+export class Str {
+  constructor(val) {
+    this.val = val;
+  }
+
+  valueOf() {
+    return this.val;
+  }
+
+  toString() {
+    return this.val.toString();
+  }
+}
