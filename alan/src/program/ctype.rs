@@ -120,7 +120,18 @@ impl CType {
             "js" => CType::Type(
                 "f64".to_string(),
                 Box::new(CType::Binds(
-                    Box::new(CType::TString("f64 = Number".to_string())),
+                    Box::new(CType::Import(
+                        Box::new(CType::TString("alan_std.F64".to_string())),
+                        Box::new(CType::Type(
+                            "RootBacking".to_string(),
+                            Box::new(CType::Node(Box::new(CType::Dependency(
+                                Box::new(CType::TString("alan_std".to_string())),
+                                Box::new(CType::TString(
+                                    "https://github.com/alantech/alan.git".to_string(),
+                                )),
+                            )))),
+                        )),
+                    )),
                     Vec::new(),
                 )),
             ),
@@ -139,7 +150,18 @@ impl CType {
             "js" => CType::Type(
                 "bool".to_string(),
                 Box::new(CType::Binds(
-                    Box::new(CType::TString("Boolean".to_string())),
+                    Box::new(CType::Import(
+                        Box::new(CType::TString("alan_std.Bool".to_string())),
+                        Box::new(CType::Type(
+                            "RootBacking".to_string(),
+                            Box::new(CType::Node(Box::new(CType::Dependency(
+                                Box::new(CType::TString("alan_std".to_string())),
+                                Box::new(CType::TString(
+                                    "https://github.com/alantech/alan.git".to_string(),
+                                )),
+                            )))),
+                        )),
+                    )),
                     Vec::new(),
                 )),
             ),
@@ -158,7 +180,18 @@ impl CType {
             "js" => CType::Type(
                 "string".to_string(),
                 Box::new(CType::Binds(
-                    Box::new(CType::TString("String".to_string())),
+                    Box::new(CType::Import(
+                        Box::new(CType::TString("alan_std.Str".to_string())),
+                        Box::new(CType::Type(
+                            "RootBacking".to_string(),
+                            Box::new(CType::Node(Box::new(CType::Dependency(
+                                Box::new(CType::TString("alan_std".to_string())),
+                                Box::new(CType::TString(
+                                    "https://github.com/alantech/alan.git".to_string(),
+                                )),
+                            )))),
+                        )),
+                    )),
                     Vec::new(),
                 )),
             ),

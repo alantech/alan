@@ -146,16 +146,17 @@ export type{Js} u64 = Binds{"alan_std.U64" <- RootBacking};
 
 // Binding the float types
 export type{Rs} f32 = Binds{"f32"};
-export type{Js} f32 = Binds{"f32 = Number"};
+export type{Js} f32 = Binds{"alan_std.F32" <- RootBacking};
 export type{Rs} f64 = Binds{"f64"};
-export type{Js} f64 = Binds{"f64 = Number"};
+export type{Js} f64 = Binds{"alan_std.F64" <- RootBacking};
 
 // Binding the string types
-export type string = Binds{"String"};
+export type{Rs} string = Binds{"String"};
+export type{Js} string = Binds{"alan_std.Str" <- RootBacking};
 
 // Binding the boolean types
 export type{Rs} bool = Binds{"bool"};
-export type{Js} bool = Binds{"Boolean"};
+export type{Js} bool = Binds{"alan_std.Bool" <- RootBacking};
 
 // Binding the exit code type
 export type{Rs} ExitCode = Binds{"std::process::ExitCode"};
@@ -214,7 +215,7 @@ export fn{Rs} Error (e: string) = {Method{"into"} :: Own{string} -> Error}(e);
 export fn{Js} Error{T} "new alan_std.AlanError" <- RootBacking :: string -> T!;
 export fn{Js} Error "new alan_std.AlanError" <- RootBacking :: string -> Error;
 export fn{Rs} exists{T} (m: T?) = {Method{"is_some"} :: T? -> bool}(m);
-export fn{Js} exists{T} (m: T?) = {"((a) => a !== null)" :: T? -> bool}(m);
+export fn{Js} exists{T} (m: T?) = {"((a) => new alan_std.Bool(a !== null))" <- RootBacking :: T? -> bool}(m);
 export fn{Rs} string(e: Error) = {"format!" :: ("{}", Error) -> string}(e);
 export fn{Js} string Property{"message"} :: Error -> string;
 
@@ -235,14 +236,12 @@ export fn{Js} i8 "new alan_std.I8" <- RootBacking :: u32 -> i8;
 export fn{Rs} i8 Cast{"i8"} :: Deref{u64} -> i8;
 export fn{Js} i8 "new alan_std.I8" <- RootBacking :: u64 -> i8;
 export fn{Rs} i8 Cast{"i8"} :: Deref{f32} -> i8;
-export fn{Js} i8 (f: f32) -> i8 = {"new alan_std.I8" <- RootBacking :: f32 -> i8}(
-  {"Math.floor" :: f32 -> f32}(f));
+export fn{Js} i8 "((f) => new alan_std.I8(Math.floor(f.val)))" <- RootBacking :: f32 -> i8;
 export fn{Rs} i8 Cast{"i8"} :: Deref{f64} -> i8;
-export fn{Js} i8 (f: f64) -> i8 = {"new alan_std.I8" <- RootBacking :: f64 -> i8}(
-  {"Math.floor" :: f64 -> f64}(f));
+export fn{Js} i8 "((f) => new alan_std.I8(Math.floor(f.val)))" <- RootBacking :: f64 -> i8;
 // TODO: LOL, what a hack
 export fn{Rs} i8 Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"} :: string -> i8!;
-export fn{Js} i8 "((s) => { let v = parseInt(s); if (Number.isNaN(v)) { return new alan_std.AlanError('Not a Number'); } else { return new alan_std.I8(v); } })" <- RootBacking :: string -> i8!;
+export fn{Js} i8 "((s) => { let v = parseInt(s.val); if (Number.isNaN(v)) { return new alan_std.AlanError(new alan_std.Str('Not a Number')); } else { return new alan_std.I8(v); } })" <- RootBacking :: string -> i8!;
 
 export fn{Rs} i16 Cast{"i16"} :: Deref{i8} -> i16;
 export fn{Js} i16 "new alan_std.I16" <- RootBacking :: i8 -> i16;
@@ -260,13 +259,11 @@ export fn{Js} i16 "new alan_std.I16" <- RootBacking :: u32 -> i16;
 export fn{Rs} i16 Cast{"i16"} :: Deref{u64} -> i16;
 export fn{Js} i16 "new alan_std.I16" <- RootBacking :: u64 -> i16;
 export fn{Rs} i16 Cast{"i16"} :: Deref{f32} -> i16;
-export fn{Js} i16 (f: f32) -> i16 = {"new alan_std.I16" <- RootBacking :: f32 -> i16}(
-  {"Math.floor" :: f32 -> f32}(f));
+export fn{Js} i16 "((f) => new alan_std.I16(Math.floor(f.val)))" <- RootBacking :: f32 -> i16;
 export fn{Rs} i16 Cast{"i16"} :: Deref{f64} -> i16;
-export fn{Js} i16 (f: f64) -> i16 = {"new alan_std.I16" <- RootBacking :: f64 -> i16}(
-  {"Math.floor" :: f64 -> f64}(f));
+export fn{Js} i16 "((f) => new alan_std.I16(Math.floor(f.val)))" <- RootBacking :: f64 -> i16;
 export fn{Rs} i16 Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"} :: string -> i16!;
-export fn{Js} i16 "((s) => { let v = parseInt(s); if (Number.isNaN(v)) { return new alan_std.AlanError('Not a Number'); } else { return new alan_std.I16(v); } })" <- RootBacking :: string -> i16!;
+export fn{Js} i16 "((s) => { let v = parseInt(s.val); if (Number.isNaN(v)) { return new alan_std.AlanError(new alan_std.Str('Not a Number')); } else { return new alan_std.I16(v); } })" <- RootBacking :: string -> i16!;
 
 export fn{Rs} i32 Cast{"i32"} :: Deref{i8} -> i32;
 export fn{Js} i32 "new alan_std.I32" <- RootBacking :: i8 -> i32;
@@ -284,13 +281,13 @@ export fn{Js} i32 "new alan_std.I32" <- RootBacking :: u32 -> i32;
 export fn{Rs} i32 Cast{"i32"} :: Deref{u64} -> i32;
 export fn{Js} i32 "new alan_std.I32" <- RootBacking :: u64 -> i32;
 export fn{Rs} i32 Cast{"i32"} :: Deref{f32} -> i32;
-export fn{Js} i32 (f: f32) -> i32 = {"new alan_std.I32" <- RootBacking :: f32 -> i32}(
-  {"Math.floor" :: f32 -> f32}(f));
+export fn{Js} i32 "((f) => new alan_std.I32(Math.floor(f.val)))" <- RootBacking :: f32 -> i32;
 export fn{Rs} i32 Cast{"i32"} :: Deref{f64} -> i32;
+export fn{Js} i32 "((f) => new alan_std.I32(Math.floor(f.val)))" <- RootBacking :: f64 -> i32;
 export fn{Js} i32 (f: f64) -> i32 = {"new alan_std.I32" <- RootBacking :: f64 -> i32}(
   {"Math.floor" :: f64 -> f64}(f));
 export fn{Rs} i32 Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"} :: string -> i32!;
-export fn{Js} i32 "((s) => { let v = parseInt(s); if (Number.isNaN(v)) { return new alan_std.AlanError('Not a Number'); } else { return new alan_std.I32(v); } })" <- RootBacking :: string -> i32!;
+export fn{Js} i32 "((s) => { let v = parseInt(s.val); if (Number.isNaN(v)) { return new alan_std.AlanError(new alan_std.Str('Not a Number')); } else { return new alan_std.I32(v); } })" <- RootBacking :: string -> i32!;
 
 export fn{Rs} i64 Cast{"i64"} :: Deref{i8} -> i64;
 export fn{Js} i64 "new alan_std.I64" <- RootBacking :: i8 -> i64;
@@ -308,13 +305,11 @@ export fn{Js} i64 "new alan_std.I64" <- RootBacking :: u32 -> i64;
 export fn{Rs} i64 Cast{"i64"} :: Deref{u64} -> i64;
 export fn{Js} i64 "new alan_std.I64" <- RootBacking :: u64 -> i64;
 export fn{Rs} i64 Cast{"i64"} :: Deref{f32} -> i64;
-export fn{Js} i64 (f: f32) -> i64 = {"new alan_std.I64" <- RootBacking :: f32 -> i64}(
-  {"Math.floor" :: f32 -> f32}(f));
+export fn{Js} i64 "((f) => new alan_std.I64(Math.floor(f.val)))" <- RootBacking :: f32 -> i64;
 export fn{Rs} i64 Cast{"i64"} :: Deref{f64} -> i64;
-export fn{Js} i64 (f: f64) -> i64 = {"new alan_std.I64" <- RootBacking :: f64 -> i64}(
-  {"Math.floor" :: f64 -> f64}(f));
+export fn{Js} i64 "((f) => new alan_std.I64(Math.floor(f.val)))" <- RootBacking :: f64 -> i64;
 export fn{Rs} i64 Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"} :: string -> i64!;
-export fn{Js} i64 "((s) => { try { return new alan_std.I64(BigInt(s)) } catch (e) { return new alan_std.AlanError(e.message); } })" <- RootBacking :: string -> i64!;
+export fn{Js} i64 "((s) => { try { return new alan_std.I64(BigInt(s.val)) } catch (e) { return new alan_std.AlanError(new alan_std.Str(e.message)); } })" <- RootBacking :: string -> i64!;
 
 export fn{Rs} u8 Cast{"u8"} :: Deref{i8} -> u8;
 export fn{Js} u8 "new alan_std.U8" <- RootBacking :: i8 -> u8;
@@ -332,13 +327,11 @@ export fn{Js} u8 "new alan_std.U8" <- RootBacking :: u32 -> u8;
 export fn{Rs} u8 Cast{"u8"} :: Deref{u64} -> u8;
 export fn{Js} u8 "new alan_std.U8" <- RootBacking :: u64 -> u8;
 export fn{Rs} u8 Cast{"u8"} :: Deref{f32} -> u8;
-export fn{Js} u8 (f: f32) -> u8 = {"new alan_std.U8" <- RootBacking :: f32 -> u8}(
-  {"Math.floor" :: f32 -> f32}(f));
+export fn{Js} u8 "((f) => new alan_std.U8(Math.floor(f.val)))" <- RootBacking :: f32 -> u8;
 export fn{Rs} u8 Cast{"u8"} :: Deref{f64} -> u8;
-export fn{Js} u8 (f: f64) -> u8 = {"new alan_std.U8" <- RootBacking :: f64 -> u8}(
-  {"Math.floor" :: f64 -> f64}(f));
+export fn{Js} u8 "((f) => new alan_std.U8(Math.floor(f.val)))" <- RootBacking :: f64 -> u8;
 export fn{Rs} u8 Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"} :: string -> u8!;
-export fn{Js} u8 "((s) => { let v = parseInt(s); if (Number.isNaN(v)) { return new alan_std.AlanError('Not a Number'); } else { return new alan_std.U8(v); } })" <- RootBacking :: string -> u8!;
+export fn{Js} u8 "((s) => { let v = parseInt(s.val); if (Number.isNaN(v)) { return new alan_std.AlanError(new alan_std.Str('Not a Number')); } else { return new alan_std.U8(v); } })" <- RootBacking :: string -> u8!;
 
 export fn{Rs} u16 Cast{"u16"} :: Deref{i8} -> u16;
 export fn{Js} u16 "new alan_std.U16" <- RootBacking :: i8 -> u16;
@@ -356,13 +349,11 @@ export fn{Js} u16 "new alan_std.U16" <- RootBacking :: u32 -> u16;
 export fn{Rs} u16 Cast{"u16"} :: Deref{u64} -> u16;
 export fn{Js} u16 "new alan_std.U16" <- RootBacking :: u64 -> u16;
 export fn{Rs} u16 Cast{"u16"} :: Deref{f32} -> u16;
-export fn{Js} u16 (f: f32) -> u16 = {"new alan_std.U16" <- RootBacking :: f32 -> u16}(
-  {"Math.floor" :: f32 -> f32}(f));
+export fn{Js} u16 "((f) => new alan_std.U16(Math.floor(f.val)))" <- RootBacking :: f32 -> u16;
 export fn{Rs} u16 Cast{"u16"} :: Deref{f64} -> u16;
-export fn{Js} u16 (f: f64) -> u16 = {"new alan_std.U16" <- RootBacking :: f64 -> u16}(
-  {"Math.floor" :: f64 -> f64}(f));
+export fn{Js} u16 "((f) => new alan_std.U16(Math.floor(f.val)))" <- RootBacking :: f64 -> u16;
 export fn{Rs} u16 Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"} :: string -> u16!;
-export fn{Js} u16 "((s) => { let v = parseInt(s); if (Number.isNaN(v)) { return new alan_std.AlanError('Not a Number'); } else { return new alan_std.U16(v); } })" <- RootBacking :: string -> u16!;
+export fn{Js} u16 "((s) => { let v = parseInt(s.val); if (Number.isNaN(v)) { return new alan_std.AlanError(new alan_std.Str('Not a Number')); } else { return new alan_std.U16(v); } })" <- RootBacking :: string -> u16!;
 
 export fn{Rs} u32 Cast{"u32"} :: Deref{i8} -> u32;
 export fn{Js} u32 "new alan_std.U32" <- RootBacking :: i8 -> u32;
@@ -380,13 +371,11 @@ export fn u32(i: u32) = i;
 export fn{Rs} u32 Cast{"u32"} :: Deref{u64} -> u32;
 export fn{Js} u32 "new alan_std.U32" <- RootBacking :: u64 -> u32;
 export fn{Rs} u32 Cast{"u32"} :: Deref{f32} -> u32;
-export fn{Js} u32 (f: f32) -> u32 = {"new alan_std.U32" <- RootBacking :: f32 -> u32}(
-  {"Math.floor" :: f32 -> f32}(f));
+export fn{Js} u32 "((f) => new alan_std.U32(Math.floor(f.val)))" <- RootBacking :: f32 -> u32;
 export fn{Rs} u32 Cast{"u32"} :: Deref{f64} -> u32;
-export fn{Js} u32 (f: f64) -> u32 = {"new alan_std.U32" <- RootBacking :: f64 -> u32}(
-  {"Math.floor" :: f64 -> f64}(f));
+export fn{Js} u32 "((f) => new alan_std.U32(Math.floor(f.val)))" <- RootBacking :: f64 -> u32;
 export fn{Rs} u32 Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"} :: string -> u32!;
-export fn{Js} u32 "((s) => { let v = parseInt(s); if (Number.isNaN(v)) { return new alan_std.AlanError('Not a Number'); } else { return new alan_std.U32(v); } })" <- RootBacking :: string -> u32!;
+export fn{Js} u32 "((s) => { let v = parseInt(s.val); if (Number.isNaN(v)) { return new alan_std.AlanError(new alan_std.Str('Not a Number')); } else { return new alan_std.U32(v); } })" <- RootBacking :: string -> u32!;
 
 export fn{Rs} u64 Cast{"u64"} :: Deref{i8} -> u64;
 export fn{Js} u64 "new alan_std.U64" <- RootBacking :: i8 -> u64;
@@ -404,97 +393,97 @@ export fn{Rs} u64 Cast{"u64"} :: Deref{u32} -> u64;
 export fn{Js} u64 "new alan_std.U64" <- RootBacking :: u32 -> u64;
 export fn u64(u: u64) = u;
 export fn{Rs} u64 Cast{"u64"} :: Deref{f32} -> u64;
-export fn{Js} u64 (f: f32) -> u64 = {"new alan_std.U64" <- RootBacking :: f32 -> u64}(
-  {"Math.floor" :: f32 -> f32}(f));
+export fn{Js} u64 "((f) => new alan_std.U64(Math.floor(f.val)))" <- RootBacking :: f32 -> u64;
 export fn{Rs} u64 Cast{"u64"} :: Deref{f64} -> u64;
-export fn{Js} u64 (f: f64) -> u64 = {"new alan_std.U64" <- RootBacking :: f64 -> u64}(
-  {"Math.floor" :: f64 -> f64}(f));
+export fn{Js} u64 "((f) => new alan_std.U64(Math.floor(f.val)))" <- RootBacking :: f64 -> u64;
 export fn{Rs} u64 Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"} :: string -> u64!;
-export fn{Js} u64 "((s) => { try { return new alan_std.U64(BigInt(s)) } catch (e) { return new alan_std.AlanError(e.message); } })" <- RootBacking :: string -> u64!;
+export fn{Js} u64 "((s) => { try { return new alan_std.U64(BigInt(s.val)) } catch (e) { return new alan_std.AlanError(new alan_std.Str(e.message)); } })" <- RootBacking :: string -> u64!;
 
 export fn{Rs} f32 Cast{"f32"} :: Deref{i8} -> f32;
-export fn{Js} f32 "Number" :: i8 -> f32;
+export fn{Js} f32 "new alan_std.F32" <- RootBacking :: i8 -> f32;
 export fn{Rs} f32 Cast{"f32"} :: Deref{i16} -> f32;
-export fn{Js} f32 "Number" :: i16 -> f32;
+export fn{Js} f32 "new alan_std.F32" <- RootBacking :: i16 -> f32;
 export fn{Rs} f32 Cast{"f32"} :: Deref{i32} -> f32;
-export fn{Js} f32 "Number" :: i32 -> f32;
+export fn{Js} f32 "new alan_std.F32" <- RootBacking :: i32 -> f32;
 export fn{Rs} f32 Cast{"f32"} :: Deref{i64} -> f32;
-export fn{Js} f32 "Number" :: i64 -> f32;
+export fn{Js} f32 "new alan_std.F32" <- RootBacking :: i64 -> f32;
 export fn{Rs} f32 Cast{"f32"} :: Deref{u8} -> f32;
-export fn{Js} f32 "Number" :: u8 -> f32;
+export fn{Js} f32 "new alan_std.F32" <- RootBacking :: u8 -> f32;
 export fn{Rs} f32 Cast{"f32"} :: Deref{u16} -> f32;
-export fn{Js} f32 "Number" :: u16 -> f32;
+export fn{Js} f32 "new alan_std.F32" <- RootBacking :: u16 -> f32;
 export fn{Rs} f32 Cast{"f32"} :: Deref{u32} -> f32;
-export fn{Js} f32 "Number" :: u32 -> f32;
+export fn{Js} f32 "new alan_std.F32" <- RootBacking :: u32 -> f32;
 export fn{Rs} f32 Cast{"f32"} :: Deref{u64} -> f32;
-export fn{Js} f32 "Number" :: u64 -> f32;
+export fn{Js} f32 "new alan_std.F32" <- RootBacking :: u64 -> f32;
 export fn f32(f: f32) = f;
 export fn{Rs} f32 Cast{"f32"} :: Deref{f64} -> f32;
-export fn{Js} f32 "Number" :: f64 -> f32;
+export fn{Js} f32 "new alan_std.F32" <- RootBacking :: f64 -> f32;
 export fn{Rs} f32 Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"} :: string -> f32!;
-export fn{Js} f32 (s: string) -> f32! = {"alan_std.nanToError" <- RootBacking :: f32 -> f32!}(
-  {"parseFloat" :: string -> f32}(s));
+export fn{Js} f32 "((s) => { let f = parseFloat(s.val); if (Number.isNaN(f)) { return alan_std.nanToError(f); } else { return new alan_std.F32(f); } })" :: string -> f32!;
 
 export fn{Rs} f64 Cast{"f64"} :: Deref{i8} -> f64;
-export fn{Js} f64 "Number" :: i8 -> f64;
+export fn{Js} f64 "new alan_std.F64" <- RootBacking :: i8 -> f64;
 export fn{Rs} f64 Cast{"f64"} :: Deref{i16} -> f64;
-export fn{Js} f64 "Number" :: i16 -> f64;
+export fn{Js} f64 "new alan_std.F64" <- RootBacking :: i16 -> f64;
 export fn{Rs} f64 Cast{"f64"} :: Deref{i32} -> f64;
-export fn{Js} f64 "Number" :: i32 -> f64;
+export fn{Js} f64 "new alan_std.F64" <- RootBacking :: i32 -> f64;
 export fn{Rs} f64 Cast{"f64"} :: Deref{i64} -> f64;
-export fn{Js} f64 "Number" :: i64 -> f64;
+export fn{Js} f64 "new alan_std.F64" <- RootBacking :: i64 -> f64;
 export fn{Rs} f64 Cast{"f64"} :: Deref{u8} -> f64;
-export fn{Js} f64 "Number" :: u8 -> f64;
+export fn{Js} f64 "new alan_std.F64" <- RootBacking :: u8 -> f64;
 export fn{Rs} f64 Cast{"f64"} :: Deref{u16} -> f64;
-export fn{Js} f64 "Number" :: u16 -> f64;
+export fn{Js} f64 "new alan_std.F64" <- RootBacking :: u16 -> f64;
 export fn{Rs} f64 Cast{"f64"} :: Deref{u32} -> f64;
-export fn{Js} f64 "Number" :: u32 -> f64;
+export fn{Js} f64 "new alan_std.F64" <- RootBacking :: u32 -> f64;
 export fn{Rs} f64 Cast{"f64"} :: Deref{u64} -> f64;
-export fn{Js} f64 "Number" :: u64 -> f64;
+export fn{Js} f64 "new alan_std.F64" <- RootBacking :: u64 -> f64;
 export fn{Rs} f64 Cast{"f64"} :: Deref{f32} -> f64;
-export fn{Js} f64 "Number" :: f32 -> f64;
+export fn{Js} f64 "new alan_std.F64" <- RootBacking :: f32 -> f64;
 export fn f64(f: f64) = f;
 export fn{Rs} f64 Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"} :: string -> f64!;
-export fn{Js} f64 (s: string) -> f64! = {"alan_std.nanToError" <- RootBacking :: f64 -> f64!}(
-  {"parseFloat" :: string -> f64}(s));
+export fn{Js} f64 "((s) => { let f = parseFloat(s.val); if (Number.isNaN(f)) { return alan_std.nanToError(f); } else { return new alan_std.F32(f); } })" :: string -> f64!;
 
 export fn{Rs} bool (i: i8) = {Infix{"!="} :: (Deref{i8}, Deref{i8}) -> bool}(i, 0.i8);
-export fn{Js} bool "((i) => i.val != 0)" :: i8 -> bool;
+export fn{Js} bool "((i) => new alan_std.Bool(i.val != 0))" <- RootBacking :: i8 -> bool;
 export fn{Rs} bool (i: i16) = {Infix{"!="} :: (Deref{i16}, Deref{i16}) -> bool}(i, 0.i16);
-export fn{Js} bool "((i) => i.val != 0)" :: i16 -> bool;
+export fn{Js} bool "((i) => new alan_std.Bool(i.val != 0))" <- RootBacking :: i16 -> bool;
 export fn{Rs} bool (i: i32) = {Infix{"!="} :: (Deref{i32}, Deref{i32}) -> bool}(i, 0.i32);
-export fn{Js} bool "((i) => i.val != 0)" :: i32 -> bool;
+export fn{Js} bool "((i) => new alan_std.Bool(i.val != 0))" <- RootBacking :: i32 -> bool;
 export fn{Rs} bool (i: i64) = {Infix{"!="} :: (Deref{i64}, Deref{i64}) -> bool}(i, 0);
-export fn{Js} bool "((i) => i.val != 0n)" :: i64 -> bool;
+export fn{Js} bool "((i) => new alan_std.Bool(i.val != 0n))" <- RootBacking :: i64 -> bool;
 export fn{Rs} bool (u: u8) = {Infix{"!="} :: (Deref{u8}, Deref{u8}) -> bool}(u, 0.u8);
-export fn{Js} bool "((u) => u.val != 0)" :: u8 -> bool;
+export fn{Js} bool "((u) => new alan_std.Bool(u.val != 0))" <- RootBacking :: u8 -> bool;
 export fn{Rs} bool (u: u16) = {Infix{"!="} :: (Deref{u16}, Deref{u16}) -> bool}(u, 0.u16);
-export fn{Js} bool "((u) => u.val != 0)" :: u16 -> bool;
+export fn{Js} bool "((u) => new alan_std.Bool(u.val != 0))" <- RootBacking :: u16 -> bool;
 export fn{Rs} bool (u: u32) = {Infix{"!="} :: (Deref{u32}, Deref{u32}) -> bool}(u, 0.u32);
-export fn{Js} bool "((u) => u.val != 0)" :: u32 -> bool;
+export fn{Js} bool "((u) => new alan_std.Bool(u.val != 0))" <- RootBacking :: u32 -> bool;
 export fn{Rs} bool (u: u64) = {Infix{"!="} :: (Deref{u64}, Deref{u64}) -> bool}(u, 0.u64);
-export fn{Js} bool "((u) => u.val != 0n)" :: u64 -> bool;
+export fn{Js} bool "((u) => new alan_std.Bool(u.val != 0n))" <- RootBacking :: u64 -> bool;
 export fn{Rs} bool (f: f32) = {Infix{"!="} :: (Deref{f32}, Deref{f32}) -> bool}(f, 0.f32);
-export fn{Js} bool (f: f32) = {Infix{"!="} :: (f32, f32) -> bool}(f, 0.f32);
+export fn{Js} bool "((f) => new alan_std.Bool(f.val != 0.0))" <- RootBacking :: f32 -> bool;
 export fn{Rs} bool (f: f64) = {Infix{"!="} :: (Deref{f64}, Deref{f64}) -> bool}(f, 0.f64);
-export fn{Js} bool (f: f64) = {Infix{"!="} :: (f64, f64) -> bool}(f, 0.f64);
-export fn bool(s: string) = {Infix{"=="} :: (string, string) -> bool}(s, "true");
+export fn{Js} bool "((f) => new alan_std.Bool(f.val != 0.0))" <- RootBacking :: f64 -> bool;
+export fn{Rs} bool(s: string) = {Infix{"=="} :: (string, string) -> bool}(s, "true");
+export fn{Js} bool "((s) => new alan_std.Bool(s.val == 'true'))" <- RootBacking :: string -> bool;
 export fn bool(b: bool) = b;
 
 /// Boolean related bindings
 export fn{Rs} and Infix{"&&"} :: (Deref{bool}, Deref{bool}) -> bool;
-export fn{Js} and Infix{"&&"} :: (bool, bool) -> bool;
+export fn{Js} and "((a, b) => new alan_std.Bool(a.val && b.val))" <- RootBacking :: (bool, bool) -> bool;
 export fn{Rs} or Infix{"||"} :: (Deref{bool}, Deref{bool}) -> bool;
-export fn{Js} or Infix{"||"} :: (bool, bool) -> bool;
+export fn{Js} or "((a, b) => new alan_std.Bool(a.val || b.val))" <- RootBacking :: (bool, bool) -> bool;
 export fn{Rs} xor Infix{"^"} :: (Deref{bool}, Deref{bool}) -> bool;
-export fn{Js} xor (a: bool, b: bool) = {Prefix{"!!"} :: bool -> bool}({Infix{"^"} :: (bool, bool) -> bool}(a, b));
+export fn{Js} xor "((a, b) => new alan_std.Bool(!!(a.val ^ b.val)))" <- RootBacking :: (bool, bool) -> bool;
 export fn{Rs} not Prefix{"!"} :: Deref{bool} -> bool;
-export fn{Js} not Prefix{"!"} :: bool -> bool;
+export fn{Js} not "((a) => new alan_std.Bool(!a.val))" :: bool -> bool;
 export fn nand (a: bool, b: bool) = a.and(b).not;
 export fn nor (a: bool, b: bool) = a.or(b).not;
-export fn xnor Infix{"=="} :: (bool, bool) -> bool;
-export fn eq Infix{"=="} :: (bool, bool) -> bool;
-export fn neq Infix{"!="} :: (bool, bool) -> bool;
+export fn{Rs} xnor Infix{"=="} :: (bool, bool) -> bool;
+export fn{Js} xnor "((a, b) => new alan_std.Bool(a.val == b.val))" :: (bool, bool) -> bool;
+export fn{Rs} eq Infix{"=="} :: (bool, bool) -> bool;
+export fn{Js} eq "((a, b) => new alan_std.Bool(a.val == b.val))" :: (bool, bool) -> bool;
+export fn{Rs} neq Infix{"!="} :: (bool, bool) -> bool;
+export fn{Js} neq "((a, b) => new alan_std.Bool(a.val != b.val))" :: (bool, bool) -> bool;
 export fn if{T}(c: bool, t: T) = if(c, fn () -> Maybe{T} = Maybe{T}(t), fn () -> Maybe{T} = Maybe{T}());
 export fn if{T}(c: bool, t: T, f: T) = if(c, fn () -> T = t, fn () -> T = f);
 export fn if{T}(c: bool, t: () -> T) = if(c, fn () -> Maybe{T} = Maybe{T}(t()), fn () -> Maybe{T} = Maybe{T}());
@@ -528,17 +517,17 @@ export fn nand (a: i8, b: i8) = a.and(b).not;
 export fn nor (a: i8, b: i8) = a.or(b).not;
 export fn xnor (a: i8, b: i8) = a.xor(b).not;
 export fn{Rs} eq Infix{"=="} :: (Deref{i8}, Deref{i8}) -> bool;
-export fn{Js} eq "((a, b) => a.val == b.val)" :: (i8, i8) -> bool;
+export fn{Js} eq "((a, b) => new alan_std.Bool(a.val == b.val))" <- RootBacking :: (i8, i8) -> bool;
 export fn{Rs} neq Infix{"!="} :: (Deref{i8}, Deref{i8}) -> bool;
-export fn{Js} neq "((a, b) => a.val != b.val)" :: (i8, i8) -> bool;
+export fn{Js} neq "((a, b) => new alan_std.Bool(a.val != b.val))" <- RootBacking :: (i8, i8) -> bool;
 export fn{Rs} lt Infix{"<"} :: (Deref{i8}, Deref{i8}) -> bool;
-export fn{Js} lt "((a, b) => a.val < b.val)" :: (i8, i8) -> bool;
+export fn{Js} lt "((a, b) => new alan_std.Bool(a.val < b.val))" <- RootBacking :: (i8, i8) -> bool;
 export fn{Rs} lte Infix{"<="} :: (Deref{i8}, Deref{i8}) -> bool;
-export fn{Js} lte "((a, b) => a.val <= b.val)" :: (i8, i8) -> bool;
+export fn{Js} lte "((a, b) => new alan_std.Bool(a.val <= b.val))" <- RootBacking :: (i8, i8) -> bool;
 export fn{Rs} gt Infix{">"} :: (Deref{i8}, Deref{i8}) -> bool;
-export fn{Js} gt "((a, b) => a.val > b.val)" :: (i8, i8) -> bool;
+export fn{Js} gt "((a, b) => new alan_std.Bool(a.val > b.val))" <- RootBacking :: (i8, i8) -> bool;
 export fn{Rs} gte Infix{">="} :: (Deref{i8}, Deref{i8}) -> bool;
-export fn{Js} gte "((a, b) => a.val >= b.val)" :: (i8, i8) -> bool;
+export fn{Js} gte "((a, b) => new alan_std.Bool(a.val >= b.val))" <- RootBacking :: (i8, i8) -> bool;
 export fn min (a: i8, b: i8) = if(a.lte(b), a, b);
 export fn max (a: i8, b: i8) = if(a.gte(b), a, b);
 export fn{Rs} shl (a: i8, b: i8) = {Method{"wrapping_shl"} :: (i8, Deref{u32}) -> i8}(a, b.u32);
@@ -576,17 +565,17 @@ export fn nand (a: i16, b: i16) = a.and(b).not;
 export fn nor (a: i16, b: i16) = a.or(b).not;
 export fn xnor (a: i16, b: i16) = a.xor(b).not;
 export fn{Rs} eq Infix{"=="} :: (Deref{i16}, Deref{i16}) -> bool;
-export fn{Js} eq "((a, b) => a.val == b.val)" :: (i16, i16) -> bool;
+export fn{Js} eq "((a, b) => new alan_std.Bool(a.val == b.val))" <- RootBacking :: (i16, i16) -> bool;
 export fn{Rs} neq Infix{"!="} :: (Deref{i16}, Deref{i16}) -> bool;
-export fn{Js} neq "((a, b) => a.val != b.val)" :: (i16, i16) -> bool;
+export fn{Js} neq "((a, b) => new alan_std.Bool(a.val != b.val))" <- RootBacking :: (i16, i16) -> bool;
 export fn{Rs} lt Infix{"<"} :: (Deref{i16}, Deref{i16}) -> bool;
-export fn{Js} lt "((a, b) => a.val < b.val)" :: (i16, i16) -> bool;
+export fn{Js} lt "((a, b) => new alan_std.Bool(a.val < b.val))" <- RootBacking :: (i16, i16) -> bool;
 export fn{Rs} lte Infix{"<="} :: (Deref{i16}, Deref{i16}) -> bool;
-export fn{Js} lte "((a, b) => a.val <= b.val)" :: (i16, i16) -> bool;
+export fn{Js} lte "((a, b) => new alan_std.Bool(a.val <= b.val))" <- RootBacking :: (i16, i16) -> bool;
 export fn{Rs} gt Infix{">"} :: (Deref{i16}, Deref{i16}) -> bool;
-export fn{Js} gt "((a, b) => a.val > b.val)" :: (i16, i16) -> bool;
+export fn{Js} gt "((a, b) => new alan_std.Bool(a.val > b.val))" <- RootBacking :: (i16, i16) -> bool;
 export fn{Rs} gte Infix{">="} :: (Deref{i16}, Deref{i16}) -> bool;
-export fn{Js} gte "((a, b) => a.val >= b.val)" :: (i16, i16) -> bool;
+export fn{Js} gte "((a, b) => new alan_std.Bool(a.val >= b.val))" <- RootBacking :: (i16, i16) -> bool;
 export fn min (a: i16, b: i16) = if(a.lte(b), a, b);
 export fn max (a: i16, b: i16) = if(a.gte(b), a, b);
 export fn{Rs} shl (a: i16, b: i16) = {Method{"wrapping_shl"} :: (i16, Deref{u32}) -> i16}(a, b.u32);
@@ -624,17 +613,17 @@ export fn nand (a: i32, b: i32) = a.and(b).not;
 export fn nor (a: i32, b: i32) = a.or(b).not;
 export fn xnor (a: i32, b: i32) = a.xor(b).not;
 export fn{Rs} eq Infix{"=="} :: (Deref{i32}, Deref{i32}) -> bool;
-export fn{Js} eq "((a, b) => a.val == b.val)" :: (i32, i32) -> bool;
+export fn{Js} eq "((a, b) => new alan_std.Bool(a.val == b.val))" <- RootBacking :: (i32, i32) -> bool;
 export fn{Rs} neq Infix{"!="} :: (Deref{i32}, Deref{i32}) -> bool;
-export fn{Js} neq "((a, b) => a.val != b.val)" :: (i32, i32) -> bool;
+export fn{Js} neq "((a, b) => new alan_std.Bool(a.val != b.val))" <- RootBacking :: (i32, i32) -> bool;
 export fn{Rs} lt Infix{"<"} :: (Deref{i32}, Deref{i32}) -> bool;
-export fn{Js} lt "((a, b) => a.val < b.val)" :: (i32, i32) -> bool;
+export fn{Js} lt "((a, b) => new alan_std.Bool(a.val < b.val))" <- RootBacking :: (i32, i32) -> bool;
 export fn{Rs} lte Infix{"<="} :: (Deref{i32}, Deref{i32}) -> bool;
-export fn{Js} lte "((a, b) => a.val <= b.val)" :: (i32, i32) -> bool;
+export fn{Js} lte "((a, b) => new alan_std.Bool(a.val <= b.val))" <- RootBacking :: (i32, i32) -> bool;
 export fn{Rs} gt Infix{">"} :: (Deref{i32}, Deref{i32}) -> bool;
-export fn{Js} gt "((a, b) => a.val > b.val)" :: (i32, i32) -> bool;
+export fn{Js} gt "((a, b) => new alan_std.Bool(a.val > b.val))" :: (i32, i32) -> bool;
 export fn{Rs} gte Infix{">="} :: (Deref{i32}, Deref{i32}) -> bool;
-export fn{Js} gte "((a, b) => a.val >= b.val)" :: (i32, i32) -> bool;
+export fn{Js} gte "((a, b) => new alan_std.Bool(a.val >= b.val))" :: (i32, i32) -> bool;
 export fn min (a: i32, b: i32) = if(a.lte(b), a, b);
 export fn max (a: i32, b: i32) = if(a.gte(b), a, b);
 export fn{Rs} shl (a: i32, b: i32) = {Method{"wrapping_shl"} :: (i32, Deref{u32}) -> i32}(a, b.u32);
@@ -672,17 +661,17 @@ export fn nand (a: i64, b: i64) = a.and(b).not;
 export fn nor (a: i64, b: i64) = a.or(b).not;
 export fn xnor (a: i64, b: i64) = a.xor(b).not;
 export fn{Rs} eq Infix{"=="} :: (Deref{i64}, Deref{i64}) -> bool;
-export fn{Js} eq "((a, b) => a.val == b.val)" :: (i64, i64) -> bool;
+export fn{Js} eq "((a, b) => new alan_std.Bool(a.val == b.val))" <- RootBacking :: (i64, i64) -> bool;
 export fn{Rs} neq Infix{"!="} :: (Deref{i64}, Deref{i64}) -> bool;
-export fn{Js} neq "((a, b) => a.val != b.val)" :: (i64, i64) -> bool;
+export fn{Js} neq "((a, b) => new alan_std.Bool(a.val != b.val))" <- RootBacking :: (i64, i64) -> bool;
 export fn{Rs} lt Infix{"<"} :: (Deref{i64}, Deref{i64}) -> bool;
-export fn{Js} lt "((a, b) => a.val < b.val)" :: (i64, i64) -> bool;
+export fn{Js} lt "((a, b) => new alan_std.Bool(a.val < b.val))" <- RootBacking :: (i64, i64) -> bool;
 export fn{Rs} lte Infix{"<="} :: (Deref{i64}, Deref{i64}) -> bool;
-export fn{Js} lte "((a, b) => a.val <= b.val)" :: (i64, i64) -> bool;
+export fn{Js} lte "((a, b) => new alan_std.Bool(a.val <= b.val))" <- RootBacking :: (i64, i64) -> bool;
 export fn{Rs} gt Infix{">"} :: (Deref{i64}, Deref{i64}) -> bool;
-export fn{Js} gt "((a, b) => a.val > b.val)" :: (i64, i64) -> bool;
+export fn{Js} gt "((a, b) => new alan_std.Bool(a.val > b.val))" <- RootBacking :: (i64, i64) -> bool;
 export fn{Rs} gte Infix{">="} :: (Deref{i64}, Deref{i64}) -> bool;
-export fn{Js} gte "((a, b) => a.val >= b.val)" :: (i64, i64) -> bool;
+export fn{Js} gte "((a, b) => new alan_std.Bool(a.val >= b.val))" <- RootBacking :: (i64, i64) -> bool;
 export fn min (a: i64, b: i64) = if(a.lte(b), a, b);
 export fn max (a: i64, b: i64) = if(a.gte(b), a, b);
 export fn{Rs} shl (a: i64, b: i64) = {Method{"wrapping_shl"} :: (i64, Deref{u32}) -> i64}(a, b.u32);
@@ -719,17 +708,17 @@ export fn nand (a: u8, b: u8) = a.and(b).not;
 export fn nor (a: u8, b: u8) = a.or(b).not;
 export fn xnor (a: u8, b: u8) = a.xor(b).not;
 export fn{Rs} eq Infix{"=="} :: (Deref{u8}, Deref{u8}) -> bool;
-export fn{Js} eq "((a, b) => a.val == b.val)" :: (u8, u8) -> bool;
+export fn{Js} eq "((a, b) => new alan_std.Bool(a.val == b.val))" <- RootBacking :: (u8, u8) -> bool;
 export fn{Rs} neq Infix{"!="} :: (Deref{u8}, Deref{u8}) -> bool;
-export fn{Js} neq "((a, b) => a.val != b.val)" :: (u8, u8) -> bool;
+export fn{Js} neq "((a, b) => new alan_std.Bool(a.val != b.val))" <- RootBacking :: (u8, u8) -> bool;
 export fn{Rs} lt Infix{"<"} :: (Deref{u8}, Deref{u8}) -> bool;
-export fn{Js} lt "((a, b) => a.val < b.val)" :: (u8, u8) -> bool;
+export fn{Js} lt "((a, b) => new alan_std.Bool(a.val < b.val))" <- RootBacking :: (u8, u8) -> bool;
 export fn{Rs} lte Infix{"<="} :: (Deref{u8}, Deref{u8}) -> bool;
-export fn{Js} lte "((a, b) => a.val <= b.val)" :: (u8, u8) -> bool;
+export fn{Js} lte "((a, b) => new alan_std.Bool(a.val <= b.val))" <- RootBacking :: (u8, u8) -> bool;
 export fn{Rs} gt Infix{">"} :: (Deref{u8}, Deref{u8}) -> bool;
-export fn{Js} gt "((a, b) => a.val > b.val)" :: (u8, u8) -> bool;
+export fn{Js} gt "((a, b) => new alan_std.Bool(a.val > b.val))" <- RootBacking :: (u8, u8) -> bool;
 export fn{Rs} gte Infix{">="} :: (Deref{u8}, Deref{u8}) -> bool;
-export fn{Js} gte "((a, b) => a.val >= b.val)" :: (u8, u8) -> bool;
+export fn{Js} gte "((a, b) => new alan_std.Bool(a.val >= b.val))" <- RootBacking :: (u8, u8) -> bool;
 export fn min (a: u8, b: u8) = if(a.lte(b), a, b);
 export fn max (a: u8, b: u8) = if(a.gte(b), a, b);
 export fn{Rs} shl (a: u8, b: u8) = {Method{"wrapping_shl"} :: (u8, Deref{u32}) -> u8}(a, b.u32);
@@ -765,17 +754,17 @@ export fn nand (a: u16, b: u16) = a.and(b).not;
 export fn nor (a: u16, b: u16) = a.or(b).not;
 export fn xnor (a: u16, b: u16) = a.xor(b).not;
 export fn{Rs} eq Infix{"=="} :: (Deref{u16}, Deref{u16}) -> bool;
-export fn{Js} eq "((a, b) => a.val == b.val)" :: (u16, u16) -> bool;
+export fn{Js} eq "((a, b) => new alan_std.Bool(a.val == b.val))" <- RootBacking :: (u16, u16) -> bool;
 export fn{Rs} neq Infix{"!="} :: (Deref{u16}, Deref{u16}) -> bool;
-export fn{Js} neq "((a, b) => a.val != b.val)" :: (u16, u16) -> bool;
+export fn{Js} neq "((a, b) => new alan_std.Bool(a.val != b.val))" <- RootBacking :: (u16, u16) -> bool;
 export fn{Rs} lt Infix{"<"} :: (Deref{u16}, Deref{u16}) -> bool;
-export fn{Js} lt "((a, b) => a.val < b.val)" :: (u16, u16) -> bool;
+export fn{Js} lt "((a, b) => new alan_std.Bool(a.val < b.val))" <- RootBacking :: (u16, u16) -> bool;
 export fn{Rs} lte Infix{"<="} :: (Deref{u16}, Deref{u16}) -> bool;
-export fn{Js} lte "((a, b) => a.val <= b.val)" :: (u16, u16) -> bool;
+export fn{Js} lte "((a, b) => new alan_std.Bool(a.val <= b.val))" <- RootBacking :: (u16, u16) -> bool;
 export fn{Rs} gt Infix{">"} :: (Deref{u16}, Deref{u16}) -> bool;
-export fn{Js} gt "((a, b) => a.val > b.val)" :: (u16, u16) -> bool;
+export fn{Js} gt "((a, b) => new alan_std.Bool(a.val > b.val))" <- RootBacking :: (u16, u16) -> bool;
 export fn{Rs} gte Infix{">="} :: (Deref{u16}, Deref{u16}) -> bool;
-export fn{Js} gte "((a, b) => a.val >= b.val)" :: (u16, u16) -> bool;
+export fn{Js} gte "((a, b) => new alan_std.Bool(a.val >= b.val))" <- RootBacking :: (u16, u16) -> bool;
 export fn min (a: u16, b: u16) = if(a.lte(b), a, b);
 export fn max (a: u16, b: u16) = if(a.gte(b), a, b);
 export fn{Rs} shl (a: u16, b: u16) = {Method{"wrapping_shl"} :: (u16, Deref{u32}) -> u16}(a, b.u32);
@@ -811,17 +800,17 @@ export fn nand (a: u32, b: u32) = a.and(b).not;
 export fn nor (a: u32, b: u32) = a.or(b).not;
 export fn xnor (a: u32, b: u32) = a.xor(b).not;
 export fn{Rs} eq Infix{"=="} :: (Deref{u32}, Deref{u32}) -> bool;
-export fn{Js} eq "((a, b) => a.val == b.val)" :: (u32, u32) -> bool;
+export fn{Js} eq "((a, b) => new alan_std.Bool(a.val == b.val))" <- RootBacking :: (u32, u32) -> bool;
 export fn{Rs} neq Infix{"!="} :: (Deref{u32}, Deref{u32}) -> bool;
-export fn{Js} neq "((a, b) => a.val != b.val)" :: (u32, u32) -> bool;
+export fn{Js} neq "((a, b) => new alan_std.Bool(a.val != b.val))" <- RootBacking :: (u32, u32) -> bool;
 export fn{Rs} lt Infix{"<"} :: (Deref{u32}, Deref{u32}) -> bool;
-export fn{Js} lt "((a, b) => a.val < b.val)" :: (u32, u32) -> bool;
+export fn{Js} lt "((a, b) => new alan_std.Bool(a.val < b.val))" <- RootBacking :: (u32, u32) -> bool;
 export fn{Rs} lte Infix{"<="} :: (Deref{u32}, Deref{u32}) -> bool;
-export fn{Js} lte "((a, b) => a.val <= b.val)" :: (u32, u32) -> bool;
+export fn{Js} lte "((a, b) => new alan_std.Bool(a.val <= b.val))" <- RootBacking :: (u32, u32) -> bool;
 export fn{Rs} gt Infix{">"} :: (Deref{u32}, Deref{u32}) -> bool;
-export fn{Js} gt "((a, b) => a.val > b.val)" :: (u32, u32) -> bool;
+export fn{Js} gt "((a, b) => new alan_std.Bool(a.val > b.val))" <- RootBacking :: (u32, u32) -> bool;
 export fn{Rs} gte Infix{">="} :: (Deref{u32}, Deref{u32}) -> bool;
-export fn{Js} gte "((a, b) => a.val >= b.val)" :: (u32, u32) -> bool;
+export fn{Js} gte "((a, b) => new alan_std.Bool(a.val >= b.val))" <- RootBacking :: (u32, u32) -> bool;
 export fn min (a: u32, b: u32) = if(a.lte(b), a, b);
 export fn max (a: u32, b: u32) = if(a.gte(b), a, b);
 export fn{Rs} shl (a: u32, b: u32) = {Method{"wrapping_shl"} :: (u32, Deref{u32}) -> u32}(a, b.u32);
@@ -857,17 +846,17 @@ export fn nand (a: u64, b: u64) = a.and(b).not;
 export fn nor (a: u64, b: u64) = a.or(b).not;
 export fn xnor (a: u64, b: u64) = a.xor(b).not;
 export fn{Rs} eq Infix{"=="} :: (Deref{u64}, Deref{u64}) -> bool;
-export fn{Js} eq "((a, b) => a.val == b.val)" :: (u64, u64) -> bool;
+export fn{Js} eq "((a, b) => new alan_std.Bool(a.val == b.val))" <- RootBacking :: (u64, u64) -> bool;
 export fn{Rs} neq Infix{"!="} :: (Deref{u64}, Deref{u64}) -> bool;
-export fn{Js} neq "((a, b) => a.val != b.val)" :: (u64, u64) -> bool;
+export fn{Js} neq "((a, b) => new alan_std.Bool(a.val != b.val))" <- RootBacking :: (u64, u64) -> bool;
 export fn{Rs} lt Infix{"<"} :: (Deref{u64}, Deref{u64}) -> bool;
-export fn{Js} lt "((a, b) => a.val < b.val)" :: (u64, u64) -> bool;
+export fn{Js} lt "((a, b) => new alan_std.Bool(a.val < b.val))" <- RootBacking :: (u64, u64) -> bool;
 export fn{Rs} lte Infix{"<="} :: (Deref{u64}, Deref{u64}) -> bool;
-export fn{Js} lte "((a, b) => a.val <= b.val)" :: (u64, u64) -> bool;
+export fn{Js} lte "((a, b) => new alan_std.Bool(a.val <= b.val))" <- RootBacking :: (u64, u64) -> bool;
 export fn{Rs} gt Infix{">"} :: (Deref{u64}, Deref{u64}) -> bool;
-export fn{Js} gt "((a, b) => a.val > b.val)" :: (u64, u64) -> bool;
+export fn{Js} gt "((a, b) => new alan_std.Bool(a.val > b.val))" <- RootBacking :: (u64, u64) -> bool;
 export fn{Rs} gte Infix{">="} :: (Deref{u64}, Deref{u64}) -> bool;
-export fn{Js} gte "((a, b) => a.val >= b.val)" :: (u64, u64) -> bool;
+export fn{Js} gte "((a, b) => new alan_std.Bool(a.val >= b.val))" <- RootBacking :: (u64, u64) -> bool;
 export fn min (a: u64, b: u64) = if(a.lte(b), a, b);
 export fn max (a: u64, b: u64) = if(a.gte(b), a, b);
 export fn{Rs} shl (a: u64, b: u64) = {Method{"wrapping_shl"} :: (u64, Deref{u32}) -> u64}(a, b.u32);
@@ -880,122 +869,126 @@ export fn{Rs} wrr (a: u64, b: u64) = {Method{"rotate_right"} :: (u64, Deref{u32}
 export fn{Js} wrr Method{"rotateRight"} :: (u64, u64) -> u64;
 
 /// Float-related functions and function bindings
-export fn add Infix{"+"} :: (f32, f32) -> f32;
-export fn sub Infix{"-"} :: (f32, f32) -> f32;
-export fn mul Infix{"*"} :: (f32, f32) -> f32;
-export fn div Infix{"/"} :: (f32, f32) -> f32;
+export fn{Rs} add Infix{"+"} :: (f32, f32) -> f32;
+export fn{Js} add "((a, b) => new alan_std.F32(a.val + b.val))" <- RootBacking :: (f32, f32) -> f32;
+export fn{Rs} sub Infix{"-"} :: (f32, f32) -> f32;
+export fn{Js} sub "((a, b) => new alan_std.F32(a.val - b.val))" <- RootBacking :: (f32, f32) -> f32;
+export fn{Rs} mul Infix{"*"} :: (f32, f32) -> f32;
+export fn{Js} mul "((a, b) => new alan_std.F32(a.val * b.val))" <- RootBacking :: (f32, f32) -> f32;
+export fn{Rs} div Infix{"/"} :: (f32, f32) -> f32;
+export fn{Js} div "((a, b) => new alan_std.F32(a.val / b.val))" <- RootBacking :: (f32, f32) -> f32;
 export fn{Rs} sqrt Method{"sqrt"} :: f32 -> f32;
-export fn{Js} sqrt "Math.sqrt" :: f32 -> f32;
+export fn{Js} sqrt "((a) => new alan_std.F32(Math.sqrt(a)))" <- RootBacking :: f32 -> f32;
 export fn{Rs} pow Method{"powf"} :: (f32, Deref{f32}) -> f32;
-export fn{Js} pow Infix{"**"} :: (f32, f32) -> f32;
+export fn{Js} pow "((a, b) => new alan_std.F32(a.val ** b.val))" <- RootBacking :: (f32, f32) -> f32;
 export fn{Rs} neg Prefix{"-"} :: Deref{f32} -> f32;
-export fn{Js} neg Prefix{"-"} :: f32 -> f32;
+export fn{Js} neg "((a) => new alan_std.F32(-a.val))" <- RootBacking :: f32 -> f32;
 export fn{Rs} eq Infix{"=="} :: (Deref{f32}, Deref{f32}) -> bool;
-export fn{Js} eq Infix{"=="} :: (f32, f32) -> bool;
+export fn{Js} eq "((a, b) => new alan_std.F32(a.val == b.val))" <- RootBacking :: (f32, f32) -> bool;
 export fn{Rs} neq Infix{"!="} :: (Deref{f32}, Deref{f32}) -> bool;
-export fn{Js} neq Infix{"!="} :: (f32, f32) -> bool;
+export fn{Js} neq "((a, b) => new alan_std.F32(a.val != b.val))" <- RootBacking :: (f32, f32) -> bool;
 export fn{Rs} lt Infix{"<"} :: (Deref{f32}, Deref{f32}) -> bool;
-export fn{Js} lt Infix{"<"} :: (f32, f32) -> bool;
+export fn{Js} lt "((a, b) => new alan_std.Bool(a.val < b.val))" <- RootBacking :: (f32, f32) -> bool;
 export fn{Rs} lte Infix{"<="} :: (Deref{f32}, Deref{f32}) -> bool;
-export fn{Js} lte Infix{"<="} :: (f32, f32) -> bool;
+export fn{Js} lte "((a, b) => new alan_std.Bool(a.val <= b.val))" <- RootBacking :: (f32, f32) -> bool;
 export fn{Rs} gt Infix{">"} :: (Deref{f32}, Deref{f32}) -> bool;
-export fn{Js} gt Infix{">"} :: (f32, f32) -> bool;
+export fn{Js} gt "((a, b) => new alan_std.Bool(a.val > b.val))" <- RootBacking :: (f32, f32) -> bool;
 export fn{Rs} gte Infix{">="} :: (Deref{f32}, Deref{f32}) -> bool;
-export fn{Js} gte Infix{">="} :: (f32, f32) -> bool;
+export fn{Js} gte "((a, b) => new alan_std.Bool(a.val >= b.val))" <- RootBacking :: (f32, f32) -> bool;
 export fn min (a: f32, b: f32) = if(a.lte(b), a, b);
 export fn max (a: f32, b: f32) = if(a.gte(b), a, b);
 
-export fn add Infix{"+"} :: (f64, f64) -> f64;
-export fn sub Infix{"-"} :: (f64, f64) -> f64;
-export fn mul Infix{"*"} :: (f64, f64) -> f64;
-export fn div Infix{"/"} :: (f64, f64) -> f64;
+export fn{Rs} add Infix{"+"} :: (f64, f64) -> f64;
+export fn{Js} add "((a, b) => new alan_std.F64(a.val + b.val))" <- RootBacking :: (f64, f64) -> f64;
+export fn{Rs} sub Infix{"-"} :: (f64, f64) -> f64;
+export fn{Js} sub "((a, b) => new alan_std.F64(a.val - b.val))" <- RootBacking :: (f64, f64) -> f64;
+export fn{Rs} mul Infix{"*"} :: (f64, f64) -> f64;
+export fn{Js} mul "((a, b) => new alan_std.F64(a.val * b.val))" <- RootBacking :: (f64, f64) -> f64;
+export fn{Rs} div Infix{"/"} :: (f64, f64) -> f64;
+export fn{Js} div "((a, b) => new alan_std.F64(a.val / b.val))" <- RootBacking :: (f64, f64) -> f64;
 export fn{Rs} sqrt Method{"sqrt"} :: f64 -> f64;
-export fn{Js} sqrt "Math.sqrt" :: f64 -> f64;
+export fn{Js} sqrt "((a) => new alan_std.F64(Math.sqrt(a)))" <- RootBacking :: f64 -> f64;
 export fn{Rs} pow Method{"powf"} :: (f64, Deref{f64}) -> f64;
-export fn{Js} pow Infix{"**"} :: (f64, f64) -> f64;
+export fn{Js} pow "((a, b) => new alan_std.F64(a.val ** b.val))" <- RootBacking :: (f64, f64) -> f64;
 export fn{Rs} neg Prefix{"-"} :: Deref{f64} -> f64;
-export fn{Js} neg Prefix{"-"} :: f64 -> f64;
+export fn{Js} neg "((a) => new alan_std.F64(-a.val))" <- RootBacking :: f64 -> f64;
 export fn{Rs} eq Infix{"=="} :: (Deref{f64}, Deref{f64}) -> bool;
-export fn{Js} eq Infix{"=="} :: (f64, f64) -> bool;
+export fn{Js} eq "((a, b) => new alan_std.F64(a.val == b.val))" <- RootBacking :: (f64, f64) -> bool;
 export fn{Rs} neq Infix{"!="} :: (Deref{f64}, Deref{f64}) -> bool;
-export fn{Js} neq Infix{"!="} :: (f64, f64) -> bool;
+export fn{Js} neq "((a, b) => new alan_std.F64(a.val != b.val))" <- RootBacking :: (f64, f64) -> bool;
 export fn{Rs} lt Infix{"<"} :: (Deref{f64}, Deref{f64}) -> bool;
-export fn{Js} lt Infix{"<"} :: (f64, f64) -> bool;
+export fn{Js} lt "((a, b) => new alan_std.F64(a.val < b.val))" <- RootBacking :: (f64, f64) -> bool;
 export fn{Rs} lte Infix{"<="} :: (Deref{f64}, Deref{f64}) -> bool;
-export fn{Js} lte Infix{"<="} :: (f64, f64) -> bool;
+export fn{Js} lte "((a, b) => new alan_std.F64(a.val <= b.val))" <- RootBacking :: (f64, f64) -> bool;
 export fn{Rs} gt Infix{">"} :: (Deref{f64}, Deref{f64}) -> bool;
-export fn{Js} gt Infix{">"} :: (f64, f64) -> bool;
+export fn{Js} gt "((a, b) => new alan_std.F64(a.val > b.val))" <- RootBacking :: (f64, f64) -> bool;
 export fn{Rs} gte Infix{">="} :: (Deref{f64}, Deref{f64}) -> bool;
-export fn{Js} gte Infix{">="} :: (f64, f64) -> bool;
+export fn{Js} gte "((a, b) => new alan_std.F64(a.val >= b.val))" <- RootBacking :: (f64, f64) -> bool;
 export fn min (a: f64, b: f64) = if(a.lte(b), a, b);
 export fn max (a: f64, b: f64) = if(a.gte(b), a, b);
 
 /// String related bindings
 export fn{Rs} string "format!" :: ("{}", i8) -> string;
-export fn{Js} string "String" :: i8 -> string;
+export fn{Js} string "new alan_std.Str" <- RootBacking :: i8 -> string;
 export fn{Rs} string "format!" :: ("{}", i16) -> string;
-export fn{Js} string "String" :: i16 -> string;
+export fn{Js} string "new alan_std.Str" <- RootBacking :: i16 -> string;
 export fn{Rs} string "format!" :: ("{}", i32) -> string;
-export fn{Js} string "String" :: i32 -> string;
+export fn{Js} string "new alan_std.Str" <- RootBacking :: i32 -> string;
 export fn{Rs} string "format!" :: ("{}", i64) -> string;
-export fn{Js} string "String" :: i64 -> string;
+export fn{Js} string "new alan_std.Str" <- RootBacking :: i64 -> string;
 export fn{Rs} string "format!" :: ("{}", u8) -> string;
-export fn{Js} string "String" :: u8 -> string;
+export fn{Js} string "new alan_std.Str" <- RootBacking :: u8 -> string;
 export fn{Rs} string "format!" :: ("{}", u16) -> string;
-export fn{Js} string "String" :: u16 -> string;
+export fn{Js} string "new alan_std.Str" <- RootBacking :: u16 -> string;
 export fn{Rs} string "format!" :: ("{}", u32) -> string;
-export fn{Js} string "String" :: u32 -> string;
+export fn{Js} string "new alan_std.Str" <- RootBacking :: u32 -> string;
 export fn{Rs} string "format!" :: ("{}", u64) -> string;
-export fn{Js} string "String" :: u64 -> string;
+export fn{Js} string "new alan_std.Str" <- RootBacking :: u64 -> string;
 export fn{Rs} string "format!" :: ("{}", f32) -> string;
-export fn{Js} string "String" :: f32 -> string;
+export fn{Js} string "new alan_std.Str" <- RootBacking :: f32 -> string;
 export fn{Rs} string "format!" :: ("{}", f64) -> string;
-export fn{Js} string "String" :: f64 -> string;
+export fn{Js} string "new alan_std.Str" <- RootBacking :: f64 -> string;
 export fn string(b: bool) = if(b, "true", "false");
 export fn string(s: string) = s;
 export fn{Rs} concat "format!" :: ("{}{}", string, string) -> string;
-export fn{Js} concat Infix{"+"} :: (string, string) -> string;
+export fn{Js} concat "((a, b) => new alan_std.Str(a.val + b.val))" <- RootBacking :: (string, string) -> string;
 export fn{Rs} repeat (a: string, n: i64) = {Method{"repeat"} :: (string, Deref{Binds{"usize"}}) -> string}(
   a,
   {Cast{"usize"} :: Deref{i64} -> Binds{"usize"}}(n));
-export fn{Js} repeat (a: string, n: i64) = {Method{"repeat"} :: (string, i32) -> string}(a, n.i32);
+export fn{Js} repeat "((s, n) => new alan_std.Str(s.val.repeat(Number(n.val))))" <- RootBacking :: (string, i64) -> string;
 export fn replace Method{"replace"} :: (string, string, string) -> string;
 export fn{Rs} split "alan_std::splitstring" <- RootBacking :: (string, string) -> string[];
-export fn{Js} split Method{"split"} :: (string, string) -> string[];
+export fn{Js} split "((a, b) => a.val.split(b.val).map(v => new alan_std.Str(v)))" <- RootBacking :: (string, string) -> string[];
 export fn{Rs} len (s: string) = {Cast{"i64"} :: Deref{Binds{"usize"}} -> i64}(
   {Method{"len"} :: Array{Binds{"char"}} -> Binds{"usize"}}(
     {Method{"collect::<Vec<char>>"} :: Own{Binds{"std::str::Chars"}} -> Array{Binds{"char"}}}(
       {Method{"chars"} :: string -> Binds{"std::str::Chars"}}(s))));
-export fn{Js} len (s: string) = {Property{"length"} :: string -> i32}(s).i64;
+export fn{Js} len "((s) => new alan_std.I64(s.val.length))" :: string -> i64;
 export fn{Rs} get "alan_std::getstring" <- RootBacking :: (string, i64) -> string!;
-export fn{Js} get (s: string, i: i64) = if(i.gte(0).and(i.lt(s.len)),
-  fn = Fallible{string}({Method{"at"} :: (string, i32) -> string}(s, i.i32)),
-  fn = Error{string}("Index ".concat(i.string).concat(" is out-of-bounds for a string length of ").concat(s.len.string)));
-export fn trim Method{"trim"} :: string -> string;
+export fn{Js} get "((s, i) => { let idx = Number(i.val); if (idx >= 0 && idx < s.val.length) { return new alan_std.Str(s.val[idx]); } else { return new alan_std.AlanError(new alan_std.Str(`Index ${idx} is out-of-bounds for a string length of ${s.val.length}`)); } })" :: (string, i64) -> string!;
+export fn{Rs} trim Method{"trim"} :: string -> string;
+export fn{Js} trim "((s) => new alan_std.Str(s.val.trim()))" <- RootBacking :: string -> string;
 export fn{Rs} index "alan_std::indexstring" <- RootBacking :: (string, string) -> i64!;
-export fn{Js} index (a: string, b: string) -> i64! {
-  let i = {Method{"indexOf"} :: (string, string) -> i64}(a, b);
-  return if(i.lt(0),
-    fn = Error{i64}("Could not find ".concat(b).concat(" in ").concat(a)),
-    fn = Fallible{i64}(i));
-}
+export fn{Js} index "((a, b) => { let idx = a.val.indexOf(b.val); if (idx < 0) { return new alan_std.AlanError(new alan_std.Str(`Could not find ${b.val} in ${a.val}`)); } else { return new alan_std.I64(idx); } })" <- RootBacking :: (string, string) -> i64!;
 // TODO: Optimize this by using `as_str` inline, but need a `Str` type, which I *really* don't want to terrorize the user with
 export fn{Rs} eq Infix{"=="} :: (Own{string}, Own{string}) -> bool;
-export fn{Js} eq Infix{"=="} :: (string, string) -> bool;
+export fn{Js} eq "((a, b) => new alan_std.Bool(a.val == b.val))" <- RootBacking :: (string, string) -> bool;
 export fn{Rs} neq Infix{"!="} :: (Own{string}, Own{string}) -> bool;
-export fn{Js} neq Infix{"!="} :: (string, string) -> bool;
+export fn{Js} neq "((a, b) => new alan_std.Bool(a.val != b.val))" <- RootBacking :: (string, string) -> bool;
 export fn{Rs} lt Infix{"<"} :: (Own{string}, Own{string}) -> bool;
-export fn{Js} lt Infix{"<"} :: (string, string) -> bool;
+export fn{Js} lt "((a, b) => new alan_std.Bool(a.val < b.val))" <- RootBacking :: (string, string) -> bool;
 export fn{Rs} lte Infix{"<="} :: (Own{string}, Own{string}) -> bool;
-export fn{Js} lte Infix{"<="} :: (string, string) -> bool;
+export fn{Js} lte "((a, b) => new alan_std.Bool(a.val <= b.val))" <- RootBacking :: (string, string) -> bool;
 export fn{Rs} gt Infix{">"} :: (Own{string}, Own{string}) -> bool;
-export fn{Js} gt Infix{">"} :: (string, string) -> bool;
+export fn{Js} gt "((a, b) => new alan_std.Bool(a.val > b.val))" <- RootBacking :: (string, string) -> bool;
 export fn{Rs} gte Infix{">="} :: (Own{string}, Own{string}) -> bool;
-export fn{Js} gte Infix{">="} :: (string, string) -> bool;
+export fn{Js} gte "((a, b) => new alan_std.Bool(a.val >= b.val))" <- RootBacking :: (string, string) -> bool;
 export fn min (a: string, b: string) = if(a.lte(b), fn () = a.clone(), fn () = b.clone());
 export fn max (a: string, b: string) = if(a.gte(b), fn () = a.clone(), fn () = b.clone());
-export fn join Method{"join"} :: (string[], string) -> string;
-export fn join{S}(a: string[S], s: string) = {Method{"join"} :: (string[S], string) -> string}(a, s);
+export fn{Rs} join Method{"join"} :: (string[], string) -> string;
+export fn{Js} join "((a, b) => new alan_std.Str([...a.map(v => v.val)].join(b.val)))" <- RootBacking :: (string[], string) -> string;
+export fn{Rs} join{S}(a: string[S], s: string) = {Method{"join"} :: (string[S], string) -> string}(a, s);
+export fn{Js} join{S}(a: string[S], s: string) = {"((a, s) => new alan_std.Str(a.map(v => v.val).join(s.val)))" <- RootBacking :: (string[S], string) -> string}(a, s);
 
 /// Array related bindings
 export fn{Rs} len{T} (a: T[]) = {Cast{"i64"} :: Deref{Binds{"usize"}} -> i64}(
@@ -1013,9 +1006,9 @@ export fn{Rs} map{T, U} "alan_std::map_twoarg" <- RootBacking :: (T[], (T, i64) 
 export fn{Js} map{T, U} (a: T[], f: (T, i64) -> U) = {"Promise.all" :: U[] -> U[]}({Method{"map"} :: (T[], (T, i32) -> U) -> U[]}(a, fn (v: T, i: i32) = f(v, i.i64)));
 export fn{Rs} parmap{T, U} "alan_std::parmap_onearg" <- RootBacking :: (T[], T -> U) -> U[];
 export fn{Rs} filter{T} "alan_std::filter_onearg" <- RootBacking :: (T[], T -> bool) -> T[];
-export fn{Js} filter{T} (a: T[], f: T -> bool) = {"(async (a, f) => { let out = []; for (let v of a) { if (await f(v)) { out.push(v); } } return out; })" :: (T[], T -> bool) -> T[]}(a, f);
+export fn{Js} filter{T} (a: T[], f: T -> bool) = {"(async (a, f) => { let out = []; for (let v of a) { if ((await f(v)).val) { out.push(v); } } return out; })" :: (T[], T -> bool) -> T[]}(a, f);
 export fn{Rs} filter{T} "alan_std::filter_twoarg" <- RootBacking :: (T[], (T, i64) -> bool) -> T[];
-export fn{Js} filter{T} (a: T[], f: (T, i64) -> bool) = {"(async (a, f) => { let out = []; for (let i = 0; i < a.length; i++) { if (await f(a[i], BigInt(i))) { out.push(a[i]); } } return out; })" :: (T[], (T, i64) -> bool) -> T[]}(a, f);
+export fn{Js} filter{T} (a: T[], f: (T, i64) -> bool) = {"(async (a, f) => { let out = []; for (let i = 0; i < a.length; i++) { if ((await f(a[i], BigInt(i))).val) { out.push(a[i]); } } return out; })" :: (T[], (T, i64) -> bool) -> T[]}(a, f);
 export fn{Rs} reduce{T} "alan_std::reduce_sametype" <- RootBacking :: (T[], (T, T) -> T) -> T?;
 export fn{Js} reduce{T} (a: T[], f: (T, T) -> T) = {"(async (a, f) => { if (a.length === 0) { return null; } let out = a[0]; for (let i = 1; i < a.length; i++) { out = await f(out, a[i]); } return out; })" :: (T[], (T, T) -> T) -> T?}(a, f);
 export fn{Rs} reduce{T} "alan_std::reduce_sametype_idx" <- RootBacking :: (T[], (T, T, i64) -> T) -> T?;
@@ -1031,9 +1024,9 @@ export fn{Rs} filled{T} "alan_std::filled" <- RootBacking :: (T, i64) -> T[];
 export fn{Rs} has{T} (a: T[], v: T) = {Method{"contains"} :: (T[], T) -> bool}(a, v);
 export fn{Js} has{T} (a: T[], v: T) = a.reduce(false, fn (out: bool, t: T) = if(out, true, t == v));
 export fn{Rs} has{T} "alan_std::hasfnarray" <- RootBacking :: (T[], T -> bool) -> bool;
-export fn{Js} has{T} (a: T[], f: T -> bool) = {"(async (a, f) => { for (let v of a) { if (await f(v)) { return true; } } return false; })" :: (T[], T -> bool) -> bool}(a, f);
+export fn{Js} has{T} (a: T[], f: T -> bool) = {"(async (a, f) => { for (let v of a) { if ((await f(v)).val) { return true; } } return false; })" :: (T[], T -> bool) -> bool}(a, f);
 export fn{Rs} find{T} "alan_std::findarray" <- RootBacking :: (T[], T -> bool) -> T?;
-export fn{Js} find{T} (a: T[], f: T -> bool) -> T? = {"(async (a, f) => { for (let v of a) { if (await f(v)) { return v; } } return null; })" :: (T[], T -> bool) -> T?}(a, f);
+export fn{Js} find{T} (a: T[], f: T -> bool) -> T? = {"(async (a, f) => { for (let v of a) { if ((await f(v)).val) { return v; } } return null; })" :: (T[], T -> bool) -> T?}(a, f);
 // TODO: The `if` syntactic sugar will make these `if` calls much nicer
 export fn index{T}(a: Array{T}, v: T) = a.reduce(
   Maybe{i64}(),
@@ -1045,15 +1038,15 @@ export fn index{T}(a: Array{T}, f: (T, i64) -> bool) = a.reduce(
   Maybe{i64}(),
   fn (out: Maybe{i64}, val: T, idx: i64) = if(out.exists, out, if(f(val, idx), idx)));
 export fn{Rs} every{T} "alan_std::everyarray" <- RootBacking :: (T[], T -> bool) -> bool;
-export fn{Js} every{T} (a: T[], f: T -> bool) = {"(async (a, f) => { for (let v of a) { if (!(await f(v))) { return false; } } return true; })" :: (T[], T -> bool) -> bool}(a, f);
+export fn{Js} every{T} (a: T[], f: T -> bool) = {"(async (a, f) => { for (let v of a) { if (!(await f(v)).val) { return false; } } return true; })" :: (T[], T -> bool) -> bool}(a, f);
 export fn{Rs} some{T} "alan_std::somearray" <- RootBacking :: (T[], T -> bool) -> bool;
-export fn{Js} some{T} (a: T[], f: T -> bool) = {"(async (a, f) => { for (let v of a) { if (await f(v)) { return true; } } return false; })" :: (T[], T -> bool) -> bool}(a, f);
+export fn{Js} some{T} (a: T[], f: T -> bool) = {"(async (a, f) => { for (let v of a) { if ((await f(v)).val) { return true; } } return false; })" :: (T[], T -> bool) -> bool}(a, f);
 export fn{Rs} repeat{T} "alan_std::repeatarray" <- RootBacking :: (T[], i64) -> T[];
 export fn{Js} repeat{T} (a: T[], c: i64) = {"((a, c) => { let out = []; for (let i = 0n; i < c; i++) { out.push(...a); } return out; })" :: (T[], i64) -> T[]}(a, c);
 export fn{Rs} store{T} "alan_std::storearray" <- RootBacking :: (Mut{T[]}, i64, T) -> void!;
-export fn{Js} store{T} (a: T[], i: i64, v: T) = {"((a, i, v) => { if (i < 0n || i > BigInt(a.length)) { return new alan_std.AlanError(`Provided array index ${i.toString()} is greater than the length of the array`); } else { a.splice(Number(i), 0, v); } })" :: (T[], i64, T) -> void!}(a, i, v);
+export fn{Js} store{T} (a: T[], i: i64, v: T) = {"((a, i, v) => { if (i < 0n || i > BigInt(a.length)) { return new alan_std.AlanError(new alan_std.Str(`Provided array index ${i.toString()} is greater than the length of the array`)); } else { a.splice(Number(i), 0, v); } })" :: (T[], i64, T) -> void!}(a, i, v);
 export fn{Rs} delete{T} "alan_std::deletearray" <- RootBacking :: (Mut{T[]}, i64) -> T!;
-export fn{Js} delete{T} (a: T[], i: i64) = {"((a, i) => { if (i < 0n || i >= BigInt(a.length)) { return new alan_std.AlanError(`Provided array index ${i.toString()} is beyond the bounds of the array`); } else { return a.splice(Number(i), 1)[0]; } })" :: (T[], i64) -> T!}(a, i);
+export fn{Js} delete{T} (a: T[], i: i64) = {"((a, i) => { if (i < 0n || i >= BigInt(a.length)) { return new alan_std.AlanError(new alan_std.Str(`Provided array index ${i.toString()} is beyond the bounds of the array`)); } else { return a.splice(Number(i), 1)[0]; } })" :: (T[], i64) -> T!}(a, i);
 
 /// Buffer related bindings
 export fn{Rs} get{T, S} "alan_std::getbuffer" <- RootBacking :: (T[S], i64) -> T?;
@@ -1071,11 +1064,11 @@ export fn{Js} reduce{T, S, U} (a: T[S], i: U, f: (U, T) -> U) = {"(async (a, i, 
 export fn{Rs} has{T, S} "alan_std::hasbuffer" <- RootBacking :: (T[S], T) -> bool;
 export fn{Js} has{T, S} (a: T[S], v: T) = a.reduce(false, fn (out: bool, t: T) = if(out, true, t == v));
 export fn{Rs} has{T, S} "alan_std::hasfnbuffer" <- RootBacking :: (T[S], T -> bool) -> bool;
-export fn{Js} has{T, S} (a: T[S], f: T -> bool) = {"(async (a, f) => { for (let v of a) { if (await f(v)) { return true; } } return false; })" :: (T[S], T -> bool) -> bool}(a, f);
+export fn{Js} has{T, S} (a: T[S], f: T -> bool) = {"(async (a, f) => { for (let v of a) { if ((await f(v)).val) { return true; } } return false; })" :: (T[S], T -> bool) -> bool}(a, f);
 export fn{Rs} find{T, S} "alan_std::findbuffer" <- RootBacking :: (T[S], T -> bool) -> T?;
-export fn{Js} find{T, S} (a: T[S], f: T -> bool) -> T? = {"((a) => a || null)" :: T? -> T?}({Method{"find"} :: (T[S], T -> bool) -> T?}(a, f));
+export fn{Js} find{T, S} (a: T[S], f: T -> bool) -> T? = {"(async (a, f) => { for (let v of a) { if ((await f(v)).val) { return v; } } return null; })" :: (T[S], T -> bool) -> T?}(a, f);
 export fn{Rs} every{T, S} "alan_std::everybuffer" <- RootBacking :: (T[S], T -> bool) -> bool;
-export fn{Js} every{T, S} (a: T[S], f: T -> bool) = {"(async (a, f) => { for (let v of a) { if (!(await f(v))) { return false; } } return true; })" :: (T[S], T -> bool) -> bool}(a, f);
+export fn{Js} every{T, S} (a: T[S], f: T -> bool) = {"(async (a, f) => { for (let v of a) { if (!(await f(v)).val) { return false; } } return true; })" :: (T[S], T -> bool) -> bool}(a, f);
 fn{Rs} concatInner{T, S, N} "alan_std::concatbuffer" <- RootBacking :: (Mut{T[S + N]}, T[S], T[N]);
 export fn{Rs} concat{T, S, N}(a: T[S], b: T[N]) {
   // I can't bind directly into Rust because Rust can't add const integer type parameters together.
@@ -1093,7 +1086,7 @@ export fn{Rs} concat{T, S, N}(a: T[S], b: T[N]) {
 export fn{Rs} repeat{T, S} "alan_std::repeatbuffertoarray" <- RootBacking :: (T[S], i64) -> T[];
 export fn{Js} repeat{T, S} (a: T[S], c: i64) = {"((a, c) => { let out = []; for (let i = 0n; i < c; i++) { out.push(...a); } return out; })" :: (T[S], i64) -> T[]}(a, c);
 export fn{Rs} store{T, S} "alan_std::storebuffer" <- RootBacking :: (Mut{T[S]}, i64, T) -> T!;
-export fn{Js} store{T, S} (a: T[S], i: i64, v: T) = {"((a, i, v) => { if (i < 0n || i > BigInt(a.length)) { return new alan_std.AlanError(`Provided array index ${i.toString()} is greater than the length of the array`); } else { let out = a[Number(i)]; a[Number(i)] = v; return out; } })" :: (T[S], i64, T) -> T!}(a, i, v);
+export fn{Js} store{T, S} (a: T[S], i: i64, v: T) = {"((a, i, v) => { if (i < 0n || i > BigInt(a.length)) { return new alan_std.AlanError(new alan_std.Str(`Provided array index ${i.toString()} is greater than the length of the array`)); } else { let out = a[Number(i)]; a[Number(i)] = v; return out; } })" :: (T[S], i64, T) -> T!}(a, i, v);
 
 /// Dictionary-related bindings
 export fn{Rs} Dict{K, V} "alan_std::OrderedHashMap::new" <- RootBacking :: () -> Dict{K, V};
@@ -1133,12 +1126,28 @@ export fn{Js} keys{V} (d: Dict{u8, V}) = {"((d) => d.keys().map((k) => new alan_
 export fn{Js} keys{V} (d: Dict{u16, V}) = {"((d) => d.keys().map((k) => new alan_std.U16(k)))" :: Dict{u16, V} -> u16[]}(d);
 export fn{Js} keys{V} (d: Dict{u32, V}) = {"((d) => d.keys().map((k) => new alan_std.U32(k)))" :: Dict{u32, V} -> u32[]}(d);
 export fn{Js} keys{V} (d: Dict{u64, V}) = {"((d) => d.keys().map((k) => new alan_std.U64(k)))" :: Dict{u64, V} -> u64[]}(d);
+export fn{Js} keys{V} (d: Dict{f32, V}) = {"((d) => d.keys().map((k) => new alan_std.F32(k)))" :: Dict{f32, V} -> f32[]}(d);
+export fn{Js} keys{V} (d: Dict{f64, V}) = {"((d) => d.keys().map((k) => new alan_std.F64(k)))" :: Dict{f64, V} -> f64[]}(d);
+export fn{Js} keys{V} (d: Dict{bool, V}) = {"((d) => d.keys().map((k) => new alan_std.Bool(k)))" :: Dict{bool, V} -> bool[]}(d);
+export fn{Js} keys{V} (d: Dict{string, V}) = {"((d) => d.keys().map((k) => new alan_std.Str(k)))" :: Dict{string, V} -> string[]}(d);
 export fn{Rs} vals{K, V} "alan_std::valsdict" <- RootBacking :: Dict{K, V} -> V[];
 export fn{Js} vals{K, V} (d: Dict{K, V}) = {"Array.from" :: V[] -> V[]}({Method{"values"} :: Dict{K, V} -> V[]}(d));
 export fn{Rs} Array{K, V} "alan_std::arraydict" <- RootBacking :: Dict{K, V} -> (K, V)[];
 // export fn{Js} Array{K, V} "Array.from" :: Dict{K, V} -> (K, V)[];
 // TODO: Figure out how to avoid this map
 export fn{Js} Array{K, V} "((d) => Array.from(d).map(kv => ({ arg0: kv[0], arg1: kv[1] })))" :: Dict{K, V} -> (K, V)[];
+export fn{Js} Array{V} (d: Dict{i8, V}) = {"((d) => Array.from(d).map(kv => ({ arg0: new alan_std.I8(kv[0]), arg1: kv[1] })))" :: Dict{i8, V} -> (i8, V)[]}(d);
+export fn{Js} Array{V} (d: Dict{i16, V}) = {"((d) => Array.from(d).map(kv => ({ arg0: new alan_std.I16(kv[0]), arg1: kv[1] })))" :: Dict{i16, V} -> (i16, V)[]}(d);
+export fn{Js} Array{V} (d: Dict{i32, V}) = {"((d) => Array.from(d).map(kv => ({ arg0: new alan_std.I32(kv[0]), arg1: kv[1] })))" :: Dict{i32, V} -> (i32, V)[]}(d);
+export fn{Js} Array{V} (d: Dict{i64, V}) = {"((d) => Array.from(d).map(kv => ({ arg0: new alan_std.I64(kv[0]), arg1: kv[1] })))" :: Dict{i64, V} -> (i64, V)[]}(d);
+export fn{Js} Array{V} (d: Dict{u8, V}) = {"((d) => Array.from(d).map(kv => ({ arg0: new alan_std.U8(kv[0]), arg1: kv[1] })))" :: Dict{u8, V} -> (u8, V)[]}(d);
+export fn{Js} Array{V} (d: Dict{u16, V}) = {"((d) => Array.from(d).map(kv => ({ arg0: new alan_std.U16(kv[0]), arg1: kv[1] })))" :: Dict{u16, V} -> (u16, V)[]}(d);
+export fn{Js} Array{V} (d: Dict{u32, V}) = {"((d) => Array.from(d).map(kv => ({ arg0: new alan_std.U32(kv[0]), arg1: kv[1] })))" :: Dict{u32, V} -> (u32, V)[]}(d);
+export fn{Js} Array{V} (d: Dict{u64, V}) = {"((d) => Array.from(d).map(kv => ({ arg0: new alan_std.U64(kv[0]), arg1: kv[1] })))" :: Dict{u64, V} -> (u64, V)[]}(d);
+export fn{Js} Array{V} (d: Dict{f32, V}) = {"((d) => Array.from(d).map(kv => ({ arg0: new alan_std.F32(kv[0]), arg1: kv[1] })))" :: Dict{f32, V} -> (f32, V)[]}(d);
+export fn{Js} Array{V} (d: Dict{f64, V}) = {"((d) => Array.from(d).map(kv => ({ arg0: new alan_std.F64(kv[0]), arg1: kv[1] })))" :: Dict{f64, V} -> (f64, V)[]}(d);
+export fn{Js} Array{V} (d: Dict{bool, V}) = {"((d) => Array.from(d).map(kv => ({ arg0: new alan_std.Bool(kv[0]), arg1: kv[1] })))" :: Dict{bool, V} -> (bool, V)[]}(d);
+export fn{Js} Array{V} (d: Dict{string, V}) = {"((d) => Array.from(d).map(kv => ({ arg0: new alan_std.Str(kv[0]), arg1: kv[1] })))" :: Dict{string, V} -> (string, V)[]}(d);
 export fn{Rs} concat{K, V} "alan_std::concatdict" <- RootBacking :: (Dict{K, V}, Dict{K, V}) -> Dict{K, V};
 export fn{Js} concat{K, V} "((a, b) => new Map([...a, ...b]))" :: (Dict{K, V}, Dict{K, V}) -> Dict{K, V};
 
@@ -4253,6 +4262,8 @@ export fn ExitCode(e: i64) = ExitCode(e.u8);
 // TODO: Rework this to just print anything that can be converted to `string` via interfaces
 export fn{Rs} print{T}(v: T) = {"println!" :: ("{}", string)}(v.string);
 export fn{Js} print{T}(v: T) = {"console.log" :: T}(v);
+export fn{Js} print "((s) => console.log(s.val))" :: string;
+export fn{Js} print (b: bool) = b.string.print;
 export fn{Js} print (i: i8) = i.string.print;
 export fn{Js} print (u: u8) = u.string.print;
 export fn{Js} print (i: i16) = i.string.print;
@@ -4261,6 +4272,8 @@ export fn{Js} print (i: i32) = i.string.print;
 export fn{Js} print (u: u32) = u.string.print;
 export fn{Js} print (i: i64) = i.string.print;
 export fn{Js} print (u: u64) = u.string.print;
+export fn{Js} print (f: f32) = f.string.print;
+export fn{Js} print (f: f64) = f.string.print;
 export fn{Js} print (i: i64[]) = "[".concat(i.map(string).join(", ")).concat("]").print;
 export fn{Js} print (u: u64[]) = "[".concat(u.map(string).join(", ")).concat("]").print;
 export fn{Js} print{S} (i: Buffer{i64, S}) = "[".concat(i.map(string).join(", ")).concat("]").print;
@@ -4288,6 +4301,20 @@ export fn{Js} eprint{T}(v: T) = {"console.error" :: string}(v.string);
 export fn{Rs} eprint(v: void) = {"eprintln!" :: "void"}();
 export fn{Js} eprint(v: void) = {"console.error" :: "void"}();
 export fn{Rs} eprint(s: string) = {"eprintln!" :: ("{}", string)}(s);
+export fn{Js} eprint "((s) => console.error(s.val))" :: string;
+export fn{Js} eprint (b: bool) = b.string.print;
+export fn{Js} eprint (i: i8) = i.string.print;
+export fn{Js} eprint (u: u8) = u.string.print;
+export fn{Js} eprint (i: i16) = i.string.print;
+export fn{Js} eprint (u: u16) = u.string.print;
+export fn{Js} eprint (i: i32) = i.string.print;
+export fn{Js} eprint (u: u32) = u.string.print;
+export fn{Js} eprint (i: i64) = i.string.print;
+export fn{Js} eprint (u: u64) = u.string.print;
+export fn{Js} eprint (f: f32) = f.string.print;
+export fn{Js} eprint (f: f64) = f.string.print;
+export fn{Js} eprint (i: i64[]) = "[".concat(i.map(string).join(", ")).concat("]").print;
+export fn{Js} eprint (u: u64[]) = "[".concat(u.map(string).join(", ")).concat("]").print;
 export fn{Rs} eprint{T}(a: T[]) = "[".concat(a.map(string).join(", ")).concat("]").eprint;
 export fn{Rs} eprint{T}(v: T?) = if(v.exists,
   fn = v.getOrExit.eprint,
