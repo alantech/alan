@@ -1020,6 +1020,7 @@ export fn{Js} reduce{T, U} (a: T[], i: U, f: (U, T, i64) -> U) = {"(async (a, i,
 export fn{Rs} concat{T} "alan_std::concat" <- RootBacking :: (T[], T[]) -> T[];
 export fn{Js} concat{T} (a: T[], b: T[]) -> T[] = {Method{"concat"} :: (T[], T[]) -> T[]}(a, b);
 export fn{Rs} append{T} "alan_std::append" <- RootBacking :: (Mut{T[]}, T[]);
+export fn{Js} append{T} "((a, b) => { for (let v in b) { a.push(v); } })" :: (Mut{T[]}, T[]);
 export fn{Rs} filled{T} "alan_std::filled" <- RootBacking :: (T, i64) -> T[];
 export fn{Rs} has{T} (a: T[], v: T) = {Method{"contains"} :: (T[], T) -> bool}(a, v);
 export fn{Js} has{T} (a: T[], v: T) = a.reduce(false, fn (out: bool, t: T) = if(out, true, t == v));
@@ -1279,7 +1280,7 @@ export fn addChild{T}(t: Tree{T}, val: T) = t.rootNode.addChild(val);
 // TODO: Implement `subtree` to create a new tree consisting of the specified node as its root and
 // only its own children as the children of the tree.
 
-export fn getOr{T}(n: Node{T}, default: T) = n.tree.vals[n.id].getOr(default);
+export fn getOr{T}(n: Node{T}, t: T) = n.tree.vals[n.id].getOr(t);
 
 export fn Array{T}(t: Tree{T}) = t.vals.map(
   fn (_: T, i: i64) = Node{T}(t, i).getOrExit);
