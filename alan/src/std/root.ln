@@ -1051,8 +1051,7 @@ export fn{Js} delete{T} (a: T[], i: i64) = {"((a, i) => { if (i < 0n || i >= Big
 /// Buffer related bindings
 export fn{Rs} get{T, S} "alan_std::getbuffer" <- RootBacking :: (T[S], i64) -> T?;
 export fn len{T, S}(T[S]) = {S}();
-export fn{Js} get{T, S} (b: T[S], i: i64) = if(i.gte(0).and(i.lt(b.len)),
-  fn = {Method{"at"} :: (T[S], i32) -> T}(a, i.i32));
+export fn{Js} get{T, S} "((b, i) => { let idx = Number(i.val); if (idx >= 0 && idx < b.length) { return b[idx]; } else { return null; } })" :: (T[S], i64) -> T?;
 export fn{Rs} map{T, S, U} "alan_std::mapbuffer_onearg" <- RootBacking :: (T[S], T -> U) -> (U[S]);
 export fn{Js} map{T, S, U} (a: T[S], f: T -> U) = {"Promise.all" :: Buffer{U, S} -> Buffer{U, S}}({Method{"map"} :: (Buffer{T, S}, T -> U) -> Buffer{U, S}}(a, f));
 export fn{Rs} map{T, S, U} "alan_std::mapbuffer_twoarg" <- RootBacking :: (T[S], (T, i64) -> U) -> (U[S]);
@@ -1070,7 +1069,8 @@ export fn{Js} find{T, S} (a: T[S], f: T -> bool) -> T? = {"(async (a, f) => { fo
 export fn{Rs} every{T, S} "alan_std::everybuffer" <- RootBacking :: (T[S], T -> bool) -> bool;
 export fn{Js} every{T, S} (a: T[S], f: T -> bool) = {"(async (a, f) => { for (let v of a) { if (!(await f(v)).val) { return false; } } return true; })" :: (T[S], T -> bool) -> bool}(a, f);
 fn{Rs} concatInner{T, S, N} "alan_std::concatbuffer" <- RootBacking :: (Mut{T[S + N]}, T[S], T[N]);
-export fn{Rs} concat{T, S, N}(a: T[S], b: T[N]) {
+fn{Js} concatInner{T, S, N} "((o, a, b) => { for (let i = 0; i < a.length; i++) { o[i] = a[i]; } for (let i = 0; i < b.length; i++) { o[i+a.length] = b[i]; } })" :: (Mut{T[S + N]}, T[S], T[N]);
+export fn concat{T, S, N}(a: T[S], b: T[N]) {
   // I can't bind directly into Rust because Rust can't add const integer type parameters together.
   // It's *theoretically* possible to generate a new Rust function in each case with the required
   // sizes, but it will be really difficult, so I'm implementing this for now with the intent to
@@ -1079,10 +1079,6 @@ export fn{Rs} concat{T, S, N}(a: T[S], b: T[N]) {
   concatInner(o, a, b);
   return o;
 }
-// TODO: Get return type inference working so I can uncomment this
-//export fn{Js} concat{T, S, N} (a: T[S], b: T[N]) -> T[S + N] = {Method{"concat"} :: (T[S], T[N]) -> T[S + N]}(a, b);
-// TODO: Be able to resolve explicit integer constant values as the integer type so it can be
-// grabbed by the type inference system. For now, repeat for buffers outputs an array, instead.
 export fn{Rs} repeat{T, S} "alan_std::repeatbuffertoarray" <- RootBacking :: (T[S], i64) -> T[];
 export fn{Js} repeat{T, S} (a: T[S], c: i64) = {"((a, c) => { let out = []; for (let i = 0n; i < c; i++) { out.push(...a); } return out; })" :: (T[S], i64) -> T[]}(a, c);
 export fn{Rs} store{T, S} "alan_std::storebuffer" <- RootBacking :: (Mut{T[S]}, i64, T) -> T!;
