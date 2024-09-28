@@ -2143,7 +2143,7 @@ test_full!(buffer_every => r#"
     }"#;
     stdout "false\n";
 );
-test!(buffer_concat => r#"
+test_full!(buffer_concat => r#"
     export fn main {
         const test = {i64[6]}(1, 1, 2, 3, 5, 8);
         const test2 = {i64[3]}(4, 5, 6);
