@@ -1682,8 +1682,7 @@ to barto bar3
 "#;
 );
 
-// TODO: Need to figure out how to get this working in JS-land
-test!(mutable_functions => r#"
+test_full!(mutable_functions => r#"
     fn addeq (a: Mut{i64}, b: i64) {
         a = a.clone() + b;
     }
@@ -1878,8 +1877,7 @@ test_full!(object_literals => r#"
     }"#;
     stdout "foo!\ntrue\n";
 );
-// TODO: This isn't going to work until I get primitive assignment working in JS
-test!(object_and_array_reassignment => r#"
+test_full!(object_and_array_reassignment => r#"
     type Foo =
       bar: bool;
 
