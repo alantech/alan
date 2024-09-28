@@ -3835,7 +3835,7 @@ test_ignore!(seq_recurse_decrement_regression_test => r#"
 
 // Tree
 
-test!(tree_construction_and_access => r#"
+test_full!(tree_construction_and_access => r#"
     export fn main {
       let myTree = Tree('foo');
       const barNode = myTree.addChild('bar');
