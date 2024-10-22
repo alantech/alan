@@ -24,7 +24,10 @@ macro_rules! test {
                         return Err(format!("Unable to write {} to disk. {:?}", filename, e).into());
                     }
                 };
-                match std::process::Command::new("cargo")
+                std::env::set_var("ALAN_TARGET", "test");
+                std::env::set_var("ALAN_OUTPUT_LANG", "rs");
+                match crate::compile::build(filename.to_string()) {
+                /*match std::process::Command::new("cargo")
                     .env("ALAN_TARGET", "test")
                     .env_remove("ALAN_OUTPUT_LANG")
                     .arg("run")
@@ -32,7 +35,7 @@ macro_rules! test {
                     .arg("--")
                     .arg("compile")
                     .arg(filename.clone())
-                    .output() {
+                    .output() {*/
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
                         std::fs::remove_file(&filename)?;
@@ -66,7 +69,10 @@ macro_rules! test_full {
                         return Err(format!("Unable to write {} to disk. {:?}", filename, e).into());
                     }
                 };
-                match std::process::Command::new("cargo")
+                std::env::set_var("ALAN_TARGET", "test");
+                std::env::set_var("ALAN_OUTPUT_LANG", "rs");
+                match crate::compile::build(filename.to_string()) {
+                /*match std::process::Command::new("cargo")
                     .env("ALAN_TARGET", "test")
                     .env_remove("ALAN_OUTPUT_LANG")
                     .arg("run")
@@ -74,7 +80,7 @@ macro_rules! test_full {
                     .arg("--")
                     .arg("compile")
                     .arg(filename.clone())
-                    .output() {
+                    .output() {*/
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
                         std::fs::remove_file(&filename)?;
@@ -95,7 +101,9 @@ macro_rules! test_full {
                     Ok(a) => Ok(a),
                     Err(e) => Err(format!("Could not remove the test binary {:?}", e)),
                 }?;
-                match std::process::Command::new("cargo")
+                std::env::set_var("ALAN_OUTPUT_LANG", "js");
+                match crate::compile::web(filename.to_string()) {
+                /*match std::process::Command::new("cargo")
                     .env("ALAN_TARGET", "test")
                     .env_remove("ALAN_OUTPUT_LANG")
                     .arg("run")
@@ -103,7 +111,7 @@ macro_rules! test_full {
                     .arg("--")
                     .arg("bundle")
                     .arg(filename.clone())
-                    .output() {
+                    .output() {*/
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
                         std::fs::remove_file(&filename)?;
