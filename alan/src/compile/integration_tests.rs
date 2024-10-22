@@ -909,6 +909,16 @@ test!(gpu_if => r#"
     stdout "[0, 1, 6, 1]\n";
 );
 
+test!(gpu_replace => r#"
+    export fn main {
+        let b = GBuffer([1, 2, 3, 4]);
+        b.map(fn (val: gi32) = val + 2).read{i32}.print;
+        b.replace([2, 4, 6, 8]);
+        b.map(fn (val: gi32) = val / 2).read{i32}.print;
+    }"#;
+    stdout "[3, 4, 5, 6]\n[1, 2, 3, 4]\n";
+);
+
 // Bitwise Math
 
 test_full!(i8_bitwise => r#"
