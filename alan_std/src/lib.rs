@@ -847,6 +847,11 @@ pub fn map_read_buffer_type() -> wgpu::BufferUsages {
 }
 
 #[inline(always)]
+pub fn map_write_buffer_type() -> wgpu::BufferUsages {
+    wgpu::BufferUsages::MAP_WRITE | wgpu::BufferUsages::COPY_SRC
+}
+
+#[inline(always)]
 pub fn storage_buffer_type() -> wgpu::BufferUsages {
     wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC
 }
@@ -967,5 +972,33 @@ pub fn read_buffer(b: &GBuffer) -> Vec<i32> {
         result
     } else {
         panic!("failed to run compute on gpu!")
+    }
+}
+
+#[allow(clippy::ptr_arg)]
+pub fn replace_buffer(b: &GBuffer, v: &Vec<i32>) -> Result<(), AlanError> {
+    if v.len() as i64 != bufferlen(b) {
+        Err("The input array is not the same size as the buffer".into())
+    } else {
+        // TODO: Support other value types
+        let val_slice = &v[..];
+        let val_ptr = val_slice.as_ptr();
+        let val_u8_len = v.len() * 4;
+        let val_u8: &[u8] = unsafe { std::slice::from_raw_parts(val_ptr as *const u8, val_u8_len) };
+        let g = gpu();
+        let temp_buffer = wgpu::util::DeviceExt::create_buffer_init(
+            &g.device,
+            &wgpu::util::BufferInitDescriptor {
+                label: None,
+                contents: val_u8,
+                usage: map_write_buffer_type(),
+            },
+        );
+        let mut encoder = g
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        encoder.copy_buffer_to_buffer(&temp_buffer, 0, b, 0, b.size());
+        g.queue.submit(Some(encoder.finish()));
+        Ok(())
     }
 }
