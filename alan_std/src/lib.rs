@@ -975,6 +975,7 @@ pub fn read_buffer(b: &GBuffer) -> Vec<i32> {
     }
 }
 
+#[allow(clippy::ptr_arg)]
 pub fn replace_buffer(b: &GBuffer, v: &Vec<i32>) -> Result<(), AlanError> {
     if v.len() as i64 != bufferlen(b) {
         Err("The input array is not the same size as the buffer".into())
@@ -996,7 +997,7 @@ pub fn replace_buffer(b: &GBuffer, v: &Vec<i32>) -> Result<(), AlanError> {
         let mut encoder = g
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-        encoder.copy_buffer_to_buffer(&temp_buffer, 0, &b, 0, b.size());
+        encoder.copy_buffer_to_buffer(&temp_buffer, 0, b, 0, b.size());
         g.queue.submit(Some(encoder.finish()));
         Ok(())
     }
