@@ -1329,6 +1329,7 @@ export type{Rs} BufferUsages = Binds{"alan_std::BufferUsages" <- RootBacking};
 export type{Rs} GBuffer = Binds{"alan_std::GBuffer" <- RootBacking};
 export type{Rs} GPGPU = Binds{"alan_std::GPGPU" <- RootBacking};
 export fn{Rs} mapReadBuffer "alan_std::map_read_buffer_type" <- RootBacking :: () -> BufferUsages;
+export fn{Rs} mapWriteBuffer "alan_std::map_write_buffer_type" <- RootBacking :: () -> BufferUsages;
 export fn{Rs} storageBuffer "alan_std::storage_buffer_type" <- RootBacking :: () -> BufferUsages;
 export fn{Rs} GBuffer "alan_std::create_buffer_init" <- RootBacking :: (BufferUsages, i32[]) -> GBuffer;
 export fn{Rs} GBuffer "alan_std::create_empty_buffer" <- RootBacking :: (BufferUsages, i64) -> GBuffer;
@@ -1368,6 +1369,8 @@ export fn{Rs} GPGPU(src: string, buf: GBuffer) -> GPGPU {
 }
 export fn{Rs} run "alan_std::gpu_run" <- RootBacking :: GPGPU;
 export fn{Rs} read{T} "alan_std::read_buffer" <- RootBacking :: GBuffer -> T[];
+export fn{Rs} replace "alan_std::replace_buffer" <- RootBacking :: (GBuffer, i32[]) -> ()!;
+export fn{Rs} replace{T}(g: GBuffer, v: T[]) -> ()! = g.replace(v.map(i32));
 
 // The WgpuType provides a mechanism to build up the logic for a compute shader with normal-looking
 // Alan code, not requiring to think in two different languages at the same time. All of the GPU
