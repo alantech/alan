@@ -32,95 +32,185 @@ impl<'a> Scope<'a> {
     pub fn root() -> &'static Scope<'static> {
         static ROOT_SRC: &str = include_str!("../std/root.ln");
         static ROOT_AST: OnceLock<parse::Ln> = OnceLock::new();
-        static ROOT_SCOPE: OnceLock<Scope> = OnceLock::new();
+        static ROOT_SCOPE_RS: OnceLock<Scope> = OnceLock::new();
+        static ROOT_SCOPE_JS: OnceLock<Scope> = OnceLock::new();
 
         let ast = ROOT_AST
             .get_or_init(|| parse::get_ast(ROOT_SRC).expect("Invalid root scope source code!"));
-        ROOT_SCOPE.get_or_init(|| {
-            let mut s = Scope {
-                path: "@root".to_string(),
-                parent: None,
-                types: OrderedHashMap::new(),
-                consts: OrderedHashMap::new(),
-                functions: OrderedHashMap::new(),
-                operatormappings: OrderedHashMap::new(),
-                typeoperatormappings: OrderedHashMap::new(),
-                exports: OrderedHashMap::new(),
-            };
-            // TODO: Eliminate the duplicate code
-            for (i, element) in ast.body.iter().enumerate() {
-                match element {
-                    parse::RootElements::Types(t) => {
-                        let res = CType::from_ast(s, t, false).expect("Invalid root scope type");
-                        s = res.0;
-                    }
-
-                    parse::RootElements::Functions(f) => s = Function::from_ast(s, f, false).expect("Invalid root scope function"),
-                    parse::RootElements::ConstDeclaration(c) => s = Const::from_ast(s, c, false).expect("Invalid root scope const declaration"),
-                    parse::RootElements::OperatorMapping(o) => {
-                        s = OperatorMapping::from_ast(s, o, false).expect("Invalid root scope operator mapping")
-                    }
-                    parse::RootElements::TypeOperatorMapping(o) => {
-                        s = TypeOperatorMapping::from_ast(s, o, false).expect("Invalid root scope type operator mapping")
-                    }
-                    parse::RootElements::Exports(e) => match &e.exportable {
-                        parse::Exportable::Functions(f) => s = Function::from_ast(s, f, true).expect("Invalid root scope exported function"),
-                        parse::Exportable::ConstDeclaration(c) => s = Const::from_ast(s, c, true).expect("Invalid root scope exported const declaration"),
-                        parse::Exportable::OperatorMapping(o) => {
-                            s = OperatorMapping::from_ast(s, o, true).expect("Invalid root scope exported operator mapping")
-                        }
-                        parse::Exportable::TypeOperatorMapping(o) => {
-                            s = TypeOperatorMapping::from_ast(s, o, true).expect("Invalid root scope exported type operator mapping")
-                        }
-                        parse::Exportable::Types(t) => {
-                            let res = CType::from_ast(s, t, true).expect("Invalid root scope exported type");
+        // TODO: DRY this
+        if matches!(std::env::var("ALAN_OUTPUT_LANG"), Ok(v) if v == "rs") {
+            ROOT_SCOPE_RS.get_or_init(|| {
+                let mut s = Scope {
+                    path: "@root".to_string(),
+                    parent: None,
+                    types: OrderedHashMap::new(),
+                    consts: OrderedHashMap::new(),
+                    functions: OrderedHashMap::new(),
+                    operatormappings: OrderedHashMap::new(),
+                    typeoperatormappings: OrderedHashMap::new(),
+                    exports: OrderedHashMap::new(),
+                };
+                // TODO: Eliminate the duplicate code
+                for (i, element) in ast.body.iter().enumerate() {
+                    match element {
+                        parse::RootElements::Types(t) => {
+                            let res = CType::from_ast(s, t, false).expect("Invalid root scope type");
                             s = res.0;
                         }
-                        parse::Exportable::CTypes(c) => {
-                            // For now this is just declaring in the Alan source code the compile-time
-                            // types that can be used, and is simply a special kind of documentation.
-                            // *Only* the root scope is allowed to use this syntax, and I cannot imagine
-                            // any other way, since the compiler needs to exactly match what is declared.
-                            // So we return an error if they're encountered outside of the root scope and
-                            // simply verify that each `ctype` we encounter is one of a set the compiler
-                            // expects to exist. Later when `cfn` is implemented these will be loaded up
-                            // for verification of the meta-typing of the compile-time functions.
-                            // This is also an exception in that it is *only* allowed to be exported
-                            // (from the root scope) and can't be hidden, as all code will need these
-                            // to construct their own types.
-                            match c.name.as_str() {
-                                "Type" | "Generic" | "Int" | "Float" | "Bool" | "String" => {
-                                    /* Do nothing for the 'structural' types */
-                                }
-                                g @ ("Group" | "Infix" | "Prefix" | "Method" | "Property" | "Cast"
-                                | "Own" | "Deref" | "Mut" | "Rust" | "Node" | "From" | "Array"
-                                | "Fail" | "Neg" | "Len" | "Size" | "FileStr" | "Env" | "EnvExists"
-                                | "Not") => s = CType::from_generic(s, g, 1),
-                                g @ ("Function" | "Call" | "Dependency" | "Import" | "Field"
-                                | "Prop" | "Buffer" | "Add" | "Sub" | "Mul" | "Div" | "Mod"
-                                | "Pow" | "Min" | "Max" | "And" | "Or" | "Xor" | "Nand" | "Nor"
-                                | "Xnor" | "Eq" | "Neq" | "Lt" | "Lte" | "Gt" | "Gte") => s = CType::from_generic(s, g, 2),
-                                g @ ("If" | "Binds" | "Tuple" | "Either" | "AnyOf") => {
-                                    // Not kosher in Rust land, but 0 means "as many as we want"
-                                    s = CType::from_generic(s, g, 0)
-                                }
-                                // TODO: Also add support for three arg `If` and `Env` with a
-                                // default property via overloading types
-                                unknown => {
-                                    panic!("Unknown ctype {} defined in root scope. There's something wrong with the compiler.", unknown);
+
+                        parse::RootElements::Functions(f) => s = Function::from_ast(s, f, false).expect("Invalid root scope function"),
+                        parse::RootElements::ConstDeclaration(c) => s = Const::from_ast(s, c, false).expect("Invalid root scope const declaration"),
+                        parse::RootElements::OperatorMapping(o) => {
+                            s = OperatorMapping::from_ast(s, o, false).expect("Invalid root scope operator mapping")
+                        }
+                        parse::RootElements::TypeOperatorMapping(o) => {
+                            s = TypeOperatorMapping::from_ast(s, o, false).expect("Invalid root scope type operator mapping")
+                        }
+                        parse::RootElements::Exports(e) => match &e.exportable {
+                            parse::Exportable::Functions(f) => s = Function::from_ast(s, f, true).expect("Invalid root scope exported function"),
+                            parse::Exportable::ConstDeclaration(c) => s = Const::from_ast(s, c, true).expect("Invalid root scope exported const declaration"),
+                            parse::Exportable::OperatorMapping(o) => {
+                                s = OperatorMapping::from_ast(s, o, true).expect("Invalid root scope exported operator mapping")
+                            }
+                            parse::Exportable::TypeOperatorMapping(o) => {
+                                s = TypeOperatorMapping::from_ast(s, o, true).expect("Invalid root scope exported type operator mapping")
+                            }
+                            parse::Exportable::Types(t) => {
+                                let res = CType::from_ast(s, t, true).expect("Invalid root scope exported type");
+                                s = res.0;
+                            }
+                            parse::Exportable::CTypes(c) => {
+                                // For now this is just declaring in the Alan source code the compile-time
+                                // types that can be used, and is simply a special kind of documentation.
+                                // *Only* the root scope is allowed to use this syntax, and I cannot imagine
+                                // any other way, since the compiler needs to exactly match what is declared.
+                                // So we return an error if they're encountered outside of the root scope and
+                                // simply verify that each `ctype` we encounter is one of a set the compiler
+                                // expects to exist. Later when `cfn` is implemented these will be loaded up
+                                // for verification of the meta-typing of the compile-time functions.
+                                // This is also an exception in that it is *only* allowed to be exported
+                                // (from the root scope) and can't be hidden, as all code will need these
+                                // to construct their own types.
+                                match c.name.as_str() {
+                                    "Type" | "Generic" | "Int" | "Float" | "Bool" | "String" => {
+                                        /* Do nothing for the 'structural' types */
+                                    }
+                                    g @ ("Group" | "Infix" | "Prefix" | "Method" | "Property" | "Cast"
+                                    | "Own" | "Deref" | "Mut" | "Rust" | "Node" | "From" | "Array"
+                                    | "Fail" | "Neg" | "Len" | "Size" | "FileStr" | "Env" | "EnvExists"
+                                    | "Not") => s = CType::from_generic(s, g, 1),
+                                    g @ ("Function" | "Call" | "Dependency" | "Import" | "Field"
+                                    | "Prop" | "Buffer" | "Add" | "Sub" | "Mul" | "Div" | "Mod"
+                                    | "Pow" | "Min" | "Max" | "And" | "Or" | "Xor" | "Nand" | "Nor"
+                                    | "Xnor" | "Eq" | "Neq" | "Lt" | "Lte" | "Gt" | "Gte") => s = CType::from_generic(s, g, 2),
+                                    g @ ("If" | "Binds" | "Tuple" | "Either" | "AnyOf") => {
+                                        // Not kosher in Rust land, but 0 means "as many as we want"
+                                        s = CType::from_generic(s, g, 0)
+                                    }
+                                    // TODO: Also add support for three arg `If` and `Env` with a
+                                    // default property via overloading types
+                                    unknown => {
+                                        panic!("Unknown ctype {} defined in root scope. There's something wrong with the compiler.", unknown);
+                                    }
                                 }
                             }
+                            e => eprintln!("TODO: Not yet supported export syntax: {:?}\nLast good parsed lines:\n{:?}\n{:?}", e, ast.body[i - 2], ast.body[i - 1]),
+                        },
+                        parse::RootElements::Whitespace(_) => { /* Do nothing */ }
+                        parse::RootElements::Interfaces(_) => {
+                            panic!("Interfaces not yet implemented");
                         }
-                        e => eprintln!("TODO: Not yet supported export syntax: {:?}\nLast good parsed lines:\n{:?}\n{:?}", e, ast.body[i - 2], ast.body[i - 1]),
-                    },
-                    parse::RootElements::Whitespace(_) => { /* Do nothing */ }
-                    parse::RootElements::Interfaces(_) => {
-                        panic!("Interfaces not yet implemented");
                     }
                 }
-            }
-            s
-        })
+                s
+            })
+        } else {
+            ROOT_SCOPE_JS.get_or_init(|| {
+                let mut s = Scope {
+                    path: "@root".to_string(),
+                    parent: None,
+                    types: OrderedHashMap::new(),
+                    consts: OrderedHashMap::new(),
+                    functions: OrderedHashMap::new(),
+                    operatormappings: OrderedHashMap::new(),
+                    typeoperatormappings: OrderedHashMap::new(),
+                    exports: OrderedHashMap::new(),
+                };
+                // TODO: Eliminate the duplicate code
+                for (i, element) in ast.body.iter().enumerate() {
+                    match element {
+                        parse::RootElements::Types(t) => {
+                            let res = CType::from_ast(s, t, false).expect("Invalid root scope type");
+                            s = res.0;
+                        }
+
+                        parse::RootElements::Functions(f) => s = Function::from_ast(s, f, false).expect("Invalid root scope function"),
+                        parse::RootElements::ConstDeclaration(c) => s = Const::from_ast(s, c, false).expect("Invalid root scope const declaration"),
+                        parse::RootElements::OperatorMapping(o) => {
+                            s = OperatorMapping::from_ast(s, o, false).expect("Invalid root scope operator mapping")
+                        }
+                        parse::RootElements::TypeOperatorMapping(o) => {
+                            s = TypeOperatorMapping::from_ast(s, o, false).expect("Invalid root scope type operator mapping")
+                        }
+                        parse::RootElements::Exports(e) => match &e.exportable {
+                            parse::Exportable::Functions(f) => s = Function::from_ast(s, f, true).expect("Invalid root scope exported function"),
+                            parse::Exportable::ConstDeclaration(c) => s = Const::from_ast(s, c, true).expect("Invalid root scope exported const declaration"),
+                            parse::Exportable::OperatorMapping(o) => {
+                                s = OperatorMapping::from_ast(s, o, true).expect("Invalid root scope exported operator mapping")
+                            }
+                            parse::Exportable::TypeOperatorMapping(o) => {
+                                s = TypeOperatorMapping::from_ast(s, o, true).expect("Invalid root scope exported type operator mapping")
+                            }
+                            parse::Exportable::Types(t) => {
+                                let res = CType::from_ast(s, t, true).expect("Invalid root scope exported type");
+                                s = res.0;
+                            }
+                            parse::Exportable::CTypes(c) => {
+                                // For now this is just declaring in the Alan source code the compile-time
+                                // types that can be used, and is simply a special kind of documentation.
+                                // *Only* the root scope is allowed to use this syntax, and I cannot imagine
+                                // any other way, since the compiler needs to exactly match what is declared.
+                                // So we return an error if they're encountered outside of the root scope and
+                                // simply verify that each `ctype` we encounter is one of a set the compiler
+                                // expects to exist. Later when `cfn` is implemented these will be loaded up
+                                // for verification of the meta-typing of the compile-time functions.
+                                // This is also an exception in that it is *only* allowed to be exported
+                                // (from the root scope) and can't be hidden, as all code will need these
+                                // to construct their own types.
+                                match c.name.as_str() {
+                                    "Type" | "Generic" | "Int" | "Float" | "Bool" | "String" => {
+                                        /* Do nothing for the 'structural' types */
+                                    }
+                                    g @ ("Group" | "Infix" | "Prefix" | "Method" | "Property" | "Cast"
+                                    | "Own" | "Deref" | "Mut" | "Rust" | "Node" | "From" | "Array"
+                                    | "Fail" | "Neg" | "Len" | "Size" | "FileStr" | "Env" | "EnvExists"
+                                    | "Not") => s = CType::from_generic(s, g, 1),
+                                    g @ ("Function" | "Call" | "Dependency" | "Import" | "Field"
+                                    | "Prop" | "Buffer" | "Add" | "Sub" | "Mul" | "Div" | "Mod"
+                                    | "Pow" | "Min" | "Max" | "And" | "Or" | "Xor" | "Nand" | "Nor"
+                                    | "Xnor" | "Eq" | "Neq" | "Lt" | "Lte" | "Gt" | "Gte") => s = CType::from_generic(s, g, 2),
+                                    g @ ("If" | "Binds" | "Tuple" | "Either" | "AnyOf") => {
+                                        // Not kosher in Rust land, but 0 means "as many as we want"
+                                        s = CType::from_generic(s, g, 0)
+                                    }
+                                    // TODO: Also add support for three arg `If` and `Env` with a
+                                    // default property via overloading types
+                                    unknown => {
+                                        panic!("Unknown ctype {} defined in root scope. There's something wrong with the compiler.", unknown);
+                                    }
+                                }
+                            }
+                            e => eprintln!("TODO: Not yet supported export syntax: {:?}\nLast good parsed lines:\n{:?}\n{:?}", e, ast.body[i - 2], ast.body[i - 1]),
+                        },
+                        parse::RootElements::Whitespace(_) => { /* Do nothing */ }
+                        parse::RootElements::Interfaces(_) => {
+                            panic!("Interfaces not yet implemented");
+                        }
+                    }
+                }
+                s
+            })
+        }
     }
     pub fn from_src(
         program: &'a mut Program,
