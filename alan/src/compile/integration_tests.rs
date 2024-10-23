@@ -118,6 +118,32 @@ macro_rules! test_ignore {
             #[test]
             #[ignore]
             fn $rule() -> Result<(), Box<dyn std::error::Error>> {
+                // Needs to run at least the Rust path so it properly fails on `main`
+                let filename = format!("{}.ln", stringify!($rule));
+                match std::fs::write(&filename, $code) {
+                    Ok(_) => { /* Do nothing */ }
+                    Err(e) => {
+                        return Err(format!("Unable to write {} to disk. {:?}", filename, e).into());
+                    }
+                };
+                std::env::set_var("ALAN_TARGET", "test");
+                std::env::set_var("ALAN_OUTPUT_LANG", "rs");
+                match crate::compile::build(filename.to_string()) {
+                    Ok(_) => { /* Do nothing */ }
+                    Err(e) => {
+                        std::fs::remove_file(&filename)?;
+                        return Err(format!("Failed to compile {:?}", e).into());
+                    }
+                };
+                let cmd = if cfg!(windows) {
+                    format!(".\\{}.exe", stringify!($rule))
+                } else {
+                    format!("./{}", stringify!($rule))
+                };
+                let run = std::process::Command::new(cmd.clone()).output()?;
+                $( $type!($test_val, true, &run); )+
+                std::fs::remove_file(&filename)?;
+                std::fs::remove_file(&cmd)?;
                 Ok(())
             }
         }
