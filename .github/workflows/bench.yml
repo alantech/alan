@@ -19,9 +19,9 @@ jobs:
     - name: Rust-managed Benchmarks
       run: cargo bench
     - name: Build Alan-managed Benchmarks
-      run: cargo run -- compile alan/benches/bench.ln
+      run: cargo run -- compile alan/benches/bench.ln && cargo run -- compile alan/benches/buffer_shader_timings.ln
     - name: Alan-managed Benchmarks
-      run: ./bench
+      run: ./bench && ./buffer_shader_timings
 
   bench-windows:
     runs-on: [self-hosted, windows]
