@@ -1316,6 +1316,7 @@ export fn{Rs} now "std::time::Instant::now" :: () -> Instant;
 export fn{Js} now "performance.now" :: () -> Performance;
 export fn{Rs} elapsed Method{"elapsed"} :: Instant -> Duration;
 export fn{Js} elapsed "((p) => (performance.now() - p) / 1000.0)" :: Performance -> f64;
+export fn{Rs} f64 Method{"as_secs_f64"} :: Duration -> f64;
 
 /// Uuid-related bindings
 export fn{Rs} uuid "alan_std::Uuid::new_v4" <- RootBacking :: () -> uuid;

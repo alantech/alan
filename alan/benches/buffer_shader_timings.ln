@@ -1,0 +1,40 @@
+fn inner(l: i64) {
+  "Timings for array of size ".concat(l.string).print;
+  let t1 = now();
+  let v = filled(1.i32, l);
+  "Array creation time:     ".concat(t1.elapsed.f64.string).print;
+  let t2 = now();
+  let b = GBuffer(v);
+  "GPU Buffer load time:    ".concat(t2.elapsed.f64.string).print;
+  let t3 = now();
+  let yMax = min(1, v.len / 10_000);
+  let xMax = min(1, v.len - (v.len / 10_000));
+  let id = gFor(xMax, yMax);
+  let compute = b[id.x + 10_000 * id.y].store(b[id.x + 10_000 * id.y] * (id.x + 10_000 * id.y).gi32);
+  "Define shader time:      ".concat(t3.elapsed.f64.string).print;
+  let t4 = now();
+  let shader = compute.build;
+  "Shader build time:       ".concat(t4.elapsed.f64.string).print;
+  let t5 = now();
+  shader.run;
+  "Shader run time:         ".concat(t5.elapsed.f64.string).print;
+  let t6 = now();
+  b.read{i32}();
+  "GPU Buffer read time:    ".concat(t6.elapsed.f64.string).print;
+  let t7 = now();
+  b.replace(v);
+  "GPU Buffer replace time: ".concat(t7.elapsed.f64.string).print;
+  let t8 = now();
+  shader.run;
+  "Shader re-run time:      ".concat(t8.elapsed.f64.string).print;
+  let t9 = now();
+  b.read{i32}();
+  "GPU Buffer re-read time: ".concat(t9.elapsed.f64.string).print;
+  "Total time:              ".concat(t1.elapsed.f64.string).print;
+  "".print;
+}
+
+export fn main {
+  [1, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000].map(inner);
+}
+

@@ -27,15 +27,6 @@ macro_rules! test {
                 std::env::set_var("ALAN_TARGET", "test");
                 std::env::set_var("ALAN_OUTPUT_LANG", "rs");
                 match crate::compile::build(filename.to_string()) {
-                /*match std::process::Command::new("cargo")
-                    .env("ALAN_TARGET", "test")
-                    .env_remove("ALAN_OUTPUT_LANG")
-                    .arg("run")
-                    .arg("--release")
-                    .arg("--")
-                    .arg("compile")
-                    .arg(filename.clone())
-                    .output() {*/
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
                         std::fs::remove_file(&filename)?;
@@ -72,15 +63,6 @@ macro_rules! test_full {
                 std::env::set_var("ALAN_TARGET", "test");
                 std::env::set_var("ALAN_OUTPUT_LANG", "rs");
                 match crate::compile::build(filename.to_string()) {
-                /*match std::process::Command::new("cargo")
-                    .env("ALAN_TARGET", "test")
-                    .env_remove("ALAN_OUTPUT_LANG")
-                    .arg("run")
-                    .arg("--release")
-                    .arg("--")
-                    .arg("compile")
-                    .arg(filename.clone())
-                    .output() {*/
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
                         std::fs::remove_file(&filename)?;
@@ -103,15 +85,6 @@ macro_rules! test_full {
                 }?;
                 std::env::set_var("ALAN_OUTPUT_LANG", "js");
                 match crate::compile::web(filename.to_string()) {
-                /*match std::process::Command::new("cargo")
-                    .env("ALAN_TARGET", "test")
-                    .env_remove("ALAN_OUTPUT_LANG")
-                    .arg("run")
-                    .arg("--release")
-                    .arg("--")
-                    .arg("bundle")
-                    .arg(filename.clone())
-                    .output() {*/
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
                         std::fs::remove_file(&filename)?;
