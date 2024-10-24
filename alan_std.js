@@ -509,7 +509,7 @@ export async function replaceBuffer(b, v) {
     return new AlanError("The input array is not the same size as the buffer");
   }
   await b.mapAsync(GPUMapMode.WRITE);
-  let data = b.slice(0);
+  let data = b.getMappedRange(0, b.size);
   for (let i = 0; i < v.length; i++) {
     data[i] = v[i].valueOf();
   }
