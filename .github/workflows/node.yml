@@ -30,4 +30,5 @@ jobs:
     - name: Test GPGPU
       run: yarn test-gpgpu
     - name: Stop webserver
+      if: always()
       run: yarn stop-server
