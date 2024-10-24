@@ -515,7 +515,7 @@ export async function replaceBuffer(b, v) {
   for (let i = 0; i < v.length; i++) {
     data[i] = v[i].valueOf();
   }
-  b.unmap();
+  tempBuffer.unmap();
   let g = await gpu();
   let encoder = g.device.createCommandEncoder();
   encoder.copyBufferToBuffer(tempBuffer, 0, b, 0, b.size);
