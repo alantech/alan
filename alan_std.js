@@ -440,7 +440,7 @@ export function bufferlen(b) {
 }
 
 export function bufferid(b) {
-  return b.label;
+  return new Str(b.label);
 }
 
 export class GPGPU {
