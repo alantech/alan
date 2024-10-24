@@ -493,6 +493,7 @@ export async function gpuRun(gg) {
 
 export async function readBuffer(b) {
   let g = await gpu();
+  await g.queue.onSubmittedWorkDone(); // Don't try to read until you're sure it's safe to
   let tempBuffer = await createEmptyBuffer(mapReadBufferType(), b.size / 4);
   let encoder = g.device.createCommandEncoder();
   encoder.copyBufferToBuffer(b, 0, tempBuffer, 0, b.size);
