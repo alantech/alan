@@ -483,7 +483,11 @@ export async function gpuRun(gg) {
     });
     cpass.setBindGroup(i, bindGroup);
   }
-  cpass.dispatchWorkgroups(...gg.workgroupSizes);
+  cpass.dispatchWorkgroups(
+    gg.workgroupSizes[0].valueOf(),
+    (gg.workgroupSizes[1] ?? 1).valueOf(),
+    (gg.workgroupSizes[2] ?? 1).valueOf()
+  );
   g.queue.submit([encoder.finish()]);
 }
 
