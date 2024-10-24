@@ -22,7 +22,7 @@ import { chromium } from 'playwright';
   assert.strictEqual(await page.evaluate(async () => {
     let b = await alanStd.createEmptyBuffer(alanStd.storageBufferType(), 4);
     return alanStd.bufferlen(b).valueOf();
-  }), 4);
+  }), 4n);
 
   assert(await page.evaluate(async () => {
     let b = await alanStd.createEmptyBuffer(alanStd.storageBufferType(), 4);

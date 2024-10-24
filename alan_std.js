@@ -416,7 +416,7 @@ export async function createBufferInit(usage, vals) {
 export async function createEmptyBuffer(usage, size) {
   let g = await gpu();
   let b = await g.device.createBuffer({
-    size,
+    size: size.valueOf() * 4,
     usage,
     label: `buffer_${uuidv4().replaceAll('-', '_')}`,
   });
