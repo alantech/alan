@@ -488,6 +488,7 @@ export async function gpuRun(gg) {
     (gg.workgroupSizes[1] ?? 1).valueOf(),
     (gg.workgroupSizes[2] ?? 1).valueOf()
   );
+  cpass.end();
   g.queue.submit([encoder.finish()]);
 }
 
