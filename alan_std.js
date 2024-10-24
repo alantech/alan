@@ -501,6 +501,7 @@ export async function readBuffer(b) {
     out[i] = new I32(vals[i]);
   }
   tempBuffer.unmap();
+  tempBuffer.destroy();
   return out;
 }
 
@@ -508,10 +509,16 @@ export async function replaceBuffer(b, v) {
   if (v.length != bufferlen(b)) {
     return new AlanError("The input array is not the same size as the buffer");
   }
+  let tempBuffer = await createEmptyBuffer(mapWriteBufferType(), b.size);
   await b.mapAsync(GPUMapMode.WRITE);
   let data = b.getMappedRange(0, b.size);
   for (let i = 0; i < v.length; i++) {
     data[i] = v[i].valueOf();
   }
   b.unmap();
+  let g = await gpu();
+  let encoder = g.device.createCommandEncoder();
+  encoder.copyBufferToBuffer(tempBuffer, 0, b, 0, b.size);
+  g.queue.submit([encoder.finish()]);
+  tempBuffer.destroy();
 }
