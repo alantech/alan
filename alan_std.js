@@ -1,3 +1,6 @@
+import { v4 as uuidv4 } from 'uuid';
+export { v4 as uuidv4 } from 'uuid';
+
 export class AlanError {
   constructor(message) {
     this.message = message;
@@ -20,9 +23,22 @@ export function ifbool(b, t, f) {
   }
 }
 
+// For those reading this binding support code, you might be wondering *why* all of the primitive
+// types are now boxed in their own classes. The reason is that in Alan (and Rust), you can mark
+// any input argument as mutable instead of the default being immutable, but in Javascript, all
+// arguments are "immutable" but objects are actually pointers under-the-hood and anything you have
+// pointer access to is mutable. Wrapping primitive types in objects makes it possible for the Alan
+// compiler to give mutable access to them from a function (which is how all operators are defined
+// in Alan). It would be *possible* to avoid this by inlining the function definition if any of the
+// arguments are a mutable variant of a primitive type, but that would both make the compiler more
+// complicated (and increase the maintenance burden) *and* increase the size of the generated code
+// (as all of these functions would have their function bodies copied everywhere), which is a big
+// problem for code that is read over the wire and re-loaded into a JIT every single page load.
+// Further, that JIT is very well put together by a massive team of engineers over decades -- it'll
+// be able to unbox the value and maintain the desired mutable behavior just fine, probably. ;)
 export class Int {
   constructor(val, bits, size, lower, upper) {
-    if (bits == 64) {
+    if (bits === 64) {
       let v = BigInt(val);
       if (v > upper) {
         this.val = upper;
@@ -64,7 +80,7 @@ export class Int {
   }
 
   wrappingDiv(a) {
-    if (this.bits == 64) {
+    if (this.bits === 64) {
       return this.build(this.val / a.val);
     } else {
       return this.build(Math.floor(this.val / a.val));
@@ -76,7 +92,7 @@ export class Int {
   }
 
   wrappingPow(a) {
-    if (this.bits == 64) {
+    if (this.bits === 64) {
       return this.build(this.val ** a.val);
     } else {
       return this.build(Math.floor(this.val ** a.val));
@@ -285,7 +301,7 @@ export class Float {
 
 export class F32 extends Float {
   constructor(v) {
-      super(Number(v), 32);
+    super(Number(v), 32);
   }
 
   build(v) {
@@ -295,7 +311,7 @@ export class F32 extends Float {
 
 export class F64 extends Float {
   constructor(v) {
-      super(Number(v), 64);
+    super(Number(v), 64);
   }
 
   build(v) {
@@ -329,4 +345,173 @@ export class Str {
   toString() {
     return this.val.toString();
   }
+}
+
+export class GPU {
+  constructor(adapter, device, queue) {
+    this.adapter = adapter;
+    this.device = device;
+    this.queue = queue;
+  }
+
+  static async list() {
+    let out = [];
+    let hp = await navigator?.gpu?.requestAdapter({ powerPreference: "high-performance", });
+    let lp = await navigator?.gpu?.requestAdapter({ powerPreference: 'low-power', });
+    let np = await navigator?.gpu?.requestAdapter();
+    if (hp) out.push(hp);
+    if (lp) out.push(lp);
+    if (np) out.push(np);
+    return out;
+  }
+
+  static async init(adapters) {
+    let out = [];
+    for (let adapter of adapters) {
+      let features = adapter.features;
+      let limits = adapter.limits;
+      let info = adapter.info;
+      let device = await adapter.requestDevice({
+        label: `${info.device} on ${info.architecture}`,
+        // If I don't pass these through, it defaults to a really small set of features and limits
+        requiredFeatures: features,
+        requiredLimits: limits,
+      });
+      out.push(new GPU(adapter, device, device.queue));
+    }
+    return out;
+  }
+}
+
+let GPUS = null;
+
+export async function gpu() {
+  if (GPUS === null) {
+    GPUS = await GPU.init(await GPU.list());
+  }
+  if (GPUS.length > 0) {
+    return GPUS[0];
+  } else {
+    throw new AlanError("This program requires a GPU but there are no WebGPU-compliant GPUs on this machine");
+  }
+}
+
+export async function createBufferInit(usage, vals) {
+  let g = await gpu();
+  let b = await g.device.createBuffer({
+    mappedAtCreation: true,
+    size: vals.length * 4,
+    usage,
+    label: `buffer_${uuidv4().replaceAll('-', '_')}`,
+  });
+  let ab = b.getMappedRange();
+  let i32v = new Int32Array(ab);
+  for (let i = 0; i < vals.length; i++) {
+    i32v[i] = vals[i].valueOf();
+  }
+  b.unmap();
+  return b;
+}
+
+export async function createEmptyBuffer(usage, size) {
+  let g = await gpu();
+  let b = await g.device.createBuffer({
+    size,
+    usage,
+    label: `buffer_${uuidv4().replaceAll('-', '_')}`,
+  });
+  return b;
+}
+
+export function mapReadBufferType() {
+  return GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST;
+}
+
+export function mapWriteBufferType() {
+  return GPUBufferUsage.MAP_WRITE | GPUBufferUsage.COPY_SRC;
+}
+
+export function storageBufferType() {
+  return GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC;
+}
+
+export function bufferlen(b) {
+  return new I64(b.size / 4);
+}
+
+export function bufferid(b) {
+  return b.label;
+}
+
+export class GPGPU {
+  constructor(source, buffers, workgroupSizes, entrypoint) {
+    this.source = source;
+    this.entrypoint = entrypoint ?? "main";
+    this.buffers = buffers;
+    this.workgroupSizes = workgroupSizes;
+  }
+}
+
+export async function gpuRun(gg) {
+  let g = await gpu();
+  let module = g.device.createShaderModule({
+    code: gg.source,
+  });
+  let computePipeline = g.device.createComputePipeline({
+    layout: "auto",
+    compute: {
+      entryPoint: gg.entrypoint,
+      module,
+    },
+  });
+  let encoder = g.device.createCommandEncoder();
+  let cpass = encoder.beginComputePass();
+  cpass.setPipeline(computePipeline);
+  for (let i = 0; i < gg.buffers.length; i++) {
+    let bindGroupLayout = computePipeline.getBindGroupLayout(i);
+    let bindGroupBuffers = gg.buffers[i];
+    let bindGroupEntries = [];
+    for (let j = 0; j < bindGroupBuffers.length; j++) {
+      bindGroupEntries.push({
+        binding: j,
+        resource: { buffer: bindGroupBuffers[j] }
+      });
+    }
+    let bindGroup = g.device.createBindGroup({
+      layout: bindGroupLayout,
+      entries: bindGroupEntries,
+    });
+    cpass.setBindGroup(i, bindGroup);
+  }
+  cpass.dispatchWorkgroups(...gg.workgroupSizes);
+  g.queue.submit([encoder.finish()]);
+}
+
+export async function readBuffer(b) {
+  let g = await gpu();
+  let tempBuffer = await createEmptyBuffer(mapReadBufferType(), b.size);
+  let encoder = g.device.createCommandEncoder();
+  encoder.copyBufferToBuffer(b, 0, tempBuffer, 0, b.size);
+  g.queue.submit([encoder.finish()]);
+  await tempBuffer.mapAsync(GPUMapMode.READ);
+  let data = tempBuffer.slice(0);
+  tempBuffer.unmap();
+  let vals = new Int32Array(data);
+  let out = [];
+  for (let i = 0; i < vals.length; i++) {
+    out[i] = new I32(vals[i]);
+  }
+  return out;
+}
+
+export async function replaceBuffer(b, v) {
+  if (v.length != bufferlen(b)) {
+    return new AlanError("The input array is not the same size as the buffer");
+  }
+  await b.mapAsync(GPUMapMode.WRITE);
+  let data = b.slice(0);
+  for (let i = 0; i < v.length; i++) {
+    data[i] = v[i].valueOf();
+  }
+  b.unmap();
 }

@@ -5,3 +5,4 @@ target/
 .vscode
 *.swp
 node_modules/
+alanStdBundle.js
