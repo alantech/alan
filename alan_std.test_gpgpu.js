@@ -24,10 +24,10 @@ import { chromium } from 'playwright';
     return alanStd.bufferlen(b).valueOf();
   }), 4n);
 
-  assert(await page.evaluate(async () => {
+  assert((await page.evaluate(async () => {
     let b = await alanStd.createEmptyBuffer(alanStd.storageBufferType(), 4);
     return alanStd.bufferid(b).valueOf();
-  }).startsWith("buffer_"));
+  })).startsWith("buffer_"));
 
   assert.strictEqual(await page.evaluate(async () => {
     let b = await alanStd.createBufferInit(alanStd.storageBufferType(), [1, 2, 3, 4]);
