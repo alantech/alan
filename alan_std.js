@@ -489,7 +489,7 @@ export async function gpuRun(gg) {
 
 export async function readBuffer(b) {
   let g = await gpu();
-  let tempBuffer = await createEmptyBuffer(mapReadBufferType(), b.size);
+  let tempBuffer = await createEmptyBuffer(mapReadBufferType(), b.size / 4);
   let encoder = g.device.createCommandEncoder();
   encoder.copyBufferToBuffer(b, 0, tempBuffer, 0, b.size);
   g.queue.submit([encoder.finish()]);
@@ -509,9 +509,9 @@ export async function replaceBuffer(b, v) {
   if (v.length != bufferlen(b)) {
     return new AlanError("The input array is not the same size as the buffer");
   }
-  let tempBuffer = await createEmptyBuffer(mapWriteBufferType(), b.size);
-  await b.mapAsync(GPUMapMode.WRITE);
-  let data = b.getMappedRange(0, b.size);
+  let tempBuffer = await createEmptyBuffer(mapWriteBufferType(), b.size / 4);
+  await tempBuffer.mapAsync(GPUMapMode.WRITE);
+  let data = tempBuffer.getMappedRange(0, tempBuffer.size);
   for (let i = 0; i < v.length; i++) {
     data[i] = v[i].valueOf();
   }
