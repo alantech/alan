@@ -520,5 +520,5 @@ export async function replaceBuffer(b, v) {
   let encoder = g.device.createCommandEncoder();
   encoder.copyBufferToBuffer(tempBuffer, 0, b, 0, b.size);
   g.queue.submit([encoder.finish()]);
-  tempBuffer.destroy();
+  //tempBuffer.destroy();
 }
