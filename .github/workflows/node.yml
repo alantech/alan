@@ -23,6 +23,8 @@ jobs:
       run: yarn
     - name: Bundle stdlib
       run: yarn bundle
+    - name: Set up Playwright
+      run: yarn playwright install
     - name: Start webserver
       run: yarn start-server
     - name: Test GPGPU
