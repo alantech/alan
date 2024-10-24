@@ -494,13 +494,13 @@ export async function readBuffer(b) {
   encoder.copyBufferToBuffer(b, 0, tempBuffer, 0, b.size);
   g.queue.submit([encoder.finish()]);
   await tempBuffer.mapAsync(GPUMapMode.READ);
-  let data = tempBuffer.slice(0);
-  tempBuffer.unmap();
+  let data = tempBuffer.getMappedRange(0, b.size);
   let vals = new Int32Array(data);
   let out = [];
   for (let i = 0; i < vals.length; i++) {
     out[i] = new I32(vals[i]);
   }
+  tempBuffer.unmap();
   return out;
 }
 
