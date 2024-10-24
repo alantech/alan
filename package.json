@@ -4,7 +4,11 @@
   "description": "The Alan Language standard library backing for Javascript",
   "main": "alan_std.js",
   "scripts": {
-    "test": "node alan_std.test.js"
+    "test": "node alan_std.test.js",
+    "test-gpgpu": "node alan_std.test_gpgpu.js",
+    "start-server": "bash -c 'http-server &\necho $! > ./http-server.pid'",
+    "stop-server": "bash -c 'kill `cat ./http-server.pid`\n rm ./http-server.pid'",
+    "bundle": "npx rollup alan_std.js --name alanStdBundle -p @rollup/plugin-node-resolve --file alanStdBundle.js"
   },
   "type": "module",
   "repository": {
@@ -22,5 +26,15 @@
   "bugs": {
     "url": "https://github.com/alantech/alan/issues"
   },
-  "homepage": "https://github.com/alantech/alan#readme"
+  "homepage": "https://github.com/alantech/alan#readme",
+  "dependencies": {
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "@rollup/plugin-node-resolve": "15.x",
+    "@types/uuid": "^10.0.0",
+    "http-server": "^14.1.1",
+    "playwright": "^1.48.1",
+    "rollup": "4.x"
+  }
 }

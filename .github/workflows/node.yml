@@ -11,5 +11,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+    - name: Install deps
+      run: yarn
     - name: Run tests
       run: npm test
+  test-js-gpgpu:
+    runs-on: [self-hosted, macOS]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install deps
+      run: yarn
+    - name: Bundle stdlib
+      run: yarn bundle
+    - name: Set up Playwright
+      run: yarn playwright install
+    - name: Start webserver
+      run: yarn start-server
+    - name: Test GPGPU
+      run: yarn test-gpgpu
+    - name: Stop webserver
+      if: always()
+      run: yarn stop-server
