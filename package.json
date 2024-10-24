@@ -6,8 +6,8 @@
   "scripts": {
     "test": "node alan_std.test.js",
     "test-gpgpu": "node alan_std.test_gpgpu.js",
-    "start-server": "http-server &",
-    "stop-server": "killall http-server",
+    "start-server": "bash -c 'http-server &\necho $! > ./http-server.pid'",
+    "stop-server": "bash -c 'kill `cat ./http-server.pid`\n rm ./http-server.pid'",
     "bundle": "npx rollup alan_std.js --name alanStdBundle -p @rollup/plugin-node-resolve --file alanStdBundle.js"
   },
   "type": "module",
