@@ -111,6 +111,118 @@ macro_rules! test_full {
         }
     }
 }
+macro_rules! test_gpgpu {
+    ( $rule: ident => $code:expr; $( $type:ident $test_val:expr);+ $(;)? ) => {
+        #[cfg(test)]
+        mod $rule {
+            #[test]
+            fn $rule() -> Result<(), Box<dyn std::error::Error>> {
+                let filename = format!("{}.ln", stringify!($rule));
+                match std::fs::write(&filename, $code) {
+                    Ok(_) => { /* Do nothing */ }
+                    Err(e) => {
+                        return Err(format!("Unable to write {} to disk. {:?}", filename, e).into());
+                    }
+                };
+                std::env::set_var("ALAN_TARGET", "test");
+                std::env::set_var("ALAN_OUTPUT_LANG", "rs");
+                match crate::compile::build(filename.to_string()) {
+                    Ok(_) => { /* Do nothing */ }
+                    Err(e) => {
+                        std::fs::remove_file(&filename)?;
+                        return Err(format!("Failed to compile {:?}", e).into());
+                    }
+                };
+                let cmd = if cfg!(windows) {
+                    format!(".\\{}.exe", stringify!($rule))
+                } else {
+                    format!("./{}", stringify!($rule))
+                };
+                let run = match std::process::Command::new(cmd.clone()).output() {
+                    Ok(a) => Ok(a),
+                    Err(e) => Err(format!("Could not run the test binary {:?}", e)),
+                }?;
+                $( $type!($test_val, true, &run); )+
+                match std::fs::remove_file(&cmd) {
+                    Ok(a) => Ok(a),
+                    Err(e) => Err(format!("Could not remove the test binary {:?}", e)),
+                }?;
+                // TODO: For now, Chromium only allows WebGPU on these two platforms (unless you're
+                // willing to muck about with CLI arguments *and* config flags simultaneously to
+                // enable it for Linux, which Playwright doesn't even support...
+                if cfg!(windows) || cfg!(macos) {
+                    std::env::set_var("ALAN_OUTPUT_LANG", "js");
+                    match crate::compile::web(filename.to_string()) {
+                        Ok(_) => { /* Do nothing */ }
+                        Err(e) => {
+                            std::fs::remove_file(&filename)?;
+                            return Err(format!("Failed to compile {:?}", e).into());
+                        }
+                    };
+                    let jsfile = if cfg!(windows) {
+                        format!(".\\{}.js", stringify!($rule))
+                    } else {
+                        format!("./{}.js", stringify!($rule))
+                    };
+                    // We need to create an HTML file that will run the generated code and a node
+                    // script to fire up Playwright and grab the console.log output and shove it
+                    // into stdout for the rest of the test suite to grab. Because the outermost
+                    // directory of this repo is simultaneously a Rust and Node project, we're
+                    // taking advantage of that to have the latter parts pre-written, but we can't
+                    // do that for the HTML file because the script it loads is different for each
+                    // test.
+                    let htmlfile = if cfg!(windows) {
+                        format!(".\\{}.html", stringify!($rule))
+                    } else {
+                        format!("./{}.html", stringify!($rule))
+                    };
+                    match std::fs::write(&htmlfile, format!("
+                        <!doctype html>
+                        <html>
+                            <head>
+                                <title>Testing {}</title>
+                                <script src=\"{}\"></script>
+                            </head>
+                            <body></body>
+                        </html>
+                    ", stringify!($rule), jsfile)) {
+                        Ok(_) => { /* Do nothing */ }
+                        Err(e) => {
+                            std::fs::remove_file(&filename)?;
+                            return Err(format!("Failed to create temporary HTML file {:?}", e).into());
+                        }
+                    };
+                    match std::process::Command::new("bash").arg("-c").arg("yarn start-server").output() {
+                        Ok(a) => Ok(a),
+                        Err(e) => Err(format!("Could not start test web server {:?}", e)),
+                    }?;
+                    let run = match std::process::Command::new("bash")
+                        .arg("-c")
+                        .arg(format!("yarn chrome-console http://localhost:8080/alan/{}.html", stringify!($rule)))
+                        .output() {
+                            Ok(a) => Ok(a),
+                            Err(e) => Err(format!("Could not run the test JS code {:?}", e)),
+                        }?;
+                    match std::process::Command::new("bash").arg("-c").arg("yarn stop-server").output() {
+                        Ok(a) => Ok(a),
+                        Err(e) => Err(format!("Could not start test web server {:?}", e)),
+                    }?;
+                    $( $type!($test_val, false, &run); )+
+                    match std::fs::remove_file(&jsfile) {
+                        Ok(a) => Ok(a),
+                        Err(e) => Err(format!("Could not remove the generated JS file {:?}", e)),
+                    }?;
+                    match std::fs::remove_file(&htmlfile) {
+                        Ok(a) => Ok(a),
+                        Err(e) => Err(format!("Could not remove the generated HTML file {:?}", e)),
+                    }?;
+                }
+                std::fs::remove_file(&filename)?;
+                Ok(())
+            }
+        }
+    }
+}
 macro_rules! test_ignore {
     ( $rule: ident => $code:expr; $( $type:ident $test_val:expr);+ $(;)? ) => {
         #[cfg(test)]
@@ -854,7 +966,7 @@ test_full!(string_parse => r#"
 
 // GPGPU
 
-test!(hello_gpu => r#"
+test_gpgpu!(hello_gpu => r#"
     export fn main {
       let b = GBuffer(filled(2.i32, 4));
       let plan = GPGPU("
@@ -873,7 +985,7 @@ test!(hello_gpu => r#"
     }"#;
     stdout "[0, 2, 4, 6]\n";
 );
-test!(hello_gpu_new => r#"
+test_gpgpu!(hello_gpu_new => r#"
     export fn main {
       let b = GBuffer(filled(2.i32, 4));
       let idx = gFor(4);
@@ -884,7 +996,7 @@ test!(hello_gpu_new => r#"
     stdout "[0, 2, 4, 6]\n";
 );
 
-test!(hello_gpu_odd => r#"
+test_gpgpu!(hello_gpu_odd => r#"
     export fn main {
       let b = GBuffer(filled(2.i32, 4));
       let idx = gFor(4, 1);
@@ -895,7 +1007,7 @@ test!(hello_gpu_odd => r#"
     stdout "[1, 3, 5, 7]\n";
 );
 
-test!(gpu_map => r#"
+test_gpgpu!(gpu_map => r#"
     export fn main {
         let b = GBuffer([1, 2, 3, 4]);
         let out = b.map(fn (val: gi32) = val + 2);
@@ -904,7 +1016,7 @@ test!(gpu_map => r#"
     stdout "[3, 4, 5, 6]\n";
 );
 
-test!(gpu_if => r#"
+test_gpgpu!(gpu_if => r#"
     export fn main {
         let b = GBuffer([1, 2, 3, 4]);
         let out = b.map(fn (val: gi32, i: gu32) = if(
@@ -916,7 +1028,7 @@ test!(gpu_if => r#"
     stdout "[0, 1, 6, 1]\n";
 );
 
-test!(gpu_replace => r#"
+test_gpgpu!(gpu_replace => r#"
     export fn main {
         let b = GBuffer([1, 2, 3, 4]);
         b.map(fn (val: gi32) = val + 2).read{i32}.print;
