@@ -150,7 +150,10 @@ macro_rules! test_gpgpu {
                 // TODO: For now, Chromium only allows WebGPU on these two platforms (unless you're
                 // willing to muck about with CLI arguments *and* config flags simultaneously to
                 // enable it for Linux, which Playwright doesn't even support...
-                if cfg!(windows) || cfg!(macos) {
+                // My playwright scripts only work on Linux and MacOS, though, so that reduces it
+                // to just MacOS to test this on.
+                // if cfg!(windows) || cfg!(macos) {
+                if cfg!(macos) {
                     std::env::set_var("ALAN_OUTPUT_LANG", "js");
                     match crate::compile::web(filename.to_string()) {
                         Ok(_) => { /* Do nothing */ }
