@@ -7,8 +7,8 @@ fn inner(l: i64) {
   let b = GBuffer(v);
   "GPU Buffer load time:    ".concat(t2.elapsed.f64.string).print;
   let t3 = now();
-  let yMax = min(1, v.len / 10_000);
-  let xMax = min(1, v.len - (v.len / 10_000));
+  let yMax = max(1, v.len / 10_000);
+  let xMax = min(v.len, 10_000);
   let id = gFor(xMax, yMax);
   let compute = b[id.x + 10_000 * id.y].store(b[id.x + 10_000 * id.y] * (id.x + 10_000 * id.y).gi32);
   "Define shader time:      ".concat(t3.elapsed.f64.string).print;
@@ -19,7 +19,7 @@ fn inner(l: i64) {
   shader.run;
   "Shader run time:         ".concat(t5.elapsed.f64.string).print;
   let t6 = now();
-  b.read{i32}();
+  b.read{i32};
   "GPU Buffer read time:    ".concat(t6.elapsed.f64.string).print;
   let t7 = now();
   b.replace(v);
