@@ -784,11 +784,11 @@ fn gpu() -> &'static GPU {
 }
 
 #[derive(Clone)]
-pub struct GBuffer(Rc<wgpu::Buffer>);
+pub struct GBuffer(Rc<wgpu::Buffer>, String);
 
 impl PartialEq for GBuffer {
     fn eq(&self, other: &Self) -> bool {
-        self.0.global_id() == other.0.global_id()
+        self.1 == other.1
     }
 }
 
@@ -796,7 +796,7 @@ impl Eq for GBuffer {}
 
 impl Hash for GBuffer {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.0.global_id().hash(state);
+        self.0.hash(state);
     }
 }
 
@@ -819,24 +819,30 @@ pub fn create_buffer_init(usage: &wgpu::BufferUsages, vals: &Vec<i32>) -> GBuffe
     let val_ptr = val_slice.as_ptr();
     let val_u8_len = vals.len() * 4;
     let val_u8: &[u8] = unsafe { std::slice::from_raw_parts(val_ptr as *const u8, val_u8_len) };
-    GBuffer(Rc::new(wgpu::util::DeviceExt::create_buffer_init(
-        &g.device,
-        &wgpu::util::BufferInitDescriptor {
-            label: None, // TODO: Add a label for easier debugging?
-            contents: val_u8,
-            usage: *usage,
-        },
-    )))
+    GBuffer(
+        Rc::new(wgpu::util::DeviceExt::create_buffer_init(
+            &g.device,
+            &wgpu::util::BufferInitDescriptor {
+                label: None,
+                contents: val_u8,
+                usage: *usage,
+            },
+        )),
+        format!("buffer_{}", Uuid::new_v4()),
+    )
 }
 
 pub fn create_empty_buffer(usage: &wgpu::BufferUsages, size: &i64) -> GBuffer {
     let g = gpu();
-    GBuffer(Rc::new(g.device.create_buffer(&wgpu::BufferDescriptor {
-        label: None, // TODO: Add a label for easier debugging?
-        size: *size as u64,
-        usage: *usage,
-        mapped_at_creation: false, // TODO: With `create_buffer_init` does this make any sense?
-    })))
+    GBuffer(
+        Rc::new(g.device.create_buffer(&wgpu::BufferDescriptor {
+            label: None,
+            size: *size as u64,
+            usage: *usage,
+            mapped_at_creation: false, // TODO: With `create_buffer_init` does this make any sense?
+        })),
+        format!("buffer_{}", Uuid::new_v4()),
+    )
 }
 
 // TODO: Either add the ability to bind to const values, or come up with a better solution. For
@@ -863,11 +869,7 @@ pub fn bufferlen(gb: &GBuffer) -> i64 {
 
 #[inline(always)]
 pub fn buffer_id(b: &GBuffer) -> String {
-    let mut out = format!("{:?}", b.global_id());
-    out.retain(|c| {
-        ('A'..='Z').contains(&c) || ('a'..='z').contains(&c) || ('0'..='9').contains(&c)
-    });
-    out
+    b.1.clone()
 }
 
 pub struct GPGPU {
@@ -900,7 +902,7 @@ pub fn gpu_run(gg: &GPGPU) {
             label: None,
             layout: None,
             module: &module,
-            entry_point: &gg.entrypoint,
+            entry_point: Some(&gg.entrypoint),
             compilation_options: wgpu::PipelineCompilationOptions::default(),
             cache: None, // TODO: Might be worthwhile
         });
