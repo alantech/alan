@@ -828,7 +828,7 @@ pub fn create_buffer_init(usage: &wgpu::BufferUsages, vals: &Vec<i32>) -> GBuffe
                 usage: *usage,
             },
         )),
-        format!("buffer_{}", Uuid::new_v4()),
+        format!("buffer_{}", format!("{}", Uuid::new_v4()).replace("-", "_")),
     )
 }
 
@@ -841,7 +841,7 @@ pub fn create_empty_buffer(usage: &wgpu::BufferUsages, size: &i64) -> GBuffer {
             usage: *usage,
             mapped_at_creation: false, // TODO: With `create_buffer_init` does this make any sense?
         })),
-        format!("buffer_{}", Uuid::new_v4()),
+        format!("buffer_{}", format!("{}", Uuid::new_v4()).replace("-", "_")),
     )
 }
 
