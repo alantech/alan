@@ -87,8 +87,8 @@ impl<'a> Scope<'a> {
                             | "Not") => s = CType::from_generic(s, g, 1),
                             g @ ("Function" | "Call" | "Dependency" | "Import" | "Field"
                             | "Prop" | "Buffer" | "Add" | "Sub" | "Mul" | "Div" | "Mod"
-                            | "Pow" | "Min" | "Max" | "And" | "Or" | "Xor" | "Nand" | "Nor"
-                            | "Xnor" | "Eq" | "Neq" | "Lt" | "Lte" | "Gt" | "Gte") => s = CType::from_generic(s, g, 2),
+                            | "Pow" | "Min" | "Max" | "Concat" | "And" | "Or" | "Xor" | "Nand"
+                            | "Nor" | "Xnor" | "Eq" | "Neq" | "Lt" | "Lte" | "Gt" | "Gte") => s = CType::from_generic(s, g, 2),
                             g @ ("If" | "Binds" | "Tuple" | "Either" | "AnyOf") => {
                                 // Not kosher in Rust land, but 0 means "as many as we want"
                                 s = CType::from_generic(s, g, 0)

@@ -58,6 +58,7 @@ pub enum CType {
     Len(Box<CType>),
     Size(Box<CType>),
     FileStr(Box<CType>),
+    Concat(Box<CType>, Box<CType>),
     Env(Vec<CType>),
     EnvExists(Box<CType>),
     TIf(Box<CType>, Vec<CType>),
@@ -393,6 +394,11 @@ impl CType {
             CType::Len(t) => format!("Len{{{}}}", t.to_strict_string(strict)),
             CType::Size(t) => format!("Size{{{}}}", t.to_strict_string(strict)),
             CType::FileStr(t) => format!("FileStr{{{}}}", t.to_strict_string(strict)),
+            CType::Concat(a, b) => format!(
+                "Concat{{{}, {}}}",
+                a.to_strict_string(strict),
+                b.to_strict_string(strict)
+            ),
             CType::Env(ts) => format!(
                 "Env{{{}}}",
                 ts.iter()
@@ -629,6 +635,11 @@ impl CType {
             CType::Len(t) => format!("Len{{{}}}", t.to_functional_string()),
             CType::Size(t) => format!("Size{{{}}}", t.to_functional_string()),
             CType::FileStr(t) => format!("FileStr{{{}}}", t.to_functional_string()),
+            CType::Concat(a, b) => format!(
+                "Concat{{{}, {}}}",
+                a.to_functional_string(),
+                b.to_functional_string()
+            ),
             CType::Env(ts) => format!(
                 "Env{{{}}}",
                 ts.iter()
@@ -822,6 +833,9 @@ impl CType {
             CType::Len(t) => CType::Len(Box::new((*t).degroup())),
             CType::Size(t) => CType::Size(Box::new((*t).degroup())),
             CType::FileStr(t) => CType::FileStr(Box::new((*t).degroup())),
+            CType::Concat(a, b) => {
+                CType::Concat(Box::new((*a).degroup()), Box::new((*b).degroup()))
+            }
             CType::Env(ts) => CType::Env(ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>()),
             CType::EnvExists(t) => CType::EnvExists(Box::new((*t).degroup())),
             CType::TIf(t, ts) => CType::TIf(
@@ -2629,6 +2643,11 @@ impl CType {
                 )
             }
         };
+        // Magic hackery to convert a `From` type into an `Import` type if it's the top-level type
+        let t = match t {
+            CType::From(t) => CType::import(CType::TString(name.clone()), *t),
+            t => t,
+        };
         if is_export {
             scope.exports.insert(name.clone(), Export::Type);
             if !fs.is_empty() {
@@ -2842,6 +2861,10 @@ impl CType {
             CType::Len(t) => CType::len(&t.swap_subtype(old_type, new_type)),
             CType::Size(t) => CType::size(&t.swap_subtype(old_type, new_type)),
             CType::FileStr(t) => CType::filestr(&t.swap_subtype(old_type, new_type)),
+            CType::Concat(a, b) => CType::concat(
+                &a.swap_subtype(old_type, new_type),
+                &b.swap_subtype(old_type, new_type),
+            ),
             CType::Env(ts) => {
                 if ts.len() == 1 {
                     CType::env(&ts[0].swap_subtype(old_type, new_type))
@@ -2950,6 +2973,28 @@ impl CType {
             CType::fail(
                 "Binds{T, ...} must be given a string or an import for the base type to bind",
             );
+        }
+    }
+    pub fn import(name: CType, dep: CType) -> CType {
+        if let CType::Infer(..) = &name {
+            CType::Import(Box::new(name), Box::new(dep))
+        } else if let CType::Infer(..) = &dep {
+            CType::Import(Box::new(name), Box::new(dep))
+        } else if !matches!(name, CType::TString(_)) {
+            CType::fail("The Import<N, D> N parameter must be a string")
+        } else {
+            match &dep {
+                CType::TString(_) => CType::fail("TODO: Relative path import support"),
+                CType::Dependency(..) => CType::fail("TODO: Alan package import support"),
+                CType::Node(_) | CType::Rust(_) => CType::Import(Box::new(name), Box::new(dep)),
+                CType::Type(_, t) if matches!(**t, CType::Node(_) | CType::Rust(_)) => {
+                    CType::Import(Box::new(name), Box::new(dep))
+                }
+                otherwise => CType::fail(&format!(
+                    "Invalid import defined {:?} <- {:?}",
+                    name, otherwise
+                )),
+            }
         }
     }
     // Special implementation for the tuple and either types since they *are* CTypes, but if one of
@@ -3184,6 +3229,15 @@ impl CType {
             },
             CType::Infer(..) => CType::FileStr(Box::new(f.clone())),
             _ => CType::fail("FileStr{F} must be given a string path to load"),
+        }
+    }
+    pub fn concat(a: &CType, b: &CType) -> CType {
+        match (a, b) {
+            (CType::Infer(..), _) | (_, CType::Infer(..)) => {
+                CType::Concat(Box::new(a.clone()), Box::new(b.clone()))
+            }
+            (CType::TString(a), CType::TString(b)) => CType::TString(format!("{}{}", a, b)),
+            _ => CType::fail("Concat{A, B} must be given strings to concatenate"),
         }
     }
     pub fn env(k: &CType) -> CType {
@@ -4074,10 +4128,7 @@ pub fn typebaselist_to_ctype(
                                         "Rust" => CType::Rust(Box::new(args[0].clone())),
                                         "Node" => CType::Node(Box::new(args[0].clone())),
                                         "From" => CType::From(Box::new(args[0].clone())),
-                                        "Import" => CType::Import(
-                                            Box::new(args[0].clone()),
-                                            Box::new(args[1].clone()),
-                                        ),
+                                        "Import" => CType::import(args[0].clone(), args[1].clone()),
                                         "Tuple" => CType::tuple(args.clone()),
                                         "Field" => CType::field(args.clone()),
                                         "Either" => CType::either(args.clone()),
@@ -4092,6 +4143,7 @@ pub fn typebaselist_to_ctype(
                                         "Len" => CType::len(&args[0]),
                                         "Size" => CType::size(&args[0]),
                                         "FileStr" => CType::filestr(&args[0]),
+                                        "Concat" => CType::concat(&args[0], &args[1]),
                                         "Env" => CType::env(&args[0]),
                                         "EnvExists" => CType::envexists(&args[0]),
                                         "Not" => CType::not(&args[0]),

@@ -256,9 +256,14 @@ impl Function {
                         temp_scope = CType::from_ctype(temp_scope, g.0.clone(), g.1.clone());
                     }
                     let ctype = withtypeoperatorslist_to_ctype(fntype, &temp_scope)?;
-                    // If the `ctype` is a Function type, we have both the input and output defined. If
-                    // it's any other type, we presume it's only the input type defined
+                    // If the `ctype` is a Function type, we have both the input and output defined.
+                    // If the `ctype` is a From type, we re-eval it as an `Import` type with the
+                    // function name declaring what's being imported. If it's an `Import` type we
+                    // grab the specified function to import. If it's any other type, we presume
+                    // it's only the input type defined
                     let (kind, input_type, rettype) = match ctype {
+                        CType::From(_) => CType::fail("TODO: Support importing a function from an Alan dependency."),
+                        CType::Import(..) => CType::fail("TODO: Support importing a function from an Alan dependency."),
                         CType::Call(n, f) => match &*n {
                             CType::TString(s) => {
                                 match &*f {
@@ -307,6 +312,12 @@ impl Function {
                     }
                 } else {
                     let ctype = withtypeoperatorslist_to_ctype(fntype, &scope)?;
+                    // Converts a From type into an Import type so we can pull the correct function
+                    // from the specified dependency.
+                    let ctype = match ctype {
+                        CType::From(t) => CType::import(CType::TString(name.clone()), *t),
+                        t => t,
+                    };
                     if is_export {
                         scope.exports.insert(name.clone(), Export::Function);
                     }
