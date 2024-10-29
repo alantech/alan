@@ -471,6 +471,13 @@ test_full!(duration_print => r#"
     }"#;
     stdout_contains "0.1";
 );
+test_full!(print_compile_time_string => r#"
+    type FooBar = Concat{"Foo", "Bar"};
+    export fn main {
+      {FooBar}().print;
+    }"#;
+    stdout "FooBar\n";
+);
 
 // Basic Math Tests
 
