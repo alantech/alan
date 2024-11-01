@@ -9,14 +9,10 @@ mod typen;
 pub fn lntors(
     entry_file: String,
 ) -> Result<(String, OrderedHashMap<String, String>), Box<dyn std::error::Error>> {
-    let program = Program::new(entry_file)?;
-    // Getting the entry scope, where the `main` function is expected
-    let scope = match program.scopes_by_file.get(&program.entry_file.clone()) {
-        Some((_, _, s)) => s,
-        None => {
-            return Err("Somehow didn't find a scope for the entry file!?".into());
-        }
-    };
+    Program::set_target_lang_rs();
+    Program::load(entry_file.clone())?;
+    let program = Program::get_program().lock().unwrap();
+    let scope = program.scope_by_file(&entry_file)?;
     // Without support for building shared libs yet, assume there is an `export fn main` in the
     // entry file or fail otherwise
     match scope.exports.get("main") {

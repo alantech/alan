@@ -6,6 +6,7 @@ use super::Export;
 use super::FnKind;
 use super::Function;
 use super::Microstatement;
+use super::Program;
 use super::Scope;
 use super::TypeOperatorMapping;
 use crate::parse;
@@ -80,7 +81,8 @@ pub enum CType {
 impl CType {
     // TODO: Find a better way to handle these primitive types
     pub fn i64() -> CType {
-        match std::env::var("ALAN_OUTPUT_LANG").unwrap().as_str() {
+        let program = Program::get_program().lock().unwrap();
+        match program.env.get("ALAN_OUTPUT_LANG").unwrap().as_str() {
             "rs" => CType::Type(
                 "i64".to_string(),
                 Box::new(CType::Binds(
@@ -110,7 +112,8 @@ impl CType {
         }
     }
     pub fn f64() -> CType {
-        match std::env::var("ALAN_OUTPUT_LANG").unwrap().as_str() {
+        let program = Program::get_program().lock().unwrap();
+        match program.env.get("ALAN_OUTPUT_LANG").unwrap().as_str() {
             "rs" => CType::Type(
                 "f64".to_string(),
                 Box::new(CType::Binds(
@@ -140,7 +143,8 @@ impl CType {
         }
     }
     pub fn bool() -> CType {
-        match std::env::var("ALAN_OUTPUT_LANG").unwrap().as_str() {
+        let program = Program::get_program().lock().unwrap();
+        match program.env.get("ALAN_OUTPUT_LANG").unwrap().as_str() {
             "rs" => CType::Type(
                 "bool".to_string(),
                 Box::new(CType::Binds(
@@ -170,7 +174,8 @@ impl CType {
         }
     }
     pub fn string() -> CType {
-        match std::env::var("ALAN_OUTPUT_LANG").unwrap().as_str() {
+        let program = Program::get_program().lock().unwrap();
+        match program.env.get("ALAN_OUTPUT_LANG").unwrap().as_str() {
             "rs" => CType::Type(
                 "string".to_string(),
                 Box::new(CType::Binds(
@@ -3241,29 +3246,20 @@ impl CType {
         }
     }
     pub fn env(k: &CType) -> CType {
+        let program = Program::get_program().lock().unwrap();
         match k {
-            CType::TString(s) => match std::env::var(s) {
-                Err(e) => CType::fail(&format!(
-                    "Failed to load environment variable {}: {:?}\nAll current envvars:\n{}",
-                    s,
-                    e,
-                    std::env::vars()
-                        .map(|(k, v)| format!("{}: {}", k, v))
-                        .collect::<Vec<String>>()
-                        .join("\n")
-                )),
-                Ok(s) => CType::TString(s.clone()),
+            CType::TString(s) => match program.env.get(s) {
+                None => CType::fail(&format!("Failed to load environment variable {}", s,)),
+                Some(s) => CType::TString(s.clone()),
             },
             CType::Infer(..) => CType::Env(vec![k.clone()]),
             _ => CType::fail("Env{K} must be given a key as a string to load"),
         }
     }
     pub fn envexists(k: &CType) -> CType {
+        let program = Program::get_program().lock().unwrap();
         match k {
-            CType::TString(s) => match std::env::var(s) {
-                Err(_) => CType::Bool(false),
-                Ok(_) => CType::Bool(true),
-            },
+            CType::TString(s) => CType::Bool(program.env.contains_key(s)),
             CType::Infer(..) => CType::EnvExists(Box::new(k.clone())),
             _ => CType::fail("EnvExists{K} must be given a key as a string to check"),
         }
@@ -3427,10 +3423,11 @@ impl CType {
         }
     }
     pub fn envdefault(k: &CType, d: &CType) -> CType {
+        let program = Program::get_program().lock().unwrap();
         match (k, d) {
-            (CType::TString(s), CType::TString(def)) => match std::env::var(s) {
-                Err(_) => CType::TString(def.clone()),
-                Ok(v) => CType::TString(v),
+            (CType::TString(s), CType::TString(def)) => match program.env.get(s) {
+                None => CType::TString(def.clone()),
+                Some(v) => CType::TString(v.clone()),
             },
             (CType::Infer(..), CType::TString(_))
             | (CType::TString(_), CType::Infer(..))

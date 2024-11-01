@@ -1,4 +1,4 @@
-use std::env::{current_dir, set_var, var};
+use std::env::current_dir;
 use std::fs::{create_dir_all, remove_file, write, File};
 use std::io::Read;
 use std::path::PathBuf;
@@ -10,6 +10,7 @@ use fs2::FileExt;
 
 use crate::lntojs::lntojs;
 use crate::lntors::lntors;
+use crate::program::Program;
 
 mod integration_tests;
 
@@ -377,10 +378,13 @@ edition = "2021"
 /// mode and exits, printing the time it took to run on success.
 pub fn compile(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
     let start_time = Instant::now();
-    if var("ALAN_TARGET").is_err() {
-        set_var("ALAN_TARGET", "release");
+    Program::set_target_lang_rs();
+    {
+        let mut program = Program::get_program().lock().unwrap();
+        program
+            .env
+            .insert("ALAN_TARGET".to_string(), "release".to_string());
     }
-    set_var("ALAN_OUTPUT_LANG", "rs");
     build(source_file)?;
     println!("Done! Took {:.2}sec", start_time.elapsed().as_secs_f32());
     Ok(())
@@ -389,8 +393,13 @@ pub fn compile(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
 /// The `test` function is a thin wrapper on top of `compile` that compiles the specified file in
 /// test mode, then immediately invokes it, and deletes the binary when done.
 pub fn test(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
-    set_var("ALAN_TARGET", "test");
-    set_var("ALAN_OUTPUT_LANG", "rs");
+    Program::set_target_lang_rs();
+    {
+        let mut program = Program::get_program().lock().unwrap();
+        program
+            .env
+            .insert("ALAN_TARGET".to_string(), "test".to_string());
+    }
     let binary = build(source_file)?;
     let mut run = Command::new(format!("./{}", binary))
         .current_dir(current_dir()?)
@@ -685,10 +694,13 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
 /// mode and exits, printing the time it took to run on success.
 pub fn bundle(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
     let start_time = Instant::now();
-    if var("ALAN_TARGET").is_err() {
-        set_var("ALAN_TARGET", "release");
+    Program::set_target_lang_js();
+    {
+        let mut program = Program::get_program().lock().unwrap();
+        program
+            .env
+            .insert("ALAN_TARGET".to_string(), "release".to_string());
     }
-    set_var("ALAN_OUTPUT_LANG", "js");
     web(source_file)?;
     println!("Done! Took {:.2}sec", start_time.elapsed().as_secs_f32());
     Ok(())
@@ -697,10 +709,13 @@ pub fn bundle(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
 /// The `to_rs` function is an thin wrapper on top of `lntors` that shoves the output into a `.rs`
 /// file.
 pub fn to_rs(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
-    if var("ALAN_TARGET").is_err() {
-        set_var("ALAN_TARGET", "release");
+    Program::set_target_lang_rs();
+    {
+        let mut program = Program::get_program().lock().unwrap();
+        program
+            .env
+            .insert("ALAN_TARGET".to_string(), "release".to_string());
     }
-    set_var("ALAN_OUTPUT_LANG", "rs");
     // Generate the rust code to compile
     let (rs_str, deps) = lntors(source_file.clone())?;
     // Shove it into a temp file for rustc
@@ -737,10 +752,13 @@ pub fn to_rs(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
 /// The `to_js` function is an thin wrapper on top of `lntojs` that shoves the output into a `.js`
 /// file.
 pub fn to_js(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
-    if var("ALAN_TARGET").is_err() {
-        set_var("ALAN_TARGET", "release");
+    Program::set_target_lang_js();
+    {
+        let mut program = Program::get_program().lock().unwrap();
+        program
+            .env
+            .insert("ALAN_TARGET".to_string(), "release".to_string());
     }
-    set_var("ALAN_OUTPUT_LANG", "js");
     // Generate the rust code to compile
     let (js_str, deps) = lntojs(source_file.clone())?;
     // Shove it into a temp file for rustc

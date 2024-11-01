@@ -59,7 +59,8 @@ This will create a file with the name `<source>` that you can run (or error if i
 If you wish to contribute to Alan, you'll need a development environment to build Alan locally:
 
 * git (any recent version should work)
-* Rust >=1.76.0
+* Rust >=1.80.0
+* Node.js >=22.0.0
 * A complete C toolchain (gcc, clang, msvc)
 
 Once those are installed, simply follow the install instructions above, replacing `cargo install --path .` with a simple `cargo build` to compile and `cargo test` to run the test suite.
