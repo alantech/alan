@@ -1,5 +1,4 @@
 use crate::compile::{bundle, compile, test, to_js, to_rs};
-use crate::program::Program;
 use clap::{Parser, Subcommand};
 
 mod compile;
@@ -78,9 +77,8 @@ enum Commands {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Cli::parse();
-    if let Some(file) = args.file {
-        let program = Program::new(file)?;
-        println!("{:?}", program);
+    if args.file.is_some() {
+        println!("TODO: Interpreter mode someday");
         Ok(())
     } else {
         match &args.commands {

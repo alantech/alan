@@ -129,17 +129,13 @@ impl<'a> Scope<'a> {
             };
             Scope::load_scope(s, ast, true).expect("Invalid root scope definition")
         };
-        if matches!(std::env::var("ALAN_OUTPUT_LANG"), Ok(v) if v == "rs") {
+        if Program::is_target_lang_rs() {
             ROOT_SCOPE_RS.get_or_init(resolver)
         } else {
             ROOT_SCOPE_JS.get_or_init(resolver)
         }
     }
-    pub fn from_src(
-        program: &'a mut Program,
-        path: &str,
-        src: String,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn from_src(path: &str, src: String) -> Result<(), Box<dyn std::error::Error>> {
         let txt = Box::pin(src);
         let txt_ptr: *const str = &**txt;
         // *How* would this move, anyways? But TODO: See if there's a way to handle this safely
@@ -155,6 +151,7 @@ impl<'a> Scope<'a> {
             exports: OrderedHashMap::new(),
         };
         s = Scope::load_scope(s, &ast, false)?;
+        let mut program = Program::get_program().lock().unwrap();
         program
             .scopes_by_file
             .insert(path.to_string(), (txt, ast, s));

@@ -17,6 +17,7 @@ macro_rules! test {
         mod $rule {
             #[test]
             fn $rule() -> Result<(), Box<dyn std::error::Error>> {
+                crate::program::Program::set_target_lang_rs();
                 let filename = format!("{}.ln", stringify!($rule));
                 match std::fs::write(&filename, $code) {
                     Ok(_) => { /* Do nothing */ }
@@ -24,8 +25,10 @@ macro_rules! test {
                         return Err(format!("Unable to write {} to disk. {:?}", filename, e).into());
                     }
                 };
-                std::env::set_var("ALAN_TARGET", "test");
-                std::env::set_var("ALAN_OUTPUT_LANG", "rs");
+                {
+                    let mut program = crate::program::Program::get_program().lock().unwrap();
+                    program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
+                }
                 match crate::compile::build(filename.to_string()) {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
@@ -53,6 +56,7 @@ macro_rules! test_full {
         mod $rule {
             #[test]
             fn $rule() -> Result<(), Box<dyn std::error::Error>> {
+                crate::program::Program::set_target_lang_rs();
                 let filename = format!("{}.ln", stringify!($rule));
                 match std::fs::write(&filename, $code) {
                     Ok(_) => { /* Do nothing */ }
@@ -60,8 +64,10 @@ macro_rules! test_full {
                         return Err(format!("Unable to write {} to disk. {:?}", filename, e).into());
                     }
                 };
-                std::env::set_var("ALAN_TARGET", "test");
-                std::env::set_var("ALAN_OUTPUT_LANG", "rs");
+                {
+                    let mut program = crate::program::Program::get_program().lock().unwrap();
+                    program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
+                }
                 match crate::compile::build(filename.to_string()) {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
@@ -83,7 +89,11 @@ macro_rules! test_full {
                     Ok(a) => Ok(a),
                     Err(e) => Err(format!("Could not remove the test binary {:?}", e)),
                 }?;
-                std::env::set_var("ALAN_OUTPUT_LANG", "js");
+                crate::program::Program::set_target_lang_js();
+                {
+                    let mut program = crate::program::Program::get_program().lock().unwrap();
+                    program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
+                }
                 match crate::compile::web(filename.to_string()) {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
@@ -117,6 +127,7 @@ macro_rules! test_gpgpu {
         mod $rule {
             #[test]
             fn $rule() -> Result<(), Box<dyn std::error::Error>> {
+                crate::program::Program::set_target_lang_rs();
                 let filename = format!("{}.ln", stringify!($rule));
                 match std::fs::write(&filename, $code) {
                     Ok(_) => { /* Do nothing */ }
@@ -124,8 +135,10 @@ macro_rules! test_gpgpu {
                         return Err(format!("Unable to write {} to disk. {:?}", filename, e).into());
                     }
                 };
-                std::env::set_var("ALAN_TARGET", "test");
-                std::env::set_var("ALAN_OUTPUT_LANG", "rs");
+                {
+                    let mut program = crate::program::Program::get_program().lock().unwrap();
+                    program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
+                }
                 match crate::compile::build(filename.to_string()) {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
@@ -153,8 +166,16 @@ macro_rules! test_gpgpu {
                 // My playwright scripts only work on Linux and MacOS, though, so that reduces it
                 // to just MacOS to test this on.
                 // if cfg!(windows) || cfg!(macos) {
-                if cfg!(macos) {
-                    std::env::set_var("ALAN_OUTPUT_LANG", "js");
+                // TODO: This apparently wasn't working at all because the `macos` cfg keyword was
+                // deprecated at some point and the new version of Rust finally told me? In any
+                // case, fixing this will be in a follow-up PR
+                /*
+                if cfg!(target_os = "macos") {
+                    crate::program::Program::set_target_lang_js();
+                    {
+                        let mut program = crate::program::Program::get_program().lock().unwrap();
+                        program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
+                    }
                     match crate::compile::web(filename.to_string()) {
                         Ok(_) => { /* Do nothing */ }
                         Err(e) => {
@@ -220,6 +241,7 @@ macro_rules! test_gpgpu {
                         Err(e) => Err(format!("Could not remove the generated HTML file {:?}", e)),
                     }?;
                 }
+                */
                 std::fs::remove_file(&filename)?;
                 Ok(())
             }
@@ -241,8 +263,10 @@ macro_rules! test_ignore {
                         return Err(format!("Unable to write {} to disk. {:?}", filename, e).into());
                     }
                 };
-                std::env::set_var("ALAN_TARGET", "test");
-                std::env::set_var("ALAN_OUTPUT_LANG", "rs");
+                {
+                    let mut program = crate::program::Program::get_program().lock().unwrap();
+                    program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
+                }
                 match crate::compile::build(filename.to_string()) {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
