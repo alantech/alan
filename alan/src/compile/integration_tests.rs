@@ -119,7 +119,75 @@ macro_rules! test_full {
                 Ok(())
             }
         }
-    }
+    };
+    ( $rule:ident $entryfile:expr => $( $filename:expr => $code:expr),+ ; $( $type:ident $test_val:expr);+ $(;)? ) => {
+        #[cfg(test)]
+        mod $rule {
+            #[test]
+            fn $rule() -> Result<(), Box<dyn std::error::Error>> {
+                crate::program::Program::set_target_lang_rs();
+                $( match std::fs::write($filename, $code) {
+                    Ok(_) => { /* Do nothing */ }
+                    Err(e) => {
+                        return Err(format!("Unable to write {} to disk. {:?}", $filename, e).into());
+                    }
+                })+
+                {
+                    let mut program = crate::program::Program::get_program().lock().unwrap();
+                    program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
+                }
+                match crate::compile::build(format!("{}.ln", $entryfile)) {
+                    Ok(_) => { /* Do nothing */ }
+                    Err(e) => {
+                        $( std::fs::remove_file($filename)?; )+
+                        return Err(format!("Failed to compile {:?}", e).into());
+                    }
+                };
+                let cmd = if cfg!(windows) {
+                    format!(".\\{}.exe", $entryfile)
+                } else {
+                    format!("./{}", $entryfile)
+                };
+                let run = match std::process::Command::new(cmd.clone()).output() {
+                    Ok(a) => Ok(a),
+                    Err(e) => Err(format!("Could not run the test binary {:?}", e)),
+                }?;
+                $( $type!($test_val, true, &run); )+
+                match std::fs::remove_file(&cmd) {
+                    Ok(a) => Ok(a),
+                    Err(e) => Err(format!("Could not remove the test binary {:?}", e)),
+                }?;
+                crate::program::Program::set_target_lang_js();
+                {
+                    let mut program = crate::program::Program::get_program().lock().unwrap();
+                    program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
+                }
+                match crate::compile::web(format!("{}.ln", $entryfile)) {
+                    Ok(_) => { /* Do nothing */ }
+                    Err(e) => {
+                        $( std::fs::remove_file($filename)?; )+
+                        return Err(format!("Failed to compile {:?}", e).into());
+                    }
+                };
+                let cmd = if cfg!(windows) {
+                    format!(".\\{}.js", $entryfile)
+                } else {
+                    format!("./{}.js", $entryfile)
+                };
+                let run = match std::process::Command::new("node").arg(cmd.to_string()).output() {
+                    Ok(a) => Ok(a),
+                    Err(e) => Err(format!("Could not run the test JS code {:?}", e)),
+                }?;
+                $( $type!($test_val, false, &run); )+
+                match std::fs::remove_file(&cmd) {
+                    Ok(a) => Ok(a),
+                    Err(e) => Err(format!("Could not remove the generated JS file {:?}", e)),
+                }?;
+                $( std::fs::remove_file($filename)?; )+
+                Ok(())
+            }
+        }
+    };
 }
 macro_rules! test_gpgpu {
     ( $rule: ident => $code:expr; $( $type:ident $test_val:expr);+ $(;)? ) => {
@@ -2513,271 +2581,19 @@ test_ignore!(basic_interfaces => r#"
     stdout "'Hello, World!'\n'5'\n";
 );
 
-/* TODO: Add support for generating multiple source files for a test. Just copying over the whole
- * original test for now because the exact structure isn't yet clear
- *
-  Describe "import behavior"
-    before() {
-      sourceToFile datetime.ln "
-        from @std/app import print
+test_full!(basic_type_import "foo" =>
+    "bar.ln" => r#"
+        export type Bar = "Bar";
+    "#,
+    "foo.ln" => r#"
+        type Bar <-- "./bar.ln";
 
-        export type Year {
-          year: int32
+        export fn main {
+            {Bar}().print;
         }
-
-        export type YearMonth {
-          year: int32,
-          month: int8
-        }
-
-        export type Date {
-          year: int32,
-          month: int8,
-          day: int8
-        }
-
-        export type Hour {
-          hour: int8
-        }
-
-        export type HourMinute {
-          hour: int8,
-          minute: int8
-        }
-
-        export type Time {
-          hour: int8,
-          minute: int8,
-          second: float64
-        }
-
-        export type DateTime {
-          date: Date,
-          time: Time,
-          timezone: HourMinute
-        }
-
-        export fn makeYear(year: int32) -> Year {
-          return new Year {
-            year: year
-          };
-        }
-
-        export fn makeYear(year: int64) -> Year {
-          return new Year {
-            year: toInt32(year)
-          };
-        }
-
-        export fn makeYearMonth(year: int32, month: int8) -> YearMonth {
-          return new YearMonth {
-            year: year,
-            month: month
-          };
-        }
-
-        export fn makeYearMonth(y: Year, month: int64) -> YearMonth {
-          return new YearMonth {
-            year: y.year,
-            month: toInt8(month),
-          };
-        }
-
-        export fn makeDate(year: int32, month: int8, day: int8) -> Date {
-          return new Date {
-            year: year,
-            month: month,
-            day: day,
-          };
-        }
-
-        export fn makeDate(ym: YearMonth, day: int64) -> Date {
-          return new Date {
-            year: ym.year,
-            month: ym.month,
-            day: toInt8(day)
-          };
-        }
-
-        export fn makeHour(hour: int8) -> Hour {
-          return new Hour {
-            hour: hour
-          };
-        }
-
-        export fn makeHourMinute(hour: int8, minute: int8) -> HourMinute {
-          return new HourMinute {
-            hour: hour,
-            minute: minute
-          };
-        }
-
-        export fn makeHourMinute(hour: int64, minute: int64) -> HourMinute {
-          return new HourMinute {
-            hour: toInt8(hour),
-            minute: toInt8(minute)
-          };
-        }
-
-        export fn makeHourMinute(h: Hour, minute: int8) -> HourMinute {
-          return new HourMinute {
-            hour: h.hour,
-            minute: minute
-          };
-        }
-
-        export fn makeTime(hour: int8, minute: int8, second: float64) -> Time {
-          return new Time {
-            hour: hour,
-            minute: minute,
-            second: second
-          };
-        }
-
-        export fn makeTime(hm: HourMinute, second: float64) -> Time {
-          return new Time {
-            hour: hm.hour,
-            minute: hm.minute,
-            second: second
-          };
-        }
-
-        export fn makeTime(hm: HourMinute, second: int64) -> Time {
-          return new Time {
-            hour: hm.hour,
-            minute: hm.minute,
-            second: toFloat64(second)
-          };
-        }
-
-        export fn makeTime(hm: Array{int64}, second: int64) -> Time {
-          return new Time {
-            hour: hm[0].i8,
-            minute: hm[1].i8,
-            second: second.f64
-          };
-        }
-
-        export fn makeDateTime(date: Date, time: Time, timezone: HourMinute) -> DateTime {
-          return new DateTime {
-            date: date,
-            time: time,
-            timezone: timezone
-          };
-        }
-
-        export fn makeDateTime(date: Date, time: Time) -> DateTime {
-          return new DateTime {
-            date: date,
-            time: time,
-            timezone: 00:00,
-          };
-        }
-
-        export fn makeDateTimeTimezone(dt: DateTime, timezone: HourMinute) -> DateTime {
-          return new DateTime {
-            date: dt.date,
-            time: dt.time,
-            timezone: timezone
-          };
-        }
-
-        export fn makeDateTimeTimezone(dt: DateTime, timezone: Array{int64}) -> DateTime {
-          return new DateTime {
-            date: dt.date,
-            time: dt.time,
-            timezone: new HourMinute {
-              hour: timezone[0].i8,
-              minute: timezone[1].i8,
-            }
-          };
-        }
-
-        export fn makeDateTimeTimezoneRev(dt: DateTime, timezone: HourMinute) -> DateTime {
-          return new DateTime {
-            date: dt.date,
-            time: dt.time,
-            timezone: new HourMinute {
-              hour: timezone.hour.snegate,
-              minute: timezone.minute
-            }
-          };
-        }
-
-        export fn makeDateTimeTimezoneRev(dt: DateTime, timezone: Array{int64}) -> DateTime {
-          return new Datetime {
-            date: dt.date,
-            time: dt.time,
-            timezone: new HourMinute {
-              hour: toInt8(timezone[0]).snegate,
-              minute: toInt8(timezone[1])
-            }
-          };
-        }
-
-        export fn print(dt: DateTime) {
-          // TODO: Work on formatting stuff
-          const timezoneOffsetSymbol = dt.timezone.hour < toInt8(0) ? \"-\" : \"+\";
-          let str = (new Array{string} [
-            string(dt.date.year), \"-\", string(dt.date.month), \"-\", string(dt.date.day), \"@\",
-            string(dt.time.hour), \":\", string(dt.time.minute), \":\", string(dt.time.second),
-            timezoneOffsetSymbol, sabs(dt.timezone.hour).string, \":\", string(dt.timezone.minute)
-          ]).join('');
-          print(str);
-        }
-
-        export prefix makeYear as # precedence 2
-        export infix makeYearMonth as - precedence 2
-        export infix makeDate as - precedence 2
-        export infix makeHourMinute as : precedence 7
-        export infix makeTime as : precedence 7
-        export infix makeDateTime as @ precedence 2
-        export infix makeDateTimeTimezone as + precedence 2
-        export infix makeDateTimeTimezoneRev as - precedence 2
-
-        export interface datetime {
-          # int64: Year,
-          Year - int64: YearMonth,
-          YearMonth - int64: Date,
-          int64 : int64: HourMinute,
-          HourMinute : int64: Time,
-          Date @ Time: DateTime,
-          DateTime + HourMinute: DateTime,
-          DateTime - HourMinute: DateTime,
-          print(DateTime) -> void,
-        }
-      "
-
-      sourceToAll "
-        from @std/app import start, print, exit
-        from ./datetime import datetime
-
-        on start {
-          const dt = #2020 - 07 - 02@12:07:30 - 08:00;
-          dt.print;
-          emit exit 0;
-        }
-      "
-    }
-    BeforeAll before
-
-    after() {
-      cleanFile datetime.ln
-      cleanTemp
-    }
-    AfterAll after
-
-    It "runs js"
-      When run test_js
-      The output should eq "2020-7-2@12:7:30-8:0"
-    End
-
-    It "runs agc"
-      When run test_agc
-      The output should eq "2020-7-2@12:7:30-8:0"
-    End
-  End
-*/
+    "#;
+    stdout "Bar\n";
+);
 
 // Maybe, Result, and Either
 

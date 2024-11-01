@@ -49,6 +49,13 @@ thread_local!(static TARGET_LANG_RS: Cell<bool> = const { Cell::new(true) });
 
 impl<'a> Program<'a> {
     pub fn load(path: String) -> Result<(), Box<dyn std::error::Error>> {
+        {
+            let program = Program::get_program().lock().unwrap();
+            if program.scopes_by_file.contains_key(&path) {
+                // Already loaded, let's get out of here
+                return Ok(());
+            }
+        }
         let ln_src = if path.starts_with('@') {
             match path.as_str() {
                 //"@std/app" => include_str!("../std/app.ln").to_string(),

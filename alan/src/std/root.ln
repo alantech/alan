@@ -95,7 +95,7 @@ export type infix Function as -> precedence 4; // I -> O, where I is the input a
 export type infix Call as :: precedence 0; // N :: F, where N is the native function (or method) and F is the function type
 export type infix Dependency as @ precedence 1; // N @ V, where N is the name of the dependency and V is the version
 export type infix Import as <- precedence 0; // N <- D, where N is the name of the value to be imported and D is the dependency to pull it from
-export type prefix From as <= precedence 0; // <- D, where D is the dependency to pull a value or values from, TODO: Switch to <- once disambiguation is fixed
+export type prefix From as <-- precedence 0; // <- D, where D is the dependency to pull a value or values from, TODO: Switch to <- once disambiguation is fixed
 export type infix Tuple as , precedence 0; // A, B, C, ... The tuple type combines with other tuple types to become a larger tuple type. To have a tuple of tuples, you need to `Group` the inner tuple, eg `(a, b), c`
 export type infix Field as : precedence 1; // Foo: Bar, let's you specify a property access label for the type, useful for syntactic sugar on a tuple type and the Either type (eventually).
 export type infix Either as | precedence 0; // A | B, the type has a singular value from only one of the types at once.

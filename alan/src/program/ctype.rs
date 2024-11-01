@@ -2620,6 +2620,36 @@ impl CType {
                 if let CType::Field(..) = &inner_type {
                     inner_type = CType::Tuple(vec![inner_type]);
                 }
+                // Magic hackery to convert a `From` type into an `Import` type if it's the top-level type
+                inner_type = match inner_type {
+                    CType::From(t) => CType::import(CType::TString(name.clone()), *t),
+                    t => t,
+                };
+                // If we've got an `Import` type, we need to grab the actual type definition from
+                // the other file and pull it in here.
+                if let CType::Import(name, dep) = &inner_type {
+                    match &**dep {
+                        CType::TString(dep_name) => {
+                            let program = Program::get_program().lock().unwrap();
+                            let scope = program.scope_by_file(dep_name)?;
+                            match &**name {
+                                CType::TString(n) => {
+                                    inner_type = match scope.types.get(n) {
+                                        None => {
+                                            CType::fail(&format!("{} not found in {}", n, dep_name))
+                                        }
+                                        Some(t) => match t {
+                                            CType::Type(_, t) => (**t).clone(),
+                                            t => t.clone(),
+                                        },
+                                    }
+                                }
+                                _ => CType::fail("The name of the import must be a string"),
+                            }
+                        }
+                        _ => CType::fail("TODO: Support imports beyond local directories"),
+                    }
+                }
                 inner_type.to_functions(name.clone())
             }
             Some(g) => {
@@ -2647,11 +2677,6 @@ impl CType {
                     Vec::new(),
                 )
             }
-        };
-        // Magic hackery to convert a `From` type into an `Import` type if it's the top-level type
-        let t = match t {
-            CType::From(t) => CType::import(CType::TString(name.clone()), *t),
-            t => t,
         };
         if is_export {
             scope.exports.insert(name.clone(), Export::Type);
@@ -2986,10 +3011,40 @@ impl CType {
         } else if let CType::Infer(..) = &dep {
             CType::Import(Box::new(name), Box::new(dep))
         } else if !matches!(name, CType::TString(_)) {
-            CType::fail("The Import<N, D> N parameter must be a string")
+            CType::fail("The Import{N, D} N parameter must be a string")
         } else {
             match &dep {
-                CType::TString(_) => CType::fail("TODO: Relative path import support"),
+                CType::TString(s) => {
+                    // Load the dependency
+                    if let Err(e) = Program::load(s.clone()) {
+                        CType::fail(&format!("Failed to load dependency {}: {:?}", s, e))
+                    } else {
+                        let program = Program::get_program().lock().unwrap();
+                        match program.scope_by_file(s) {
+                            Err(e) => {
+                                CType::fail(&format!("Failed to load dependency {}: {:?}", s, e))
+                            }
+                            Ok(dep_scope) => {
+                                // Currently can only import types and functions. Constants and
+                                // operator mappings don't have a syntax to express this. TODO:
+                                // Figure out how to tackle this syntactically, and then update
+                                // this logic.
+                                if let CType::TString(n) = &name {
+                                    let found = dep_scope.types.contains_key(n)
+                                        || dep_scope.functions.contains_key(n);
+                                    if !found {
+                                        CType::fail(&format!("{} not found in {}", n, s))
+                                    } else {
+                                        // We're good
+                                        CType::Import(Box::new(name), Box::new(dep))
+                                    }
+                                } else {
+                                    CType::fail("The Import{N, D} N parameter must be a string")
+                                }
+                            }
+                        }
+                    }
+                }
                 CType::Dependency(..) => CType::fail("TODO: Alan package import support"),
                 CType::Node(_) | CType::Rust(_) => CType::Import(Box::new(name), Box::new(dep)),
                 CType::Type(_, t) if matches!(**t, CType::Node(_) | CType::Rust(_)) => {
