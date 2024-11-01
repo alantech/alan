@@ -77,7 +77,7 @@ enum Commands {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Cli::parse();
-    if let Some(_) = args.file {
+    if args.file.is_some() {
         println!("TODO: Interpreter mode someday");
         Ok(())
     } else {

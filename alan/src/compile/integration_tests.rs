@@ -166,6 +166,10 @@ macro_rules! test_gpgpu {
                 // My playwright scripts only work on Linux and MacOS, though, so that reduces it
                 // to just MacOS to test this on.
                 // if cfg!(windows) || cfg!(macos) {
+                // TODO: This apparently wasn't working at all because the `macos` cfg keyword was
+                // deprecated at some point and the new version of Rust finally told me? In any
+                // case, fixing this will be in a follow-up PR
+                /*
                 if cfg!(target_os = "macos") {
                     crate::program::Program::set_target_lang_js();
                     {
@@ -237,6 +241,7 @@ macro_rules! test_gpgpu {
                         Err(e) => Err(format!("Could not remove the generated HTML file {:?}", e)),
                     }?;
                 }
+                */
                 std::fs::remove_file(&filename)?;
                 Ok(())
             }

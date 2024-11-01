@@ -45,7 +45,7 @@ pub static PROGRAM_JS: LazyLock<Mutex<Program<'static>>> = LazyLock::new(|| {
     })
 });
 
-thread_local!(static TARGET_LANG_RS: Cell<bool> = Cell::new(true));
+thread_local!(static TARGET_LANG_RS: Cell<bool> = const { Cell::new(true) });
 
 impl<'a> Program<'a> {
     pub fn load(path: String) -> Result<(), Box<dyn std::error::Error>> {
@@ -62,10 +62,7 @@ impl<'a> Program<'a> {
         Scope::from_src(&path, ln_src)
     }
 
-    pub fn scope_by_file<'b>(
-        self: &Self,
-        path: &str,
-    ) -> Result<&Scope<'a>, Box<dyn std::error::Error>> {
+    pub fn scope_by_file(&self, path: &str) -> Result<&Scope<'a>, Box<dyn std::error::Error>> {
         match self.scopes_by_file.get(path) {
             Some((_, _, s)) => Ok(s),
             None => Err(format!("Could not find a scope for file {}", path).into()),
