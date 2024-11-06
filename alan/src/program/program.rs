@@ -1,7 +1,6 @@
 use std::cell::Cell;
 use std::fs::read_to_string;
 use std::pin::Pin;
-use std::sync::{LazyLock, Mutex};
 
 use super::Scope;
 use crate::parse;
@@ -11,51 +10,49 @@ use ordered_hash_map::OrderedHashMap;
 // This data structure should allow file-level reloading, which we can probably use as a rough
 // approximation for iterative recompliation and language server support, and since Rust is fast,
 // this might just be "good enough" assuming non-insane source file sizes.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Program<'a> {
     #[allow(clippy::box_collection)]
     pub scopes_by_file: OrderedHashMap<String, (Pin<Box<String>>, parse::Ln, Scope<'a>)>,
     pub env: OrderedHashMap<String, String>,
 }
 
-pub static PROGRAM_RS: LazyLock<Mutex<Program<'static>>> = LazyLock::new(|| {
-    Mutex::new(Program {
-        scopes_by_file: OrderedHashMap::new(),
-        env: {
-            let mut env = OrderedHashMap::new();
-            for (k, v) in std::env::vars() {
-                env.insert(k.to_string(), v.to_string());
-            }
-            env.insert("ALAN_OUTPUT_LANG".to_string(), "rs".to_string());
-            env
-        },
-    })
-});
-pub static PROGRAM_JS: LazyLock<Mutex<Program<'static>>> = LazyLock::new(|| {
-    Mutex::new(Program {
-        scopes_by_file: OrderedHashMap::new(),
-        env: {
-            let mut env = OrderedHashMap::new();
-            for (k, v) in std::env::vars() {
-                env.insert(k.to_string(), v.to_string());
-            }
-            env.insert("ALAN_OUTPUT_LANG".to_string(), "js".to_string());
-            env
-        },
-    })
-});
+thread_local!(pub static PROGRAM_RS: Cell<Program<'static>> = Cell::new(
+Program {
+    scopes_by_file: OrderedHashMap::new(),
+    env: {
+        let mut env = OrderedHashMap::new();
+        for (k, v) in std::env::vars() {
+            env.insert(k.to_string(), v.to_string());
+        }
+        env.insert("ALAN_OUTPUT_LANG".to_string(), "rs".to_string());
+        env
+    },
+}));
+thread_local!(pub static PROGRAM_JS: Cell<Program<'static>> = Cell::new(
+Program {
+    scopes_by_file: OrderedHashMap::new(),
+    env: {
+        let mut env = OrderedHashMap::new();
+        for (k, v) in std::env::vars() {
+            env.insert(k.to_string(), v.to_string());
+        }
+        env.insert("ALAN_OUTPUT_LANG".to_string(), "js".to_string());
+        env
+    },
+}));
 
 thread_local!(static TARGET_LANG_RS: Cell<bool> = const { Cell::new(true) });
 
 impl<'a> Program<'a> {
     pub fn load(path: String) -> Result<(), Box<dyn std::error::Error>> {
-        {
-            let program = Program::get_program().lock().unwrap();
-            if program.scopes_by_file.contains_key(&path) {
-                // Already loaded, let's get out of here
-                return Ok(());
-            }
+        let program = Program::get_program();
+        if program.scopes_by_file.contains_key(&path) {
+            // Already loaded, let's get out of here
+            Program::return_program(program);
+            return Ok(());
         }
+        Program::return_program(program);
         let ln_src = if path.starts_with('@') {
             match path.as_str() {
                 //"@std/app" => include_str!("../std/app.ln").to_string(),
@@ -76,11 +73,19 @@ impl<'a> Program<'a> {
         }
     }
 
-    pub fn get_program<'b>() -> &'b LazyLock<Mutex<Program<'static>>> {
+    pub fn get_program() -> Program<'static> {
         if TARGET_LANG_RS.get() {
-            &PROGRAM_RS
+            PROGRAM_RS.take()
         } else {
-            &PROGRAM_JS
+            PROGRAM_JS.take()
+        }
+    }
+
+    pub fn return_program(p: Program<'static>) {
+        if TARGET_LANG_RS.get() {
+            PROGRAM_RS.set(p);
+        } else {
+            PROGRAM_JS.set(p);
         }
     }
 

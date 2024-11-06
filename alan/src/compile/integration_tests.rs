@@ -25,10 +25,9 @@ macro_rules! test {
                         return Err(format!("Unable to write {} to disk. {:?}", filename, e).into());
                     }
                 };
-                {
-                    let mut program = crate::program::Program::get_program().lock().unwrap();
-                    program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
-                }
+                let mut program = crate::program::Program::get_program();
+                program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
+                crate::program::Program::return_program(program);
                 match crate::compile::build(filename.to_string()) {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
@@ -64,10 +63,9 @@ macro_rules! test_full {
                         return Err(format!("Unable to write {} to disk. {:?}", filename, e).into());
                     }
                 };
-                {
-                    let mut program = crate::program::Program::get_program().lock().unwrap();
-                    program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
-                }
+                let mut program = crate::program::Program::get_program();
+                program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
+                crate::program::Program::return_program(program);
                 match crate::compile::build(filename.to_string()) {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
@@ -90,10 +88,9 @@ macro_rules! test_full {
                     Err(e) => Err(format!("Could not remove the test binary {:?}", e)),
                 }?;
                 crate::program::Program::set_target_lang_js();
-                {
-                    let mut program = crate::program::Program::get_program().lock().unwrap();
-                    program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
-                }
+                let mut program = crate::program::Program::get_program();
+                program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
+                crate::program::Program::return_program(program);
                 match crate::compile::web(filename.to_string()) {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
@@ -132,10 +129,9 @@ macro_rules! test_full {
                         return Err(format!("Unable to write {} to disk. {:?}", $filename, e).into());
                     }
                 })+
-                {
-                    let mut program = crate::program::Program::get_program().lock().unwrap();
-                    program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
-                }
+                let mut program = crate::program::Program::get_program();
+                program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
+                crate::program::Program::return_program(program);
                 match crate::compile::build(format!("{}.ln", $entryfile)) {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
@@ -158,10 +154,9 @@ macro_rules! test_full {
                     Err(e) => Err(format!("Could not remove the test binary {:?}", e)),
                 }?;
                 crate::program::Program::set_target_lang_js();
-                {
-                    let mut program = crate::program::Program::get_program().lock().unwrap();
-                    program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
-                }
+                let mut program = crate::program::Program::get_program();
+                program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
+                crate::program::Program::return_program(program);
                 match crate::compile::web(format!("{}.ln", $entryfile)) {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
@@ -203,10 +198,9 @@ macro_rules! test_gpgpu {
                         return Err(format!("Unable to write {} to disk. {:?}", filename, e).into());
                     }
                 };
-                {
-                    let mut program = crate::program::Program::get_program().lock().unwrap();
-                    program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
-                }
+                let mut program = crate::program::Program::get_program();
+                program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
+                crate::program::Program::return_program(program);
                 match crate::compile::build(filename.to_string()) {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
@@ -331,10 +325,9 @@ macro_rules! test_ignore {
                         return Err(format!("Unable to write {} to disk. {:?}", filename, e).into());
                     }
                 };
-                {
-                    let mut program = crate::program::Program::get_program().lock().unwrap();
-                    program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
-                }
+                let mut program = crate::program::Program::get_program();
+                program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
+                crate::program::Program::return_program(program);
                 match crate::compile::build(filename.to_string()) {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
@@ -2590,6 +2583,20 @@ test_full!(basic_type_import "foo" =>
 
         export fn main {
             {Bar}().print;
+        }
+    "#;
+    stdout "Bar\n";
+);
+
+test_full!(basic_fn_import "foo" =>
+    "bar.ln" => r#"
+        export fn bar = "Bar";
+    "#,
+    "foo.ln" => r#"
+        fn bar <-- "./bar.ln";
+
+        export fn main {
+            bar().print;
         }
     "#;
     stdout "Bar\n";

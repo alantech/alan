@@ -151,10 +151,11 @@ impl<'a> Scope<'a> {
             exports: OrderedHashMap::new(),
         };
         s = Scope::load_scope(s, &ast, false)?;
-        let mut program = Program::get_program().lock().unwrap();
+        let mut program = Program::get_program();
         program
             .scopes_by_file
             .insert(path.to_string(), (txt, ast, s));
+        Program::return_program(program);
         Ok(())
     }
 

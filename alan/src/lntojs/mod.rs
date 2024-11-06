@@ -11,7 +11,7 @@ pub fn lntojs(
 ) -> Result<(String, OrderedHashMap<String, String>), Box<dyn std::error::Error>> {
     Program::set_target_lang_js();
     Program::load(entry_file.clone())?;
-    let program = Program::get_program().lock().unwrap();
+    let program = Program::get_program();
     let scope = program.scope_by_file(&entry_file)?;
     // Without support for building shared libs yet, assume there is an `export fn main` in the
     // entry file or fail otherwise
@@ -46,6 +46,16 @@ pub fn lntojs(
         OrderedHashMap::new(),
         OrderedHashMap::new(),
     )?;
+    let main_call = if let CType::Type(n, _) = func[0].rettype() {
+        if &n == "ExitCode" {
+            "main().then(process.exit);"
+        } else {
+            "main();"
+        }
+    } else {
+        "main();"
+    };
+    Program::return_program(program);
     Ok((
         format!(
             "{}\n{}\n{}",
@@ -54,15 +64,7 @@ pub fn lntojs(
                 .collect::<Vec<String>>()
                 .join("\n"),
             fns.into_values().collect::<Vec<String>>().join("\n"),
-            if let CType::Type(n, _) = func[0].rettype() {
-                if &n == "ExitCode" {
-                    "main().then(process.exit);"
-                } else {
-                    "main();"
-                }
-            } else {
-                "main();"
-            }
+            main_call,
         ),
         deps,
     ))

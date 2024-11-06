@@ -11,7 +11,7 @@ pub fn lntors(
 ) -> Result<(String, OrderedHashMap<String, String>), Box<dyn std::error::Error>> {
     Program::set_target_lang_rs();
     Program::load(entry_file.clone())?;
-    let program = Program::get_program().lock().unwrap();
+    let program = Program::get_program();
     let scope = program.scope_by_file(&entry_file)?;
     // Without support for building shared libs yet, assume there is an `export fn main` in the
     // entry file or fail otherwise
@@ -46,5 +46,6 @@ pub fn lntors(
         OrderedHashMap::new(),
         OrderedHashMap::new(),
     )?;
+    Program::return_program(program);
     Ok((fns.into_values().collect::<Vec<String>>().join("\n"), deps))
 }
