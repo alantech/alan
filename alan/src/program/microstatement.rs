@@ -5,6 +5,7 @@ use super::ArgKind;
 use super::FnKind;
 use super::Function;
 use super::OperatorMapping;
+use super::Program;
 use super::Scope;
 use crate::parse;
 
@@ -109,6 +110,7 @@ enum BaseChunk<'a> {
 
 pub fn baseassignablelist_to_microstatements<'a>(
     bal: &[parse::BaseAssignable],
+    parent_fn: Option<&Function>,
     mut scope: Scope<'a>,
     mut microstatements: Vec<Microstatement>,
 ) -> Result<(Scope<'a>, Vec<Microstatement>), Box<dyn std::error::Error>> {
@@ -333,7 +335,41 @@ pub fn baseassignablelist_to_microstatements<'a>(
                     },
                     None => {
                         // It could be a function.
-                        let function_types = scope.resolve_function_types(v);
+                        let mut function_types = scope.resolve_function_types(v);
+                        if parent_fn.is_some() && parent_fn.unwrap().origin_scope_path != scope.path
+                        {
+                            let program = Program::get_program();
+                            if let Ok(origin_scope) =
+                                program.scope_by_file(&parent_fn.unwrap().origin_scope_path)
+                            {
+                                let other_function_types = origin_scope.resolve_function_types(v);
+                                function_types = match (function_types, other_function_types) {
+                                    (CType::Void, CType::Void) => CType::Void,
+                                    (CType::Void, t) => t,
+                                    (t, CType::Void) => t,
+                                    (CType::AnyOf(t1), CType::AnyOf(t2)) => CType::AnyOf({
+                                        let mut v = Vec::new();
+                                        v.append(&mut t1.clone());
+                                        v.append(&mut t2.clone());
+                                        v
+                                    }),
+                                    (t, CType::AnyOf(t2)) => CType::AnyOf({
+                                        let mut v = Vec::new();
+                                        v.push(t.clone());
+                                        v.append(&mut t2.clone());
+                                        v
+                                    }),
+                                    (CType::AnyOf(t1), t) => CType::AnyOf({
+                                        let mut v = Vec::new();
+                                        v.append(&mut t1.clone());
+                                        v.push(t.clone());
+                                        v
+                                    }),
+                                    (t1, t2) => CType::AnyOf(vec![t1, t2]),
+                                };
+                            }
+                            Program::return_program(program);
+                        }
                         match function_types {
                             CType::Void => {
                                 // It could be a constant
@@ -346,6 +382,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                         let mut temp_scope = scope.child();
                                         let res = withoperatorslist_to_microstatements(
                                             &c.assignables,
+                                            parent_fn,
                                             temp_scope,
                                             microstatements,
                                         )?;
@@ -383,7 +420,12 @@ pub fn baseassignablelist_to_microstatements<'a>(
                 }
                 let mut array_vals = Vec::new();
                 for wol in &a.assignablelist {
-                    let res = withoperatorslist_to_microstatements(wol, scope, microstatements)?;
+                    let res = withoperatorslist_to_microstatements(
+                        wol,
+                        parent_fn,
+                        scope,
+                        microstatements,
+                    )?;
                     scope = res.0;
                     microstatements = res.1;
                     array_vals.push(microstatements.pop().unwrap());
@@ -411,6 +453,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                 }
                 let res = withoperatorslist_to_microstatements(
                     &g.assignablelist[0],
+                    parent_fn,
                     scope,
                     microstatements,
                 )?;
@@ -520,8 +563,12 @@ pub fn baseassignablelist_to_microstatements<'a>(
                     microstatements.push(Microstatement::Arg { name, kind, typen });
                 }
                 for statement in &statements {
-                    let res =
-                        statement_to_microstatements(statement, inner_scope, microstatements)?;
+                    let res = statement_to_microstatements(
+                        statement,
+                        parent_fn,
+                        inner_scope,
+                        microstatements,
+                    )?;
                     inner_scope = res.0;
                     microstatements = res.1;
                 }
@@ -592,6 +639,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                     typen,
                     microstatements: ms,
                     kind,
+                    origin_scope_path: scope.path.clone(),
                 };
                 prior_value = Some(Microstatement::Closure { function });
             }
@@ -600,8 +648,12 @@ pub fn baseassignablelist_to_microstatements<'a>(
                     let mut temp_scope = scope.child();
                     let mut array_accessor_microstatements = vec![prior.clone()];
                     for wol in &a.assignablelist {
-                        let res =
-                            withoperatorslist_to_microstatements(wol, temp_scope, microstatements)?;
+                        let res = withoperatorslist_to_microstatements(
+                            wol,
+                            parent_fn,
+                            temp_scope,
+                            microstatements,
+                        )?;
                         temp_scope = res.0;
                         microstatements = res.1;
                         array_accessor_microstatements.push(microstatements.pop().unwrap());
@@ -689,8 +741,12 @@ pub fn baseassignablelist_to_microstatements<'a>(
                     None => {}
                     Some(fncall) => {
                         for arg in &fncall.assignablelist {
-                            let res =
-                                withoperatorslist_to_microstatements(arg, scope, microstatements)?;
+                            let res = withoperatorslist_to_microstatements(
+                                arg,
+                                parent_fn,
+                                scope,
+                                microstatements,
+                            )?;
                             scope = res.0;
                             microstatements = res.1;
                             arg_microstatements.push(microstatements.pop().unwrap());
@@ -765,8 +821,12 @@ pub fn baseassignablelist_to_microstatements<'a>(
                     None => {}
                     Some(fncall) => {
                         for arg in &fncall.assignablelist {
-                            let res =
-                                withoperatorslist_to_microstatements(arg, scope, microstatements)?;
+                            let res = withoperatorslist_to_microstatements(
+                                arg,
+                                parent_fn,
+                                scope,
+                                microstatements,
+                            )?;
                             scope = res.0;
                             microstatements = res.1;
                             arg_microstatements.push(microstatements.pop().unwrap());
@@ -908,8 +968,12 @@ pub fn baseassignablelist_to_microstatements<'a>(
                     None => {}
                     Some(fncall) => {
                         for arg in &fncall.assignablelist {
-                            let res =
-                                withoperatorslist_to_microstatements(arg, scope, microstatements)?;
+                            let res = withoperatorslist_to_microstatements(
+                                arg,
+                                parent_fn,
+                                scope,
+                                microstatements,
+                            )?;
                             scope = res.0;
                             microstatements = res.1;
                             arg_microstatements.push(microstatements.pop().unwrap());
@@ -1068,6 +1132,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
 
 pub fn withoperatorslist_to_microstatements<'a>(
     withoperatorslist: &Vec<parse::WithOperators>,
+    parent_fn: Option<&Function>,
     mut scope: Scope<'a>,
     mut microstatements: Vec<Microstatement>,
 ) -> Result<(Scope<'a>, Vec<Microstatement>), Box<dyn std::error::Error>> {
@@ -1345,8 +1410,12 @@ pub fn withoperatorslist_to_microstatements<'a>(
                     withoperatorslist
                 )),
             }?;
-            let res =
-                baseassignablelist_to_microstatements(&baseassignablelist, scope, microstatements)?;
+            let res = baseassignablelist_to_microstatements(
+                &baseassignablelist,
+                parent_fn,
+                scope,
+                microstatements,
+            )?;
             scope = res.0;
             microstatements = res.1;
         }
@@ -1356,16 +1425,22 @@ pub fn withoperatorslist_to_microstatements<'a>(
 
 pub fn assignablestatement_to_microstatements<'a>(
     assignable: &parse::AssignableStatement,
+    parent_fn: Option<&Function>,
     scope: Scope<'a>,
     microstatements: Vec<Microstatement>,
 ) -> Result<(Scope<'a>, Vec<Microstatement>), Box<dyn std::error::Error>> {
-    let res =
-        withoperatorslist_to_microstatements(&assignable.assignables, scope, microstatements)?;
+    let res = withoperatorslist_to_microstatements(
+        &assignable.assignables,
+        parent_fn,
+        scope,
+        microstatements,
+    )?;
     Ok(res)
 }
 
 pub fn returns_to_microstatements<'a>(
     returns: &parse::Returns,
+    parent_fn: Option<&Function>,
     mut scope: Scope<'a>,
     mut microstatements: Vec<Microstatement>,
 ) -> Result<(Scope<'a>, Vec<Microstatement>), Box<dyn std::error::Error>> {
@@ -1374,8 +1449,12 @@ pub fn returns_to_microstatements<'a>(
         // off the last one, if any exists, to get the final return value. Then we shove
         // the other microstatements into the array and the new Return microstatement with
         // that last value attached to it.
-        let res =
-            withoperatorslist_to_microstatements(&retval.assignables, scope, microstatements)?;
+        let res = withoperatorslist_to_microstatements(
+            &retval.assignables,
+            parent_fn,
+            scope,
+            microstatements,
+        )?;
         scope = res.0;
         microstatements = res.1;
         let value = microstatements.pop().map(Box::new);
@@ -1388,6 +1467,7 @@ pub fn returns_to_microstatements<'a>(
 
 pub fn declarations_to_microstatements<'a>(
     declarations: &parse::Declarations,
+    parent_fn: Option<&Function>,
     mut scope: Scope<'a>,
     mut microstatements: Vec<Microstatement>,
 ) -> Result<(Scope<'a>, Vec<Microstatement>), Box<dyn std::error::Error>> {
@@ -1396,7 +1476,7 @@ pub fn declarations_to_microstatements<'a>(
         parse::Declarations::Let(l) => (l.variable.clone(), &l.assignables, true),
     };
     // Get all of the assignable microstatements generated
-    let res = withoperatorslist_to_microstatements(assignables, scope, microstatements)?;
+    let res = withoperatorslist_to_microstatements(assignables, parent_fn, scope, microstatements)?;
     scope = res.0;
     microstatements = res.1;
     let value = match microstatements.pop() {
@@ -1413,6 +1493,7 @@ pub fn declarations_to_microstatements<'a>(
 
 pub fn statement_to_microstatements<'a>(
     statement: &parse::Statement,
+    parent_fn: Option<&Function>,
     mut scope: Scope<'a>,
     microstatements: Vec<Microstatement>,
 ) -> Result<(Scope<'a>, Vec<Microstatement>), Box<dyn std::error::Error>> {
@@ -1421,6 +1502,7 @@ pub fn statement_to_microstatements<'a>(
         parse::Statement::A(_) => Ok((scope, microstatements)),
         parse::Statement::Declarations(declarations) => Ok(declarations_to_microstatements(
             declarations,
+            parent_fn,
             scope,
             microstatements,
         )?),
@@ -1428,6 +1510,7 @@ pub fn statement_to_microstatements<'a>(
             let mut args = Vec::new();
             let res = baseassignablelist_to_microstatements(
                 &[arrayassignment.name.clone()],
+                parent_fn,
                 scope,
                 microstatements,
             )?;
@@ -1435,13 +1518,17 @@ pub fn statement_to_microstatements<'a>(
             let mut ms = res.1;
             args.push(ms.pop().unwrap());
             for arg in &arrayassignment.array.assignablelist {
-                let res = withoperatorslist_to_microstatements(arg, scope, ms)?;
+                let res = withoperatorslist_to_microstatements(arg, parent_fn, scope, ms)?;
                 scope = res.0;
                 ms = res.1;
                 args.push(ms.pop().unwrap());
             }
-            let res =
-                withoperatorslist_to_microstatements(&arrayassignment.assignables, scope, ms)?;
+            let res = withoperatorslist_to_microstatements(
+                &arrayassignment.assignables,
+                parent_fn,
+                scope,
+                ms,
+            )?;
             scope = res.0;
             ms = res.1;
             args.push(ms.pop().unwrap());
@@ -1469,12 +1556,16 @@ pub fn statement_to_microstatements<'a>(
         }
         parse::Statement::Assignables(assignable) => Ok(assignablestatement_to_microstatements(
             assignable,
+            parent_fn,
             scope,
             microstatements,
         )?),
-        parse::Statement::Returns(returns) => {
-            Ok(returns_to_microstatements(returns, scope, microstatements)?)
-        }
+        parse::Statement::Returns(returns) => Ok(returns_to_microstatements(
+            returns,
+            parent_fn,
+            scope,
+            microstatements,
+        )?),
         parse::Statement::Conditional(_condtitional) => Err("Implement me".into()),
     }
 }

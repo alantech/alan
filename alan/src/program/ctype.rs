@@ -81,8 +81,10 @@ pub enum CType {
 impl CType {
     // TODO: Find a better way to handle these primitive types
     pub fn i64() -> CType {
-        let program = Program::get_program().lock().unwrap();
-        match program.env.get("ALAN_OUTPUT_LANG").unwrap().as_str() {
+        let program = Program::get_program();
+        let output_lang = program.env.get("ALAN_OUTPUT_LANG").unwrap().clone();
+        Program::return_program(program);
+        match output_lang.as_str() {
             "rs" => CType::Type(
                 "i64".to_string(),
                 Box::new(CType::Binds(
@@ -112,8 +114,10 @@ impl CType {
         }
     }
     pub fn f64() -> CType {
-        let program = Program::get_program().lock().unwrap();
-        match program.env.get("ALAN_OUTPUT_LANG").unwrap().as_str() {
+        let program = Program::get_program();
+        let output_lang = program.env.get("ALAN_OUTPUT_LANG").unwrap().clone();
+        Program::return_program(program);
+        match output_lang.as_str() {
             "rs" => CType::Type(
                 "f64".to_string(),
                 Box::new(CType::Binds(
@@ -143,8 +147,10 @@ impl CType {
         }
     }
     pub fn bool() -> CType {
-        let program = Program::get_program().lock().unwrap();
-        match program.env.get("ALAN_OUTPUT_LANG").unwrap().as_str() {
+        let program = Program::get_program();
+        let output_lang = program.env.get("ALAN_OUTPUT_LANG").unwrap().clone();
+        Program::return_program(program);
+        match output_lang.as_str() {
             "rs" => CType::Type(
                 "bool".to_string(),
                 Box::new(CType::Binds(
@@ -174,8 +180,10 @@ impl CType {
         }
     }
     pub fn string() -> CType {
-        let program = Program::get_program().lock().unwrap();
-        match program.env.get("ALAN_OUTPUT_LANG").unwrap().as_str() {
+        let program = Program::get_program();
+        let output_lang = program.env.get("ALAN_OUTPUT_LANG").unwrap().clone();
+        Program::return_program(program);
+        match output_lang.as_str() {
             "rs" => CType::Type(
                 "string".to_string(),
                 Box::new(CType::Binds(
@@ -1742,11 +1750,28 @@ impl CType {
         }
     }
 
-    pub fn to_functions(&self, name: String) -> (CType, Vec<Function>) {
+    pub fn to_functions(&self, name: String, scope: &Scope) -> (CType, Vec<Function>) {
         let t = CType::Type(name.clone(), Box::new(self.clone()));
         let constructor_fn_name = t.to_callable_string();
         let mut fs = Vec::new();
         match self {
+            CType::Import(n, d) => match &**d {
+                CType::TString(dep_name) => {
+                    let program = Program::get_program();
+                    let other_scope = program.scope_by_file(dep_name).unwrap();
+                    match &**n {
+                        CType::TString(name) => match other_scope.functions.get(name) {
+                            None => CType::fail(&format!("{} not found in {}", name, dep_name)),
+                            Some(dep_fs) => {
+                                fs.append(&mut dep_fs.clone());
+                            }
+                        },
+                        _ => CType::fail("The name of the import must be a string"),
+                    };
+                    Program::return_program(program);
+                }
+                _ => CType::fail("TODO: Support imports beyond local directories"),
+            },
             CType::Call(n, f) => {
                 let mut typen = f.degroup();
                 let args = type_to_args(&typen);
@@ -1768,6 +1793,7 @@ impl CType {
                             CType::TString(s) => s.clone(),
                             _ => unreachable!(),
                         }),
+                        origin_scope_path: scope.path.clone(),
                     });
                 } else {
                     let mut microstatements = Vec::new();
@@ -2134,6 +2160,7 @@ impl CType {
                         typen,
                         microstatements,
                         kind,
+                        origin_scope_path: scope.path.clone(),
                     });
                 }
             }
@@ -2147,6 +2174,7 @@ impl CType {
                     ),
                     microstatements: Vec::new(),
                     kind: FnKind::Derived,
+                    origin_scope_path: scope.path.clone(),
                 });
             }
             CType::Tuple(ts) => {
@@ -2186,6 +2214,7 @@ impl CType {
                                             ),
                                         }],
                                         kind: FnKind::Static,
+                                        origin_scope_path: scope.path.clone(),
                                     });
                                 }
                                 CType::Int(i) => {
@@ -2204,6 +2233,7 @@ impl CType {
                                             representation: format!("{}", i),
                                         }],
                                         kind: FnKind::Static,
+                                        origin_scope_path: scope.path.clone(),
                                     });
                                 }
                                 CType::Float(f) => {
@@ -2222,6 +2252,7 @@ impl CType {
                                             representation: format!("{}", f),
                                         }],
                                         kind: FnKind::Static,
+                                        origin_scope_path: scope.path.clone(),
                                     });
                                 }
                                 CType::Bool(b) => {
@@ -2243,6 +2274,7 @@ impl CType {
                                             },
                                         }],
                                         kind: FnKind::Static,
+                                        origin_scope_path: scope.path.clone(),
                                     });
                                 }
                                 _ => { /* Do nothing */ }
@@ -2274,6 +2306,7 @@ impl CType {
                                 typen: CType::Function(Box::new(t.clone()), Box::new(*f.clone())),
                                 microstatements: Vec::new(),
                                 kind: FnKind::Derived,
+                                origin_scope_path: scope.path.clone(),
                             });
                         }
                         otherwise => {
@@ -2286,6 +2319,7 @@ impl CType {
                                 ),
                                 microstatements: Vec::new(),
                                 kind: FnKind::Derived,
+                                origin_scope_path: scope.path.clone(),
                             });
                         }
                     }
@@ -2299,6 +2333,7 @@ impl CType {
                     ),
                     microstatements: Vec::new(),
                     kind: FnKind::Derived,
+                    origin_scope_path: scope.path.clone(),
                 });
             }
             CType::Field(n, f) => {
@@ -2318,6 +2353,7 @@ impl CType {
                                 representation: s.clone(),
                             }],
                             kind: FnKind::Static,
+                            origin_scope_path: scope.path.clone(),
                         });
                     }
                     CType::Int(i) => {
@@ -2333,6 +2369,7 @@ impl CType {
                                 representation: format!("{}", i),
                             }],
                             kind: FnKind::Static,
+                            origin_scope_path: scope.path.clone(),
                         });
                     }
                     CType::Float(f) => {
@@ -2348,6 +2385,7 @@ impl CType {
                                 representation: format!("{}", f),
                             }],
                             kind: FnKind::Static,
+                            origin_scope_path: scope.path.clone(),
                         });
                     }
                     CType::Bool(b) => {
@@ -2366,6 +2404,7 @@ impl CType {
                                 },
                             }],
                             kind: FnKind::Static,
+                            origin_scope_path: scope.path.clone(),
                         });
                     }
                     _ => {
@@ -2374,6 +2413,7 @@ impl CType {
                             typen: CType::Function(Box::new(t.clone()), Box::new(*f.clone())),
                             microstatements: Vec::new(),
                             kind: FnKind::Derived,
+                            origin_scope_path: scope.path.clone(),
                         });
                     }
                 }
@@ -2383,6 +2423,7 @@ impl CType {
                     typen: CType::Function(Box::new(*f.clone()), Box::new(t.clone())),
                     microstatements: Vec::new(),
                     kind: FnKind::Derived,
+                    origin_scope_path: scope.path.clone(),
                 });
             }
             CType::Either(ts) => {
@@ -2395,6 +2436,7 @@ impl CType {
                         typen: CType::Function(Box::new(e.clone()), Box::new(t.clone())),
                         microstatements: Vec::new(),
                         kind: FnKind::Derived,
+                        origin_scope_path: scope.path.clone(),
                     });
                     // Create a store fn to re-assign-and-auto-wrap a value
                     fs.push(Function {
@@ -2405,6 +2447,7 @@ impl CType {
                         ),
                         microstatements: Vec::new(),
                         kind: FnKind::Derived,
+                        origin_scope_path: scope.path.clone(),
                     });
                     if let CType::Void = &e {
                         // Have a zero-arg constructor function produce the void type, if possible.
@@ -2413,6 +2456,7 @@ impl CType {
                             typen: CType::Function(Box::new(CType::Void), Box::new(t.clone())),
                             microstatements: Vec::new(),
                             kind: FnKind::Derived,
+                            origin_scope_path: scope.path.clone(),
                         });
                     }
                     // Create the accessor function, the name of the function will
@@ -2426,6 +2470,7 @@ impl CType {
                             ),
                             microstatements: Vec::new(),
                             kind: FnKind::Derived,
+                            origin_scope_path: scope.path.clone(),
                         }),
                         CType::Type(n, _) => fs.push(Function {
                             name: n.clone(),
@@ -2435,6 +2480,7 @@ impl CType {
                             ),
                             microstatements: Vec::new(),
                             kind: FnKind::Derived,
+                            origin_scope_path: scope.path.clone(),
                         }),
                         _ => {} // We can't make names for other types
                     }
@@ -2451,6 +2497,7 @@ impl CType {
                     typen: CType::Function(Box::new(*b.clone()), Box::new(t.clone())),
                     microstatements: Vec::new(),
                     kind: FnKind::Derived,
+                    origin_scope_path: scope.path.clone(),
                 });
                 let size = match **s {
                     CType::Int(s) => s as usize,
@@ -2471,6 +2518,7 @@ impl CType {
                         ),
                         microstatements: Vec::new(),
                         kind: FnKind::Derived,
+                        origin_scope_path: scope.path.clone(),
                     });
                 }
             }
@@ -2487,6 +2535,7 @@ impl CType {
                     typen: CType::Function(Box::new(*a.clone()), Box::new(t.clone())),
                     microstatements: Vec::new(),
                     kind: FnKind::DerivedVariadic,
+                    origin_scope_path: scope.path.clone(),
                 });
             }
             CType::Int(i) => {
@@ -2502,6 +2551,7 @@ impl CType {
                         })),
                     }],
                     kind: FnKind::Normal,
+                    origin_scope_path: scope.path.clone(),
                 });
             }
             CType::Float(f) => {
@@ -2517,6 +2567,7 @@ impl CType {
                         })),
                     }],
                     kind: FnKind::Normal,
+                    origin_scope_path: scope.path.clone(),
                 });
             }
             CType::Bool(b) => {
@@ -2534,6 +2585,7 @@ impl CType {
                         })),
                     }],
                     kind: FnKind::Normal,
+                    origin_scope_path: scope.path.clone(),
                 });
             }
             CType::TString(s) => {
@@ -2548,6 +2600,7 @@ impl CType {
                         })),
                     }],
                     kind: FnKind::Normal,
+                    origin_scope_path: scope.path.clone(),
                 });
             }
             _ => {} // Don't do anything for other types
@@ -2630,7 +2683,7 @@ impl CType {
                 if let CType::Import(name, dep) = &inner_type {
                     match &**dep {
                         CType::TString(dep_name) => {
-                            let program = Program::get_program().lock().unwrap();
+                            let program = Program::get_program();
                             let scope = program.scope_by_file(dep_name)?;
                             match &**name {
                                 CType::TString(n) => {
@@ -2645,12 +2698,13 @@ impl CType {
                                     }
                                 }
                                 _ => CType::fail("The name of the import must be a string"),
-                            }
+                            };
+                            Program::return_program(program);
                         }
                         _ => CType::fail("TODO: Support imports beyond local directories"),
                     }
                 }
-                inner_type.to_functions(name.clone())
+                inner_type.to_functions(name.clone(), &scope)
             }
             Some(g) => {
                 // This is a "generic" type
@@ -2716,7 +2770,7 @@ impl CType {
 
     pub fn from_ctype(mut scope: Scope, name: String, ctype: CType) -> Scope {
         scope.exports.insert(name.clone(), Export::Type);
-        let (_, fs) = ctype.to_functions(name.clone());
+        let (_, fs) = ctype.to_functions(name.clone(), &scope);
         scope.types.insert(name, ctype.clone());
         scope.types.insert(ctype.to_callable_string(), ctype);
         if !fs.is_empty() {
@@ -3019,8 +3073,8 @@ impl CType {
                     if let Err(e) = Program::load(s.clone()) {
                         CType::fail(&format!("Failed to load dependency {}: {:?}", s, e))
                     } else {
-                        let program = Program::get_program().lock().unwrap();
-                        match program.scope_by_file(s) {
+                        let program = Program::get_program();
+                        let out = match program.scope_by_file(s) {
                             Err(e) => {
                                 CType::fail(&format!("Failed to load dependency {}: {:?}", s, e))
                             }
@@ -3042,7 +3096,9 @@ impl CType {
                                     CType::fail("The Import{N, D} N parameter must be a string")
                                 }
                             }
-                        }
+                        };
+                        Program::return_program(program);
+                        out
                     }
                 }
                 CType::Dependency(..) => CType::fail("TODO: Alan package import support"),
@@ -3301,23 +3357,27 @@ impl CType {
         }
     }
     pub fn env(k: &CType) -> CType {
-        let program = Program::get_program().lock().unwrap();
-        match k {
+        let program = Program::get_program();
+        let out = match k {
             CType::TString(s) => match program.env.get(s) {
                 None => CType::fail(&format!("Failed to load environment variable {}", s,)),
                 Some(s) => CType::TString(s.clone()),
             },
             CType::Infer(..) => CType::Env(vec![k.clone()]),
             _ => CType::fail("Env{K} must be given a key as a string to load"),
-        }
+        };
+        Program::return_program(program);
+        out
     }
     pub fn envexists(k: &CType) -> CType {
-        let program = Program::get_program().lock().unwrap();
-        match k {
+        let program = Program::get_program();
+        let out = match k {
             CType::TString(s) => CType::Bool(program.env.contains_key(s)),
             CType::Infer(..) => CType::EnvExists(Box::new(k.clone())),
             _ => CType::fail("EnvExists{K} must be given a key as a string to check"),
-        }
+        };
+        Program::return_program(program);
+        out
     }
     pub fn not(b: &CType) -> CType {
         match b {
@@ -3478,8 +3538,8 @@ impl CType {
         }
     }
     pub fn envdefault(k: &CType, d: &CType) -> CType {
-        let program = Program::get_program().lock().unwrap();
-        match (k, d) {
+        let program = Program::get_program();
+        let out = match (k, d) {
             (CType::TString(s), CType::TString(def)) => match program.env.get(s) {
                 None => CType::TString(def.clone()),
                 Some(v) => CType::TString(v.clone()),
@@ -3488,7 +3548,9 @@ impl CType {
             | (CType::TString(_), CType::Infer(..))
             | (CType::Infer(..), CType::Infer(..)) => CType::Env(vec![k.clone(), d.clone()]),
             _ => CType::fail("Env{K, D} must be provided a string for each type"),
-        }
+        };
+        Program::return_program(program);
+        out
     }
     pub fn and(a: &CType, b: &CType) -> CType {
         match (a, b) {

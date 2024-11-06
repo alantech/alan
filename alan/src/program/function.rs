@@ -13,6 +13,7 @@ pub struct Function {
     pub typen: CType,
     pub microstatements: Vec<Microstatement>,
     pub kind: FnKind,
+    pub origin_scope_path: String,
 }
 
 pub fn type_to_args(t: &CType) -> Vec<(String, ArgKind, CType)> {
@@ -296,6 +297,7 @@ impl Function {
                         typen: CType::Function(Box::new(degrouped_input), Box::new(rettype)),
                         microstatements: Vec::new(),
                         kind,
+                        origin_scope_path: scope.path.clone(),
                     };
                     if is_export {
                         scope
@@ -322,15 +324,12 @@ impl Function {
                         scope.exports.insert(name.clone(), Export::Function);
                     }
                     if scope.functions.contains_key(&name) {
-                        scope
-                            .functions
-                            .get_mut(&name)
-                            .unwrap()
-                            .splice(0..0, ctype.to_functions(name.clone()).1);
+                        let fns = ctype.to_functions(name.clone(), &scope).1;
+                        scope.functions.get_mut(&name).unwrap().splice(0..0, fns);
                     } else {
                         scope
                             .functions
-                            .insert(name.clone(), ctype.to_functions(name.clone()).1);
+                            .insert(name.clone(), ctype.to_functions(name.clone(), &scope).1);
                     }
                 }
                 return Ok(scope);
@@ -482,7 +481,10 @@ impl Function {
             // still generic
             if function_ast.optgenerics.is_none() {
                 for statement in &statements {
-                    let res = statement_to_microstatements(statement, scope, ms)?;
+                    // The construction of microstatements in non-generic functions will never
+                    // actually use the provided function for scope resolution, so we just give it
+                    // a dummy function to work with.
+                    let res = statement_to_microstatements(statement, None, scope, ms)?;
                     scope = res.0;
                     ms = res.1;
                 }
@@ -553,6 +555,7 @@ impl Function {
             typen,
             microstatements,
             kind,
+            origin_scope_path: scope.path.clone(),
         };
         if is_export {
             scope
@@ -677,6 +680,7 @@ impl Function {
                     typen: args_and_rettype_to_type(args, rettype),
                     microstatements,
                     kind,
+                    origin_scope_path: scope.path.clone(),
                 };
                 if scope.functions.contains_key(&f.name) {
                     let func_vec = scope.functions.get_mut(&f.name).unwrap();
@@ -732,7 +736,12 @@ impl Function {
                         });
                     }
                     for statement in statements {
-                        let res = statement_to_microstatements(statement, scope, ms)?;
+                        let res = statement_to_microstatements(
+                            statement,
+                            Some(generic_function),
+                            scope,
+                            ms,
+                        )?;
                         scope = res.0;
                         ms = res.1;
                     }
@@ -779,6 +788,7 @@ impl Function {
                     typen: args_and_rettype_to_type(args, rettype),
                     microstatements,
                     kind,
+                    origin_scope_path: scope.path.clone(),
                 };
                 if scope.functions.contains_key(&f.name) {
                     let func_vec = scope.functions.get_mut(&f.name).unwrap();

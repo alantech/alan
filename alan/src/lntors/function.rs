@@ -3,7 +3,7 @@
 use ordered_hash_map::OrderedHashMap;
 
 use crate::lntors::typen;
-use crate::program::{ArgKind, CType, FnKind, Function, Microstatement, Scope};
+use crate::program::{ArgKind, CType, FnKind, Function, Microstatement, Program, Scope};
 
 pub fn from_microstatement(
     microstatement: &Microstatement,
@@ -158,7 +158,27 @@ pub fn from_microstatement(
             CType::Function(..) => {
                 // We need to make sure this function we're referencing exists
                 let f = scope.resolve_function_by_type(representation, typen);
-                match f {
+                let f = match f {
+                    None => {
+                        // If the current scope isn't the original scope for the parent function, maybe the
+                        // function we're looking for is in the original scope
+                        if parent_fn.origin_scope_path != scope.path {
+                            let program = Program::get_program();
+                            let out = match program.scope_by_file(&parent_fn.origin_scope_path) {
+                                Ok(original_scope) => original_scope
+                                    .resolve_function_by_type(representation, typen)
+                                    .cloned(),
+                                Err(_) => None,
+                            };
+                            Program::return_program(program);
+                            out
+                        } else {
+                            None
+                        }
+                    }
+                    f => f.cloned(), // TODO: Can I avoid this?
+                };
+                match &f {
                     None => {
                         let args = parent_fn.args();
                         for (name, _, typen) in args {
