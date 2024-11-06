@@ -2574,12 +2574,16 @@ test_ignore!(basic_interfaces => r#"
     stdout "'Hello, World!'\n'5'\n";
 );
 
-test_full!(basic_type_import "foo" =>
-    "bar.ln" => r#"
+// TODO: Since tests are executed "in parallel", the files created by the tests can't match. This
+// should be automatically scoped to separate test directories at some point when I can affect the
+// PWD without using the thread-unsafe std::env for it. For now, these two tests that create
+// multiple test files with manual naming just have to have different filenames.
+test_full!(basic_type_import "type_foo" =>
+    "type_bar.ln" => r#"
         export type Bar = "Bar";
     "#,
-    "foo.ln" => r#"
-        type Bar <-- "./bar.ln";
+    "type_foo.ln" => r#"
+        type Bar <-- "./type_bar.ln";
 
         export fn main {
             {Bar}().print;
@@ -2588,12 +2592,12 @@ test_full!(basic_type_import "foo" =>
     stdout "Bar\n";
 );
 
-test_full!(basic_fn_import "foo" =>
-    "bar.ln" => r#"
+test_full!(basic_fn_import "fn_foo" =>
+    "fn_bar.ln" => r#"
         export fn bar = "Bar";
     "#,
-    "foo.ln" => r#"
-        fn bar <-- "./bar.ln";
+    "fn_foo.ln" => r#"
+        fn bar <-- "./fn_bar.ln";
 
         export fn main {
             bar().print;
