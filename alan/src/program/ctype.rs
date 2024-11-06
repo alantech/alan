@@ -2685,7 +2685,7 @@ impl CType {
                         CType::TString(dep_name) => {
                             let program = Program::get_program();
                             let scope = program.scope_by_file(dep_name)?;
-                            let out = match &**name {
+                            match &**name {
                                 CType::TString(n) => {
                                     inner_type = match scope.types.get(n) {
                                         None => {
@@ -2700,7 +2700,6 @@ impl CType {
                                 _ => CType::fail("The name of the import must be a string"),
                             };
                             Program::return_program(program);
-                            out
                         }
                         _ => CType::fail("TODO: Support imports beyond local directories"),
                     }
