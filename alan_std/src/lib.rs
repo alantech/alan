@@ -827,7 +827,6 @@ pub fn create_buffer_init<T>(
     let val_ptr = val_slice.as_ptr();
     let val_u8_len = vals.len() * (*element_size as usize);
     let val_u8: &[u8] = unsafe { std::slice::from_raw_parts(val_ptr as *const u8, val_u8_len) };
-    println!("Buffer size: {} element size: {}", val_u8_len, element_size);
     GBuffer {
         buffer: Rc::new(wgpu::util::DeviceExt::create_buffer_init(
             &g.device,
@@ -978,7 +977,6 @@ pub fn read_buffer<T: std::clone::Clone>(b: &GBuffer) -> Vec<T> {
         let result = data_slice.to_vec();
         drop(data);
         temp_buffer.unmap();
-        println!("Buffer size: {} bufferlen: {}", b.size(), bufferlen(b));
         result
     } else {
         panic!("Failed to run compute on gpu!")
