@@ -991,25 +991,14 @@ pub fn replace_buffer<T>(b: &GBuffer, v: &Vec<T>) -> Result<(), AlanError> {
     if v.len() as i64 != bufferlen(b) {
         Err("The input array is not the same size as the buffer".into())
     } else {
-        // TODO: Support other value types
-        let val_slice = &v[..];
-        let val_ptr = val_slice.as_ptr();
-        let val_u8_len = v.len() * (b.element_size as usize);
-        let val_u8: &[u8] = unsafe { std::slice::from_raw_parts(val_ptr as *const u8, val_u8_len) };
         let g = gpu();
-        let temp_buffer = wgpu::util::DeviceExt::create_buffer_init(
-            &g.device,
-            &wgpu::util::BufferInitDescriptor {
-                label: None,
-                contents: val_u8,
-                usage: map_write_buffer_type(),
-            },
-        );
+        let gb = create_buffer_init(&map_write_buffer_type(), &v, &b.element_size);
         let mut encoder = g
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-        encoder.copy_buffer_to_buffer(&temp_buffer, 0, b, 0, b.size());
+        encoder.copy_buffer_to_buffer(&gb, 0, b, 0, b.size());
         g.queue.submit(Some(encoder.finish()));
+        gb.unmap();
         Ok(())
     }
 }
