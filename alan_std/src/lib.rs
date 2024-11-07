@@ -958,11 +958,7 @@ pub fn gpu_run(gg: &GPGPU) {
 
 pub fn read_buffer<T: std::clone::Clone>(b: &GBuffer) -> Vec<T> {
     let g = gpu();
-    let temp_buffer = create_empty_buffer(
-        &mut map_read_buffer_type(),
-        &mut b.size().try_into().unwrap(),
-        &1, // We are getting the size in bytes above
-    );
+    let temp_buffer = create_empty_buffer(&map_read_buffer_type(), &bufferlen(b), &b.element_size);
     let mut encoder = g
         .device
         .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
@@ -976,8 +972,9 @@ pub fn read_buffer<T: std::clone::Clone>(b: &GBuffer) -> Vec<T> {
         let data = temp_slice.get_mapped_range();
         let data_ptr = data.as_ptr();
         let data_len = data.len() / (b.element_size as usize);
-        let data_i32: &[T] = unsafe { std::slice::from_raw_parts(data_ptr as *const T, data_len) };
-        let result = data_i32.to_vec();
+        let data_slice: &[T] =
+            unsafe { std::slice::from_raw_parts(data_ptr as *const T, data_len) };
+        let result = data_slice.to_vec();
         drop(data);
         temp_buffer.unmap();
         result
