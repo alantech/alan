@@ -411,7 +411,7 @@ export async function createBufferInit(usage, vals) {
   let g = await gpu();
   let b = await g.device.createBuffer({
     mappedAtCreation: true,
-    size: vals.length * (vals[0].bits ?? 32) / 8,
+    size: vals.length * (vals[0]?.bits ?? 32) / 8,
     usage,
     label: `buffer_${uuidv4().replaceAll('-', '_')}`,
   });
@@ -428,7 +428,7 @@ export async function createBufferInit(usage, vals) {
 export async function createEmptyBuffer(usage, size, ValKind) {
   let g = await gpu();
   let b = await g.device.createBuffer({
-    size: size.valueOf() * (ValKind.bits ?? 32) / 8,
+    size: size.valueOf() * (ValKind?.bits ?? 32) / 8,
     usage,
     label: `buffer_${uuidv4().replaceAll('-', '_')}`,
   });
@@ -449,7 +449,7 @@ export function storageBufferType() {
 }
 
 export function bufferlen(b) {
-    return new I64(b.size / ((b.ValKind.bits ?? 32) / 8));
+    return new I64(b.size / ((b?.ValKind?.bits ?? 32) / 8));
 }
 
 export function bufferid(b) {
@@ -514,10 +514,10 @@ export async function readBuffer(b) {
   g.queue.submit([encoder.finish()]);
   await tempBuffer.mapAsync(GPUMapMode.READ);
   let data = tempBuffer.getMappedRange(0, b.size);
-  let vals = new b.ArrayKind(data);
+  let vals = new (b?.ValKind?.ArrayKind ?? Int32Array)(data);
   let out = [];
   for (let i = 0; i < vals.length; i++) {
-    out[i] = new b.ValKind(vals[i]);
+    out[i] = new (b?.ValKind ?? I32)(vals[i]);
   }
   tempBuffer.unmap();
   tempBuffer.destroy();
