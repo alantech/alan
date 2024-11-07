@@ -961,7 +961,7 @@ pub fn read_buffer<T: std::clone::Clone>(b: &GBuffer) -> Vec<T> {
     let temp_buffer = create_empty_buffer(
         &mut map_read_buffer_type(),
         &mut b.size().try_into().unwrap(),
-        &mut b.element_size.clone(),
+        &1, // We are getting the size in bytes above
     );
     let mut encoder = g
         .device
