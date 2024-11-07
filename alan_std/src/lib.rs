@@ -978,6 +978,7 @@ pub fn read_buffer<T: std::clone::Clone>(b: &GBuffer) -> Vec<T> {
         let result = data_slice.to_vec();
         drop(data);
         temp_buffer.unmap();
+        println!("Buffer size: {} bufferlen: {}", b.size(), bufferlen(b));
         result
     } else {
         panic!("Failed to run compute on gpu!")
