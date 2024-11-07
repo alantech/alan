@@ -971,7 +971,7 @@ pub fn read_buffer<T: std::clone::Clone>(b: &GBuffer) -> Vec<T> {
     if let Ok(Ok(())) = receiver.recv() {
         let data = temp_slice.get_mapped_range();
         let data_ptr = data.as_ptr();
-        let data_len = data.len() / (b.element_size as usize);
+        let data_len = bufferlen(b) as usize;
         let data_slice: &[T] =
             unsafe { std::slice::from_raw_parts(data_ptr as *const T, data_len) };
         let result = data_slice.to_vec();
