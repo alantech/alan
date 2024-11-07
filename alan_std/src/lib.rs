@@ -998,7 +998,7 @@ pub fn replace_buffer<T>(b: &GBuffer, v: &Vec<T>) -> Result<(), AlanError> {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
         encoder.copy_buffer_to_buffer(&gb, 0, b, 0, b.size());
         g.queue.submit(Some(encoder.finish()));
-        gb.unmap();
+        gb.destroy();
         Ok(())
     }
 }
