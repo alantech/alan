@@ -784,11 +784,15 @@ fn gpu() -> &'static GPU {
 }
 
 #[derive(Clone)]
-pub struct GBuffer(Rc<wgpu::Buffer>, String); // TODO: Temporary during transition
+pub struct GBuffer {
+    buffer: Rc<wgpu::Buffer>,
+    id: String,
+    element_size: i8,
+}
 
 impl PartialEq for GBuffer {
     fn eq(&self, other: &Self) -> bool {
-        self.1 == other.1
+        self.id == other.id
     }
 }
 
@@ -796,31 +800,35 @@ impl Eq for GBuffer {}
 
 impl Hash for GBuffer {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.0.hash(state);
+        self.buffer.hash(state);
     }
 }
 
 impl Deref for GBuffer {
     type Target = Rc<wgpu::Buffer>;
     fn deref(&self) -> &Self::Target {
-        &self.0
+        &self.buffer
     }
 }
 
 impl DerefMut for GBuffer {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
+        &mut self.buffer
     }
 }
 
-pub fn create_buffer_init(usage: &wgpu::BufferUsages, vals: &Vec<i32>) -> GBuffer {
+pub fn create_buffer_init<T>(
+    usage: &wgpu::BufferUsages,
+    vals: &Vec<T>,
+    element_size: &i8,
+) -> GBuffer {
     let g = gpu();
     let val_slice = &vals[..];
     let val_ptr = val_slice.as_ptr();
-    let val_u8_len = vals.len() * 4;
+    let val_u8_len = vals.len() * (*element_size as usize);
     let val_u8: &[u8] = unsafe { std::slice::from_raw_parts(val_ptr as *const u8, val_u8_len) };
-    GBuffer(
-        Rc::new(wgpu::util::DeviceExt::create_buffer_init(
+    GBuffer {
+        buffer: Rc::new(wgpu::util::DeviceExt::create_buffer_init(
             &g.device,
             &wgpu::util::BufferInitDescriptor {
                 label: None, // TODO: Add a label for easier debugging?
@@ -828,21 +836,23 @@ pub fn create_buffer_init(usage: &wgpu::BufferUsages, vals: &Vec<i32>) -> GBuffe
                 usage: *usage,
             },
         )),
-        format!("buffer_{}", format!("{}", Uuid::new_v4()).replace("-", "_")),
-    )
+        id: format!("buffer_{}", format!("{}", Uuid::new_v4()).replace("-", "_")),
+        element_size: *element_size,
+    }
 }
 
-pub fn create_empty_buffer(usage: &wgpu::BufferUsages, size: &i64) -> GBuffer {
+pub fn create_empty_buffer(usage: &wgpu::BufferUsages, size: &i64, element_size: &i8) -> GBuffer {
     let g = gpu();
-    GBuffer(
-        Rc::new(g.device.create_buffer(&wgpu::BufferDescriptor {
+    GBuffer {
+        buffer: Rc::new(g.device.create_buffer(&wgpu::BufferDescriptor {
             label: None, // TODO: Add a label for easier debugging?
-            size: *size as u64,
+            size: (*size as u64) * (*element_size as u64),
             usage: *usage,
             mapped_at_creation: false, // TODO: With `create_buffer_init` does this make any sense?
         })),
-        format!("buffer_{}", format!("{}", Uuid::new_v4()).replace("-", "_")),
-    )
+        id: format!("buffer_{}", format!("{}", Uuid::new_v4()).replace("-", "_")),
+        element_size: *element_size,
+    }
 }
 
 // TODO: Either add the ability to bind to const values, or come up with a better solution. For
@@ -864,12 +874,12 @@ pub fn storage_buffer_type() -> wgpu::BufferUsages {
 
 #[inline(always)]
 pub fn bufferlen(gb: &GBuffer) -> i64 {
-    (gb.size() / 4) as i64 // TODO: Support more than i32/u32/f32 values
+    (gb.size() as i64) / (gb.element_size as i64)
 }
 
 #[inline(always)]
 pub fn buffer_id(b: &GBuffer) -> String {
-    b.1.clone()
+    b.id.clone()
 }
 
 pub struct GPGPU {
@@ -946,12 +956,12 @@ pub fn gpu_run(gg: &GPGPU) {
     g.queue.submit(Some(encoder.finish()));
 }
 
-pub fn read_buffer(b: &GBuffer) -> Vec<i32> {
-    // TODO: Support other value types
+pub fn read_buffer<T: std::clone::Clone>(b: &GBuffer) -> Vec<T> {
     let g = gpu();
     let temp_buffer = create_empty_buffer(
         &mut map_read_buffer_type(),
         &mut b.size().try_into().unwrap(),
+        &mut b.element_size.clone(),
     );
     let mut encoder = g
         .device
@@ -965,27 +975,26 @@ pub fn read_buffer(b: &GBuffer) -> Vec<i32> {
     if let Ok(Ok(())) = receiver.recv() {
         let data = temp_slice.get_mapped_range();
         let data_ptr = data.as_ptr();
-        let data_len = data.len() / 4; // From u8 to i32
-        let data_i32: &[i32] =
-            unsafe { std::slice::from_raw_parts(data_ptr as *const i32, data_len) };
+        let data_len = data.len() / (b.element_size as usize);
+        let data_i32: &[T] = unsafe { std::slice::from_raw_parts(data_ptr as *const T, data_len) };
         let result = data_i32.to_vec();
         drop(data);
         temp_buffer.unmap();
         result
     } else {
-        panic!("failed to run compute on gpu!")
+        panic!("Failed to run compute on gpu!")
     }
 }
 
 #[allow(clippy::ptr_arg)]
-pub fn replace_buffer(b: &GBuffer, v: &Vec<i32>) -> Result<(), AlanError> {
+pub fn replace_buffer<T>(b: &GBuffer, v: &Vec<T>) -> Result<(), AlanError> {
     if v.len() as i64 != bufferlen(b) {
         Err("The input array is not the same size as the buffer".into())
     } else {
         // TODO: Support other value types
         let val_slice = &v[..];
         let val_ptr = val_slice.as_ptr();
-        let val_u8_len = v.len() * 4;
+        let val_u8_len = v.len() * (b.element_size as usize);
         let val_u8: &[u8] = unsafe { std::slice::from_raw_parts(val_ptr as *const u8, val_u8_len) };
         let g = gpu();
         let temp_buffer = wgpu::util::DeviceExt::create_buffer_init(

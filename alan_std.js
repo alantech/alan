@@ -207,6 +207,7 @@ export class Int {
 export class I8 extends Int {
   constructor(v) {
     super(v, 8, 256, -128, 127);
+    this.ArrayKind = Int32Array; // GPUs don't support 8-bits (uniformly)
   }
 
   build(v) {
@@ -217,6 +218,7 @@ export class I8 extends Int {
 export class U8 extends Int {
   constructor(v) {
     super(v, 8, 256, 0, 255);
+    this.ArrayKind = Uint32Array; // GPUs don't support 8-bits (uniformly)
   }
 
   build(v) {
@@ -227,6 +229,7 @@ export class U8 extends Int {
 export class I16 extends Int {
   constructor(v) {
     super(v, 16, 65_536, -32_768, 32_767);
+    this.ArrayKind = Int32Array; // GPUs don't support 16-bits (uniformly)
   }
 
   build(v) {
@@ -237,6 +240,7 @@ export class I16 extends Int {
 export class U16 extends Int {
   constructor(v) {
     super(v, 16, 65_536, 0, 65_535);
+    this.ArrayKind = Uint32Array; // GPUs don't support 16-bits (uniformly)
   }
 
   build(v) {
@@ -247,6 +251,7 @@ export class U16 extends Int {
 export class I32 extends Int {
   constructor(v) {
     super(v, 32, 4_294_967_296, -2_147_483_648, 2_147_483_647);
+    this.ArrayKind = Int32Array;
   }
 
   build(v) {
@@ -257,6 +262,7 @@ export class I32 extends Int {
 export class U32 extends Int {
   constructor(v) {
     super(v, 32, 4_294_967_296, 0, 4_294_967_295);
+    this.ArrayKind = Uint32Array;
   }
 
   build(v) {
@@ -267,6 +273,7 @@ export class U32 extends Int {
 export class I64 extends Int {
   constructor(v) {
     super(v, 64, 18_446_744_073_709_551_616n, -9_223_372_036_854_775_808n, 9_223_372_036_854_775_807n);
+    this.ArrayKind = Int32Array; // GPUs don't support 64-bits
   }
 
   build(v) {
@@ -277,6 +284,7 @@ export class I64 extends Int {
 export class U64 extends Int {
   constructor(v) {
     super(v, 64, 18_446_744_073_709_551_616n, 0n, 18_446_744_073_709_551_615n);
+    this.ArrayKind = Uint32Array; // GPUs don't support 64-bits
   }
 
   build(v) {
@@ -302,6 +310,7 @@ export class Float {
 export class F32 extends Float {
   constructor(v) {
     super(Number(v), 32);
+    this.ArrayKind = Float32Array;
   }
 
   build(v) {
@@ -312,6 +321,7 @@ export class F32 extends Float {
 export class F64 extends Float {
   constructor(v) {
     super(Number(v), 64);
+    this.ArrayKind = Float32Array; // GPUs don't support 64-bit vals
   }
 
   build(v) {
@@ -322,6 +332,7 @@ export class F64 extends Float {
 export class Bool {
   constructor(val) {
     this.val = Boolean(val);
+    this.ArrayKind = Int8Array;
   }
 
   valueOf() {
@@ -400,26 +411,28 @@ export async function createBufferInit(usage, vals) {
   let g = await gpu();
   let b = await g.device.createBuffer({
     mappedAtCreation: true,
-    size: vals.length * 4,
+    size: vals.length * (vals[0].bits ?? 32) / 8,
     usage,
     label: `buffer_${uuidv4().replaceAll('-', '_')}`,
   });
   let ab = b.getMappedRange();
-  let i32v = new Int32Array(ab);
+  let v = new (vals[0].ArrayKind ?? Int32Array)(ab);
   for (let i = 0; i < vals.length; i++) {
-    i32v[i] = vals[i].valueOf();
+    v[i] = vals[i].valueOf();
   }
   b.unmap();
+  b.ValType = vals[0].constructor;
   return b;
 }
 
-export async function createEmptyBuffer(usage, size) {
+export async function createEmptyBuffer(usage, size, ValKind) {
   let g = await gpu();
   let b = await g.device.createBuffer({
-    size: size.valueOf() * 4,
+    size: size.valueOf() * (ValKind.bits ?? 32) / 8,
     usage,
     label: `buffer_${uuidv4().replaceAll('-', '_')}`,
   });
+  b.ValKind = ValKind;
   return b;
 }
 
@@ -436,7 +449,7 @@ export function storageBufferType() {
 }
 
 export function bufferlen(b) {
-  return new I64(b.size / 4);
+    return new I64(b.size / ((b.ValKind.bits ?? 32) / 8));
 }
 
 export function bufferid(b) {
@@ -501,10 +514,10 @@ export async function readBuffer(b) {
   g.queue.submit([encoder.finish()]);
   await tempBuffer.mapAsync(GPUMapMode.READ);
   let data = tempBuffer.getMappedRange(0, b.size);
-  let vals = new Int32Array(data);
+  let vals = new b.ArrayKind(data);
   let out = [];
   for (let i = 0; i < vals.length; i++) {
-    out[i] = new I32(vals[i]);
+    out[i] = new b.ValKind(vals[i]);
   }
   tempBuffer.unmap();
   tempBuffer.destroy();
