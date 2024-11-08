@@ -1385,7 +1385,7 @@ export fn GPGPU(src: string, buf: GBuffer) -> GPGPU {
 }
 export fn{Rs} run "alan_std::gpu_run" <- RootBacking :: GPGPU;
 export fn{Js} run "alan_std.gpuRun" <- RootBacking :: GPGPU;
-export fn{Rs} read{T} "alan_std::read_buffer" <- RootBacking :: GBuffer -> T[];
+export fn{Rs} read{T}(gb: GBuffer) = {"alan_std::read_buffer" <- RootBacking :: GBuffer -> T[]}(gb);
 export fn{Js} read{T} "alan_std.readBuffer" <- RootBacking :: GBuffer -> T[];
 export fn{Rs} replace{T} "alan_std::replace_buffer" <- RootBacking :: (GBuffer, T[]) -> ()!;
 export fn{Js} replace{T} "alan_std.replaceBuffer" <- RootBacking :: (GBuffer, T[]) -> ()!;
