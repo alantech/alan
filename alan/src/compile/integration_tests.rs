@@ -606,6 +606,10 @@ test_full!(i8_neg => r#"
     export fn main = print(neg(i8(3)));"#;
     stdout "-3\n";
 );
+test_full!(i8_abs => r#"
+    export fn main = print(abs(i8(-3)));"#;
+    stdout "3\n";
+);
 
 test_full!(i16_add => r#"
     export fn main {
@@ -658,6 +662,10 @@ test_full!(i16_max => r#"
 test_full!(i16_neg => r#"
     export fn main = print(-i16(3));"#;
     stdout "-3\n";
+);
+test_full!(i16_abs => r#"
+    export fn main = print(i16(-3).abs);"#;
+    stdout "3\n";
 );
 
 test_full!(i32_add => r#"
@@ -712,6 +720,10 @@ test_full!(i32_neg => r#"
     export fn main = print(- 3.i32);"#; // You wouldn't naturally write this, but should still work
     stdout "-3\n";
 );
+test_full!(i32_abs => r#"
+    export fn main = print(-3.i32.abs);"#;
+    stdout "3\n";
+);
 
 test_full!(i64_add => r#"
     export fn main = print(1 + 2);"#;
@@ -748,6 +760,10 @@ test_full!(i64_max => r#"
 test_full!(i64_neg => r#"
     export fn main = print(- 3);"#; // You wouldn't naturally write this, but should still work
     stdout "-3\n";
+);
+test_full!(i64_abs => r#"
+    export fn main = print(-3.abs);"#;
+    stdout "3\n";
 );
 
 test_full!(u8_add => r#"
@@ -970,6 +986,10 @@ test_full!(f32_neg => r#"
     export fn main = print(- 3.f32);"#; // You wouldn't naturally write this, but should still work
     stdout "-3\n";
 );
+test_full!(f32_abs => r#"
+    export fn main = print(-3.f32.abs);"#;
+    stdout "3\n";
+);
 
 test_full!(f64_add => r#"
     export fn main {
@@ -1022,6 +1042,10 @@ test_full!(f64_max => r#"
 test_full!(f64_neg => r#"
     export fn main = print(- 3.f64);"#; // You wouldn't naturally write this, but should still work
     stdout "-3\n";
+);
+test_full!(f64_abs => r#"
+    export fn main = print(-3.0.abs);"#;
+    stdout "3\n";
 );
 
 test_full!(grouping => r#"
@@ -1131,6 +1155,14 @@ test_gpgpu!(gpu_replace => r#"
         b.map(fn (val: gi32) = val / 2).read{i32}.print;
     }"#;
     stdout "[3, 4, 5, 6]\n[1, 2, 3, 4]\n";
+);
+
+test_gpgpu!(gpu_abs => r#"
+    export fn main {
+        let b = GBuffer([1.i32, -2.i32, -3.i32, 4.i32]);
+        b.map(fn (val: gi32) = val.abs).read{i32}.print;
+    }"#;
+    stdout "[1, 2, 3, 4]\n";
 );
 
 // Bitwise Math
