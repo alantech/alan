@@ -1104,7 +1104,7 @@ test_gpgpu!(hello_gpu_odd => r#"
 
 test_gpgpu!(gpu_map => r#"
     export fn main {
-        let b = GBuffer([1, 2, 3, 4]);
+        let b = GBuffer([1.i32, 2.i32, 3.i32, 4.i32]);
         let out = b.map(fn (val: gi32) = val + 2);
         out.read{i32}.print;
     }"#;
@@ -1113,7 +1113,7 @@ test_gpgpu!(gpu_map => r#"
 
 test_gpgpu!(gpu_if => r#"
     export fn main {
-        let b = GBuffer([1, 2, 3, 4]);
+        let b = GBuffer([1.i32, 2.i32, 3.i32, 4.i32]);
         let out = b.map(fn (val: gi32, i: gu32) = if(
             i % 2 == 0,
             val * i.gi32,
@@ -1125,9 +1125,9 @@ test_gpgpu!(gpu_if => r#"
 
 test_gpgpu!(gpu_replace => r#"
     export fn main {
-        let b = GBuffer([1, 2, 3, 4]);
+        let b = GBuffer([1.i32, 2.i32, 3.i32, 4.i32]);
         b.map(fn (val: gi32) = val + 2).read{i32}.print;
-        b.replace([2, 4, 6, 8]);
+        b.replace([2.i32, 4.i32, 6.i32, 8.i32]);
         b.map(fn (val: gi32) = val / 2).read{i32}.print;
     }"#;
     stdout "[3, 4, 5, 6]\n[1, 2, 3, 4]\n";

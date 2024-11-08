@@ -3333,8 +3333,87 @@ impl CType {
         // particularly for writing to disk or interfacing with network protocols, etc, so I'd
         // prefer to keep it and have some compile-time guarantees we don't normally see.
         match t {
+            CType::Void => CType::Int(0),
             CType::Infer(..) => CType::Size(Box::new(t.clone())),
-            _ => CType::fail("TODO: Implement Size{T}!"),
+            CType::Type(_, t) => CType::size(t),
+            CType::Generic(..) => CType::fail("Cannot determine the size of an unbound generic"),
+            CType::Binds(t, ts) => {
+                if !ts.is_empty() {
+                    CType::fail("Cannot determine the size of an unbound generic")
+                } else {
+                    match &**t {
+                        CType::TString(n) if n == "i8" => CType::Int(1),
+                        CType::TString(n) if n == "u8" => CType::Int(1),
+                        CType::TString(n) if n == "i16" => CType::Int(2),
+                        CType::TString(n) if n == "u16" => CType::Int(2),
+                        CType::TString(n) if n == "i32" => CType::Int(4),
+                        CType::TString(n) if n == "u32" => CType::Int(4),
+                        CType::TString(n) if n == "f32" => CType::Int(4),
+                        CType::TString(n) if n == "i64" => CType::Int(8),
+                        CType::TString(n) if n == "u64" => CType::Int(8),
+                        CType::TString(n) if n == "f64" => CType::Int(8),
+                        CType::TString(n) => {
+                            CType::fail(&format!("Cannot determine the size of {}", n))
+                        }
+                        _ => CType::fail(&format!(
+                            "Cannot determine the size of {}",
+                            t.to_functional_string()
+                        )),
+                    }
+                }
+            }
+            CType::IntrinsicGeneric(..) => {
+                CType::fail("Cannot determine the size of an unbound generic")
+            }
+            CType::Int(_) | CType::Float(_) => CType::Int(8),
+            CType::Bool(_) => CType::Int(1),
+            CType::TString(s) => CType::Int(s.capacity() as i128),
+            CType::Group(t) | CType::Field(_, t) => CType::size(t),
+            CType::Tuple(ts) => {
+                let sizes = ts.iter().map(CType::size).collect::<Vec<CType>>();
+                let mut out_size = 0;
+                for t in sizes {
+                    match t {
+                        CType::Int(s) => out_size += s,
+                        _ => unreachable!(),
+                    }
+                }
+                CType::Int(out_size)
+            }
+            CType::Either(ts) => {
+                let sizes = ts.iter().map(CType::size).collect::<Vec<CType>>();
+                let mut out_size = 0;
+                for t in sizes {
+                    match t {
+                        CType::Int(s) => out_size = i128::max(out_size, s),
+                        _ => unreachable!(),
+                    }
+                }
+                CType::Int(out_size)
+            }
+            CType::Buffer(b, s) => {
+                let base_size = CType::size(b);
+                match (&base_size, &**s) {
+                    (CType::Int(a), CType::Int(b)) => CType::Int(a + b),
+                    (CType::Infer(..), _) | (_, CType::Infer(..)) => {
+                        CType::Size(Box::new((**b).clone()))
+                    }
+                    _ => unreachable!(),
+                }
+            }
+            CType::Array(_) => {
+                CType::fail("Cannot determine the size of an array, it's length is not static")
+            }
+            CType::Function(..)
+            | CType::Call(..)
+            | CType::Infix(_)
+            | CType::Prefix(_)
+            | CType::Method(_)
+            | CType::Property(_) => CType::fail("Cannot determine the size of a function"),
+            t => CType::fail(&format!(
+                "Getting the size of {} doesn't make any sense",
+                t.to_functional_string()
+            )),
         }
     }
     pub fn filestr(f: &CType) -> CType {
