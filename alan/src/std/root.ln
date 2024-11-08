@@ -1342,13 +1342,13 @@ export fn{Rs} mapWriteBuffer "alan_std::map_write_buffer_type" <- RootBacking ::
 export fn{Js} mapWriteBuffer "alan_std.mapWriteBufferType" <- RootBacking :: () -> BufferUsages;
 export fn{Rs} storageBuffer "alan_std::storage_buffer_type" <- RootBacking :: () -> BufferUsages;
 export fn{Js} storageBuffer "alan_std.storageBufferType" <- RootBacking :: () -> BufferUsages;
-export fn{Rs} GBuffer "alan_std::create_buffer_init" <- RootBacking :: (BufferUsages, i32[]) -> GBuffer;
-export fn{Js} GBuffer "alan_std.createBufferInit" <- RootBacking :: (BufferUsages, i32[]) -> GBuffer;
-export fn{Rs} GBuffer "alan_std::create_empty_buffer" <- RootBacking :: (BufferUsages, i64) -> GBuffer;
-export fn{Js} GBuffer "alan_std.createEmptyBuffer" <- RootBacking :: (BufferUsages, i64) -> GBuffer;
-export fn GBuffer(vals: i32[]) = GBuffer(storageBuffer(), vals);
-export fn GBuffer{T}(vals: T[]) = GBuffer(storageBuffer(), vals.map(fn (v: T) -> i32 = v.i32));
-export fn GBuffer(size: i64) = GBuffer(storageBuffer(), size);
+export fn{Rs} GBuffer{T}(bu: BufferUsages, arr: T[]) = {"alan_std::create_buffer_init" <- RootBacking :: (BufferUsages, T[], i8) -> GBuffer}(bu, arr, {Size{T}}().i8);
+export fn{Js} GBuffer{T}(bu: BufferUsages, arr: T[]) = {"alan_std.createBufferInit" <- RootBacking :: (BufferUsages, T[], i8) -> GBuffer}(bu, arr, {Size{T}}().i8);
+export fn{Rs} GBuffer{T}(bu: BufferUsages, size: i64) = {"alan_std::create_empty_buffer" <- RootBacking :: (BufferUsages, i64, i8) -> GBuffer}(bu, size, {Size{T}}().i8);
+// TODO: Get the type into JS
+export fn{Js} GBuffer{T}(bu: BufferUsages, size: i64) = {"alan_std.createEmptyBuffer" <- RootBacking :: (BufferUsages, i64) -> GBuffer}(bu, size);
+export fn GBuffer{T}(vals: T[]) = GBuffer{T}(storageBuffer(), vals);
+export fn GBuffer{T}(size: i64) = GBuffer{T}(storageBuffer(), size);
 export fn{Rs} len "alan_std::bufferlen" <- RootBacking :: GBuffer -> i64;
 export fn{Js} len "alan_std.bufferlen" <- RootBacking :: GBuffer -> i64;
 export fn{Rs} id "alan_std::buffer_id" <- RootBacking :: GBuffer -> string;
@@ -1387,9 +1387,8 @@ export fn{Rs} run "alan_std::gpu_run" <- RootBacking :: GPGPU;
 export fn{Js} run "alan_std.gpuRun" <- RootBacking :: GPGPU;
 export fn{Rs} read{T} "alan_std::read_buffer" <- RootBacking :: GBuffer -> T[];
 export fn{Js} read{T} "alan_std.readBuffer" <- RootBacking :: GBuffer -> T[];
-export fn{Rs} replace "alan_std::replace_buffer" <- RootBacking :: (GBuffer, i32[]) -> ()!;
-export fn{Js} replace "alan_std.replaceBuffer" <- RootBacking :: (GBuffer, i32[]) -> ()!;
-export fn replace{T}(g: GBuffer, v: T[]) -> ()! = g.replace(v.map(i32));
+export fn{Rs} replace{T} "alan_std::replace_buffer" <- RootBacking :: (GBuffer, T[]) -> ()!;
+export fn{Js} replace{T} "alan_std.replaceBuffer" <- RootBacking :: (GBuffer, T[]) -> ()!;
 
 // The WgpuType provides a mechanism to build up the logic for a compute shader with normal-looking
 // Alan code, not requiring to think in two different languages at the same time. All of the GPU
@@ -1399,6 +1398,37 @@ export type WgpuType{N} =
   varName: string, // Key to the next field
   statements: Dict{string, string},
   buffers: Set{GBuffer};
+
+// It would be nice to not have this "lookup" type, but this seems to be the easiest way to
+// accomplish the desired goal of termining the constructor type fn to use when casting between CPU
+// and GPU memory blocks. This approach locks in only the GPU types defined in the root scope as
+// automatically converting back and forth. That may not be a bad thing, but it is annoying.
+export type WgpuTypeMap =
+  u32: u32,
+  i32: i32,
+  f32: f32,
+  bool: bool,
+  vec2u: Buffer{u32, 2}, // Until Rust has SIMD support these are just normal buffers
+  vec2i: Buffer{i32, 2},
+  vec2f: Buffer{f32, 2},
+  "vec2<bool>": Buffer{bool, 2},
+  vec3u: Buffer{u32, 3},
+  vec3i: Buffer{i32, 3},
+  vec3f: Buffer{f32, 3},
+  "vec3<bool>": Buffer{bool, 3},
+  vec4u: Buffer{u32, 4},
+  vec4i: Buffer{i32, 4},
+  vec4f: Buffer{f32, 4},
+  "vec4<bool>": Buffer{bool, 4},
+  mat2x2f: Buffer{f32, 4}, // It may make sense to make CPU-native matrix types, though
+  mat2x3f: Buffer{f32, 6},
+  mat2x4f: Buffer{f32, 8},
+  mat3x2f: Buffer{f32, 6},
+  mat3x3f: Buffer{f32, 9},
+  mat3x4f: Buffer{f32, 12},
+  mat4x2f: Buffer{f32, 8},
+  mat4x3f: Buffer{f32, 12},
+  mat4x4f: Buffer{f32, 16};
 
 // Scalar types and constructors
 export type gu32 = WgpuType{"u32"};
@@ -4248,19 +4278,29 @@ export fn if(c: gvec4b, t: gvec4b, f: gvec4b) = piecewiseIf{gvec4b, gvec4b}(c, t
 
 // GBuffer methods
 
-// TODO: Support more than i32 for GBuffer
-export fn map(gb: GBuffer, f: (gi32) -> gi32) {
+/* This one doesn't seem to work yet for some reason
+export fn map{G, G2}(gb: GBuffer, f: G -> G2) {
   let idx = gFor(gb.len);
   let val = gb[idx];
-  let out = GBuffer(gb.len.mul(4));
+  let out = GBuffer{i32}(gb.len);
+  let compute = out[idx].store(f(val));
+  compute.build.run;
+  return out;
+}*/
+export fn map(gb: GBuffer, f: gi32 -> gi32) {
+  let idx = gFor(gb.len);
+  let val = gb[idx];
+  let out = GBuffer{i32}(gb.len);
   let compute = out[idx].store(f(val));
   compute.build.run;
   return out;
 }
-export fn map(gb: GBuffer, f: (gi32, gu32) -> gi32) {
+// This one technically only works for i32/u32/f32 by chance. Once the issue above is fixed, this
+// one can be fixed, too.
+export fn map{G, G2}(gb: GBuffer, f: (G, gu32) -> G2) {
   let idx = gFor(gb.len);
   let val = gb[idx];
-  let out = GBuffer(gb.len.mul(4));
+  let out = GBuffer{i32}(gb.len);
   let compute = out[idx].store(f(val, idx));
   compute.build.run;
   return out;
