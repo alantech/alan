@@ -3338,7 +3338,7 @@ impl CType {
             CType::Type(_, t) => CType::size(t),
             CType::Generic(..) => CType::fail("Cannot determine the size of an unbound generic"),
             CType::Binds(t, ts) => {
-                if ts.len() > 0 {
+                if !ts.is_empty() {
                     CType::fail("Cannot determine the size of an unbound generic")
                 } else {
                     match &**t {
@@ -3370,18 +3370,18 @@ impl CType {
             CType::TString(s) => CType::Int(s.capacity() as i128),
             CType::Group(t) | CType::Field(_, t) => CType::size(t),
             CType::Tuple(ts) => {
-                let sizes = ts.iter().map(|t| CType::size(t)).collect::<Vec<CType>>();
+                let sizes = ts.iter().map(CType::size).collect::<Vec<CType>>();
                 let mut out_size = 0;
                 for t in sizes {
                     match t {
-                        CType::Int(s) => out_size = out_size + s,
+                        CType::Int(s) => out_size += s,
                         _ => unreachable!(),
                     }
                 }
                 CType::Int(out_size)
             }
             CType::Either(ts) => {
-                let sizes = ts.iter().map(|t| CType::size(t)).collect::<Vec<CType>>();
+                let sizes = ts.iter().map(CType::size).collect::<Vec<CType>>();
                 let mut out_size = 0;
                 for t in sizes {
                     match t {
@@ -3396,7 +3396,7 @@ impl CType {
                 match (&base_size, &**s) {
                     (CType::Int(a), CType::Int(b)) => CType::Int(a + b),
                     (CType::Infer(..), _) | (_, CType::Infer(..)) => {
-                        CType::Size(Box::new((&**b).clone()))
+                        CType::Size(Box::new((**b).clone()))
                     }
                     _ => unreachable!(),
                 }
