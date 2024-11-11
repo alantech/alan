@@ -179,6 +179,11 @@ export type{Js} Dict{K, V} = Binds{"Map", K, V};
 export type{Rs} Set{V} = Binds{"std::collections::HashSet", V};
 export type{Js} Set{V} = Binds{"Set", V};
 
+// Basic trig constants (this language is meant for GPGPU, this makes sense in the root scope)
+export const e = 2.718281828459045;
+export const pi = 3.141592653589793;
+export const tau = 6.283185307179586;
+
 /// Functions for (potentially) every type
 export fn{Rs} clone{T} (v: T) -> T = {Method{"clone"} :: T -> T}(v);
 // TODO: This needs to be turned into a JS function that's bound
@@ -534,6 +539,7 @@ export fn{Rs} gte Infix{">="} :: (Deref{i8}, Deref{i8}) -> bool;
 export fn{Js} gte "((a, b) => new alan_std.Bool(a.val >= b.val))" <- RootBacking :: (i8, i8) -> bool;
 export fn min (a: i8, b: i8) = if(a.lte(b), a, b);
 export fn max (a: i8, b: i8) = if(a.gte(b), a, b);
+export fn clamp(v: i8, l: i8, h: i8) = if(v.lte(l), l, if(v.gte(h), h, v));
 export fn{Rs} shl (a: i8, b: i8) = {Method{"wrapping_shl"} :: (i8, Deref{u32}) -> i8}(a, b.u32);
 export fn{Js} shl Method{"wrappingShl"} :: (i8, i8) -> i8;
 export fn{Rs} shr (a: i8, b: i8) = {Method{"wrapping_shr"} :: (i8, Deref{u32}) -> i8}(a, b.u32);
@@ -584,6 +590,7 @@ export fn{Rs} gte Infix{">="} :: (Deref{i16}, Deref{i16}) -> bool;
 export fn{Js} gte "((a, b) => new alan_std.Bool(a.val >= b.val))" <- RootBacking :: (i16, i16) -> bool;
 export fn min (a: i16, b: i16) = if(a.lte(b), a, b);
 export fn max (a: i16, b: i16) = if(a.gte(b), a, b);
+export fn clamp(v: i16, l: i16, h: i16) = if(v.lte(l), l, if(v.gte(h), h, v));
 export fn{Rs} shl (a: i16, b: i16) = {Method{"wrapping_shl"} :: (i16, Deref{u32}) -> i16}(a, b.u32);
 export fn{Js} shl Method{"wrappingShl"} :: (i16, i16) -> i16;
 export fn{Rs} shr (a: i16, b: i16) = {Method{"wrapping_shr"} :: (i16, Deref{u32}) -> i16}(a, b.u32);
@@ -634,6 +641,7 @@ export fn{Rs} gte Infix{">="} :: (Deref{i32}, Deref{i32}) -> bool;
 export fn{Js} gte "((a, b) => new alan_std.Bool(a.val >= b.val))" :: (i32, i32) -> bool;
 export fn min (a: i32, b: i32) = if(a.lte(b), a, b);
 export fn max (a: i32, b: i32) = if(a.gte(b), a, b);
+export fn clamp(v: i32, l: i32, h: i32) = if(v.lte(l), l, if(v.gte(h), h, v));
 export fn{Rs} shl (a: i32, b: i32) = {Method{"wrapping_shl"} :: (i32, Deref{u32}) -> i32}(a, b.u32);
 export fn{Js} shl Method{"wrappingShl"} :: (i32, i32) -> i32;
 export fn{Rs} shr (a: i32, b: i32) = {Method{"wrapping_shr"} :: (i32, Deref{u32}) -> i32}(a, b.u32);
@@ -684,6 +692,7 @@ export fn{Rs} gte Infix{">="} :: (Deref{i64}, Deref{i64}) -> bool;
 export fn{Js} gte "((a, b) => new alan_std.Bool(a.val >= b.val))" <- RootBacking :: (i64, i64) -> bool;
 export fn min (a: i64, b: i64) = if(a.lte(b), a, b);
 export fn max (a: i64, b: i64) = if(a.gte(b), a, b);
+export fn clamp(v: i64, l: i64, h: i64) = if(v.lte(l), l, if(v.gte(h), h, v));
 export fn{Rs} shl (a: i64, b: i64) = {Method{"wrapping_shl"} :: (i64, Deref{u32}) -> i64}(a, b.u32);
 export fn{Js} shl Method{"wrappingShl"} :: (i64, i64) -> i64;
 export fn{Rs} shr (a: i64, b: i64) = {Method{"wrapping_shr"} :: (i64, Deref{u32}) -> i64}(a, b.u32);
@@ -731,6 +740,7 @@ export fn{Rs} gte Infix{">="} :: (Deref{u8}, Deref{u8}) -> bool;
 export fn{Js} gte "((a, b) => new alan_std.Bool(a.val >= b.val))" <- RootBacking :: (u8, u8) -> bool;
 export fn min (a: u8, b: u8) = if(a.lte(b), a, b);
 export fn max (a: u8, b: u8) = if(a.gte(b), a, b);
+export fn clamp(v: u8, l: u8, h: u8) = if(v.lte(l), l, if(v.gte(h), h, v));
 export fn{Rs} shl (a: u8, b: u8) = {Method{"wrapping_shl"} :: (u8, Deref{u32}) -> u8}(a, b.u32);
 export fn{Js} shl Method{"wrappingShl"} :: (u8, u8) -> u8;
 export fn{Rs} shr (a: u8, b: u8) = {Method{"wrapping_shr"} :: (u8, Deref{u32}) -> u8}(a, b.u32);
@@ -777,6 +787,7 @@ export fn{Rs} gte Infix{">="} :: (Deref{u16}, Deref{u16}) -> bool;
 export fn{Js} gte "((a, b) => new alan_std.Bool(a.val >= b.val))" <- RootBacking :: (u16, u16) -> bool;
 export fn min (a: u16, b: u16) = if(a.lte(b), a, b);
 export fn max (a: u16, b: u16) = if(a.gte(b), a, b);
+export fn clamp(v: u16, l: u16, h: u16) = if(v.lte(l), l, if(v.gte(h), h, v));
 export fn{Rs} shl (a: u16, b: u16) = {Method{"wrapping_shl"} :: (u16, Deref{u32}) -> u16}(a, b.u32);
 export fn{Js} shl Method{"wrappingShl"} :: (u16, u16) -> u16;
 export fn{Rs} shr (a: u16, b: u16) = {Method{"wrapping_shr"} :: (u16, Deref{u32}) -> u16}(a, b.u32);
@@ -823,6 +834,7 @@ export fn{Rs} gte Infix{">="} :: (Deref{u32}, Deref{u32}) -> bool;
 export fn{Js} gte "((a, b) => new alan_std.Bool(a.val >= b.val))" <- RootBacking :: (u32, u32) -> bool;
 export fn min (a: u32, b: u32) = if(a.lte(b), a, b);
 export fn max (a: u32, b: u32) = if(a.gte(b), a, b);
+export fn clamp(v: u32, l: u32, h: u32) = if(v.lte(l), l, if(v.gte(h), h, v));
 export fn{Rs} shl (a: u32, b: u32) = {Method{"wrapping_shl"} :: (u32, Deref{u32}) -> u32}(a, b.u32);
 export fn{Js} shl Method{"wrappingShl"} :: (u32, u32) -> u32;
 export fn{Rs} shr (a: u32, b: u32) = {Method{"wrapping_shr"} :: (u32, Deref{u32}) -> u32}(a, b.u32);
@@ -869,6 +881,7 @@ export fn{Rs} gte Infix{">="} :: (Deref{u64}, Deref{u64}) -> bool;
 export fn{Js} gte "((a, b) => new alan_std.Bool(a.val >= b.val))" <- RootBacking :: (u64, u64) -> bool;
 export fn min (a: u64, b: u64) = if(a.lte(b), a, b);
 export fn max (a: u64, b: u64) = if(a.gte(b), a, b);
+export fn clamp(v: u64, l: u64, h: u64) = if(v.lte(l), l, if(v.gte(h), h, v));
 export fn{Rs} shl (a: u64, b: u64) = {Method{"wrapping_shl"} :: (u64, Deref{u32}) -> u64}(a, b.u32);
 export fn{Js} shl Method{"wrappingShl"} :: (u64, u64) -> u64;
 export fn{Rs} shr (a: u64, b: u64) = {Method{"wrapping_shr"} :: (u64, Deref{u32}) -> u64}(a, b.u32);
@@ -909,6 +922,57 @@ export fn{Rs} gte Infix{">="} :: (Deref{f32}, Deref{f32}) -> bool;
 export fn{Js} gte "((a, b) => new alan_std.Bool(a.val >= b.val))" <- RootBacking :: (f32, f32) -> bool;
 export fn min (a: f32, b: f32) = if(a.lte(b), a, b);
 export fn max (a: f32, b: f32) = if(a.gte(b), a, b);
+export fn clamp(v: f32, l: f32, h: f32) = if(v.lte(l), l, if(v.gte(h), h, v));
+export fn{Rs} floor Method{"floor"} :: f32 -> f32;
+export fn{Js} floor "((a) => new alan_std.F32(Math.floor(a.val)))" <- RootBacking :: f32 -> f32;
+export fn{Rs} ceil Method{"ceil"} :: f32 -> f32;
+export fn{Js} ceil "((a) => new alan_std.F32(Math.ceil(a.val)))" <- RootBacking :: f32 -> f32;
+export fn{Rs} acos Method{"acos"} :: f32 -> f32;
+export fn{Js} acos "((a) => new alan_std.F32(Math.acos(a.val)))" <- RootBacking :: f32 -> f32;
+export fn{Rs} acosh Method{"acosh"} :: f32 -> f32;
+export fn{Js} acosh "((a) => new alan_std.F32(Math.acosh(a.val)))" <- RootBacking :: f32 -> f32;
+export fn{Rs} asin Method{"asin"} :: f32 -> f32;
+export fn{Js} asin "((a) => new alan_std.F32(Math.asin(a.val)))" <- RootBacking :: f32 -> f32;
+export fn{Rs} asinh Method{"asinh"} :: f32 -> f32;
+export fn{Js} asinh "((a) => new alan_std.F32(Math.asinh(a.val)))" <- RootBacking :: f32 -> f32;
+export fn{Rs} atan Method{"atan"} :: f32 -> f32;
+export fn{Js} atan "((a) => new alan_std.F32(Math.atan(a.val)))" <- RootBacking :: f32 -> f32;
+export fn{Rs} atanh Method{"atanh"} :: f32 -> f32;
+export fn{Js} atanh "((a) => new alan_std.F32(Math.atanh(a.val)))" <- RootBacking :: f32 -> f32;
+export fn{Rs} atan2 Method{"atan2"} :: (f32, Deref{f32}) -> f32;
+export fn{Js} atan2 "((a, b) => new alan_std.F32(Math.atan2(a.val, b.val)))" <- RootBacking :: (f32, f32) -> f32;
+export fn{Rs} cos Method{"cos"} :: f32 -> f32;
+export fn{Js} cos "((a) => new alan_std.F32(Math.cos(a.val)))" <- RootBacking :: f32 -> f32;
+export fn{Rs} cosh Method{"cosh"} :: f32 -> f32;
+export fn{Js} cosh "((a) => new alan_std.F32(Math.cosh(a.val)))" <- RootBacking :: f32 -> f32;
+export fn{Rs} sin Method{"sin"} :: f32 -> f32;
+export fn{Js} sin "((a) => new alan_std.F32(Math.sin(a.val)))" <- RootBacking :: f32 -> f32;
+export fn{Rs} sinh Method{"sinh"} :: f32 -> f32;
+export fn{Js} sinh "((a) => new alan_std.F32(Math.sinh(a.val)))" <- RootBacking :: f32 -> f32;
+export fn{Rs} tan Method{"tan"} :: f32 -> f32;
+export fn{Js} tan "((a) => new alan_std.F32(Math.tan(a.val)))" <- RootBacking :: f32 -> f32;
+export fn{Rs} tanh Method{"tanh"} :: f32 -> f32;
+export fn{Js} tanh "((a) => new alan_std.F32(Math.tanh(a.val)))" <- RootBacking :: f32 -> f32;
+export fn{Rs} exp Method{"exp"} :: f32 -> f32;
+export fn{Js} exp "((a) => new alan_std.F32(Math.exp(a.val)))" <- RootBacking :: f32 -> f32;
+export fn{Rs} ln Method{"ln"} :: f32 -> f32;
+export fn{Js} ln "((a) => new alan_std.F32(Math.log(a.val)))" <- RootBacking :: f32 -> f32;
+export fn{Rs} log2 Method{"log2"} :: f32 -> f32;
+export fn{Js} log2 "((a) => new alan_std.F32(Math.log2(a.val)))" <- RootBacking :: f32 -> f32;
+export fn{Rs} log10 Method{"log10"} :: f32 -> f32;
+export fn{Js} log10 "((a) => new alan_std.F32(Math.log10(a.val)))" <- RootBacking :: f32 -> f32;
+export fn sec(x: f32) = 1.0.f32.div(cos(x));
+export fn csc(x: f32) = 1.0.f32.div(sin(x));
+export fn cot(x: f32) = 1.0.f32.div(tan(x));
+export fn asec(x: f32) = acos(1.0.f32.div(x));
+export fn acsc(x: f32) = asin(1.0.f32.div(x));
+export fn acot(x: f32) = pi.f32.div(2.0.f32).sub(atan(x));
+export fn sech(x: f32) = 1.0.f32.div(cosh(x));
+export fn csch(x: f32) = 1.0.f32.div(sinh(x));
+export fn coth(x: f32) = 1.0.f32.div(tanh(x));
+export fn asech(x: f32) = ln(1.0.f32.add(sqrt(1.0.f32.sub(x.pow(2.0.f32)))).div(x));
+export fn acsch(x: f32) = ln(1.0.f32.div(x).add(sqrt(1.0.f32.div(x.pow(2.0.f32)).add(1.0.f32))));
+export fn acoth(x: f32) = ln(x.add(1.0.f32).div(x.sub(1.0.f32))).div(2.0.f32);
 
 export fn{Rs} add Infix{"+"} :: (f64, f64) -> f64;
 export fn{Js} add "((a, b) => new alan_std.F64(a.val + b.val))" <- RootBacking :: (f64, f64) -> f64;
@@ -940,6 +1004,57 @@ export fn{Rs} gte Infix{">="} :: (Deref{f64}, Deref{f64}) -> bool;
 export fn{Js} gte "((a, b) => new alan_std.F64(a.val >= b.val))" <- RootBacking :: (f64, f64) -> bool;
 export fn min (a: f64, b: f64) = if(a.lte(b), a, b);
 export fn max (a: f64, b: f64) = if(a.gte(b), a, b);
+export fn clamp(v: f64, l: f64, h: f64) = if(v.lte(l), l, if(v.gte(h), h, v));
+export fn{Rs} floor Method{"floor"} :: f64 -> f64;
+export fn{Js} floor "((a) => new alan_std.F64(Math.floor(a.val)))" <- RootBacking :: f64 -> f64;
+export fn{Rs} ceil Method{"ceil"} :: f64 -> f64;
+export fn{Js} ceil "((a) => new alan_std.F64(Math.ceil(a.val)))" <- RootBacking :: f64 -> f64;
+export fn{Rs} acos Method{"acos"} :: f64 -> f64;
+export fn{Js} acos "((a) => new alan_std.F64(Math.acos(a.val)))" <- RootBacking :: f64 -> f64;
+export fn{Rs} acosh Method{"acosh"} :: f64 -> f64;
+export fn{Js} acosh "((a) => new alan_std.F64(Math.acosh(a.val)))" <- RootBacking :: f64 -> f64;
+export fn{Rs} asin Method{"asin"} :: f64 -> f64;
+export fn{Js} asin "((a) => new alan_std.F64(Math.asin(a.val)))" <- RootBacking :: f64 -> f64;
+export fn{Rs} asinh Method{"asinh"} :: f64 -> f64;
+export fn{Js} asinh "((a) => new alan_std.F64(Math.asinh(a.val)))" <- RootBacking :: f64 -> f64;
+export fn{Rs} atan Method{"atan"} :: f64 -> f64;
+export fn{Js} atan "((a) => new alan_std.F64(Math.atan(a.val)))" <- RootBacking :: f64 -> f64;
+export fn{Rs} atanh Method{"atanh"} :: f64 -> f64;
+export fn{Js} atanh "((a) => new alan_std.F64(Math.atanh(a.val)))" <- RootBacking :: f64 -> f64;
+export fn{Rs} atan2 Method{"atan2"} :: (f64, Deref{f64}) -> f64;
+export fn{Js} atan2 "((a, b) => new alan_std.F64(Math.atan2(a.val, b.val)))" <- RootBacking :: (f64, f64) -> f64;
+export fn{Rs} cos Method{"cos"} :: f64 -> f64;
+export fn{Js} cos "((a) => new alan_std.F64(Math.cos(a.val)))" <- RootBacking :: f64 -> f64;
+export fn{Rs} cosh Method{"cosh"} :: f64 -> f64;
+export fn{Js} cosh "((a) => new alan_std.F64(Math.cosh(a.val)))" <- RootBacking :: f64 -> f64;
+export fn{Rs} sin Method{"sin"} :: f64 -> f64;
+export fn{Js} sin "((a) => new alan_std.F64(Math.sin(a.val)))" <- RootBacking :: f64 -> f64;
+export fn{Rs} sinh Method{"sinh"} :: f64 -> f64;
+export fn{Js} sinh "((a) => new alan_std.F64(Math.sinh(a.val)))" <- RootBacking :: f64 -> f64;
+export fn{Rs} tan Method{"tan"} :: f64 -> f64;
+export fn{Js} tan "((a) => new alan_std.F64(Math.tan(a.val)))" <- RootBacking :: f64 -> f64;
+export fn{Rs} tanh Method{"tanh"} :: f64 -> f64;
+export fn{Js} tanh "((a) => new alan_std.F64(Math.tanh(a.val)))" <- RootBacking :: f64 -> f64;
+export fn{Rs} exp Method{"exp"} :: f64 -> f64;
+export fn{Js} exp "((a) => new alan_std.F64(Math.exp(a.val)))" <- RootBacking :: f64 -> f64;
+export fn{Rs} ln Method{"ln"} :: f64 -> f64;
+export fn{Js} ln "((a) => new alan_std.F64(Math.log(a.val)))" <- RootBacking :: f64 -> f64;
+export fn{Rs} log2 Method{"log2"} :: f64 -> f64;
+export fn{Js} log2 "((a) => new alan_std.F64(Math.log2(a.val)))" <- RootBacking :: f64 -> f64;
+export fn{Rs} log10 Method{"log10"} :: f64 -> f64;
+export fn{Js} log10 "((a) => new alan_std.F64(Math.log10(a.val)))" <- RootBacking :: f64 -> f64;
+export fn sec(x: f64) = 1.0.div(cos(x));
+export fn csc(x: f64) = 1.0.div(sin(x));
+export fn cot(x: f64) = 1.0.div(tan(x));
+export fn asec(x: f64) = acos(1.0.div(x));
+export fn acsc(x: f64) = asin(1.0.div(x));
+export fn acot(x: f64) = pi.div(2.0).sub(atan(x));
+export fn sech(x: f64) = 1.0.div(cosh(x));
+export fn csch(x: f64) = 1.0.div(sinh(x));
+export fn coth(x: f64) = 1.0.div(tanh(x));
+export fn asech(x: f64) = ln(1.0.add(sqrt(1.0.sub(x.pow(2.0)))).div(x));
+export fn acsch(x: f64) = ln(1.0.div(x).add(sqrt(1.0.div(x.pow(2.0)).add(1.0))));
+export fn acoth(x: f64) = ln(x.add(1.0).div(x.sub(1.0))).div(2.0);
 
 /// String related bindings
 export fn{Rs} string "format!" :: ("{}", i8) -> string;
@@ -962,6 +1077,15 @@ export fn{Rs} string "format!" :: ("{}", f32) -> string;
 export fn{Js} string "new alan_std.Str" <- RootBacking :: f32 -> string;
 export fn{Rs} string "format!" :: ("{}", f64) -> string;
 export fn{Js} string "new alan_std.Str" <- RootBacking :: f64 -> string;
+// TODO: Until better printing is ready? Or perhaps this is a better fit for Alan
+export fn{Rs} string (f: f32, p: i64) = {"format!" :: ("{0:.1$}", f32, Deref{Binds{"usize"}}) -> string}(
+  f,
+  {Cast{"usize"} :: Deref{i64} -> Binds{"usize"}}(p));
+export fn{Js} string "((v, p) => new alan_std.Str(v.valueOf().toFixed(Number(p))))" <- RootBacking :: (f32, i64) -> string;
+export fn{Rs} string (f: f64, p: i64) = {"format!" :: ("{0:.1$}", f64, Deref{Binds{"usize"}}) -> string}(
+  f,
+  {Cast{"usize"} :: Deref{i64} -> Binds{"usize"}}(p));
+export fn{Js} string "((v, p) => new alan_std.Str(v.valueOf().toFixed(Number(p))))" <- RootBacking :: (f64, i64) -> string;
 export fn string(b: bool) = if(b, "true", "false");
 export fn string(s: string) = s;
 export fn{Rs} concat "format!" :: ("{}{}", string, string) -> string;
@@ -1510,7 +1634,7 @@ export fn gi32(gf: gf32) = gPrimitiveConvert{gf32, gi32}(gf);
 export fn gi32(gb: gbool) = gPrimitiveConvert{gbool, gi32}(gb);
 export fn gi32{T}(i: T) = gi32(i.i32);
 
-export fn gf32(f: f32) = gf32(f.string, Dict{string, string}(), Set{GBuffer}());
+export fn gf32(f: f32) = gf32(if(f.string.eq(f.i32.string), f.string(1), f.string), Dict{string, string}(), Set{GBuffer}());
 export fn gf32(gu: gu32) = gPrimitiveConvert{gu32, gf32}(gu);
 export fn gf32(gi: gi32) = gPrimitiveConvert{gi32, gf32}(gi);
 export fn gf32(gb: gbool) = gPrimitiveConvert{gbool, gf32}(gb);
@@ -1552,18 +1676,22 @@ fn gvec2Primitive{I, O}(a: I, b: I) {
 export fn gvec2u() = gvec2u("vec2u()", Dict{string, string}(), Set{GBuffer}());
 export fn gvec2u(a: gu32, b: gu32) = gvec2Primitive{gu32, gvec2u}(a, b);
 export fn gvec2u{T}(a: T, b: T) = gvec2u(a.gu32, b.gu32);
+export fn gvec2u{T}(a: T) = gvec2u(a, a);
 
 export fn gvec2i() = gvec2i("vec2i()", Dict{string, string}(), Set{GBuffer}());
 export fn gvec2i(a: gi32, b: gi32) = gvec2Primitive{gi32, gvec2i}(a, b);
 export fn gvec2i{T}(a: T, b: T) = gvec2i(a.gi32, b.gi32);
+export fn gvec2i{T}(a: T) = gvec2i(a, a);
 
 export fn gvec2f() = gvec2f("vec2f()", Dict{string, string}(), Set{GBuffer}());
 export fn gvec2f(a: gf32, b: gf32) = gvec2Primitive{gf32, gvec2f}(a, b);
 export fn gvec2f{T}(a: T, b: T) = gvec2f(a.gf32, b.gf32);
+export fn gvec2f{T}(a: T) = gvec2f(a, a);
 
 export fn gvec2b() = gvec2b("vec2<bool>()", Dict{string, string}(), Set{GBuffer}());
 export fn gvec2b(a: gbool, b: gbool) = gvec2Primitive{gbool, gvec2b}(a, b);
 export fn gvec2b{T}(a: T, b: T) = gvec2b(a.gbool, b.gbool);
+export fn gvec2b{T}(a: T) = gvec2b(a, a);
 
 fn gvec3Primitive{I, O}(a: I, b: I, c: I) {
   let typename = {O.typeName}();
@@ -1583,18 +1711,22 @@ fn gvec3Primitive{I, O}(a: I, b: I, c: I) {
 export fn gvec3u() = gvec3u("vec3u()", Dict{string, string}(), Set{GBuffer}());
 export fn gvec3u(a: gu32, b: gu32, c: gu32) = gvec3Primitive{gu32, gvec3u}(a, b, c);
 export fn gvec3u{T}(a: T, b: T, c: T) = gvec3u(a.gu32, b.gu32, c.gu32);
+export fn gvec3u{T}(a: T) = gvec3u(a, a, a);
 
 export fn gvec3i() = gvec3i("vec3i()", Dict{string, string}(), Set{GBuffer}());
 export fn gvec3i(a: gi32, b: gi32, c: gi32) = gvec3Primitive{gi32, gvec3i}(a, b, c);
 export fn gvec3i{T}(a: T, b: T, c: T) = gvec3i(a.gi32, b.gi32, c.gi32);
+export fn gvec3i{T}(a: T) = gvec3i(a, a, a);
 
 export fn gvec3f() = gvec3f("vec3f()", Dict{string, string}(), Set{GBuffer}());
 export fn gvec3f(a: gf32, b: gf32, c: gf32) = gvec3Primitive{gf32, gvec3f}(a, b, c);
 export fn gvec3f{T}(a: T, b: T, c: T) = gvec3f(a.gf32, b.gf32, c.gf32);
+export fn gvec3f{T}(a: T) = gvec3f(a, a, a);
 
 export fn gvec3b() = gvec3b("vec3<bool>()", Dict{string, string}(), Set{GBuffer}());
 export fn gvec3b(a: gbool, b: gbool, c: gbool) = gvec3Primitive{gbool, gvec3b}(a, b, c);
 export fn gvec3b{T}(a: T, b: T, c: T) = gvec3b(a.gbool, b.gbool, c.gbool);
+export fn gvec3b{T}(a: T) = gvec3b(a, a, a);
 
 fn gvec4Primitive{I, O}(a: I, b: I, c: I, d: I) {
   let typename = {O.typeName}();
@@ -1618,24 +1750,28 @@ export fn gvec4u(a: gu32, b: gu32, c: gu32, d: gu32) = gvec4Primitive{gu32, gvec
   a, b, c, d
 );
 export fn gvec4u{T}(a: T, b: T, c: T, d: T) = gvec4u(a.gu32, b.gu32, c.gu32, d.gu32);
+export fn gvec4u{T}(a: T) = gvec4u(a, a, a, a);
 
 export fn gvec4i() = gvec4i("vec4i()", Dict{string, string}(), Set{GBuffer}());
 export fn gvec4i(a: gi32, b: gi32, c: gi32, d: gi32) = gvec4Primitive{gi32, gvec4i}(
   a, b, c, d
 );
 export fn gvec4i{T}(a: T, b: T, c: T, d: T) = gvec4i(a.gi32, b.gi32, c.gi32, d.gi32);
+export fn gvec4i{T}(a: T) = gvec4i(a, a, a, a);
 
 export fn gvec4f() = gvec4f("vec4f()", Dict{string, string}(), Set{GBuffer}());
 export fn gvec4f(a: gf32, b: gf32, c: gf32, d: gf32) = gvec4Primitive{gf32, gvec4f}(
   a, b, c, d
 );
 export fn gvec4f{T}(a: T, b: T, c: T, d: T) = gvec4f(a.gf32, b.gf32, c.gf32, d.gf32);
+export fn gvec4f{T}(a: T) = gvec4f(a, a, a, a);
 
 export fn gvec4b() = gvec4b("vec4<bool>()", Dict{string, string}(), Set{GBuffer}());
 export fn gvec4b(a: gbool, b: gbool, c: gbool, d: gbool) = gvec4Primitive{gbool, gvec4b}(
   a, b, c, d
 );
 export fn gvec4b{T}(a: T, b: T, c: T, d: T) = gvec4b(a.gbool, b.gbool, c.gbool, d.gbool);
+export fn gvec4b{T}(a: T) = gvec4b(a, a, a, a);
 
 // The global_invocation_id; the entry value to a compute shader, and it's constructor, a
 // specialized version of gvec3u that initializes a bit differently.
@@ -3867,6 +4003,298 @@ export fn mod(a: gvec4f, b: gvec4f) = gmod(a, b);
 export fn mod(a: gvec4f, b: gf32) = gmod(a, b);
 export fn mod(a: gf32, b: gvec4f) = gmodRev(a, b);
 
+fn gpow{A, B}(a: A, b: B) {
+  let varName = 'pow('.concat(a.varName).concat(', ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return {A}(varName, statements, buffers);
+}
+export fn pow(a: gf32, b: gf32) = gpow(a, b);
+export fn pow{T}(a: gf32, b: T) = pow(a, b.gf32);
+export fn pow{T}(a: T, b: gf32) = pow(a.gf32, b);
+export fn pow(a: gvec2f, b: gvec2f) = gpow(a, b);
+export fn pow{T}(a: gvec2f, b: T) = pow(a, b.gvec2f);
+export fn pow{T}(a: T, b: gvec2f) = pow(a.gvec2f, b);
+export fn pow(a: gvec3f, b: gvec3f) = gpow(a, b);
+export fn pow{T}(a: gvec3f, b: T) = pow(a, b.gvec3f);
+export fn pow{T}(a: T, b: gvec3f) = pow(a.gvec3f, b);
+export fn pow(a: gvec4f, b: gvec4f) = gpow(a, b);
+export fn pow{T}(a: gvec4f, b: T) = pow(a, b.gvec4f);
+export fn pow{T}(a: T, b: gvec4f) = pow(a.gvec4f, b);
+
+fn gsqrt{I}(v: I) {
+  let varName = 'sqrt('.concat(v.varName).concat(')');
+  return {I}(varName, v.statements, v.buffers);
+}
+export fn sqrt(v: gf32) = gsqrt{gf32}(v);
+export fn sqrt(v: gvec2f) = gsqrt{gvec2f}(v);
+export fn sqrt(v: gvec3f) = gsqrt{gvec3f}(v);
+export fn sqrt(v: gvec4f) = gsqrt{gvec4f}(v);
+
+fn gacos{I}(v: I) {
+  let varName = 'acos('.concat(v.varName).concat(')');
+  return {I}(varName, v.statements, v.buffers);
+}
+export fn acos(v: gf32) = gacos{gf32}(v);
+export fn acos(v: gvec2f) = gacos{gvec2f}(v);
+export fn acos(v: gvec3f) = gacos{gvec3f}(v);
+export fn acos(v: gvec4f) = gacos{gvec4f}(v);
+
+fn gacosh{I}(v: I) {
+  let varName = 'acosh('.concat(v.varName).concat(')');
+  return {I}(varName, v.statements, v.buffers);
+}
+export fn acosh(v: gf32) = gacosh{gf32}(v);
+export fn acosh(v: gvec2f) = gacosh{gvec2f}(v);
+export fn acosh(v: gvec3f) = gacosh{gvec3f}(v);
+export fn acosh(v: gvec4f) = gacosh{gvec4f}(v);
+
+fn gasin{I}(v: I) {
+  let varName = 'asin('.concat(v.varName).concat(')');
+  return {I}(varName, v.statements, v.buffers);
+}
+export fn asin(v: gf32) = gasin{gf32}(v);
+export fn asin(v: gvec2f) = gasin{gvec2f}(v);
+export fn asin(v: gvec3f) = gasin{gvec3f}(v);
+export fn asin(v: gvec4f) = gasin{gvec4f}(v);
+
+fn gasinh{I}(v: I) {
+  let varName = 'asinh('.concat(v.varName).concat(')');
+  return {I}(varName, v.statements, v.buffers);
+}
+export fn asinh(v: gf32) = gasinh{gf32}(v);
+export fn asinh(v: gvec2f) = gasinh{gvec2f}(v);
+export fn asinh(v: gvec3f) = gasinh{gvec3f}(v);
+export fn asinh(v: gvec4f) = gasinh{gvec4f}(v);
+
+fn gatan{I}(v: I) {
+  let varName = 'atan('.concat(v.varName).concat(')');
+  return {I}(varName, v.statements, v.buffers);
+}
+export fn atan(v: gf32) = gatan{gf32}(v);
+export fn atan(v: gvec2f) = gatan{gvec2f}(v);
+export fn atan(v: gvec3f) = gatan{gvec3f}(v);
+export fn atan(v: gvec4f) = gatan{gvec4f}(v);
+
+fn gatanh{I}(v: I) {
+  let varName = 'atanh('.concat(v.varName).concat(')');
+  return {I}(varName, v.statements, v.buffers);
+}
+export fn atanh(v: gf32) = gatanh{gf32}(v);
+export fn atanh(v: gvec2f) = gatanh{gvec2f}(v);
+export fn atanh(v: gvec3f) = gatanh{gvec3f}(v);
+export fn atanh(v: gvec4f) = gatanh{gvec4f}(v);
+
+fn gatan2{I}(a: I, b: I) {
+  let varName = 'atan2('.concat(a.varName).concat(', ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return {I}(varName, statements, buffers);
+}
+export fn atan2(a: gf32, b: gf32) = gatan2{gf32}(a, b);
+export fn atan2{T}(a: gf32, b: T) = gatan2{gf32}(a, b.gf32);
+export fn atan2{T}(a: T, b: gf32) = gatan2{gf32}(a.gf32, b);
+export fn atan2(a: gvec2f, b: gvec2f) = gatan2{gvec2f}(a, b);
+export fn atan2{T}(a: gvec2f, b: T) = gatan2{gvec2f}(a, b.gvec2f);
+export fn atan2{T}(a: T, b: gvec2f) = gatan2{gvec2f}(a.gvec2f, b);
+export fn atan2(a: gvec3f, b: gvec3f) = gatan2{gvec3f}(a, b);
+export fn atan2{T}(a: gvec3f, b: T) = gatan2{gvec3f}(a, b.gvec3f);
+export fn atan2{T}(a: T, b: gvec3f) = gatan2{gvec3f}(a.gvec3f, b);
+export fn atan2(a: gvec4f, b: gvec4f) = gatan2{gvec4f}(a, b);
+export fn atan2{T}(a: gvec4f, b: T) = gatan2{gvec4f}(a, b.gvec4f);
+export fn atan2{T}(a: T, b: gvec4f) = gatan2{gvec4f}(a.gvec4f, b);
+
+fn gfloor{I}(v: I) {
+  let varName = 'floor('.concat(v.varName).concat(')');
+  return {I}(varName, v.statements, v.buffers);
+}
+export fn floor(v: gf32) = gfloor{gf32}(v);
+export fn floor(v: gvec2f) = gfloor{gvec2f}(v);
+export fn floor(v: gvec3f) = gfloor{gvec3f}(v);
+export fn floor(v: gvec4f) = gfloor{gvec4f}(v);
+
+fn gceil{I}(v: I) {
+  let varName = 'ceil('.concat(v.varName).concat(')');
+  return {I}(varName, v.statements, v.buffers);
+}
+export fn ceil(v: gf32) = gceil{gf32}(v);
+export fn ceil(v: gvec2f) = gceil{gvec2f}(v);
+export fn ceil(v: gvec3f) = gceil{gvec3f}(v);
+export fn ceil(v: gvec4f) = gceil{gvec4f}(v);
+
+fn gclamp{I}(v: I, l: I, h: I) {
+  let varName = 'clamp('.concat(v.varName).concat(', ').concat(l.varName).concat(', ').concat(h.varName).concat(')');
+  let statements = v.statements.concat(l.statements).concat(h.statements);
+  let buffers = v.buffers.union(l.buffers).union(h.buffers);
+  return {I}(varName, statements, buffers);
+}
+export fn clamp(v: gf32, l: gf32, h: gf32) = gclamp{gf32}(v, l, h);
+export fn clamp{T}(v: gf32, l: T, h: T) = gclamp{gf32}(v, l.gf32, h.gf32);
+export fn clamp{T}(v: gf32, l: gf32, h: T) = gclamp{gf32}(v, l, h.gf32);
+export fn clamp{T}(v: gf32, l: T, h: gf32) = gclamp{gf32}(v, l.gf32, h);
+export fn clamp(v: gvec2f, l: gvec2f, h: gvec2f) = gclamp{gvec2f}(v, l, h);
+export fn clamp{T}(v: gvec2f, l: T, h: T) = gclamp{gvec2f}(v, l.gvec2f, h.gvec2f);
+export fn clamp{T}(v: gvec2f, l: gvec2f, h: T) = gclamp{gvec2f}(v, l, h.gvec2f);
+export fn clamp{T}(v: gvec2f, l: T, h: gvec2f) = gclamp{gvec2f}(v, l.gvec2f, h);
+export fn clamp(v: gvec3f, l: gvec3f, h: gvec3f) = gclamp{gvec3f}(v, l, h);
+export fn clamp{T}(v: gvec3f, l: T, h: T) = gclamp{gvec3f}(v, l.gvec3f, h.gvec3f);
+export fn clamp{T}(v: gvec3f, l: gvec3f, h: T) = gclamp{gvec3f}(v, l, h.gvec3f);
+export fn clamp{T}(v: gvec3f, l: T, h: gvec3f) = gclamp{gvec3f}(v, l.gvec3f, h);
+export fn clamp(v: gvec4f, l: gvec4f, h: gvec4f) = gclamp{gvec4f}(v, l, h);
+export fn clamp{T}(v: gvec4f, l: T, h: T) = gclamp{gvec4f}(v, l.gvec4f, h.gvec4f);
+export fn clamp{T}(v: gvec4f, l: gvec4f, h: T) = gclamp{gvec4f}(v, l, h.gvec4f);
+export fn clamp{T}(v: gvec4f, l: T, h: gvec4f) = gclamp{gvec4f}(v, l.gvec4f, h);
+
+fn gexp{I}(v: I) {
+  let varName = 'exp('.concat(v.varName).concat(')');
+  return {I}(varName, v.statements, v.buffers);
+}
+export fn exp(v: gf32) = gexp{gf32}(v);
+export fn exp(v: gvec2f) = gexp{gvec2f}(v);
+export fn exp(v: gvec3f) = gexp{gvec3f}(v);
+export fn exp(v: gvec4f) = gexp{gvec4f}(v);
+
+fn gln{I}(v: I) {
+  let varName = 'log('.concat(v.varName).concat(')');
+  return {I}(varName, v.statements, v.buffers);
+}
+export fn ln(v: gf32) = gln{gf32}(v);
+export fn ln(v: gvec2f) = gln{gvec2f}(v);
+export fn ln(v: gvec3f) = gln{gvec3f}(v);
+export fn ln(v: gvec4f) = gln{gvec4f}(v);
+
+fn glog2{I}(v: I) {
+  let varName = 'log2('.concat(v.varName).concat(')');
+  return {I}(varName, v.statements, v.buffers);
+}
+export fn log2(v: gf32) = glog2{gf32}(v);
+export fn log2(v: gvec2f) = glog2{gvec2f}(v);
+export fn log2(v: gvec3f) = glog2{gvec3f}(v);
+export fn log2(v: gvec4f) = glog2{gvec4f}(v);
+
+fn glog10{I}(v: I) {
+  let varName = '(log('.concat(v.varName).concat(') / log(10.0))');
+  return {I}(varName, v.statements, v.buffers);
+}
+export fn log10(v: gf32) = glog10{gf32}(v);
+export fn log10(v: gvec2f) = glog10{gvec2f}(v);
+export fn log10(v: gvec3f) = glog10{gvec3f}(v);
+export fn log10(v: gvec4f) = glog10{gvec4f}(v);
+
+fn gcos{I}(v: I) {
+  let varName = 'cos('.concat(v.varName).concat(')');
+  return {I}(varName, v.statements, v.buffers);
+}
+export fn cos(v: gf32) = gcos{gf32}(v);
+export fn cos(v: gvec2f) = gcos{gvec2f}(v);
+export fn cos(v: gvec3f) = gcos{gvec3f}(v);
+export fn cos(v: gvec4f) = gcos{gvec4f}(v);
+
+fn gcosh{I}(v: I) {
+  let varName = 'cosh('.concat(v.varName).concat(')');
+  return {I}(varName, v.statements, v.buffers);
+}
+export fn cosh(v: gf32) = gcosh{gf32}(v);
+export fn cosh(v: gvec2f) = gcosh{gvec2f}(v);
+export fn cosh(v: gvec3f) = gcosh{gvec3f}(v);
+export fn cosh(v: gvec4f) = gcosh{gvec4f}(v);
+
+fn gsin{I}(v: I) {
+  let varName = 'sin('.concat(v.varName).concat(')');
+  return {I}(varName, v.statements, v.buffers);
+}
+export fn sin(v: gf32) = gsin{gf32}(v);
+export fn sin(v: gvec2f) = gsin{gvec2f}(v);
+export fn sin(v: gvec3f) = gsin{gvec3f}(v);
+export fn sin(v: gvec4f) = gsin{gvec4f}(v);
+
+fn gsinh{I}(v: I) {
+  let varName = 'sinh('.concat(v.varName).concat(')');
+  return {I}(varName, v.statements, v.buffers);
+}
+export fn sinh(v: gf32) = gsinh{gf32}(v);
+export fn sinh(v: gvec2f) = gsinh{gvec2f}(v);
+export fn sinh(v: gvec3f) = gsinh{gvec3f}(v);
+export fn sinh(v: gvec4f) = gsinh{gvec4f}(v);
+
+fn gtan{I}(v: I) {
+  let varName = 'tan('.concat(v.varName).concat(')');
+  return {I}(varName, v.statements, v.buffers);
+}
+export fn tan(v: gf32) = gtan{gf32}(v);
+export fn tan(v: gvec2f) = gtan{gvec2f}(v);
+export fn tan(v: gvec3f) = gtan{gvec3f}(v);
+export fn tan(v: gvec4f) = gtan{gvec4f}(v);
+
+fn gtanh{I}(v: I) {
+  let varName = 'tanh('.concat(v.varName).concat(')');
+  return {I}(varName, v.statements, v.buffers);
+}
+export fn tanh(v: gf32) = gtanh{gf32}(v);
+export fn tanh(v: gvec2f) = gtanh{gvec2f}(v);
+export fn tanh(v: gvec3f) = gtanh{gvec3f}(v);
+export fn tanh(v: gvec4f) = gtanh{gvec4f}(v);
+
+export fn sec(v: gf32) = 1.0.div(cos(v));
+export fn sec(v: gvec2f) = gvec2f(1.0).div(cos(v));
+export fn sec(v: gvec3f) = gvec3f(1.0).div(cos(v));
+export fn sec(v: gvec4f) = gvec4f(1.0).div(cos(v));
+
+export fn csc(v: gf32) = 1.0.div(sin(v));
+export fn csc(v: gvec2f) = gvec2f(1.0).div(sin(v));
+export fn csc(v: gvec3f) = gvec3f(1.0).div(sin(v));
+export fn csc(v: gvec4f) = gvec4f(1.0).div(sin(v));
+
+export fn cot(v: gf32) = 1.0.div(tan(v));
+export fn cot(v: gvec2f) = gvec2f(1.0).div(tan(v));
+export fn cot(v: gvec3f) = gvec3f(1.0).div(tan(v));
+export fn cot(v: gvec4f) = gvec4f(1.0).div(tan(v));
+
+export fn asec(v: gf32) = acos(1.0.div(v));
+export fn asec(v: gvec2f) = acos(gvec2f(1.0).div(v));
+export fn asec(v: gvec3f) = acos(gvec3f(1.0).div(v));
+export fn asec(v: gvec4f) = acos(gvec4f(1.0).div(v));
+
+export fn acsc(v: gf32) = asin(1.0.div(v));
+export fn acsc(v: gvec2f) = asin(gvec2f(1.0).div(v));
+export fn acsc(v: gvec3f) = asin(gvec3f(1.0).div(v));
+export fn acsc(v: gvec4f) = asin(gvec4f(1.0).div(v));
+
+export fn acot(v: gf32) = pi.div(2.0).sub(atan(v));
+export fn acot(v: gvec2f) = gvec2f(pi.div(2.0), pi.div(2.0)).sub(atan(v));
+export fn acot(v: gvec3f) = gvec3f(pi.div(2.0), pi.div(2.0), pi.div(2.0)).sub(atan(v));
+export fn acot(v: gvec4f) = gvec4f(pi.div(2.0), pi.div(2.0), pi.div(2.0), pi.div(2.0)).sub(atan(v));
+
+export fn sech(v: gf32) = 1.0.div(cosh(v));
+export fn sech(v: gvec2f) = gvec2f(1.0).div(cosh(v));
+export fn sech(v: gvec3f) = gvec3f(1.0).div(cosh(v));
+export fn sech(v: gvec4f) = gvec4f(1.0).div(cosh(v));
+
+export fn csch(v: gf32) = 1.0.div(sinh(v));
+export fn csch(v: gvec2f) = gvec2f(1.0).div(sinh(v));
+export fn csch(v: gvec3f) = gvec3f(1.0).div(sinh(v));
+export fn csch(v: gvec4f) = gvec4f(1.0).div(sinh(v));
+
+export fn coth(v: gf32) = 1.0.div(tanh(v));
+export fn coth(v: gvec2f) = gvec2f(1.0).div(tanh(v));
+export fn coth(v: gvec3f) = gvec3f(1.0).div(tanh(v));
+export fn coth(v: gvec4f) = gvec4f(1.0).div(tanh(v));
+
+export fn asech(v: gf32) = ln(1.0.add(sqrt(1.0.sub(v.pow(2.0)))).div(v));
+export fn asech(v: gvec2f) = ln(gvec2f(1.0).add(sqrt(gvec2f(1.0).sub(v.pow(gvec2f(2.0))))).div(v));
+export fn asech(v: gvec3f) = ln(gvec3f(1.0).add(sqrt(gvec3f(1.0).sub(v.pow(gvec3f(2.0))))).div(v));
+export fn asech(v: gvec4f) = ln(gvec4f(1.0).add(sqrt(gvec4f(1.0).sub(v.pow(gvec4f(2.0))))).div(v));
+
+export fn acsch(x: gf32) = ln(1.0.div(x).add(sqrt(1.0.div(x.pow(2.0)).add(1.0))));
+export fn acsch(x: gvec2f) = ln(gvec2f(1.0).div(x).add(sqrt(gvec2f(1.0).div(x.pow(gvec2f(2.0))).add(gvec2f(1.0)))));
+export fn acsch(x: gvec3f) = ln(gvec3f(1.0).div(x).add(sqrt(gvec3f(1.0).div(x.pow(gvec3f(2.0))).add(gvec3f(1.0)))));
+export fn acsch(x: gvec4f) = ln(gvec4f(1.0).div(x).add(sqrt(gvec4f(1.0).div(x.pow(gvec4f(2.0))).add(gvec4f(1.0)))));
+
+export fn acoth(x: gf32) = ln(x.add(1.0).div(x.sub(1.0))).div(2.0);
+export fn acoth(x: gvec2f) = ln(x.add(gvec2f(1.0)).div(x.sub(gvec2f(1.0)))).div(gvec2f(2.0));
+export fn acoth(x: gvec3f) = ln(x.add(gvec3f(1.0)).div(x.sub(gvec3f(1.0)))).div(gvec3f(2.0));
+export fn acoth(x: gvec4f) = ln(x.add(gvec4f(1.0)).div(x.sub(gvec4f(1.0)))).div(gvec4f(2.0));
+
 // GPU Comparison methods
 
 fn geq{I, O}(a: I, b: I) {
@@ -4312,11 +4740,27 @@ export fn map{G, G2}(gb: GBuffer, f: G -> G2) {
   compute.build.run;
   return out;
 }*/
+export fn map(gb: GBuffer, f: gu32 -> gu32) {
+  let idx = gFor(gb.len);
+  let val = gb[idx].asU32;
+  let out = GBuffer{u32}(gb.len);
+  let compute = out[idx].store(f(val).asI32);
+  compute.build.run;
+  return out;
+}
 export fn map(gb: GBuffer, f: gi32 -> gi32) {
   let idx = gFor(gb.len);
   let val = gb[idx];
   let out = GBuffer{i32}(gb.len);
   let compute = out[idx].store(f(val));
+  compute.build.run;
+  return out;
+}
+export fn map(gb: GBuffer, f: gf32 -> gf32) {
+  let idx = gFor(gb.len);
+  let val = gb[idx].asF32;
+  let out = GBuffer{f32}(gb.len);
+  let compute = out[idx].store(f(val).asI32);
   compute.build.run;
   return out;
 }
