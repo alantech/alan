@@ -3107,78 +3107,78 @@ test_gpgpu!(gpu_trig => r#"
     export fn main {
       'Logarithms and e^x'.print;
       // Contrived way to get the GPU to do this work, don't follow this pattern for real GPU usage
-      GBuffer([e.f32]).map(fn (v: gf32) = exp(v)).read{f32}[0].getOrExit.string(4).print;
-      GBuffer([e.f32]).map(fn (v: gf32) = ln(v)).read{f32}[0].getOrExit.string(4).print;
-      GBuffer([e.f32]).map(fn (v: gf32) = log10(v)).read{f32}[0].getOrExit.string(4).print;
-      GBuffer([e.f32]).map(fn (v: gf32) = log2(v)).read{f32}[0].getOrExit.string(4).print;
+      GBuffer([e.f32]).map(fn (v: gf32) = exp(v)).read{f32}[0].getOrExit.string(3).print;
+      GBuffer([e.f32]).map(fn (v: gf32) = ln(v)).read{f32}[0].getOrExit.string(3).print;
+      GBuffer([e.f32]).map(fn (v: gf32) = log10(v)).read{f32}[0].getOrExit.string(3).print;
+      GBuffer([e.f32]).map(fn (v: gf32) = log2(v)).read{f32}[0].getOrExit.string(3).print;
 
       'Basic Trig functions'.print;
-      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = sin(v)).read{f32}[0].getOrExit.string(4).print;
-      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = cos(v)).read{f32}[0].getOrExit.string(4).print;
-      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = tan(v)).read{f32}[0].getOrExit.string(4).print;
-      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = sec(v)).read{f32}[0].getOrExit.string(4).print;
-      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = csc(v)).read{f32}[0].getOrExit.string(4).print;
-      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = cot(v)).read{f32}[0].getOrExit.string(4).print;
+      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = sin(v)).read{f32}[0].getOrExit.string(3).print;
+      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = cos(v)).read{f32}[0].getOrExit.string(3).print;
+      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = tan(v)).read{f32}[0].getOrExit.string(3).print;
+      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = sec(v)).read{f32}[0].getOrExit.string(3).print;
+      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = csc(v)).read{f32}[0].getOrExit.string(3).print;
+      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = cot(v)).read{f32}[0].getOrExit.string(3).print;
 
       'Inverse Trig functions'.print;
-      GBuffer([0.0.f32]).map(fn (v: gf32) = asin(v)).read{f32}[0].getOrExit.string(4).print;
-      GBuffer([1.0.f32]).map(fn (v: gf32) = acos(v)).read{f32}[0].getOrExit.string(4).print;
-      GBuffer([0.0.f32]).map(fn (v: gf32) = atan(v)).read{f32}[0].getOrExit.string(4).print;
-      GBuffer([1.0.f32]).map(fn (v: gf32) = atan2(v, 2.0)).read{f32}[0].getOrExit.string(4).print;
-      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = asec(v)).read{f32}[0].getOrExit.string(4).print;
-      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = acsc(v)).read{f32}[0].getOrExit.string(4).print;
-      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = acot(v)).read{f32}[0].getOrExit.string(4).print;
+      GBuffer([0.0.f32]).map(fn (v: gf32) = asin(v)).read{f32}[0].getOrExit.string(3).print;
+      GBuffer([1.0.f32]).map(fn (v: gf32) = acos(v)).read{f32}[0].getOrExit.string(3).print;
+      GBuffer([0.0.f32]).map(fn (v: gf32) = atan(v)).read{f32}[0].getOrExit.string(3).print;
+      GBuffer([1.0.f32]).map(fn (v: gf32) = atan2(v, 2.0)).read{f32}[0].getOrExit.string(3).print;
+      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = asec(v)).read{f32}[0].getOrExit.string(3).print;
+      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = acsc(v)).read{f32}[0].getOrExit.string(3).print;
+      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = acot(v)).read{f32}[0].getOrExit.string(3).print;
 
       'Hyperbolic Trig functions'.print;
-      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = sinh(v)).read{f32}[0].getOrExit.string(4).print;
-      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = cosh(v)).read{f32}[0].getOrExit.string(4).print;
-      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = tanh(v)).read{f32}[0].getOrExit.string(4).print;
-      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = sech(v)).read{f32}[0].getOrExit.string(4).print;
-      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = csch(v)).read{f32}[0].getOrExit.string(4).print;
-      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = coth(v)).read{f32}[0].getOrExit.string(4).print;
+      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = sinh(v)).read{f32}[0].getOrExit.string(3).print;
+      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = cosh(v)).read{f32}[0].getOrExit.string(3).print;
+      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = tanh(v)).read{f32}[0].getOrExit.string(3).print;
+      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = sech(v)).read{f32}[0].getOrExit.string(3).print;
+      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = csch(v)).read{f32}[0].getOrExit.string(3).print;
+      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = coth(v)).read{f32}[0].getOrExit.string(3).print;
 
       'Inverse Hyperbolic Trig functions'.print;
-      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = asinh(v)).read{f32}[0].getOrExit.string(4).print;
-      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = acosh(v)).read{f32}[0].getOrExit.string(4).print;
-      GBuffer([pi.f32 / 6.0.f32]).map(fn (v: gf32) = atanh(v)).read{f32}[0].getOrExit.string(4).print;
-      GBuffer([0.5.f32]).map(fn (v: gf32) = asech(v)).read{f32}[0].getOrExit.string(4).print;
-      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = acsch(v)).read{f32}[0].getOrExit.string(4).print;
-      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = acoth(v)).read{f32}[0].getOrExit.string(4).print;
+      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = asinh(v)).read{f32}[0].getOrExit.string(3).print;
+      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = acosh(v)).read{f32}[0].getOrExit.string(3).print;
+      GBuffer([pi.f32 / 6.0.f32]).map(fn (v: gf32) = atanh(v)).read{f32}[0].getOrExit.string(3).print;
+      GBuffer([0.5.f32]).map(fn (v: gf32) = asech(v)).read{f32}[0].getOrExit.string(3).print;
+      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = acsch(v)).read{f32}[0].getOrExit.string(3).print;
+      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = acoth(v)).read{f32}[0].getOrExit.string(3).print;
     }"#;
     stdout r#"Logarithms and e^x
-15.1543
-1.0000
-0.4343
-1.4427
+15.154
+1.000
+0.434
+1.443
 Basic Trig functions
-0.8660
-0.5000
-1.7321
-2.0000
-1.1547
-0.5774
+0.866
+0.500
+1.732
+2.000
+1.155
+0.577
 Inverse Trig functions
-0.0000
-0.0000
-0.0000
-0.4636
-0.3013
-1.2698
-0.7623
+0.000
+0.000
+0.000
+0.464
+0.301
+1.270
+0.762
 Hyperbolic Trig functions
-1.2494
-1.6003
-0.7807
-0.6249
-0.8004
-1.2809
+1.249
+1.600
+0.781
+0.625
+0.800
+1.281
 Inverse Hyperbolic Trig functions
-0.9144
-0.3060
-0.5813
-1.3170
-0.8491
-1.8849
+0.914
+0.306
+0.581
+1.317
+0.849
+1.885
 "#;
 );
 
