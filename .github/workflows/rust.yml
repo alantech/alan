@@ -59,7 +59,7 @@ jobs:
       run: cargo build --verbose
     - if: ${{ github.ref_name == 'main' }}
       name: Run tests
-      run: cargo test --verbose -- --include-ignored
+      run: RUST_MIN_STACK=8388608 cargo test --verbose -- --include-ignored
     - if: ${{ github.ref_name != 'main' }}
       name: Run tests
-      run: cargo test --verbose
+      run: RUST_MIN_STACK=8388608 cargo test --verbose
