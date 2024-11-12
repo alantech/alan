@@ -367,7 +367,7 @@ impl<'a> Scope<'a> {
     }
 
     pub fn resolve_generic_function(
-        self,
+        mut self,
         function: &String,
         generic_types: &[CType],
         args: &[CType],
@@ -467,7 +467,23 @@ impl<'a> Scope<'a> {
             }
         }
         if let Some(i) = match_index {
+            // We've found a match. We now need to return the resolved generic function.
+            // If any of the arguments is *itself* a generic function that we have resolved, we
+            // *also* need to resolve that as well.
             let generic_f = generic_fs.get(i).unwrap();
+            for arg in args {
+                match arg {
+                    CType::Generic(n, _, t) if matches!(&**t, CType::Function(..)) => {
+                        if let Some(func) = self.resolve_function_by_type(n, t).cloned() {
+                            match Function::from_generic_function(self, &func, generic_types.to_vec()) {
+                                Ok((s, _)) => { self = s; }
+                                Err(_) => return None,
+                            }
+                        }
+                    }
+                    _ => {},
+                }
+            }
             let temp_scope = self.child();
             match Function::from_generic_function(temp_scope, generic_f, generic_types.to_vec()) {
                 Err(_) => return None, // TODO: Should this be a panic?
