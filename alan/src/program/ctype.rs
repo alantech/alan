@@ -1762,12 +1762,7 @@ impl CType {
                     // TODO: Do this the right way with `infer_generics`, but I need to refactor a
                     // lot to get the scope into this function. For now, let's just assume if the
                     // lengths of the input tuples are the same, we're fine, and if not, we're not.
-                    if matches!((&**i1, &**i2), (CType::Tuple(ts1), CType::Tuple(ts2)) if ts1.len() == ts2.len())
-                    {
-                        true
-                    } else {
-                        false
-                    }
+                    matches!((&**i1, &**i2), (CType::Tuple(ts1), CType::Tuple(ts2)) if ts1.len() == ts2.len())
                 } else {
                     // Should be impossible
                     false
