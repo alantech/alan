@@ -913,7 +913,9 @@ impl CType {
                         arg.push(a);
                         input.push(t2);
                     }
-                    (Some(CType::Generic(_, _, t)), Some(CType::Function(..))) if matches!(&**t, CType::Function(..)) => {
+                    (Some(CType::Generic(_, _, t)), Some(CType::Function(..)))
+                        if matches!(&**t, CType::Function(..)) =>
+                    {
                         // TODO: How to get the generic args to compare correctly
                         arg.push(t);
                         input.push(i.unwrap());
@@ -1753,12 +1755,15 @@ impl CType {
                 }
                 false
             }
-            (CType::Function(i1, _), CType::Generic(_, _, t)) if matches!(&**t, CType::Function(..)) => {
+            (CType::Function(i1, _), CType::Generic(_, _, t))
+                if matches!(&**t, CType::Function(..)) =>
+            {
                 if let CType::Function(i2, _) = &**t {
                     // TODO: Do this the right way with `infer_generics`, but I need to refactor a
                     // lot to get the scope into this function. For now, let's just assume if the
                     // lengths of the input tuples are the same, we're fine, and if not, we're not.
-                    if matches!((&**i1, &**i2), (CType::Tuple(ts1), CType::Tuple(ts2)) if ts1.len() == ts2.len()) {
+                    if matches!((&**i1, &**i2), (CType::Tuple(ts1), CType::Tuple(ts2)) if ts1.len() == ts2.len())
+                    {
                         true
                     } else {
                         false

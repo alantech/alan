@@ -475,13 +475,19 @@ impl<'a> Scope<'a> {
                 match arg {
                     CType::Generic(n, _, t) if matches!(&**t, CType::Function(..)) => {
                         if let Some(func) = self.resolve_function_by_type(n, t).cloned() {
-                            match Function::from_generic_function(self, &func, generic_types.to_vec()) {
-                                Ok((s, _)) => { self = s; }
+                            match Function::from_generic_function(
+                                self,
+                                &func,
+                                generic_types.to_vec(),
+                            ) {
+                                Ok((s, _)) => {
+                                    self = s;
+                                }
                                 Err(_) => return None,
                             }
                         }
                     }
-                    _ => {},
+                    _ => {}
                 }
             }
             let temp_scope = self.child();

@@ -922,18 +922,27 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                         if typen != actual_typen {
                                             if matches!(actual_typen, CType::Function(..)) {
                                                 let temp_scope_2 = temp_scope.child();
-                                                match temp_scope_2.resolve_function(representation, &type_to_args(actual_typen).into_iter().map(|(_, _, t)| t).collect::<Vec<CType>>()) {
+                                                match temp_scope_2.resolve_function(
+                                                    representation,
+                                                    &type_to_args(actual_typen)
+                                                        .into_iter()
+                                                        .map(|(_, _, t)| t)
+                                                        .collect::<Vec<CType>>(),
+                                                ) {
                                                     None => {
-                                                        arg_microstatements[i] = Microstatement::Value {
-                                                            typen: actual_typen.clone(),
-                                                            representation: representation.clone(),
-                                                        };
-                                                    },
+                                                        arg_microstatements[i] =
+                                                            Microstatement::Value {
+                                                                typen: actual_typen.clone(),
+                                                                representation: representation
+                                                                    .clone(),
+                                                            };
+                                                    }
                                                     Some((s, func)) => {
-                                                        arg_microstatements[i] = Microstatement::Value {
-                                                            typen: actual_typen.clone(),
-                                                            representation: func.name.clone(),
-                                                        };
+                                                        arg_microstatements[i] =
+                                                            Microstatement::Value {
+                                                                typen: actual_typen.clone(),
+                                                                representation: func.name.clone(),
+                                                            };
                                                         merge!(temp_scope, s);
                                                     }
                                                 }
