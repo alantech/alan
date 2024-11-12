@@ -990,6 +990,14 @@ test_full!(f32_abs => r#"
     export fn main = print(-3.f32.abs);"#;
     stdout "3\n";
 );
+test_full!(f32_floor => r#"
+    export fn main = 2.5.f32.floor.print;"#;
+    stdout "2\n";
+);
+test_full!(f32_ceil => r#"
+    export fn main = 2.5.f32.ceil.print;"#;
+    stdout "3\n";
+);
 
 test_full!(f64_add => r#"
     export fn main {
@@ -1045,6 +1053,14 @@ test_full!(f64_neg => r#"
 );
 test_full!(f64_abs => r#"
     export fn main = print(-3.0.abs);"#;
+    stdout "3\n";
+);
+test_full!(f64_floor => r#"
+    export fn main = 2.5.floor.print;"#;
+    stdout "2\n";
+);
+test_full!(f64_ceil => r#"
+    export fn main = 2.5.ceil.print;"#;
     stdout "3\n";
 );
 
@@ -3007,133 +3023,162 @@ test_ignore!(module_level_constant_from_function_call => r#"
     stdout "3\n5\n";
 );
 
-// @std/trig
+// Trigonometry
 
-test_ignore!(std_trig => r#"
-    import @std/trig
-    from @std/trig import e, pi, tau
-    // shouldn't be necessary, but compiler issue makes it so
-
+test_full!(cpu_trig => r#"
     export fn main {
       'Logarithms and e^x'.print;
-      print(trig.exp(e));
-      print(trig.ln(e));
-      print(trig.log(e));
+      print(exp(e).string(4));
+      print(ln(e).string(4));
+      print(log10(e).string(4));
+      print(log2(e).string(4));
 
       'Basic Trig functions'.print;
-      print(trig.sin(tau / 6.0));
-      print(trig.cos(tau / 6.0));
-      print(trig.tan(tau / 6.0));
-      print(trig.sec(tau / 6.0));
-      print(trig.csc(tau / 6.0));
-      print(trig.cot(tau / 6.0));
+      print(sin(tau / 6.0).string(4));
+      print(cos(tau / 6.0).string(4));
+      print(tan(tau / 6.0).string(4));
+      print(sec(tau / 6.0).string(4));
+      print(csc(tau / 6.0).string(4));
+      print(cot(tau / 6.0).string(4));
 
       'Inverse Trig functions'.print;
-      print(trig.arcsine(0.0));
-      print(trig.arccosine(1.0));
-      print(trig.arctangent(0.0));
-      print(trig.arcsecant(tau / 6.0));
-      print(trig.arccosecant(tau / 6.0));
-      print(trig.arccotangent(tau / 6.0));
-
-      'Historic Trig functions (useful for navigation and as a teaching aid: https://en.wikipedia.org/wiki/File:Circle-trig6.svg )'.print;
-      print(trig.versine(pi / 3.0));
-      print(trig.vercosine(pi / 3.0));
-      print(trig.coversine(pi / 3.0));
-      print(trig.covercosine(pi / 3.0));
-      print(trig.haversine(pi / 3.0));
-      print(trig.havercosine(pi / 3.0));
-      print(trig.hacoversine(pi / 3.0));
-      print(trig.hacovercosine(pi / 3.0));
-      print(trig.exsecant(pi / 3.0));
-      print(trig.excosecant(pi / 3.0));
-      print(trig.chord(pi / 3.0));
-
-      'Historic Inverse Trig functions'.print;
-      print(trig.aver(0.0));
-      print(trig.avcs(0.5));
-      print(trig.acvs(1.0));
-      print(trig.acvc(1.0));
-      print(trig.ahav(0.5));
-      print(trig.ahvc(0.5));
-      print(trig.ahcv(0.5));
-      print(trig.ahcc(0.5));
-      print(trig.aexs(0.5));
-      print(trig.aexc(0.5));
-      print(trig.acrd(0.5));
+      asin(0.0).string(4).print;
+      acos(1.0).string(4).print;
+      atan(0.0).string(4).print;
+      atan2(1.0, 2.0).string(4).print;
+      print(asec(tau / 6.0).string(4));
+      print(acsc(tau / 6.0).string(4));
+      print(acot(tau / 6.0).string(4));
 
       'Hyperbolic Trig functions'.print;
-      print(trig.sinh(tau / 6.0));
-      print(trig.cosh(tau / 6.0));
-      print(trig.tanh(tau / 6.0));
-      print(trig.sech(tau / 6.0));
-      print(trig.csch(tau / 6.0));
-      print(trig.coth(tau / 6.0));
+      print(sinh(tau / 6.0).string(4));
+      print(cosh(tau / 6.0).string(4));
+      print(tanh(tau / 6.0).string(4));
+      print(sech(tau / 6.0).string(4));
+      print(csch(tau / 6.0).string(4));
+      print(coth(tau / 6.0).string(4));
 
       'Inverse Hyperbolic Trig functions'.print;
-      print(trig.hyperbolicArcsine(tau / 6.0));
-      print(trig.hyperbolicArccosine(tau / 6.0));
-      print(trig.hyperbolicArctangent(tau / 6.0));
-      print(trig.hyperbolicArcsecant(0.5));
-      print(trig.hyperbolicArccosecant(tau / 6.0));
-      print(trig.hyperbolicArccotangent(tau / 6.0));
+      print(asinh(tau / 6.0).string(4));
+      print(acosh(tau / 6.0).string(4));
+      print(atanh(pi / 6.0).string(4));
+      print(asech(0.5).string(4));
+      print(acsch(tau / 6.0).string(4));
+      print(acoth(tau / 6.0).string(4));
     }"#;
     stdout r#"Logarithms and e^x
-15.154262241479259
-1
-0.4342944819032518
+15.1543
+1.0000
+0.4343
+1.4427
 Basic Trig functions
-0.8660254037844386
-0.5000000000000001
-1.7320508075688767
-1.9999999999999996
-1.1547005383792517
-0.577350269189626
+0.8660
+0.5000
+1.7321
+2.0000
+1.1547
+0.5774
 Inverse Trig functions
-0
-0
-0
-0.3013736097452911
-1.2694227170496055
-0.7623475341648746
-Historic Trig functions (useful for navigation and as a teaching aid: https://en.wikipedia.org/wiki/File:Circle-trig6.svg )
-0.4999999999999999
-1.5
-0.1339745962155614
-1.8660254037844386
-0.24999999999999994
-0.75
-0.0669872981077807
-0.9330127018922193
-0.9999999999999996
-0.15470053837925168
-0.9999999999999999
-Historic Inverse Trig functions
-0
-2.0943951023931957
-0
-0
-1.5707963267948966
-1.5707963267948966
-0
-0
-0.8410686705679303
-0.7297276562269663
-0.5053605102841573
+0.0000
+0.0000
+0.0000
+0.4636
+0.3014
+1.2694
+0.7623
 Hyperbolic Trig functions
-1.2493670505239751
-1.600286857702386
-0.7807144353592677
-0.6248879662960872
-0.8004052928885931
-1.2808780710450447
+1.2494
+1.6003
+0.7807
+0.6249
+0.8004
+1.2809
 Inverse Hyperbolic Trig functions
-0.9143566553928857
-0.3060421086132653
-1.8849425394276085
-1.3169578969248166
-0.8491423010640059
-1.8849425394276085
+0.9144
+0.3060
+0.5813
+1.3170
+0.8491
+1.8849
+"#;
+);
+
+test_gpgpu!(gpu_trig => r#"
+    export fn main {
+      'Logarithms and e^x'.print;
+      // Contrived way to get the GPU to do this work, don't follow this pattern for real GPU usage
+      GBuffer([e.f32]).map(fn (v: gf32) = exp(v)).read{f32}[0].getOrExit.string(2).print;
+      GBuffer([e.f32]).map(fn (v: gf32) = ln(v)).read{f32}[0].getOrExit.string(2).print;
+      GBuffer([e.f32]).map(fn (v: gf32) = log10(v)).read{f32}[0].getOrExit.string(2).print;
+      GBuffer([e.f32]).map(fn (v: gf32) = log2(v)).read{f32}[0].getOrExit.string(2).print;
+
+      'Basic Trig functions'.print;
+      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = sin(v)).read{f32}[0].getOrExit.string(2).print;
+      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = cos(v)).read{f32}[0].getOrExit.string(2).print;
+      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = tan(v)).read{f32}[0].getOrExit.string(2).print;
+      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = sec(v)).read{f32}[0].getOrExit.string(2).print;
+      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = csc(v)).read{f32}[0].getOrExit.string(2).print;
+      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = cot(v)).read{f32}[0].getOrExit.string(2).print;
+
+      'Inverse Trig functions'.print;
+      GBuffer([0.0.f32]).map(fn (v: gf32) = asin(v)).read{f32}[0].getOrExit.string(2).print;
+      GBuffer([1.0.f32]).map(fn (v: gf32) = acos(v)).read{f32}[0].getOrExit.string(2).print;
+      GBuffer([0.0.f32]).map(fn (v: gf32) = atan(v)).read{f32}[0].getOrExit.string(2).print;
+      GBuffer([1.0.f32]).map(fn (v: gf32) = atan2(v, 2.0)).read{f32}[0].getOrExit.string(2).print;
+      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = asec(v)).read{f32}[0].getOrExit.string(2).print;
+      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = acsc(v)).read{f32}[0].getOrExit.string(2).print;
+      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = acot(v)).read{f32}[0].getOrExit.string(2).print;
+
+      'Hyperbolic Trig functions'.print;
+      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = sinh(v)).read{f32}[0].getOrExit.string(2).print;
+      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = cosh(v)).read{f32}[0].getOrExit.string(2).print;
+      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = tanh(v)).read{f32}[0].getOrExit.string(2).print;
+      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = sech(v)).read{f32}[0].getOrExit.string(2).print;
+      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = csch(v)).read{f32}[0].getOrExit.string(2).print;
+      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = coth(v)).read{f32}[0].getOrExit.string(2).print;
+
+      'Inverse Hyperbolic Trig functions'.print;
+      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = asinh(v)).read{f32}[0].getOrExit.string(2).print;
+      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = acosh(v)).read{f32}[0].getOrExit.string(2).print;
+      GBuffer([pi.f32 / 6.0.f32]).map(fn (v: gf32) = atanh(v)).read{f32}[0].getOrExit.string(2).print;
+      GBuffer([0.5.f32]).map(fn (v: gf32) = asech(v)).read{f32}[0].getOrExit.string(2).print;
+      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = acsch(v)).read{f32}[0].getOrExit.string(2).print;
+      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = acoth(v)).read{f32}[0].getOrExit.string(2).print;
+    }"#;
+    stdout r#"Logarithms and e^x
+15.15
+1.00
+0.43
+1.44
+Basic Trig functions
+0.87
+0.50
+1.73
+2.00
+1.15
+0.58
+Inverse Trig functions
+0.00
+0.00
+0.00
+0.46
+0.30
+1.27
+0.76
+Hyperbolic Trig functions
+1.25
+1.60
+0.78
+0.62
+0.80
+1.28
+Inverse Hyperbolic Trig functions
+0.91
+0.31
+0.58
+1.32
+0.85
+1.88
 "#;
 );
 
