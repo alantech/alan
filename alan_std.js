@@ -195,6 +195,34 @@ export class Int {
     }
   }
 
+  clz() {
+    // There's no built-in operation for this, so we're gonna do a binary search. We first convert
+    // any negative numbers into their positive equivalent for the bit width in question, then we
+    // check if the number is less than or equal to `2 ** (bitwidth / 2)`, if so we save
+    // `bitwidth / 2` as the number of leading zeroes, then continue with `2 ** (bitwidth / 4)` and
+    // saving `bitwidth - bitwidth / 4` number of leading zeroes, etc. The number of iterations is
+    // fixed per bit width: 8-bit takes 3 loops, 16-bit 4 loops, 32-bit 5 loops, 64-bit 6 loops.
+    // There's also a short-circuit for 0 to make the loop easier to implement.
+    const val = this.val < (this.bits == 64 ? 0n : 0) ? BigInt(this.val + this.size) : BigInt(this.val);
+    if (val == 0n) {
+      return this.build(this.bits);
+    }
+    let checkBit = BigInt(this.bits / 2);
+    let clz = 0;
+    let step = 0;
+    let maxSteps = Math.log2(this.bits);
+    do {
+      step++;
+      if (val < 2n ** checkBit) {
+        clz = BigInt(this.bits) - checkBit;
+        checkBit = checkBit - BigInt(Math.round(this.bits / (2 ** (step + 1))));
+      } else {
+        checkBit = checkBit + BigInt(Math.round(this.bits / (2 ** (step + 1))));
+      }
+    } while(step < maxSteps);
+    return this.build(clz);
+  }
+
   valueOf() {
     return this.val;
   }
