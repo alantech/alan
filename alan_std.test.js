@@ -263,3 +263,55 @@ assert.equal(new alanStd.U64(100n).rotateLeft(new alanStd.U64(2n)), 400n, "rotat
 
 assert.equal(new alanStd.U64(64n).rotateRight(new alanStd.U64(1n)), 32n, "rotateRightU64 64 >>> 1 = 32");
 
+assert.equal(new alanStd.U8(255).clz(), 0, "clzU8(255) = 0");
+assert.equal(new alanStd.U8(0).clz(), 8, "clzU8(0) = 8");
+assert.equal(new alanStd.U8(1).clz(), 7, "clzU8(1) = 7");
+assert.equal(new alanStd.U8(2).clz(), 6, "clzU8(2) = 6");
+assert.equal(new alanStd.U8(4).clz(), 5, "clzU8(4) = 5");
+assert.equal(new alanStd.U8(8).clz(), 4, "clzU8(8) = 4");
+assert.equal(new alanStd.U8(16).clz(), 3, "clzU8(16) = 3");
+assert.equal(new alanStd.U8(32).clz(), 2, "clzU8(32) = 2");
+assert.equal(new alanStd.U8(64).clz(), 1, "clzU8(64) = 1");
+assert.equal(new alanStd.U8(128).clz(), 0, "clzU8(128) = 0");
+
+assert.equal(new alanStd.I8(-1).clz(), 0, "clzI8(-1) = 0");
+assert.equal(new alanStd.I8(0).clz(), 8, "clzI8(0) = 8");
+assert.equal(new alanStd.I8(1).clz(), 7, "clzI8(1) = 7");
+assert.equal(new alanStd.I8(16).clz(), 3, "clzI8(16) = 3");
+assert.equal(new alanStd.I8(-128).clz(), 0, "clzI8(-128) = 0");
+
+assert.equal(new alanStd.U16(65535).clz(), 0, "clzU16(65535) = 0");
+assert.equal(new alanStd.U16(0).clz(), 16, "clzU16(0) = 16");
+assert.equal(new alanStd.U16(1).clz(), 15, "clzU16(1) = 15");
+assert.equal(new alanStd.U16(16).clz(), 11, "clzU16(16) = 11");
+assert.equal(new alanStd.U16(32768).clz(), 0, "clzU16(32768) = 0");
+
+assert.equal(new alanStd.I16(-1).clz(), 0, "clzI16(-1) = 0");
+assert.equal(new alanStd.I16(0).clz(), 16, "clzI16(0) = 16");
+assert.equal(new alanStd.I16(1).clz(), 15, "clzI16(1) = 15");
+assert.equal(new alanStd.I16(16).clz(), 11, "clzI16(16) = 11");
+assert.equal(new alanStd.I16(-32768).clz(), 0, "clzI16(-32768) = 0");
+
+assert.equal(new alanStd.U32(4_294_967_295).clz(), 0, "clzU32(4_294_967_295) = 0");
+assert.equal(new alanStd.U32(0).clz(), 32, "clzU32(0) = 32");
+assert.equal(new alanStd.U32(1).clz(), 31, "clzU32(1) = 31");
+assert.equal(new alanStd.U32(16).clz(), 27, "clzU32(32) = 27");
+assert.equal(new alanStd.U32(2_147_483_648).clz(), 0, "clzU32(2_147_483_648) = 0");
+
+assert.equal(new alanStd.I32(-1).clz(), 0, "clzI32(-1) = 0");
+assert.equal(new alanStd.I32(0).clz(), 32, "clzI32(0) = 32");
+assert.equal(new alanStd.I32(1).clz(), 31, "clzI32(1) = 31");
+assert.equal(new alanStd.I32(16).clz(), 27, "clzI32(16) = 27");
+assert.equal(new alanStd.I32(-2_147_483_648).clz(), 0, "clzI32(-2_147_483_648) = 0");
+
+assert.equal(new alanStd.U64(18_446_744_073_709_551_615n).clz(), 0, "clzU64(18_446_744_073_709_551_615n) = 0");
+assert.equal(new alanStd.U64(0).clz(), 64, "clzU64(0) = 64");
+assert.equal(new alanStd.U64(1).clz(), 63, "clzU64(1) = 63");
+assert.equal(new alanStd.U64(16).clz(), 59, "clzU64(64) = 59");
+assert.equal(new alanStd.U64(9_223_372_036_854_775_808n).clz(), 0, "clzU64(9_223_372_036_854_775_808n) = 0");
+
+assert.equal(new alanStd.I64(-1).clz(), 0, "clzI64(-1) = 0");
+assert.equal(new alanStd.I64(0).clz(), 64, "clzI64(0) = 64");
+assert.equal(new alanStd.I64(1).clz(), 63, "clzI64(1) = 63");
+assert.equal(new alanStd.I64(16).clz(), 59, "clzI64(16) = 59");
+assert.equal(new alanStd.I64(-9_223_372_036_854_775_808n).clz(), 0, "clzI64(-9_223_372_036_854_775_808n) = 0");
