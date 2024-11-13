@@ -938,11 +938,25 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                                             };
                                                     }
                                                     Some((s, func)) => {
-                                                        arg_microstatements[i] =
-                                                            Microstatement::Value {
-                                                                typen: actual_typen.clone(),
-                                                                representation: func.name.clone(),
-                                                            };
+                                                        if temp_scope
+                                                            .functions
+                                                            .contains_key(&func.name)
+                                                        {
+                                                            arg_microstatements[i] =
+                                                                Microstatement::Value {
+                                                                    typen: actual_typen.clone(),
+                                                                    representation: func
+                                                                        .name
+                                                                        .clone(),
+                                                                };
+                                                        } else {
+                                                            arg_microstatements[i] =
+                                                                Microstatement::Value {
+                                                                    typen: actual_typen.clone(),
+                                                                    representation: representation
+                                                                        .clone(),
+                                                                };
+                                                        }
                                                         merge!(temp_scope, s);
                                                     }
                                                 }
