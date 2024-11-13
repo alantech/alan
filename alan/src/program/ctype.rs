@@ -891,6 +891,9 @@ impl CType {
                 let i = input.pop();
                 match (a, i) {
                     (Some(CType::Void), Some(CType::Void)) => { /* Do nothing */ }
+                    (Some(CType::Infer(s1, _)), Some(CType::Infer(s2, _))) if s1 == s2 => {
+                        // This is not an error, but we can't garner any useful information here
+                    }
                     (Some(CType::Infer(s, _)), _) => {
                         return Err(format!(
                             "While attempting to infer generics found an inference type {} as an input somehow",
@@ -909,6 +912,13 @@ impl CType {
                     (Some(a), Some(CType::Type(_, t2))) if !matches!(&**t2, CType::Binds(..)) => {
                         arg.push(a);
                         input.push(t2);
+                    }
+                    (Some(CType::Generic(_, _, t)), Some(CType::Function(..)))
+                        if matches!(&**t, CType::Function(..)) =>
+                    {
+                        // TODO: How to get the generic args to compare correctly
+                        arg.push(t);
+                        input.push(i.unwrap());
                     }
                     (Some(CType::Generic(..)), _) => {
                         return Err(format!(
@@ -1744,6 +1754,19 @@ impl CType {
                     }
                 }
                 false
+            }
+            (CType::Function(i1, _), CType::Generic(_, _, t))
+                if matches!(&**t, CType::Function(..)) =>
+            {
+                if let CType::Function(i2, _) = &**t {
+                    // TODO: Do this the right way with `infer_generics`, but I need to refactor a
+                    // lot to get the scope into this function. For now, let's just assume if the
+                    // lengths of the input tuples are the same, we're fine, and if not, we're not.
+                    matches!((&**i1, &**i2), (CType::Tuple(ts1), CType::Tuple(ts2)) if ts1.len() == ts2.len())
+                } else {
+                    // Should be impossible
+                    false
+                }
             }
             // TODO: Do this without stringification
             (a, b) => a.degroup().to_strict_string(false) == b.degroup().to_strict_string(false),

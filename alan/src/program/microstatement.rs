@@ -908,7 +908,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                     let temp_scope = scope.child();
                     let res = temp_scope.resolve_function(f, &arg_types);
                     match res {
-                        Some((temp_scope, fun)) => {
+                        Some((mut temp_scope, fun)) => {
                             // Success! Let's emit this
                             // TODO: Do a better job at type rewriting here
                             #[allow(clippy::needless_range_loop)]
@@ -918,11 +918,54 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                         typen,
                                         representation,
                                     } => {
-                                        if typen != &fun.args()[i].2 {
-                                            arg_microstatements[i] = Microstatement::Value {
-                                                typen: fun.args()[i].2.clone(),
-                                                representation: representation.clone(),
-                                            };
+                                        let actual_typen = &fun.args()[i].2;
+                                        if typen != actual_typen {
+                                            if matches!(actual_typen, CType::Function(..)) {
+                                                let temp_scope_2 = temp_scope.child();
+                                                match temp_scope_2.resolve_function(
+                                                    representation,
+                                                    &type_to_args(actual_typen)
+                                                        .into_iter()
+                                                        .map(|(_, _, t)| t)
+                                                        .collect::<Vec<CType>>(),
+                                                ) {
+                                                    None => {
+                                                        arg_microstatements[i] =
+                                                            Microstatement::Value {
+                                                                typen: actual_typen.clone(),
+                                                                representation: representation
+                                                                    .clone(),
+                                                            };
+                                                    }
+                                                    Some((s, func)) => {
+                                                        if temp_scope
+                                                            .functions
+                                                            .contains_key(&func.name)
+                                                        {
+                                                            arg_microstatements[i] =
+                                                                Microstatement::Value {
+                                                                    typen: actual_typen.clone(),
+                                                                    representation: func
+                                                                        .name
+                                                                        .clone(),
+                                                                };
+                                                        } else {
+                                                            arg_microstatements[i] =
+                                                                Microstatement::Value {
+                                                                    typen: actual_typen.clone(),
+                                                                    representation: representation
+                                                                        .clone(),
+                                                                };
+                                                        }
+                                                        merge!(temp_scope, s);
+                                                    }
+                                                }
+                                            } else {
+                                                arg_microstatements[i] = Microstatement::Value {
+                                                    typen: actual_typen.clone(),
+                                                    representation: representation.clone(),
+                                                };
+                                            }
                                         }
                                     }
                                     _ => { /* Do nothing */ }
