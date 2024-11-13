@@ -610,6 +610,15 @@ test_full!(i8_abs => r#"
     export fn main = print(abs(i8(-3)));"#;
     stdout "3\n";
 );
+test_full!(i8_clz => r#"
+    export fn main {
+      0.i8.clz.print;
+      1.i8.clz.print;
+      2.i8.clz.print;
+      (-128).i8.clz.print;
+    }"#;
+    stdout "8\n7\n6\n0\n";
+);
 
 test_full!(i16_add => r#"
     export fn main {
@@ -666,6 +675,15 @@ test_full!(i16_neg => r#"
 test_full!(i16_abs => r#"
     export fn main = print(i16(-3).abs);"#;
     stdout "3\n";
+);
+test_full!(i16_clz => r#"
+    export fn main {
+      0.i16.clz.print;
+      1.i16.clz.print;
+      2.i16.clz.print;
+      (-32768).i16.clz.print;
+    }"#;
+    stdout "16\n15\n14\n0\n";
 );
 
 test_full!(i32_add => r#"
@@ -724,6 +742,15 @@ test_full!(i32_abs => r#"
     export fn main = print(-3.i32.abs);"#;
     stdout "3\n";
 );
+test_full!(i32_clz => r#"
+    export fn main {
+      0.i32.clz.print;
+      1.i32.clz.print;
+      2.i32.clz.print;
+      (-2_147_483_648).i32.clz.print;
+    }"#;
+    stdout "32\n31\n30\n0\n";
+);
 
 test_full!(i64_add => r#"
     export fn main = print(1 + 2);"#;
@@ -765,6 +792,15 @@ test_full!(i64_abs => r#"
     export fn main = print(-3.abs);"#;
     stdout "3\n";
 );
+test_full!(i64_clz => r#"
+    export fn main {
+      0.clz.print;
+      1.clz.print;
+      2.clz.print;
+      (-9_223_372_036_854_775_808).clz.print;
+    }"#;
+    stdout "64\n63\n62\n0\n";
+);
 
 test_full!(u8_add => r#"
     export fn main() -> ExitCode = ExitCode(add(u8(1), u8(2)));"#;
@@ -801,6 +837,15 @@ test_full!(u8_max => r#"
       print(max(u8(3), u8(5)));
     }"#;
     stdout "5\n";
+);
+test_full!(u8_clz => r#"
+    export fn main {
+      0.u8.clz.print;
+      1.u8.clz.print;
+      2.u8.clz.print;
+      255.u8.clz.print;
+    }"#;
+    stdout "8\n7\n6\n0\n";
 );
 
 test_full!(u16_add => r#"
@@ -851,6 +896,15 @@ test_full!(u16_max => r#"
     }"#;
     stdout "5\n";
 );
+test_full!(u16_clz => r#"
+    export fn main {
+      0.u16.clz.print;
+      1.u16.clz.print;
+      2.u16.clz.print;
+      65535.u16.clz.print;
+    }"#;
+    stdout "16\n15\n14\n0\n";
+);
 
 test_full!(u32_add => r#"
     export fn main {
@@ -900,6 +954,15 @@ test_full!(u32_max => r#"
     }"#;
     stdout "5\n";
 );
+test_full!(u32_clz => r#"
+    export fn main {
+      0.u32.clz.print;
+      1.u32.clz.print;
+      2.u32.clz.print;
+      2_147_483_648.u32.clz.print;
+    }"#;
+    stdout "32\n31\n30\n0\n";
+);
 
 test_full!(u64_add => r#"
     export fn main = print(1.u64 + 2.u64);"#;
@@ -932,6 +995,16 @@ test_full!(u64_min => r#"
 test_full!(u64_max => r#"
     export fn main = max(3.u64, 5.u64).print;"#;
     stdout "5\n";
+);
+test_full!(u64_clz => r#"
+    export fn main {
+      0.u64.clz.print;
+      1.u64.clz.print;
+      2.u64.clz.print;
+      // TODO: Fix u64 integer representation in the compiler
+      // 9_223_372_036_854_775_808.u64.clz.print;
+    }"#;
+    stdout "64\n63\n62\n";
 );
 
 test_full!(f32_add => r#"
@@ -1179,6 +1252,14 @@ test_gpgpu!(gpu_abs => r#"
         b.map(fn (val: gi32) = val.abs).read{i32}.print;
     }"#;
     stdout "[1, 2, 3, 4]\n";
+);
+
+test_gpgpu!(gpu_clz => r#"
+    export fn main {
+        let b = GBuffer([1.i32, -2.i32, -3.i32, 4.i32]);
+        b.map(fn (val: gi32) = val.clz).read{i32}.print;
+    }"#;
+    stdout "[31, 0, 0, 29]\n";
 );
 
 // Bitwise Math

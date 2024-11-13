@@ -548,6 +548,8 @@ export fn{Rs} wrl (a: i8, b: i8) = {Method{"rotate_left"} :: (i8, Deref{u32}) ->
 export fn{Js} wrl Method{"rotateLeft"} :: (i8, i8) -> i8;
 export fn{Rs} wrr (a: i8, b: i8) = {Method{"rotate_right"} :: (i8, Deref{u32}) -> i8}(a, b.u32);
 export fn{Js} wrr Method{"rotateRight"} :: (i8, i8) -> i8;
+export fn{Rs} clz (a: i8) = {Method{"leading_zeros"} :: i8 -> u32}(a).i8;
+export fn{Js} clz Method{"clz"} :: i8 -> i8;
 
 export fn{Rs} add Method{"wrapping_add"} :: (i16, Deref{i16}) -> i16;
 export fn{Js} add Method{"wrappingAdd"} :: (i16, i16) -> i16;
@@ -599,6 +601,8 @@ export fn{Rs} wrl (a: i16, b: i16) = {Method{"rotate_left"} :: (i16, Deref{u32})
 export fn{Js} wrl Method{"rotateLeft"} :: (i16, i16) -> i16;
 export fn{Rs} wrr (a: i16, b: i16) = {Method{"rotate_right"} :: (i16, Deref{u32}) -> i16}(a, b.u32);
 export fn{Js} wrr Method{"rotateRight"} :: (i16, i16) -> i16;
+export fn{Rs} clz (a: i16) = {Method{"leading_zeros"} :: i16 -> u32}(a).i16;
+export fn{Js} clz Method{"clz"} :: i16 -> i16;
 
 export fn{Rs} add Method{"wrapping_add"} :: (i32, Deref{i32}) -> i32;
 export fn{Js} add Method{"wrappingAdd"} :: (i32, i32) -> i32;
@@ -650,6 +654,8 @@ export fn{Rs} wrl (a: i32, b: i32) = {Method{"rotate_left"} :: (i32, Deref{u32})
 export fn{Js} wrl Method{"rotateLeft"} :: (i32, i32) -> i32;
 export fn{Rs} wrr (a: i32, b: i32) = {Method{"rotate_right"} :: (i32, Deref{u32}) -> i32}(a, b.u32);
 export fn{Js} wrr Method{"rotateRight"} :: (i32, i32) -> i32;
+export fn{Rs} clz (a: i32) = {Method{"leading_zeros"} :: i32 -> u32}(a).i32;
+export fn{Js} clz Method{"clz"} :: i32 -> i32;
 
 export fn{Rs} add Method{"wrapping_add"} :: (i64, Deref{i64}) -> i64;
 export fn{Js} add Method{"wrappingAdd"} :: (i64, i64) -> i64;
@@ -701,6 +707,8 @@ export fn{Rs} wrl (a: i64, b: i64) = {Method{"rotate_left"} :: (i64, Deref{u32})
 export fn{Js} wrl Method{"rotateLeft"} :: (i64, i64) -> i64;
 export fn{Rs} wrr (a: i64, b: i64) = {Method{"rotate_right"} :: (i64, Deref{u32}) -> i64}(a, b.u32);
 export fn{Js} wrr Method{"rotateRight"} :: (i64, i64) -> i64;
+export fn{Rs} clz (a: i64) = {Method{"leading_zeros"} :: i64 -> u32}(a).i64;
+export fn{Js} clz Method{"clz"} :: i64 -> i64;
 
 /// Unsigned Integer-related functions and function bindings
 export fn{Rs} add Method{"wrapping_add"} :: (u8, Deref{u8}) -> u8;
@@ -749,6 +757,8 @@ export fn{Rs} wrl (a: u8, b: u8) = {Method{"rotate_left"} :: (u8, Deref{u32}) ->
 export fn{Js} wrl Method{"rotateLeft"} :: (u8, u8) -> u8;
 export fn{Rs} wrr (a: u8, b: u8) = {Method{"rotate_right"} :: (u8, Deref{u32}) -> u8}(a, b.u32);
 export fn{Js} wrr Method{"rotateRight"} :: (u8, u8) -> u8;
+export fn{Rs} clz (a: u8) = {Method{"leading_zeros"} :: u8 -> u32}(a).u8;
+export fn{Js} clz Method{"clz"} :: u8 -> u8;
 
 export fn{Rs} add Method{"wrapping_add"} :: (u16, Deref{u16}) -> u16;
 export fn{Js} add Method{"wrappingAdd"} :: (u16, u16) -> u16;
@@ -796,6 +806,8 @@ export fn{Rs} wrl (a: u16, b: u16) = {Method{"rotate_left"} :: (u16, Deref{u32})
 export fn{Js} wrl Method{"rotateLeft"} :: (u16, u16) -> u16;
 export fn{Rs} wrr (a: u16, b: u16) = {Method{"rotate_right"} :: (u16, Deref{u32}) -> u16}(a, b.u32);
 export fn{Js} wrr Method{"rotateRight"} :: (u16, u16) -> u16;
+export fn{Rs} clz (a: u16) = {Method{"leading_zeros"} :: u16 -> u32}(a).u16;
+export fn{Js} clz Method{"clz"} :: u16 -> u16;
 
 export fn{Rs} add Method{"wrapping_add"} :: (u32, Deref{u32}) -> u32;
 export fn{Js} add Method{"wrappingAdd"} :: (u32, u32) -> u32;
@@ -843,6 +855,8 @@ export fn{Rs} wrl (a: u32, b: u32) = {Method{"rotate_left"} :: (u32, Deref{u32})
 export fn{Js} wrl Method{"rotateLeft"} :: (u32, u32) -> u32;
 export fn{Rs} wrr (a: u32, b: u32) = {Method{"rotate_right"} :: (u32, Deref{u32}) -> u32}(a, b.u32);
 export fn{Js} wrr Method{"rotateRight"} :: (u32, u32) -> u32;
+export fn{Rs} clz Method{"leading_zeros"} :: u32 -> u32;
+export fn{Js} clz Method{"clz"} :: u32 -> u32;
 
 export fn{Rs} add Method{"wrapping_add"} :: (u64, Deref{u64}) -> u64;
 export fn{Js} add Method{"wrappingAdd"} :: (u64, u64) -> u64;
@@ -890,6 +904,8 @@ export fn{Rs} wrl (a: u64, b: u64) = {Method{"rotate_left"} :: (u64, Deref{u32})
 export fn{Js} wrl Method{"rotateLeft"} :: (u64, u64) -> u64;
 export fn{Rs} wrr (a: u64, b: u64) = {Method{"rotate_right"} :: (u64, Deref{u32}) -> u64}(a, b.u32);
 export fn{Js} wrr Method{"rotateRight"} :: (u64, u64) -> u64;
+export fn{Rs} clz (a: u64) = {Method{"leading_zeros"} :: u64 -> u32}(a).u64;
+export fn{Js} clz Method{"clz"} :: u64 -> u64;
 
 /// Float-related functions and function bindings
 export fn{Rs} add Infix{"+"} :: (f32, f32) -> f32;
@@ -3618,6 +3634,19 @@ export fn abs(v: gvec3i) = gabs{gvec3i}(v);
 export fn abs(v: gvec3f) = gabs{gvec3f}(v);
 export fn abs(v: gvec4i) = gabs{gvec4i}(v);
 export fn abs(v: gvec4f) = gabs{gvec4f}(v);
+
+fn gclz{I}(v: I) {
+  let varName = 'countLeadingZeros('.concat(v.varName).concat(')');
+  return {I}(varName, v.statements, v.buffers);
+}
+export fn clz(v: gi32) = gclz{gi32}(v);
+export fn clz(v: gu32) = gclz{gu32}(v);
+export fn clz(v: gvec2i) = gclz{gvec2i}(v);
+export fn clz(v: gvec2u) = gclz{gvec2u}(v);
+export fn clz(v: gvec3i) = gclz{gvec3i}(v);
+export fn clz(v: gvec3u) = gclz{gvec3u}(v);
+export fn clz(v: gvec4i) = gclz{gvec4i}(v);
+export fn clz(v: gvec4u) = gclz{gvec4u}(v);
 
 fn gadd{A, B}(a: A, b: B) {
   let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
