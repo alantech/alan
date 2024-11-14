@@ -444,7 +444,7 @@ export async function createBufferInit(usage, vals) {
     label: `buffer_${uuidv4().replaceAll('-', '_')}`,
   });
   let ab = b.getMappedRange();
-  let v = new (vals[0].ArrayKind ?? Int32Array)(ab);
+  let v = new (vals[0].constructor.ArrayKind ?? Int32Array)(ab);
   for (let i = 0; i < vals.length; i++) {
     v[i] = vals[i].valueOf();
   }
