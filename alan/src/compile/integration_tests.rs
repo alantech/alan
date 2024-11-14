@@ -228,16 +228,11 @@ macro_rules! test_gpgpu {
                 // My playwright scripts only work on Linux and MacOS, though, so that reduces it
                 // to just MacOS to test this on.
                 // if cfg!(windows) || cfg!(macos) {
-                // TODO: This apparently wasn't working at all because the `macos` cfg keyword was
-                // deprecated at some point and the new version of Rust finally told me? In any
-                // case, fixing this will be in a follow-up PR
-                /*
                 if cfg!(target_os = "macos") {
                     crate::program::Program::set_target_lang_js();
-                    {
-                        let mut program = crate::program::Program::get_program().lock().unwrap();
-                        program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
-                    }
+                    let mut program = crate::program::Program::get_program();
+                    program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
+                    crate::program::Program::return_program(program);
                     match crate::compile::web(filename.to_string()) {
                         Ok(_) => { /* Do nothing */ }
                         Err(e) => {
@@ -278,21 +273,14 @@ macro_rules! test_gpgpu {
                             return Err(format!("Failed to create temporary HTML file {:?}", e).into());
                         }
                     };
-                    match std::process::Command::new("bash").arg("-c").arg("yarn start-server").output() {
-                        Ok(a) => Ok(a),
-                        Err(e) => Err(format!("Could not start test web server {:?}", e)),
-                    }?;
+                    // We're assuming an HTTP server is already running
                     let run = match std::process::Command::new("bash")
                         .arg("-c")
-                        .arg(format!("yarn chrome-console http://localhost:8080/alan/{}.html", stringify!($rule)))
+                        .arg(format!("yarn -s chrome-console http://localhost:8080/alan/{}.html", stringify!($rule)))
                         .output() {
                             Ok(a) => Ok(a),
                             Err(e) => Err(format!("Could not run the test JS code {:?}", e)),
                         }?;
-                    match std::process::Command::new("bash").arg("-c").arg("yarn stop-server").output() {
-                        Ok(a) => Ok(a),
-                        Err(e) => Err(format!("Could not start test web server {:?}", e)),
-                    }?;
                     $( $type!($test_val, false, &run); )+
                     match std::fs::remove_file(&jsfile) {
                         Ok(a) => Ok(a),
@@ -303,7 +291,6 @@ macro_rules! test_gpgpu {
                         Err(e) => Err(format!("Could not remove the generated HTML file {:?}", e)),
                     }?;
                 }
-                */
                 std::fs::remove_file(&filename)?;
                 Ok(())
             }

@@ -187,7 +187,7 @@ export const tau = 6.283185307179586;
 /// Functions for (potentially) every type
 export fn{Rs} clone{T} (v: T) -> T = {Method{"clone"} :: T -> T}(v);
 // TODO: This needs to be turned into a JS function that's bound
-export fn{Js} clone{T} (v: T) -> T = {"(function clone(t) { if (t instanceof Array) { return t.map(clone); } else if (t.build instanceof Function) { return t.build(t.val); } else { return structuredClone(t) } })" :: T -> T}(v);
+export fn{Js} clone{T} (v: T) -> T = {"(function clone(t) { if (t instanceof Array) { return t.map(clone); } else if (t.build instanceof Function) { return t.build(t.val); } else if (t instanceof Set) { return t.union(new Set()); } else { return structuredClone(t); } })" :: T -> T}(v);
 // TODO: The "proper" way to hash this consistently for all types is to decompose the input type
 // into the various primitive types of Alan and then have hashing rules for each of them, which
 // may themselves decompose, etc. This might be doable in Alan code on top of specialized hashing
@@ -1110,7 +1110,8 @@ export fn{Rs} repeat (a: string, n: i64) = {Method{"repeat"} :: (string, Deref{B
   a,
   {Cast{"usize"} :: Deref{i64} -> Binds{"usize"}}(n));
 export fn{Js} repeat "((s, n) => new alan_std.Str(s.val.repeat(Number(n.val))))" <- RootBacking :: (string, i64) -> string;
-export fn replace Method{"replace"} :: (string, string, string) -> string;
+export fn{Rs} replace Method{"replace"} :: (string, string, string) -> string;
+export fn{Js} replace "((s, o, n) => new alan_std.Str(s.valueOf().replaceAll(o.valueOf(), n.valueOf())))" :: (string, string, string) -> string;
 export fn{Rs} split "alan_std::splitstring" <- RootBacking :: (string, string) -> string[];
 export fn{Js} split "((a, b) => a.val.split(b.val).map(v => new alan_std.Str(v)))" <- RootBacking :: (string, string) -> string[];
 export fn{Rs} len (s: string) = {Cast{"i64"} :: Deref{Binds{"usize"}} -> i64}(
@@ -1176,6 +1177,7 @@ export fn{Js} concat{T} (a: T[], b: T[]) -> T[] = {Method{"concat"} :: (T[], T[]
 export fn{Rs} append{T} "alan_std::append" <- RootBacking :: (Mut{T[]}, T[]);
 export fn{Js} append{T} "((a, b) => { for (let v in b) { a.push(v); } })" :: (Mut{T[]}, T[]);
 export fn{Rs} filled{T} "alan_std::filled" <- RootBacking :: (T, i64) -> T[];
+export fn{Js} filled{T} "((v, c) => { let out = []; for (let i = 0n; i < c; i++) { out.push(v); } return out; })" :: (T, i64) -> T[];
 export fn{Rs} has{T} (a: T[], v: T) = {Method{"contains"} :: (T[], T) -> bool}(a, v);
 export fn{Js} has{T} (a: T[], v: T) = a.reduce(false, fn (out: bool, t: T) = if(out, true, t == v));
 export fn{Rs} has{T} "alan_std::hasfnarray" <- RootBacking :: (T[], T -> bool) -> bool;
@@ -1474,7 +1476,7 @@ export fn{Rs} f64 Method{"as_secs_f64"} :: Duration -> f64;
 
 /// Uuid-related bindings
 export fn{Rs} uuid "alan_std::Uuid::new_v4" <- RootBacking :: () -> uuid;
-export fn{Js} uuid "alan_std::uuidv4" <- RootBacking :: () -> uuid;
+export fn{Js} uuid "alan_std.uuidv4" <- RootBacking :: () -> uuid;
 export fn{Rs} string "format!" :: ("{}", uuid) -> string;
 export fn{Js} string "new alan_std.Str" :: uuid -> string;
 
@@ -1495,10 +1497,10 @@ export fn{Js} mapWriteBuffer "alan_std.mapWriteBufferType" <- RootBacking :: () 
 export fn{Rs} storageBuffer "alan_std::storage_buffer_type" <- RootBacking :: () -> BufferUsages;
 export fn{Js} storageBuffer "alan_std.storageBufferType" <- RootBacking :: () -> BufferUsages;
 export fn{Rs} GBuffer{T}(bu: BufferUsages, arr: T[]) = {"alan_std::create_buffer_init" <- RootBacking :: (BufferUsages, T[], i8) -> GBuffer}(bu, arr, {Size{T}}().i8);
-export fn{Js} GBuffer{T}(bu: BufferUsages, arr: T[]) = {"alan_std.createBufferInit" <- RootBacking :: (BufferUsages, T[], i8) -> GBuffer}(bu, arr, {Size{T}}().i8);
+export fn{Js} GBuffer{T}(bu: BufferUsages, arr: T[]) = {"alan_std.createBufferInit" <- RootBacking :: (BufferUsages, T[]) -> GBuffer}(bu, arr);
 export fn{Rs} GBuffer{T}(bu: BufferUsages, size: i64) = {"alan_std::create_empty_buffer" <- RootBacking :: (BufferUsages, i64, i8) -> GBuffer}(bu, size, {Size{T}}().i8);
 // TODO: Get the type into JS
-export fn{Js} GBuffer{T}(bu: BufferUsages, size: i64) = {"alan_std.createEmptyBuffer" <- RootBacking :: (BufferUsages, i64) -> GBuffer}(bu, size);
+export fn{Js} GBuffer{T}(bu: BufferUsages, size: i64) = {"alan_std.createEmptyBuffer" <- RootBacking :: (BufferUsages, i32) -> GBuffer}(bu, size.i32);
 export fn GBuffer{T}(vals: T[]) = GBuffer{T}(storageBuffer(), vals);
 export fn GBuffer{T}(size: i64) = GBuffer{T}(storageBuffer(), size);
 export fn{Rs} len "alan_std::bufferlen" <- RootBacking :: GBuffer -> i64;
@@ -1506,7 +1508,7 @@ export fn{Js} len "alan_std.bufferlen" <- RootBacking :: GBuffer -> i64;
 export fn{Rs} id "alan_std::buffer_id" <- RootBacking :: GBuffer -> string;
 export fn{Js} id "alan_std.bufferid" <- RootBacking :: GBuffer -> string;
 export fn{Rs} GPGPU "alan_std::GPGPU::new" <- RootBacking :: (Own{string}, Own{Array{Array{GBuffer}}}, Deref{i64[3]}) -> GPGPU;
-export fn{Js} GPGPU "new alan_std.GPGPU" <- RootBacking :: (string, Array{Array{GBuffer}}, i64[3]) -> GPGPU;
+export fn{Js} GPGPU (src: string, gbuffers: Array{Array{GBuffer}}, idx: i64[3]) = {"new alan_std.GPGPU" <- RootBacking :: (string, Array{Array{GBuffer}}, i32[3]) -> GPGPU}(src, gbuffers, idx.map(i32));
 export fn GPGPU(src: string, buf: GBuffer) -> GPGPU {
   // In order to support larger arrays, we need to split the buffer length across them. Each of
   // indices is allowed to be up to 65535 (yes, a 16-bit integer) leading to a maximum length of
@@ -4793,6 +4795,15 @@ export fn map(gb: GBuffer, f: gf32 -> gf32) {
   compute.build.run;
   return out;
 }
+export fn{Js} map(gb: GBuffer, f: gf32 -> gf32) { // TODO: Get rid of this jank
+  let idx = gFor(gb.len);
+  let val = gb[idx].asF32;
+  let out = GBuffer{f32}(gb.len); // The JS binding currently ignores this
+  {"((b) => { b.ValKind = alan_std.F32; })" :: GBuffer}(out); // Trick to get it to work for now
+  let compute = out[idx].store(f(val).asI32);
+  compute.build.run;
+  return out;
+}
 // This one technically only works for i32/u32/f32 by chance. Once the issue above is fixed, this
 // one can be fixed, too.
 export fn map{G, G2}(gb: GBuffer, f: (G, gu32) -> G2) {
@@ -4819,6 +4830,7 @@ export fn ExitCode(e: i64) = ExitCode(e.u8);
 // TODO: Rework this to just print anything that can be converted to `string` via interfaces
 export fn{Rs} print{T}(v: T) = {"println!" :: ("{}", string)}(v.string);
 export fn{Js} print{T}(v: T) = {"console.log" :: T}(v);
+export fn{Js} print{T}(v: T[]) = {"((vs) => console.log(vs.map((v) => v.valueOf())))" :: T[]}(v);
 export fn{Js} print "((s) => console.log(s.val))" :: string;
 export fn{Js} print (b: bool) = b.string.print;
 export fn{Js} print (i: i8) = i.string.print;
