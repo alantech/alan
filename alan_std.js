@@ -233,9 +233,9 @@ export class Int {
 }
 
 export class I8 extends Int {
+  static ArrayKind = Int32Array; // GPUs don't suppoert 8-bits (uniformly)
   constructor(v) {
     super(v, 8, 256, -128, 127);
-    this.ArrayKind = Int32Array; // GPUs don't support 8-bits (uniformly)
   }
 
   build(v) {
@@ -244,9 +244,9 @@ export class I8 extends Int {
 }
 
 export class U8 extends Int {
+  static ArrayKind = Uint32Array; // GPUs don't suppoert 8-bits (uniformly)
   constructor(v) {
     super(v, 8, 256, 0, 255);
-    this.ArrayKind = Uint32Array; // GPUs don't support 8-bits (uniformly)
   }
 
   build(v) {
@@ -255,9 +255,9 @@ export class U8 extends Int {
 }
 
 export class I16 extends Int {
+  static ArrayKind = Int32Array; // GPUs don't suppoert 16-bits (uniformly)
   constructor(v) {
     super(v, 16, 65_536, -32_768, 32_767);
-    this.ArrayKind = Int32Array; // GPUs don't support 16-bits (uniformly)
   }
 
   build(v) {
@@ -266,9 +266,9 @@ export class I16 extends Int {
 }
 
 export class U16 extends Int {
+  static ArrayKind = Uint32Array; // GPUs don't suppoert 16-bits (uniformly)
   constructor(v) {
     super(v, 16, 65_536, 0, 65_535);
-    this.ArrayKind = Uint32Array; // GPUs don't support 16-bits (uniformly)
   }
 
   build(v) {
@@ -277,9 +277,9 @@ export class U16 extends Int {
 }
 
 export class I32 extends Int {
+  static ArrayKind = Int32Array;
   constructor(v) {
     super(v, 32, 4_294_967_296, -2_147_483_648, 2_147_483_647);
-    this.ArrayKind = Int32Array;
   }
 
   build(v) {
@@ -288,9 +288,9 @@ export class I32 extends Int {
 }
 
 export class U32 extends Int {
+  static ArrayKind = Uint32Array;
   constructor(v) {
     super(v, 32, 4_294_967_296, 0, 4_294_967_295);
-    this.ArrayKind = Uint32Array;
   }
 
   build(v) {
@@ -299,9 +299,9 @@ export class U32 extends Int {
 }
 
 export class I64 extends Int {
+  static ArrayKind = Int32Array; // GPUs don't support 64-bits
   constructor(v) {
     super(v, 64, 18_446_744_073_709_551_616n, -9_223_372_036_854_775_808n, 9_223_372_036_854_775_807n);
-    this.ArrayKind = Int32Array; // GPUs don't support 64-bits
   }
 
   build(v) {
@@ -310,9 +310,9 @@ export class I64 extends Int {
 }
 
 export class U64 extends Int {
+  static ArrayKind = Uint32Array; // GPUs don't support 64-bits
   constructor(v) {
     super(v, 64, 18_446_744_073_709_551_616n, 0n, 18_446_744_073_709_551_615n);
-    this.ArrayKind = Uint32Array; // GPUs don't support 64-bits
   }
 
   build(v) {
@@ -336,9 +336,9 @@ export class Float {
 }
 
 export class F32 extends Float {
+  static ArrayKind = Float32Array;
   constructor(v) {
     super(Number(v), 32);
-    this.ArrayKind = Float32Array;
   }
 
   build(v) {
@@ -347,9 +347,9 @@ export class F32 extends Float {
 }
 
 export class F64 extends Float {
+  static ArrayKind = Float32Array; // GPUs don't support 64-bits
   constructor(v) {
     super(Number(v), 64);
-    this.ArrayKind = Float32Array; // GPUs don't support 64-bit vals
   }
 
   build(v) {
