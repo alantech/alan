@@ -273,21 +273,14 @@ macro_rules! test_gpgpu {
                             return Err(format!("Failed to create temporary HTML file {:?}", e).into());
                         }
                     };
-                    match std::process::Command::new("bash").arg("-c").arg("yarn start-server").output() {
-                        Ok(a) => Ok(a),
-                        Err(e) => Err(format!("Could not start test web server {:?}", e)),
-                    }?;
+                    // We're assuming an HTTP server is already running
                     let run = match std::process::Command::new("bash")
                         .arg("-c")
-                        .arg(format!("yarn chrome-console http://localhost:8080/alan/{}.html", stringify!($rule)))
+                        .arg(format!("yarn -s chrome-console http://localhost:8080/alan/{}.html", stringify!($rule)))
                         .output() {
                             Ok(a) => Ok(a),
                             Err(e) => Err(format!("Could not run the test JS code {:?}", e)),
                         }?;
-                    match std::process::Command::new("bash").arg("-c").arg("yarn stop-server").output() {
-                        Ok(a) => Ok(a),
-                        Err(e) => Err(format!("Could not start test web server {:?}", e)),
-                    }?;
                     $( $type!($test_val, false, &run); )+
                     match std::fs::remove_file(&jsfile) {
                         Ok(a) => Ok(a),

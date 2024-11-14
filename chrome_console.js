@@ -6,7 +6,7 @@ import { chromium } from 'playwright';
   const page = await context.newPage();
   page.on('console', msg => console.log(msg.text()));
   await page.goto(process.argv.pop());
-  await new Promise((r) => setTimeout(r, 1000)); // TODO: Better way to determine completion
+  await new Promise((r) => setTimeout(r, 2000)); // TODO: Better way to determine completion
   await context.close();
   await browser.close();
 })();
