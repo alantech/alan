@@ -550,6 +550,26 @@ test_full!(print_compile_time_string => r#"
     }"#;
     stdout "FooBar\n";
 );
+test_full!(stdout_and_stderr => r#"
+    export fn main {
+      let hello = 'Hello';
+      let goodbye = 'Goodbye';
+      let comma = ', ';
+      let world = 'World';
+      let end = '!\n';
+
+      stdout(hello);
+      stdout(comma);
+      stdout(world);
+      stdout(end);
+      goodbye.stderr;
+      comma.stderr;
+      world.stderr;
+      end.stderr;
+    }"#;
+    stdout "Hello, World!\n";
+    stderr "Goodbye, World!\n";
+);
 
 // Basic Math Tests
 

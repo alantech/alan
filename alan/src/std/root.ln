@@ -4892,6 +4892,11 @@ export fn{Rs} eprint{T}(v: T!) = if({T}(v).exists,
   fn = v.getOrExit.eprint,
   fn = v.Error.getOrExit.eprint);
 
+export fn{Rs} stdout "print!" :: ("{}", string);
+export fn{Js} stdout "((s) => process.stdout.write(s.val))" :: string;
+export fn{Rs} stderr "eprint!" :: ("{}", string);
+export fn{Js} stderr "((s) => process.stderr.write(s.val))" :: string;
+
 /// Built-in operator definitions
 export infix add as + precedence 3;
 export infix sub as - precedence 3;
