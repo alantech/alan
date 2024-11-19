@@ -63,6 +63,13 @@ enum Commands {
             default_value = "./index.ln"
         )]
         file: String,
+        #[arg(
+            short,
+            long,
+            help = "Test via Javascript & Node.js, not natively",
+            default_value_t = false
+        )]
+        js: bool,
     },
     #[command(about = "Install dependencies for your Alan project")]
     Install {
@@ -84,7 +91,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         match &args.commands {
             Some(Commands::Bundle { file }) => Ok(bundle(file.to_string())?),
             Some(Commands::Compile { file }) => Ok(compile(file.to_string())?),
-            Some(Commands::Test { file }) => Ok(test(file.to_string())?),
+            Some(Commands::Test { file, js }) => Ok(test(file.to_string(), *js)?),
             Some(Commands::ToRs { file }) => Ok(to_rs(file.to_string())?),
             Some(Commands::ToJs { file }) => Ok(to_js(file.to_string())?),
             _ => Err("Command not yet supported".into()),

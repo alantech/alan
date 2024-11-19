@@ -1656,42 +1656,27 @@ impl CType {
                         }
                     }
                     (Some(CType::AnyOf(ts)), Some(b)) => {
+                        // Multiple of these `AnyOf` types may be viable. Accept all that are, and
+                        // later on something should hopefully work as a tiebreaker.
                         let mut success = false;
-                        for t in ts {
-                            // We need to check each of these and accept the one that passes, or
-                            // fail if none of them pass. It's expected that most of them will
-                            // fail, so we can't just push them onto the queue, as those mismatches
-                            // will fail out of the function. Instead we clone the hashmap and add
-                            // each of these as a singular element to push through, merging the
-                            // hashmap on success and exiting the loop.
-                            let mut generic_types_inner = generic_types.clone();
-                            if CType::infer_generics_inner_loop(
-                                &mut generic_types_inner,
-                                vec![(t, b)],
-                            )
-                            .is_ok()
-                            {
-                                // If there's a conflict between the inferred types, we skip
-                                let mut matches = true;
-                                for (k, v) in &generic_types_inner {
-                                    match generic_types.get(k) {
-                                        Some(old_v) => {
-                                            if old_v != v {
-                                                matches = false;
-                                            }
-                                        }
-                                        None => { /* Do nothing */ }
-                                    }
+                        let inner_results = ts
+                            .iter()
+                            .map(|t| {
+                                let mut generic_types_inner = generic_types.clone();
+                                if CType::infer_generics_inner_loop(
+                                    &mut generic_types_inner,
+                                    vec![(t, b)],
+                                )
+                                .is_ok()
+                                {
+                                    success = true;
+                                } else {
+                                    // Reset it on failure, just in case
+                                    generic_types_inner = generic_types.clone();
                                 }
-                                if !matches {
-                                    continue;
-                                }
-                                success = true;
-                                for (k, v) in &generic_types_inner {
-                                    generic_types.insert(k.clone(), v.clone());
-                                }
-                            }
-                        }
+                                generic_types_inner
+                            })
+                            .collect::<Vec<HashMap<String, CType>>>();
                         if !success {
                             return Err(format!(
                                 "None of {} matches {}",
@@ -1702,6 +1687,123 @@ impl CType {
                                 b.to_strict_string(false)
                             )
                             .into());
+                        }
+                        // Merge the results into a singular set to check. If there are multiple
+                        // values for the same key, merge them as an `AnyOf`.
+                        let mut combined_types = HashMap::new();
+                        for gti in inner_results {
+                            for (k, v) in &gti {
+                                match combined_types.get(k) {
+                                    None => {
+                                        combined_types.insert(k.clone(), v.clone());
+                                    }
+                                    Some(other_v) => match (other_v, v) {
+                                        (CType::AnyOf(ots), nt) => {
+                                            let mut preexists = false;
+                                            for t in ots {
+                                                if t.to_functional_string()
+                                                    == nt.to_functional_string()
+                                                {
+                                                    preexists = true;
+                                                }
+                                            }
+                                            if !preexists {
+                                                let mut nts = ots.clone();
+                                                nts.push(nt.clone());
+                                                combined_types.insert(k.clone(), CType::AnyOf(nts));
+                                            }
+                                        }
+                                        (ot, nt) => {
+                                            combined_types.insert(
+                                                k.clone(),
+                                                CType::AnyOf(vec![ot.clone(), nt.clone()]),
+                                            );
+                                        }
+                                    },
+                                }
+                            }
+                        }
+                        // Now comparing the combined resolved types with what was in the original
+                        // set, anything new gets included, but we attempt to *narrow* the `AnyOf`
+                        // to as few as possible, when possible
+                        for (k, v) in &combined_types {
+                            match generic_types.get(k) {
+                                None => {
+                                    generic_types.insert(k.clone(), v.clone());
+                                }
+                                Some(old_v) => match (old_v, v) {
+                                    (CType::AnyOf(oldts), CType::AnyOf(newts)) => {
+                                        let mut outts = Vec::new();
+                                        for ot in oldts {
+                                            for nt in newts {
+                                                if ot.to_functional_string()
+                                                    == nt.to_functional_string()
+                                                {
+                                                    outts.push(nt.clone());
+                                                }
+                                            }
+                                        }
+                                        generic_types.insert(k.clone(), CType::AnyOf(outts));
+                                    }
+                                    (ot, CType::AnyOf(newts)) => {
+                                        let mut success = false;
+                                        for nt in newts {
+                                            if ot.to_functional_string()
+                                                == nt.to_functional_string()
+                                            {
+                                                success = true;
+                                                break;
+                                            }
+                                        }
+                                        if !success {
+                                            return Err(format!(
+                                                "None of {} matches {}",
+                                                newts
+                                                    .iter()
+                                                    .map(|t| t.to_strict_string(false))
+                                                    .collect::<Vec<String>>()
+                                                    .join(" & "),
+                                                ot.to_strict_string(false)
+                                            )
+                                            .into());
+                                        }
+                                    }
+                                    (CType::AnyOf(oldts), nt) => {
+                                        let mut success = false;
+                                        for ot in oldts {
+                                            if ot.to_functional_string()
+                                                == nt.to_functional_string()
+                                            {
+                                                success = true;
+                                                break;
+                                            }
+                                        }
+                                        if !success {
+                                            return Err(format!(
+                                                "None of {} matches {}",
+                                                oldts
+                                                    .iter()
+                                                    .map(|t| t.to_strict_string(false))
+                                                    .collect::<Vec<String>>()
+                                                    .join(" & "),
+                                                nt.to_strict_string(false)
+                                            )
+                                            .into());
+                                        }
+                                        generic_types.insert(k.clone(), nt.clone());
+                                    }
+                                    (ot, nt) => {
+                                        if ot.to_functional_string() != nt.to_functional_string() {
+                                            return Err(format!(
+                                                "{} does not match {}",
+                                                ot.to_strict_string(false),
+                                                nt.to_strict_string(false),
+                                            )
+                                            .into());
+                                        }
+                                    }
+                                },
+                            }
                         }
                     }
                     _ => {

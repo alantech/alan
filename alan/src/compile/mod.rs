@@ -391,28 +391,52 @@ pub fn compile(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
 
 /// The `test` function is a thin wrapper on top of `compile` that compiles the specified file in
 /// test mode, then immediately invokes it, and deletes the binary when done.
-pub fn test(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
-    Program::set_target_lang_rs();
+pub fn test(source_file: String, js: bool) -> Result<(), Box<dyn std::error::Error>> {
+    if js {
+        Program::set_target_lang_js();
+    } else {
+        Program::set_target_lang_rs();
+    }
     let mut program = Program::get_program();
     program
         .env
         .insert("ALAN_TARGET".to_string(), "test".to_string());
     Program::return_program(program);
-    let binary = build(source_file)?;
-    let mut run = Command::new(format!("./{}", binary))
-        .current_dir(current_dir()?)
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .spawn()?;
-    let ecode = run.wait()?;
-    Command::new("rm")
-        .current_dir(current_dir()?)
-        .arg(binary)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .output()?;
-    if !ecode.success() {
-        std::process::exit(ecode.code().unwrap());
+    if js {
+        let jsfile = web(source_file)?;
+        let mut run = Command::new("node")
+            .current_dir(current_dir()?)
+            .arg(format!("{}.js", jsfile))
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .spawn()?;
+        let ecode = run.wait()?;
+        Command::new("rm")
+            .current_dir(current_dir()?)
+            .arg(format!("{}.js", jsfile))
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .output()?;
+        if !ecode.success() {
+            std::process::exit(ecode.code().unwrap());
+        }
+    } else {
+        let binary = build(source_file)?;
+        let mut run = Command::new(format!("./{}", binary))
+            .current_dir(current_dir()?)
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .spawn()?;
+        let ecode = run.wait()?;
+        Command::new("rm")
+            .current_dir(current_dir()?)
+            .arg(binary)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .output()?;
+        if !ecode.success() {
+            std::process::exit(ecode.code().unwrap());
+        }
     }
     Ok(())
 }

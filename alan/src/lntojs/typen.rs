@@ -7,6 +7,7 @@ pub fn ctype_to_jtype(
     mut deps: OrderedHashMap<String, String>,
 ) -> Result<(String, OrderedHashMap<String, String>), Box<dyn std::error::Error>> {
     match ctype {
+        CType::Mut(t) => ctype_to_jtype(t, deps),
         CType::Void => Ok(("".to_string(), deps)),
         CType::Infer(s, _) => Err(format!(
             "Inferred type matching {} was not realized before code generation",
@@ -244,7 +245,7 @@ pub fn ctype_to_jtype(
             Ok(("".to_string(), deps))
         }
         CType::Fail(m) => CType::fail(m),
-        otherwise => CType::fail(&format!("Lower stage of the compiler received unresolved algebraic type {}, cannot deal with it ehre. Please report this error.", otherwise.to_strict_string(false))),
+        otherwise => CType::fail(&format!("Lower stage of the compiler received unresolved algebraic type {}, cannot deal with it here. Please report this error.", otherwise.to_functional_string())),
     }
 }
 

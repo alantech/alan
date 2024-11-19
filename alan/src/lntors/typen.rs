@@ -9,6 +9,7 @@ pub fn ctype_to_rtype(
     mut deps: OrderedHashMap<String, String>,
 ) -> Result<(String, OrderedHashMap<String, String>), Box<dyn std::error::Error>> {
     match ctype {
+        CType::Mut(t) => ctype_to_rtype(t, in_function_type, deps),
         CType::Void => Ok(("void".to_string(), deps)),
         CType::Infer(s, _) => Err(format!(
             "Inferred type matching {} was not realized before code generation",
@@ -449,7 +450,7 @@ pub fn ctype_to_rtype(
             Ok((format!("Vec<{}>", s), deps))
         }
         CType::Fail(m) => CType::fail(m),
-        otherwise => CType::fail(&format!("Lower stage of the compiler received unresolved algebraic type {}, cannot deal with it here. Please report this error.", otherwise.to_strict_string(false))),
+        otherwise => CType::fail(&format!("Lower stage of the compiler received unresolved algebraic type {}, cannot deal with it here. Please report this error.", otherwise.to_functional_string())),
     }
 }
 
