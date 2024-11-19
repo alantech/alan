@@ -1270,7 +1270,6 @@ named_or!(exportable: Exportable =>
     Functions: Functions as functions,
     ConstDeclaration: ConstDeclaration as constdeclaration,
     Types: Types as types,
-    CTypes: CTypes as ctypes,
     Intefaces: Interfaces as interfaces,
     Ref: String as variable,
 );
@@ -1292,6 +1291,7 @@ named_or!(rootelements: RootElements =>
     TypeOperatorMapping: TypeOperatorMapping as typeoperatormapping,
     Functions: Functions as functions,
     Types: Types as types,
+    CTypes: CTypes as ctypes,
     ConstDeclaration: ConstDeclaration as constdeclaration,
     Interfaces: Interfaces as interfaces,
 );
