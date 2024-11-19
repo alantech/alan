@@ -154,7 +154,7 @@ pub fn ctype_to_rtype(
                     _ => CType::fail("Bound types must be strings or rust imports"),
                 }
             }
-            _ => Ok(("".to_string(), deps)), // TODO: Is this correct?
+            otherwise => ctype_to_rtype(otherwise, in_function_type, deps),
         }
         CType::Generic(name, args, _) => Ok((format!("{}<{}>", name, args.join(", ")), deps)),
         CType::Binds(n, args) => {
