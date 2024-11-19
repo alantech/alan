@@ -2698,6 +2698,20 @@ test_full!(generic_in_a_generic => r#"
     stdout_js "[ true, false, true ]\n";
     stdout_rs "[true, false, true]\n"; // TODO: Make these match
 );
+test_full!(first_arg_generic_fn => r#"
+    fn batchCompare{T}(cond: (T, T) -> bool, a: Array{T}, b: Array{T}) {
+      return a.map(fn (aVal: T) = b.some(fn (bVal: T) = cond(aVal, bVal)));
+    }
+
+    export fn main {
+      let vals1 = [1, 9, 25];
+      let vals2 = [1, 3, 5, 7, 9];
+
+      batchCompare(eq, vals1, vals2).print;
+    }"#;
+    stdout_js "[ true, true, false ]\n";
+    stdout_rs "[true, true, false]\n";
+);
 test_compile_error!(invalid_generics => r#"
     type box{V} =
       set: bool,

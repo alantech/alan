@@ -402,7 +402,7 @@ pub fn from_microstatement(
                         }
                     }
                     Ok((
-                        format!("await {}({})", jsname, argstrs.join(", ")).to_string(),
+                        format!("(await {}({}))", jsname, argstrs.join(", ")).to_string(),
                         out,
                         deps,
                     ))
@@ -456,7 +456,7 @@ pub fn from_microstatement(
                         }
                     }
                     Ok((
-                        format!("await {}({})", jsname, argstrs.join(", ")).to_string(),
+                        format!("(await {}({}))", jsname, argstrs.join(", ")).to_string(),
                         out,
                         deps,
                     ))
@@ -1282,7 +1282,7 @@ pub fn from_microstatement(
                 argstrs.push(a);
             }
             Ok((
-                format!("await {}({})", name, argstrs.join(", ")).to_string(),
+                format!("(await {}({}))", name, argstrs.join(", ")).to_string(),
                 out,
                 deps,
             ))
