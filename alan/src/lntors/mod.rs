@@ -47,5 +47,14 @@ pub fn lntors(
         OrderedHashMap::new(),
     )?;
     Program::return_program(program);
-    Ok((fns.into_values().collect::<Vec<String>>().join("\n"), deps))
+    // To make `stdout` and `stderr` work properly, we have to `use std::io::Write;` to cause a
+    // side-effect to attach a `flush` method to them internally. This is an ugly hack but I can't
+    // figure out a better way to accomplish this.
+    Ok((
+        format!(
+            "use std::io::Write;\n\n{}",
+            fns.into_values().collect::<Vec<String>>().join("\n")
+        ),
+        deps,
+    ))
 }
