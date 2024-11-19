@@ -62,45 +62,45 @@ impl<'a> Scope<'a> {
                         let res = CType::from_ast(s, t, true)?;
                         s = res.0;
                     }
-                    parse::Exportable::CTypes(c) => {
-                        // For now this is just declaring in the Alan source code the compile-time
-                        // types that can be used, and is simply a special kind of documentation.
-                        // *Only* the root scope is allowed to use this syntax, and I cannot imagine
-                        // any other way, since the compiler needs to exactly match what is declared.
-                        // So we return an error if they're encountered outside of the root scope and
-                        // simply verify that each `ctype` we encounter is one of a set the compiler
-                        // expects to exist. Later when `cfn` is implemented these will be loaded up
-                        // for verification of the meta-typing of the compile-time functions.
-                        // This is also an exception in that it is *only* allowed to be exported
-                        // (from the root scope) and can't be hidden, as all code will need these
-                        // to construct their own types.
-                        if !is_root {
-                            return Err("ctypes can only be defined in the compiler internals".into());
-                        }
-                        match c.name.as_str() {
-                            "Type" | "Generic" | "Int" | "Float" | "Bool" | "String" => {
-                                /* Do nothing for the 'structural' types */
-                            }
-                            g @ ("Group" | "Infix" | "Prefix" | "Method" | "Property" | "Cast"
-                            | "Own" | "Deref" | "Mut" | "Rust" | "Node" | "From" | "Array"
-                            | "Fail" | "Neg" | "Len" | "Size" | "FileStr" | "Env" | "EnvExists"
-                            | "Not") => s = CType::from_generic(s, g, 1),
-                            g @ ("Function" | "Call" | "Dependency" | "Import" | "Field"
-                            | "Prop" | "Buffer" | "Add" | "Sub" | "Mul" | "Div" | "Mod"
-                            | "Pow" | "Min" | "Max" | "Concat" | "And" | "Or" | "Xor" | "Nand"
-                            | "Nor" | "Xnor" | "Eq" | "Neq" | "Lt" | "Lte" | "Gt" | "Gte") => s = CType::from_generic(s, g, 2),
-                            g @ ("If" | "Binds" | "Tuple" | "Either" | "AnyOf") => {
-                                // Not kosher in Rust land, but 0 means "as many as we want"
-                                s = CType::from_generic(s, g, 0)
-                            }
-                            unknown => {
-                                panic!("Unknown ctype {} defined in root scope. There's something wrong with the compiler.", unknown);
-                            }
-                        }
-                    }
                     e => eprintln!("TODO: Not yet supported export syntax: {:?}\nLast good parsed lines:\n{:?}\n{:?}", e, ast.body[i - 2], ast.body[i - 1]),
                 },
                 parse::RootElements::Whitespace(_) => { /* Do nothing */ }
+                parse::RootElements::CTypes(c) => {
+                    // For now this is just declaring in the Alan source code the compile-time
+                    // types that can be used, and is simply a special kind of documentation.
+                    // *Only* the root scope is allowed to use this syntax, and I cannot imagine
+                    // any other way, since the compiler needs to exactly match what is declared.
+                    // So we return an error if they're encountered outside of the root scope and
+                    // simply verify that each `ctype` we encounter is one of a set the compiler
+                    // expects to exist. Later when `cfn` is implemented these will be loaded up
+                    // for verification of the meta-typing of the compile-time functions.
+                    // This is also an exception in that it is *only* allowed to be exported
+                    // (from the root scope) and can't be hidden, as all code will need these
+                    // to construct their own types.
+                    if !is_root {
+                        return Err("ctypes can only be defined in the compiler internals".into());
+                    }
+                    match c.name.as_str() {
+                        "Type" | "Generic" | "Int" | "Float" | "Bool" | "String" => {
+                            /* Do nothing for the 'structural' types */
+                        }
+                        g @ ("Group" | "Infix" | "Prefix" | "Method" | "Property" | "Cast"
+                        | "Own" | "Deref" | "Mut" | "Rust" | "Node" | "From" | "Array"
+                        | "Fail" | "Neg" | "Len" | "Size" | "FileStr" | "Env" | "EnvExists"
+                        | "Not") => s = CType::from_generic(s, g, 1),
+                        g @ ("Function" | "Call" | "Dependency" | "Import" | "Field"
+                        | "Prop" | "Buffer" | "Add" | "Sub" | "Mul" | "Div" | "Mod"
+                        | "Pow" | "Min" | "Max" | "Concat" | "And" | "Or" | "Xor" | "Nand"
+                        | "Nor" | "Xnor" | "Eq" | "Neq" | "Lt" | "Lte" | "Gt" | "Gte") => s = CType::from_generic(s, g, 2),
+                        g @ ("If" | "Binds" | "Tuple" | "Either" | "AnyOf") => {
+                            // Not kosher in Rust land, but 0 means "as many as we want"
+                            s = CType::from_generic(s, g, 0)
+                        }
+                        unknown => {
+                            panic!("Unknown ctype {} defined in root scope. There's something wrong with the compiler.", unknown);
+                        }
+                    }
+                }
                 parse::RootElements::Interfaces(_) => {
                     panic!("Interfaces not yet implemented");
                 }
