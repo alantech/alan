@@ -5012,34 +5012,37 @@ type{Test} Testing = Array{string}; // To prevent porting issues when the desire
 
 fn{Test} describe(groupname: string) = [groupname];
 fn{Test} describe(groupname: string, callback: string[] -> ()) {
-  callback([groupname, '']);
-  return [groupname, ''];
+  callback([groupname]);
+  return [groupname];
 }
 fn{Test} describe(groupname: string, callback: string[] -> string[]) {
-  callback([groupname, '']);
-  return [groupname, ''];
+  callback([groupname]);
+  return [groupname];
 }
 fn{Test} describe(prevgroupname: string, groupname: string) = [groupname];
 fn{Test} describe(prevgroupname: string, groupname: string, callback: string[] -> ()) {
-  callback([groupname, '']);
-  return [groupname, ''];
+  callback([groupname]);
+  return [groupname];
 }
-fn{Test} describe(prevgroupname: string, groupname: string, callback: string[] -> string[]) {
-  callback([groupname, '']);
-  return [groupname, ''];
+fn{Test} describe(prevgroupname: string[], groupname: string, callback: string[] -> string[]) {
+  callback([groupname]);
+  return [groupname];
 }
 
 fn{Test} it(groupname: string[], testname: string) {
-  groupname.store(1, testname);
+  if(groupname.len > 1, fn = groupname.pop, fn = Maybe{string}(""));
+  groupname.push(testname);
   return groupname;
 }
 fn{Test} it(groupname: string[], testname: string, callback: string[] -> ()) {
-  groupname.store(1, testname);
+  if(groupname.len > 1, fn = groupname.pop, fn = Maybe{string}(""));
+  groupname.push(testname);
   callback(groupname);
   return groupname;
 }
 fn{Test} it(groupname: string[], testname: string, callback: string[] -> string[]) {
-  groupname.store(1, testname);
+  if(groupname.len > 1, fn = groupname.pop, fn = Maybe{string}(""));
+  groupname.push(testname);
   callback(groupname);
   return groupname;
 }
