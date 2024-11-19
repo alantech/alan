@@ -1674,7 +1674,7 @@ impl CType {
                                     // Reset it on failure, just in case
                                     generic_types_inner = generic_types.clone();
                                 }
-                                return generic_types_inner;
+                                generic_types_inner
                             })
                             .collect::<Vec<HashMap<String, CType>>>();
                         if !success {
