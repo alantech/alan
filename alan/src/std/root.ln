@@ -1239,6 +1239,8 @@ fn{Rs} store{T} "alan_std::storearray" <- RootBacking :: (Mut{T[]}, i64, T) -> v
 fn{Js} store{T} (a: T[], i: i64, v: T) = {"((a, i, v) => { if (i < 0n || i > BigInt(a.length)) { return new alan_std.AlanError(new alan_std.Str(`Provided array index ${i.toString()} is greater than the length of the array`)); } else { a.splice(Number(i), 0, v); } })" :: (T[], i64, T) -> void!}(a, i, v);
 fn{Rs} delete{T} "alan_std::deletearray" <- RootBacking :: (Mut{T[]}, i64) -> T!;
 fn{Js} delete{T} (a: T[], i: i64) = {"((a, i) => { if (i < 0n || i >= BigInt(a.length)) { return new alan_std.AlanError(new alan_std.Str(`Provided array index ${i.toString()} is beyond the bounds of the array`)); } else { return a.splice(Number(i), 1)[0]; } })" :: (T[], i64) -> T!}(a, i);
+fn{Rs} last{T} (v: T[]) = {Method{"cloned"} :: T? -> T?}({Method{"last"} :: T[] -> T?}(v));
+fn{Js} last{T} (v: T[]) = {Method{"at"} :: (T[], -1) -> T?}(v);
 
 /// Buffer related bindings
 fn{Rs} get{T, S} "alan_std::getbuffer" <- RootBacking :: (T[S], i64) -> T?;
@@ -4927,7 +4929,144 @@ fn{Rs} eprint{T}(v: T!) = if({T}(v).exists,
   fn = eprint(v!!),
   fn = eprint(v.Error!!));
 
-fn{Rs} stdout "print!" :: ("{}", string);
+fn{Rs} stdout (s: string) {
+  {"print!" :: ("{}", string)}(s);
+  {"std::io::stdout().flush" :: () -> ()}();
+}
 fn{Js} stdout "((s) => process.stdout.write(s.val))" :: string;
-fn{Rs} stderr "eprint!" :: ("{}", string);
+fn{Rs} stderr (s: string) {
+  {"eprint!" :: ("{}", string)}(s);
+  {"std::io::stderr().flush" :: () -> ()}();
+}
 fn{Js} stderr "((s) => process.stderr.write(s.val))" :: string;
+
+/// Testing types and functions
+/*
+ * This is what I *want*, but the Rust codegen is trying to clone the array of closure functions,
+ * which is *not* cloneable, and I don't want to have to gate testing on a complete rewrite of the
+ * last stage of the compiler, so I'm going to go with a simpler implementation for now and leave
+ * this partial implementation in the root scope as a comment to hopefully revive. I am pretty sure
+ * that the only thing I'll be missing out on is the ability to make a progress bar because the
+ * simpler implementation won't know how many tests are left to run.
+
+type{Test} AssertOutput = actual: string, expected: string, success: bool;
+type{Test} Assert = () -> AssertOutput;
+type{Test} It = testname: string, assertions: Array{Assert};
+type{Test} Describe = groupname: string, tests: Array{It};
+type{Test} Testing = Array{Describe};
+
+fn{Test} describe(groupname: string) = Testing(Describe(groupname, Array{It}()));
+fn{Test} describe(testing: Mut{Testing}, groupname: string) {
+  testing.push(Describe(groupname, Array{It}()));
+  return testing;
+}
+fn{Test} describe(groupname: string, callback: Mut{Testing} -> ()) {
+  let testing = Testing(Describe(groupname, Array{It}()));
+  callback(testing);
+  return testing;
+}
+fn{Test} describe(testing: Mut{Testing}, groupname: string, callback: Mut{Testing} -> ()) {
+  testing.push(Describe(groupname, Array{It}()));
+  callback(testing);
+  return testing;
+}
+fn{Test} describe(groupname: string, callback: Mut{Testing} -> Testing) {
+  let testing = Testing(Describe(groupname, Array{It}()));
+  callback(testing);
+  return testing;
+}
+fn{Test} describe(testing: Mut{Testing}, groupname: string, callback: Mut{Testing} -> Testing) {
+  testing.push(Describe(groupname, Array{It}()));
+  callback(testing);
+  return testing;
+}
+
+fn{Test} it(testing: Mut{Testing}, testname: string) {
+  testing.last.getOrExit.tests.push(It(testname, Array{Assert}()));
+  return testing;
+}
+fn{Test} it(testing: Mut{Testing}, testname: string, callback: Mut{Testing} -> ()) {
+  testing.last.getOrExit.tests.push(It(testname, Array{Assert}()));
+  callback(testing);
+  return testing;
+}
+fn{Test} it(testing: Mut{Testing}, testname: string, callback: Mut{Testing} -> Testing) {
+  testing.last.getOrExit.tests.push(It(testname, Array{Assert}()));
+  callback(testing);
+  return testing;
+}
+
+fn{Test} assert{T}(testing: Mut{Testing}, comparator: (T, T) -> bool, actual: T, expected: T) {
+  testing.last.getOrExit.tests.last.getOrExit.assertions.push(fn = AssertOutput(actual.string, expected.string, comparator(actual, expected)));
+  return testing;
+}
+
+fn{Test} report(testing: Testing) {
+  let numTests = testing.reduce(0, fn (cum: i64, d: Describe) = cum.add(d.tests.len));
+  "Test count: ".concat(numTests.string).print;
+}
+
+ */
+
+type{Test} Testing = Array{string}; // To prevent porting issues when the desired test runner works
+
+fn{Test} describe(groupname: string) = [groupname];
+fn{Test} describe(groupname: string, callback: string[] -> ()) {
+  callback([groupname]);
+  return [groupname];
+}
+fn{Test} describe(groupname: string, callback: string[] -> string[]) {
+  callback([groupname]);
+  return [groupname];
+}
+fn{Test} describe(prevgroupname: string, groupname: string) = [groupname];
+fn{Test} describe(prevgroupname: string, groupname: string, callback: string[] -> ()) {
+  callback([groupname]);
+  return [groupname];
+}
+fn{Test} describe(prevgroupname: string[], groupname: string, callback: string[] -> string[]) {
+  callback([groupname]);
+  return [groupname];
+}
+
+fn{Test} it(groupname: string[], testname: string) {
+  if(groupname.len > 1, fn = groupname.pop, fn = Maybe{string}(""));
+  groupname.push(testname);
+  return groupname;
+}
+fn{Test} it(groupname: string[], testname: string, callback: string[] -> ()) {
+  if(groupname.len > 1, fn = groupname.pop, fn = Maybe{string}(""));
+  groupname.push(testname);
+  callback(groupname);
+  return groupname;
+}
+fn{Test} it(groupname: string[], testname: string, callback: string[] -> string[]) {
+  if(groupname.len > 1, fn = groupname.pop, fn = Maybe{string}(""));
+  groupname.push(testname);
+  callback(groupname);
+  return groupname;
+}
+
+fn{Test} assert{T}(groupname: string[], comparator: (T, T) -> bool, actual: T, expected: T) {
+  let line = groupname.join(' ');
+  "\u{1b}[33;1m•︎ ".stdout;
+  line.stdout;
+  "\u{1b}[0m".stdout;
+  let res = comparator(actual, expected);
+  if(res,
+    fn = "\u{0d}\u{1b}[32;1m✅ ".stdout,
+    fn = "\u{0d}\u{1b}[31;1m❎ ".stdout);
+  line.stdout;
+  "\u{1b}[0m".print;
+  if(!res, fn {
+    "\u{1b}[31;1mTest Failure\u{1b}[0m".eprint;
+    Maybe{i64}()!!;
+  }, fn {
+    "".stdout;
+  }); // TODO: Better way to force an exit */
+  return groupname;
+}
+
+fn{Test} report(groupname: string[]) {
+  "\u{1b}[32;1mSuccess!\u{1b}[0m".print;
+}
