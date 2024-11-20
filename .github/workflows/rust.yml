@@ -42,9 +42,9 @@ jobs:
       name: Run tests
       run: cargo test --verbose
     - name: Run native tests
-      run: cargo run -- test alan/test.ln
+      run: cargo run --release -- test alan/test.ln
     - name: Run js tests
-      run: cargo run -- test --js alan/test.ln
+      run: cargo run --release -- test --js alan/test.ln
 
   test-macos:
     runs-on: [self-hosted, macOS]
