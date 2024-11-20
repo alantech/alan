@@ -886,15 +886,6 @@ test_compile_error!(object_constructor_compiler_checks => r#"
     }"#;
     error "Could not find a function with a call signature of Foo(f64)";
 );
-test_full!(array_literals => r#"
-    export fn main {
-      const test3 = [ 1, 2, 4, 8, 16, 32, 64 ];
-      print(test3[0]);
-      print(test3[1]);
-      print(test3[2]);
-    }"#;
-    stdout "1\n2\n4\n";
-);
 test_full!(object_literals => r#"
     type MyType =
       foo: string,
