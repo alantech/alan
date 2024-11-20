@@ -24,6 +24,10 @@ jobs:
     - if: ${{ github.ref_name != 'main' }}
       name: Run tests
       run: cargo test --verbose
+    - name: Run native tests
+      run: cargo run -- test alan/test.ln
+    - name: Run js tests
+      run: cargo run -- test --js alan/test.ln
 
   test-windows:
     runs-on: [self-hosted, windows]
@@ -37,6 +41,10 @@ jobs:
     - if: ${{ github.ref_name != 'main' }}
       name: Run tests
       run: cargo test --verbose
+    - name: Run native tests
+      run: cargo run --release -- test alan/test.ln
+    - name: Run js tests
+      run: cargo run --release -- test --js alan/test.ln
 
   test-macos:
     runs-on: [self-hosted, macOS]
@@ -57,6 +65,10 @@ jobs:
     - if: always()
       name: Stop web server
       run: yarn stop-server
+    - name: Run native tests
+      run: cargo run -- test alan/test.ln
+    - name: Run js tests
+      run: cargo run -- test --js alan/test.ln
 
   test-arm-linux:
     runs-on: [self-hosted, linux, ARM64]
@@ -70,3 +82,7 @@ jobs:
     - if: ${{ github.ref_name != 'main' }}
       name: Run tests
       run: RUST_MIN_STACK=8388608 cargo test --verbose
+    - name: Run native tests
+      run: cargo run -- test alan/test.ln
+    - name: Run js tests
+      run: cargo run -- test --js alan/test.ln
