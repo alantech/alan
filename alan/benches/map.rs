@@ -13,7 +13,7 @@ macro_rules! build {
 
 macro_rules! run {
     ( $name:ident ) => {
-        #[divan::bench(max_time = 60)]
+        #[divan::bench(max_time = 10)]
         fn $name() -> Result<Output, std::io::Error> {
             Command::new(format!("./{}", stringify!($name))).output()
         }
