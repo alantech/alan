@@ -25,9 +25,9 @@ jobs:
       name: Run tests
       run: cargo test --verbose
     - name: Run native tests
-      run: RUST_MIN_STACK=8388608 cargo run -- test alan/test.ln
+      run: RUST_MIN_STACK=16777216 cargo run -- test alan/test.ln
     - name: Run js tests
-      run: RUST_MIN_STACK=8388608 cargo run -- test --js alan/test.ln
+      run: RUST_MIN_STACK=16777216 cargo run -- test --js alan/test.ln
 
   test-windows:
     runs-on: [self-hosted, windows]
@@ -42,9 +42,9 @@ jobs:
       name: Run tests
       run: cargo test --verbose
     - name: Run native tests
-      run: RUST_MIN_STACK=8388608 cargo run -- test alan/test.ln
+      run: RUST_MIN_STACK=16777216 cargo run -- test alan/test.ln
     - name: Run js tests
-      run: RUST_MIN_STACK=8388608 cargo run -- test --js alan/test.ln
+      run: RUST_MIN_STACK=16777216 cargo run -- test --js alan/test.ln
 
   test-macos:
     runs-on: [self-hosted, macOS]
@@ -66,9 +66,9 @@ jobs:
       name: Stop web server
       run: yarn stop-server
     - name: Run native tests
-      run: RUST_MIN_STACK=8388608 cargo run -- test alan/test.ln
+      run: RUST_MIN_STACK=16777216 cargo run -- test alan/test.ln
     - name: Run js tests
-      run: RUST_MIN_STACK=8388608 cargo run -- test --js alan/test.ln
+      run: RUST_MIN_STACK=16777216 cargo run -- test --js alan/test.ln
 
   test-arm-linux:
     runs-on: [self-hosted, linux, ARM64]
@@ -78,11 +78,11 @@ jobs:
       run: cargo build --verbose
     - if: ${{ github.ref_name == 'main' }}
       name: Run tests
-      run: RUST_MIN_STACK=8388608 cargo test --verbose -- --include-ignored
+      run: RUST_MIN_STACK=16777216 cargo test --verbose -- --include-ignored
     - if: ${{ github.ref_name != 'main' }}
       name: Run tests
-      run: RUST_MIN_STACK=8388608 cargo test --verbose
+      run: RUST_MIN_STACK=16777216 cargo test --verbose
     - name: Run native tests
-      run: RUST_MIN_STACK=8388608 cargo run -- test alan/test.ln
+      run: RUST_MIN_STACK=16777216 cargo run -- test alan/test.ln
     - name: Run js tests
-      run: RUST_MIN_STACK=8388608 cargo run -- test --js alan/test.ln
+      run: RUST_MIN_STACK=16777216 cargo run -- test --js alan/test.ln
