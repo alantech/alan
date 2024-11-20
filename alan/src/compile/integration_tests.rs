@@ -40,44 +40,6 @@ macro_rules! test {
                 } else {
                     format!("./{}", stringify!($rule))
                 };
-                let run = std::process::Command::new(cmd.clone()).output()?;
-                $( $type!($test_val, true, &run); )+
-                std::fs::remove_file(&filename)?;
-                std::fs::remove_file(&cmd)?;
-                Ok(())
-            }
-        }
-    }
-}
-macro_rules! test_full {
-    ( $rule: ident => $code:expr; $( $type:ident $test_val:expr);+ $(;)? ) => {
-        #[cfg(test)]
-        mod $rule {
-            #[test]
-            fn $rule() -> Result<(), Box<dyn std::error::Error>> {
-                crate::program::Program::set_target_lang_rs();
-                let filename = format!("{}.ln", stringify!($rule));
-                match std::fs::write(&filename, $code) {
-                    Ok(_) => { /* Do nothing */ }
-                    Err(e) => {
-                        return Err(format!("Unable to write {} to disk. {:?}", filename, e).into());
-                    }
-                };
-                let mut program = crate::program::Program::get_program();
-                program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
-                crate::program::Program::return_program(program);
-                match crate::compile::build(filename.to_string()) {
-                    Ok(_) => { /* Do nothing */ }
-                    Err(e) => {
-                        std::fs::remove_file(&filename)?;
-                        return Err(format!("Failed to compile {:?}", e).into());
-                    }
-                };
-                let cmd = if cfg!(windows) {
-                    format!(".\\{}.exe", stringify!($rule))
-                } else {
-                    format!("./{}", stringify!($rule))
-                };
                 let run = match std::process::Command::new(cmd.clone()).output() {
                     Ok(a) => Ok(a),
                     Err(e) => Err(format!("Could not run the test binary {:?}", e)),
@@ -438,14 +400,14 @@ macro_rules! status {
 }
 
 // The gold standard test. If you can't do this, are you even a language at all? :P
-test_full!(hello_world => r#"
+test!(hello_world => r#"
     export fn main() -> () {
         print('Hello, World!');
     }"#;
     stdout "Hello, World!\n";
     status 0;
 );
-test_full!(multi_line_hello_world => r#"
+test!(multi_line_hello_world => r#"
 export fn main = print(
 "Hello,
 World!");"#;
@@ -457,17 +419,17 @@ World!
 
 // Exit Tests
 
-test_full!(normal_exit_code => r#"
+test!(normal_exit_code => r#"
     export fn main() -> ExitCode {
         return ExitCode(0);
     }"#;
     status 0;
 );
-test_full!(error_exit_code => r#"
+test!(error_exit_code => r#"
     export fn main() = ExitCode(1);"#;
     status 1;
 );
-test_full!(non_global_memory_exit_code => r#"
+test!(non_global_memory_exit_code => r#"
     export fn main() {
       let x: i64 = 0;
       return x.ExitCode;
@@ -476,7 +438,7 @@ test_full!(non_global_memory_exit_code => r#"
 );
 
 // TODO: There's no way to check equality of the `void` type, only printing allows this right now
-test_full!(void_values => r#"
+test!(void_values => r#"
     export fn main {
         5.print;
         5.void.print;
@@ -487,7 +449,7 @@ test_full!(void_values => r#"
 
 // Printing Tests
 
-test_full!(print_function => r#"
+test!(print_function => r#"
     export fn main() {
       print('Hello, World');
       return ExitCode(0);
@@ -495,7 +457,7 @@ test_full!(print_function => r#"
     stdout "Hello, World\n";
     status 0;
 );
-test_full!(duration_print => r#"
+test!(duration_print => r#"
     export fn main() -> void {
         const i = now();
         wait(100); // Increased from 10ms to 100ms because the node.js event loop seems less
@@ -505,14 +467,14 @@ test_full!(duration_print => r#"
     }"#;
     stdout_contains "0.1";
 );
-test_full!(print_compile_time_string => r#"
+test!(print_compile_time_string => r#"
     type FooBar = Concat{"Foo", "Bar"};
     export fn main {
       {FooBar}().print;
     }"#;
     stdout "FooBar\n";
 );
-test_full!(stdout_and_stderr => r#"
+test!(stdout_and_stderr => r#"
     export fn main {
       let hello = 'Hello';
       let goodbye = 'Goodbye';
@@ -534,7 +496,7 @@ test_full!(stdout_and_stderr => r#"
 );
 
 // TODO: Unify the string output for these two so it can be tested more reliably
-test_full!(string_parse => r#"
+test!(string_parse => r#"
     export fn main {
       "8".i8.print;
       "foo".i8.print;
@@ -640,7 +602,7 @@ test_gpgpu!(gpu_clz => r#"
 );
 
 // TODO: Fix u64 numeric constants to get u64 bitwise tests in the new test suite
-test_full!(u64_bitwise => r#"
+test!(u64_bitwise => r#"
     prefix u64 as ~ precedence 10
 
     export fn main {
@@ -657,7 +619,7 @@ test_full!(u64_bitwise => r#"
 
 // Functions and Custom Operators
 
-test_full!(basic_function_usage => r#"
+test!(basic_function_usage => r#"
     fn foo() = print('foo');
 
     fn bar(s: string) = s.concat("bar");
@@ -671,7 +633,7 @@ foobar
 "#;
 );
 
-test_full!(functions_and_custom_operators => r#"
+test!(functions_and_custom_operators => r#"
     fn foo() {
       print('foo');
     }
@@ -711,7 +673,7 @@ to barto bar3
 "#;
 );
 
-test_full!(mutable_functions => r#"
+test!(mutable_functions => r#"
     fn addeq (a: Mut{i64}, b: i64) {
         a = a.clone() + b;
     }
@@ -729,7 +691,7 @@ test_full!(mutable_functions => r#"
 
 // Conditionals
 
-test_full!(if_fn => r#"
+test!(if_fn => r#"
     export fn main {
         if(1 == 0, fn = print('What!?'), fn = print('Math is sane...'));
         if(1 == 2, fn = 'Uhh...').print;
@@ -835,7 +797,7 @@ test_ignore!(conditional_let_assignment => r#"
     stdout "1\n";
 );
 
-test_full!(conditional_compilation => r#"
+test!(conditional_compilation => r#"
     type{true} foo = string;
     type{false} foo = i64;
 
@@ -862,7 +824,7 @@ test_full!(conditional_compilation => r#"
     }"#;
     stdout "Hello, World!\n9\n9\ntrue\n";
 );
-test_full!(library_testing => r#"
+test!(library_testing => r#"
     export fn add1(a: i64) -> i64 = a + 1;
     export postfix add1 as ++ precedence 5;
 
@@ -885,7 +847,7 @@ test_compile_error!(object_constructor_compiler_checks => r#"
     }"#;
     error "Could not find a function with a call signature of Foo(f64)";
 );
-test_full!(object_literals => r#"
+test!(object_literals => r#"
     type MyType =
       foo: string,
       bar: bool;
@@ -897,7 +859,7 @@ test_full!(object_literals => r#"
     }"#;
     stdout "foo!\ntrue\n";
 );
-test_full!(object_and_array_reassignment => r#"
+test!(object_and_array_reassignment => r#"
     type Foo =
       bar: bool;
 
@@ -920,7 +882,7 @@ test_full!(object_and_array_reassignment => r#"
     stdout "1\n0\n2\ntrue\nfalse\n";
 );
 
-test_full!(array_custom_types => r#"
+test!(array_custom_types => r#"
     type Foo =
       foo: string,
       bar: bool;
@@ -934,7 +896,7 @@ test_full!(array_custom_types => r#"
     stdout "2, 4\n";
 );
 
-test_full!(basic_dict => r#"
+test!(basic_dict => r#"
     export fn main {
       let test = Dict('foo', 1);
       // Equivalent to:
@@ -977,7 +939,7 @@ key: bay
 val: 4
 "#;
 );
-test_full!(keyval_array_to_dict => r#"
+test!(keyval_array_to_dict => r#"
     export fn main {
       // TODO: Improve this with anonymous tuple support
       // const kva = [ (1, 'foo'), (2, 'bar'), (3, 'baz') ];
@@ -997,7 +959,7 @@ val: baz
 foo
 "#;
 );
-test_full!(dict_double_store => r#"
+test!(dict_double_store => r#"
     export fn main {
       let test = Dict('foo', 'bar');
       test.get('foo').print;
@@ -1006,7 +968,7 @@ test_full!(dict_double_store => r#"
     }"#;
     stdout "bar\nbaz\n";
 );
-test_full!(basic_set => r#"
+test!(basic_set => r#"
     export fn main {
         let test = Set(0);
         test.len.print;
@@ -1026,7 +988,7 @@ test_full!(basic_set => r#"
 
 // Generics
 
-test_full!(generics => r#"
+test!(generics => r#"
     type box{V} =
       val: V,
       set: bool;
@@ -1057,7 +1019,7 @@ true
 hello, nested generics!
 "#;
 );
-test_full!(generic_functions => r#"
+test!(generic_functions => r#"
     fn empty{T}() = Array{T}(); // Pointless, but just for testing
 
     export fn main {
@@ -1067,7 +1029,7 @@ test_full!(generic_functions => r#"
 "#;
     stdout "[]\n";
 );
-test_full!(generic_in_a_generic => r#"
+test!(generic_in_a_generic => r#"
     fn condition{T}(a: T, b: T) -> bool {
       return a == b;
     }
@@ -1085,7 +1047,7 @@ test_full!(generic_in_a_generic => r#"
     stdout_js "[ true, false, true ]\n";
     stdout_rs "[true, false, true]\n"; // TODO: Make these match
 );
-test_full!(first_arg_generic_fn => r#"
+test!(first_arg_generic_fn => r#"
     fn batchCompare{T}(cond: (T, T) -> bool, a: Array{T}, b: Array{T}) {
       return a.map(fn (aVal: T) = b.some(fn (bVal: T) = cond(aVal, bVal)));
     }
@@ -1133,7 +1095,7 @@ test_ignore!(basic_interfaces => r#"
 // should be automatically scoped to separate test directories at some point when I can affect the
 // PWD without using the thread-unsafe std::env for it. For now, these two tests that create
 // multiple test files with manual naming just have to have different filenames.
-test_full!(basic_type_import "type_foo" =>
+test!(basic_type_import "type_foo" =>
     "type_bar.ln" => r#"
         export type Bar = "Bar";
     "#,
@@ -1147,7 +1109,7 @@ test_full!(basic_type_import "type_foo" =>
     stdout "Bar\n";
 );
 
-test_full!(basic_fn_import "fn_foo" =>
+test!(basic_fn_import "fn_foo" =>
     "fn_bar.ln" => r#"
         export fn bar = "Bar";
     "#,
@@ -1163,7 +1125,7 @@ test_full!(basic_fn_import "fn_foo" =>
 
 // Maybe, Result, and Either
 
-test_full!(maybe_exists => r#"
+test!(maybe_exists => r#"
     export fn main {
         const maybe5 = Maybe{i64}(5);
         maybe5.exists.print;
@@ -1174,7 +1136,7 @@ test_full!(maybe_exists => r#"
     stdout "true\nfalse\ntrue\n";
 );
 
-test_full!(maybe => r#"
+test!(maybe => r#"
     // TODO: Rewrite these conditionals with conditional syntax once implemented
     fn fiver(val: f64) = if(val.i64 == 5, fn = {i64?}(5), fn = {i64?}());
 
@@ -1198,7 +1160,7 @@ Correctly received nothing!
 void
 "#;
 );
-test_full!(fallible => r#"
+test!(fallible => r#"
     // TODO: Rewrite these conditionals with conditional syntax once implemented
     fn reciprocal(val: f64) = if(val == 0.0, fn {
       return Error{f64}('Divide by zero error!');
@@ -1230,7 +1192,7 @@ Error: Divide by zero error!
 Error: there is no error
 "#;
 );
-test_full!(either => r#"
+test!(either => r#"
     type strOrI64 = string | i64;
     export fn main {
       const someStr = strOrI64('string');
@@ -1269,7 +1231,7 @@ void
 
 // Types
 
-test_full!(user_types_and_generics => r#"
+test!(user_types_and_generics => r#"
     type foo{A, B} =
       bar: A,
       baz: B;
@@ -1384,7 +1346,7 @@ test_ignore!(totally_broken_statement => r#"
 
 // Module-level constants
 
-test_full!(module_level_constant => r#"
+test!(module_level_constant => r#"
     const helloWorld = 'Hello, World!';
 
     export fn main {
@@ -1408,7 +1370,7 @@ test_ignore!(module_level_constant_from_function_call => r#"
 
 // Trigonometry
 
-test_full!(cpu_trig => r#"
+test!(cpu_trig => r#"
     export fn main {
       'Logarithms and e^x'.print;
       print(exp(e).string(4));
@@ -1567,7 +1529,7 @@ Inverse Hyperbolic Trig functions
 
 // Clone
 
-test_full!(clone => r#"
+test!(clone => r#"
     export fn main {
       let a = 3;
       let b = a.clone;
@@ -1585,7 +1547,7 @@ test_full!(clone => r#"
 
 // Runtime Error
 
-test_full!(get_or_exit => r#"
+test!(get_or_exit => r#"
     export fn main {
       const xs = [0, 1, 2, 5];
       const x1 = xs[1].getOrExit;
@@ -1712,7 +1674,7 @@ test_ignore!(seq_recurse_decrement_regression_test => r#"
 
 // Tree
 
-test_full!(tree_construction_and_access => r#"
+test!(tree_construction_and_access => r#"
     export fn main {
       let myTree = Tree('foo');
       const barNode = myTree.addChild('bar');
@@ -1810,7 +1772,7 @@ test_ignore!(subtree_and_nested_tree_construction => r#"
 
 // Error printing
 
-test_full!(eprint => r#"
+test!(eprint => r#"
     export fn main {
       eprint('This is an error');
     }"#;
