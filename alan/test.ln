@@ -585,5 +585,100 @@ export fn{Test} main {
     .assert(eq, 100.u64 >>> 2.u64, 25.u64)
     .assert(eq, 100.u64 <<< 2.u64, 400.u64);
 
+  test.describe("Arrays")
+    .it("accessor and length", fn (test: Mut{Testing}) {
+      const arr = '1,2,3'.split(',');
+      test
+        .assert(eq, arr.len, 3)
+        .assert(eq, arr[0]!!, '1')
+        .assert(eq, arr[1]!!, '2')
+        .assert(eq, arr[2]!!, '3');
+    })
+    .it("literal syntax", fn (test: Mut{Testing}) {
+      const arr1 = Array{i64}(1, 2, 3);
+      test
+        .assert(eq, arr1[0]!!, 1)
+        .assert(eq, arr1[1]!!, 2)
+        .assert(eq, arr1[2]!!, 3);
+      const arr2 = [4, 5, 6];
+      test
+        .assert(eq, arr2[0]!!, 4)
+        .assert(eq, arr2[1]!!, 5)
+        .assert(eq, arr2[2]!!, 6);
+    })
+    .it("mutable push and pop", fn (test: Mut{Testing}) {
+      let arr = Array{i64}();
+      arr.push(1);
+      arr.push(2);
+      arr.push(3);
+      test
+        .assert(eq, arr[0]!!, 1)
+        .assert(eq, arr[1]!!, 2)
+        .assert(eq, arr[2]!!, 3)
+        .assert(eq, arr.pop!!, 3)
+        .assert(eq, arr.pop!!, 2)
+        .assert(eq, arr.pop!!, 1)
+        .assert(eq, arr.pop.exists, false);
+    })
+    .it("has", fn (test: Mut{Testing}) {
+      const arr = [1, 1, 2, 3, 5, 8];
+      test
+        .assert(eq, arr.has(3), true)
+        .assert(eq, arr.has(4), false)
+        .assert(eq, arr.has(fn (t: i64) = t % 2 == 0), true)
+        .assert(eq, arr.has(fn (t: i64) = t % 2 == 1), true);
+    })
+    .it('map', fn (test: Mut{Testing}) {
+      const count =  [1, 2, 3, 4, 5]; // Ah, ah ahh!
+      const byTwos = count.map(fn (n: i64) = n * 2);
+      test
+        .assert(eq, count.map(string).join(', '), '1, 2, 3, 4, 5')
+        .assert(eq, byTwos.map(string).join(', '), '2, 4, 6, 8, 10');
+    })
+    .it('repeat', fn (test: Mut{Testing}) {
+      const arr = [1, 2, 3].repeat(3);
+      test.assert(eq, arr.map(string).join(', '), '1, 2, 3, 1, 2, 3, 1, 2, 3');
+    })
+    .it('find', fn (test: Mut{Testing}) {
+      const arr = [1, 1, 2, 3, 5, 8];
+      test.assert(eq, arr.find(fn (x: i64) = x % 2 == 1) ?? 0, 1);
+    })
+    .it('every', fn (test: Mut{Testing}) {
+      const arr = [1, 1, 2, 3, 5, 8];
+      test.assert(eq, arr.every(fn (x: i64) = x % 2 == 1), false);
+    })
+    .it('some', fn (test: Mut{Testing}) {
+      const arr = [1, 1, 2, 3, 5, 8];
+      test.assert(eq, arr.some(fn (x: i64) = x % 2 == 1), true);
+    })
+    .it('index', fn (test: Mut{Testing}) {
+      const arr = [1, 1, 2, 3, 5, 8];
+      test.assert(eq, arr.index(fn (x: i64) = x % 2 == 1)!!, 0);
+    })
+    .it('concat', fn (test: Mut{Testing}) {
+      const arr1 = [1, 1, 2, 3, 5, 8];
+      const arr2 = [4, 5, 6];
+      test.assert(eq, arr1.concat(arr2).map(string).join(', '), '1, 1, 2, 3, 5, 8, 4, 5, 6');
+    })
+    .it('reduce', fn (test: Mut{Testing}) {
+      const arr = [1, 1, 2, 3, 5, 8];
+      test
+        .assert(eq, arr.reduce(add)!!, 20)
+        .assert(eq, arr.reduce(min)!!, 1)
+        .assert(eq, arr.reduce(max)!!, 8);
+    })
+    .it('filter', fn (test: Mut{Testing}) {
+      const arr = [1, 1, 2, 3, 5, 8];
+      test.assert(eq, arr.filter(fn odd(i: i64) = i % 2 == 1).map(string).join(', '), '1, 1, 3, 5');
+    })
+    .it('store and delete', fn (test: Mut{Testing}) {
+      let arr = [1, 2, 5];
+      arr.store(2, 3);
+      arr[3] = 4;
+      test.assert(eq, arr.map(string).join(', '), '1, 2, 3, 4, 5');
+      test.assert(eq, arr.delete(4)!!, 5);
+      test.assert(eq, arr.map(string).join(', '), '1, 2, 3, 4');
+    });
+
   test.report;
 }
