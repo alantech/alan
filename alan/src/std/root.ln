@@ -1160,8 +1160,7 @@ fn{Rs} trim Method{"trim"} :: string -> string;
 fn{Js} trim "((s) => new alan_std.Str(s.val.trim()))" <- RootBacking :: string -> string;
 fn{Rs} index "alan_std::indexstring" <- RootBacking :: (string, string) -> i64!;
 fn{Js} index "((a, b) => { let idx = a.val.indexOf(b.val); if (idx < 0) { return new alan_std.AlanError(new alan_std.Str(`Could not find ${b.val} in ${a.val}`)); } else { return new alan_std.I64(idx); } })" <- RootBacking :: (string, string) -> i64!;
-// TODO: Optimize this by using `as_str` inline, but need a `Str` type, which I *really* don't want to terrorize the user with
-fn{Rs} eq Infix{"=="} :: (Own{string}, Own{string}) -> bool;
+fn{Rs} eq (a: string, b: string) = {Infix{"=="} :: (string, string) -> bool}({Method{"as_str"} :: string -> string}(a), {Method{"as_str"} :: string -> string}(b));
 fn{Js} eq "((a, b) => new alan_std.Bool(a.val == b.val))" <- RootBacking :: (string, string) -> bool;
 fn{Rs} neq Infix{"!="} :: (Own{string}, Own{string}) -> bool;
 fn{Js} neq "((a, b) => new alan_std.Bool(a.val != b.val))" <- RootBacking :: (string, string) -> bool;
@@ -5009,6 +5008,7 @@ fn{Test} report(testing: Testing) {
  */
 
 type{Test} Testing = Array{string}; // To prevent porting issues when the desired test runner works
+fn{Test} Testing = Testing("Start");
 
 fn{Test} describe(groupname: string) = [groupname];
 fn{Test} describe(groupname: string, callback: string[] -> ()) {
@@ -5019,8 +5019,8 @@ fn{Test} describe(groupname: string, callback: string[] -> string[]) {
   callback([groupname]);
   return [groupname];
 }
-fn{Test} describe(prevgroupname: string, groupname: string) = [groupname];
-fn{Test} describe(prevgroupname: string, groupname: string, callback: string[] -> ()) {
+fn{Test} describe(prevgroupname: string[], groupname: string) = [groupname];
+fn{Test} describe(prevgroupname: string[], groupname: string, callback: string[] -> ()) {
   callback([groupname]);
   return [groupname];
 }
@@ -5054,8 +5054,8 @@ fn{Test} assert{T}(groupname: string[], comparator: (T, T) -> bool, actual: T, e
   "\u{1b}[0m".stdout;
   let res = comparator(actual, expected);
   if(res,
-    fn = "\u{0d}\u{1b}[32;1m✅ ".stdout,
-    fn = "\u{0d}\u{1b}[31;1m❎ ".stdout);
+    fn = "\u{0d}\u{1b}[32;1m✅".stdout,
+    fn = "\u{0d}\u{1b}[31;1m❎".stdout);
   line.stdout;
   "\u{1b}[0m".print;
   if(!res, fn {
