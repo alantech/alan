@@ -680,5 +680,59 @@ export fn{Test} main {
       test.assert(eq, arr.map(string).join(', '), '1, 2, 3, 4');
     });
 
+  test.describe("Buffers")
+    .it("join", fn (test: Mut{Testing}) {
+      const b = {string[2]}("Hello", "World!");
+      test.assert(eq, b.join(", "), "Hello, World!");
+    })
+    .it("map", fn (test: Mut{Testing}) {
+      const b = Buffer{i64, 3}(1, 2, 3);
+      test
+        .assert(eq, b.map(string).join(", "), '1, 2, 3')
+        .assert(eq, b.len, 3)
+        .assert(eq, b.map(fn double(x: i64) = x * 2).map(string).join(', '), '2, 4, 6')
+        .assert(eq, b.map(add).map(string).join(', '), '1, 3, 5');
+    })
+    .it("reduce", fn (test: Mut{Testing}) {
+      const b = {i64[5]}(1, 2, 3, 4, 5);
+      test
+        .assert(eq, b.reduce(add)!!, 15) // TODO: We can probably get rid of the Fallible here
+        .assert(eq, b.map(string).reduce("0", concat), "012345");
+    })
+    .it("has", fn (test: Mut{Testing}) {
+      const b = {i64[6]}(1, 1, 2, 3, 5, 8);
+      test
+        .assert(eq, b.has(3), true)
+        .assert(eq, b.has(4), false)
+        .assert(eq, b.has(fn (i: i64) = i % 2 == 0), true)
+        .assert(eq, b.has(fn (i: i64) = i % 2 == 1), true);
+    })
+    .it("find", fn (test: Mut{Testing}) {
+      const b = {i64[6]}(1, 1, 2, 3, 5, 8);
+      test.assert(eq, b.find(fn (i: i64) = i % 2 == 1) ?? 0, 1);
+    })
+    .it("every", fn (test: Mut{Testing}) {
+      const b = {i64[6]}(1, 1, 2, 3, 5, 8);
+      test.assert(eq, b.every(fn (i: i64) = i % 2 == 1), false);
+    })
+    .it("concat", fn (test: Mut{Testing}) {
+      const b = {i64[6]}(1, 1, 2, 3, 5, 8);
+      const c = {i64[3]}(4, 5, 6);
+      test.assert(eq, b.concat(c).map(string).join(', '), '1, 1, 2, 3, 5, 8, 4, 5, 6');
+    })
+    .it("repeat", fn (test: Mut{Testing}) {
+      const b = {i64[3]}(1, 2, 3).repeat(3);
+      test.assert(eq, b.map(string).join(', '), '1, 2, 3, 1, 2, 3, 1, 2, 3');
+    })
+    .it('store', fn (test: Mut{Testing}) {
+      let b = {i64[3]}(1, 2, 5);
+      test
+        .assert(eq, b.map(string).join(', '), '1, 2, 5')
+        .assert(eq, b.store(2, 3)!!, 5)
+        .assert(eq, b.map(string).join(', '), '1, 2, 3');
+      b[2] = 4;
+      test.assert(eq, b.map(string).join(', '), '1, 2, 4');
+    });
+
   test.report;
 }

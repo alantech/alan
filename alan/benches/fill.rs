@@ -13,7 +13,7 @@ macro_rules! build {
 
 macro_rules! run {
     ( $name:ident ) => {
-        #[divan::bench(max_time = 60)]
+        #[divan::bench(max_time = 10)]
         fn $name() -> Result<Output, std::io::Error> {
             Command::new(format!("./{}", stringify!($name))).output()
         }
@@ -54,19 +54,19 @@ run!(t01_fill_100);
 run!(t02_fill_100_000);
 run!(t03_fill_100_000_000);
 
-#[divan::bench(max_time = 60)]
+#[divan::bench(max_time = 10)]
 fn t04_vec_100() -> Result<(), std::io::Error> {
     let v = vec![5; 100];
     write("/dev/null", format!("{}", v[0]))
 }
 
-#[divan::bench(max_time = 60)]
+#[divan::bench(max_time = 10)]
 fn t05_vec_100_000() -> Result<(), std::io::Error> {
     let v = vec![5; 100_000];
     write("/dev/null", format!("{}", v[0]))
 }
 
-#[divan::bench(max_time = 60)]
+#[divan::bench(max_time = 10)]
 fn t06_vec_100_000_000() -> Result<(), std::io::Error> {
     let v = vec![5; 100_000_000];
     write("/dev/null", format!("{}", v[0]))
