@@ -223,16 +223,6 @@ infix store as = precedence 0;
 fn{Rs} clone{T} (v: T) -> T = {Method{"clone"} :: T -> T}(v);
 // TODO: This needs to be turned into a JS function that's bound
 fn{Js} clone{T} (v: T) -> T = {"(function clone(t) { if (t instanceof Array) { return t.map(clone); } else if (t.build instanceof Function) { return t.build(t.val); } else if (t instanceof Set) { return t.union(new Set()); } else { return structuredClone(t); } })" :: T -> T}(v);
-// TODO: The "proper" way to hash this consistently for all types is to decompose the input type
-// into the various primitive types of Alan and then have hashing rules for each of them, which
-// may themselves decompose, etc. This might be doable in Alan code on top of specialized hashing
-// functions in Rust (as partially implemented here) or it might be better done as a special `hash`
-// function created by the compiler for the specific type *if* ever actually used, walking the
-// CType tree to determine the correct code to run. In either case, this is "good enough" for now.
-fn{Rs} hash{T} "alan_std::hash" <- RootBacking :: T -> i64;
-fn{Rs} hash{T} "alan_std::hasharray" <- RootBacking :: T[] -> i64;
-fn{Rs} hash "alan_std::hashstring" <- RootBacking :: string -> i64;
-// TODO: JS variant for `hash`
 fn void{T}(v: T) -> void {}
 fn void() -> void {}
 fn{Rs} store{T} (a: Mut{T}, b: T) -> T = {"std::mem::replace" :: (Mut{T}, Own{T}) -> T}(a, b);

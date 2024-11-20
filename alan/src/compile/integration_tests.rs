@@ -934,22 +934,6 @@ test_full!(array_custom_types => r#"
     stdout "2, 4\n";
 );
 
-// Hashing
-test!(hash => r#"
-    export fn main {
-      print(hash(1));
-      print(hash(3.14159));
-      print(hash(true));
-      print(hash('false'));
-      print(hash([1, 2, 5, 3]));
-    }"#;
-    stdout r#"1742378985846435984
--3655443395552619065
-4952851536318644461
--3294960077868127759
--8231513229892369092
-"#;
-);
 test_full!(basic_dict => r#"
     export fn main {
       let test = Dict('foo', 1);
