@@ -43,39 +43,6 @@ impl From<String> for AlanError {
     }
 }
 
-/// Functions for (potentially) every type
-
-/// `hash` hashes the input type
-#[inline(always)]
-pub fn hash<T>(v: &T) -> i64 {
-    let mut hasher = std::hash::DefaultHasher::new();
-    let v_len = std::mem::size_of::<T>();
-    let v_raw = unsafe { std::slice::from_raw_parts(v as *const T as usize as *const u8, v_len) };
-    hasher.write(v_raw);
-    hasher.finish() as i64
-}
-
-/// `hasharray` hashes the input array one element at a time
-#[inline(always)]
-pub fn hasharray<T>(v: &Vec<T>) -> i64 {
-    let mut hasher = std::hash::DefaultHasher::new();
-    let v_len = std::mem::size_of::<T>();
-    for r in v {
-        let v_raw =
-            unsafe { std::slice::from_raw_parts(r as *const T as usize as *const u8, v_len) };
-        hasher.write(v_raw);
-    }
-    hasher.finish() as i64
-}
-
-/// `hashstring` hashes the input string
-#[inline(always)]
-pub fn hashstring(v: &String) -> i64 {
-    let mut hasher = std::hash::DefaultHasher::new();
-    hasher.write(v.as_str().as_bytes());
-    hasher.finish() as i64
-}
-
 /// String-related functions
 
 /// Converts anything that implements ToString into a string. Needed to convert all errors into
