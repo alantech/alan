@@ -20,7 +20,21 @@ export fn{Test} main {
       .assert(eq, 15.0, 1.5e1)
       .assert(eq, -5.0, -5e0)
       .assert(eq, 1e3, 1000.0)
-      .assert(eq, 1e-3, 0.001);
+      .assert(eq, 1e-3, 0.001)
+    .it('clone', fn (test: Mut{Testing}) {
+      let a = 3;
+      let b = a.clone;
+      a = 4;
+      test
+        .assert(eq, a, 4)
+        .assert(eq, b, 3);
+      let c = [1, 2, 3];
+      let d = c.clone();
+      d[0] = 2;
+      test
+        .assert(eq, c.map(string).join(', '), '1, 2, 3')
+        .assert(eq, d.map(string).join(', '), '2, 1, 2, 3');
+    });
 
   test.describe("Basic math tests i8")
     .it("add")
@@ -585,6 +599,42 @@ export fn{Test} main {
     .assert(eq, 100.u64 >>> 2.u64, 25.u64)
     .assert(eq, 100.u64 <<< 2.u64, 400.u64);
 
+  test.describe('Trigonometry on the cpu')
+    .it('Logarithms and e**x')
+      .assert(eq, exp(e).string(4), '15.1543')
+      .assert(eq, ln(e).string(4), '1.0000')
+      .assert(eq, log10(e).string(4), '0.4343')
+      .assert(eq, log2(e).string(4), '1.4427')
+    .it('Standard Trig Functions')
+      .assert(eq, sin(tau / 6.0).string(4), '0.8660')
+      .assert(eq, cos(tau / 6.0).string(4), '0.5000')
+      .assert(eq, tan(tau / 6.0).string(4), '1.7321')
+      .assert(eq, sec(tau / 6.0).string(4), '2.0000')
+      .assert(eq, csc(tau / 6.0).string(4), '1.1547')
+      .assert(eq, cot(tau / 6.0).string(4), '0.5774')
+    .it('Inverse Trig Functions')
+      .assert(eq, asin(0.0).string(4), '0.0000')
+      .assert(eq, acos(1.0).string(4), '0.0000')
+      .assert(eq, atan(0.0).string(4), '0.0000')
+      .assert(eq, atan2(1.0, 2.0).string(4), '0.4636')
+      .assert(eq, asec(tau / 6.0).string(4), '0.3014')
+      .assert(eq, acsc(tau / 6.0).string(4), '1.2694')
+      .assert(eq, acot(tau / 6.0).string(4), '0.7623')
+    .it('Hyperbolic Trig Functions')
+      .assert(eq, sinh(tau / 6.0).string(4), '1.2494')
+      .assert(eq, cosh(tau / 6.0).string(4), '1.6003')
+      .assert(eq, tanh(tau / 6.0).string(4), '0.7807')
+      .assert(eq, sech(tau / 6.0).string(4), '0.6249')
+      .assert(eq, csch(tau / 6.0).string(4), '0.8004')
+      .assert(eq, coth(tau / 6.0).string(4), '1.2809')
+    .it('Inverse Hyperbolic Trig Functions')
+      .assert(eq, asinh(tau / 6.0).string(4), '0.9144')
+      .assert(eq, acosh(tau / 6.0).string(4), '0.3060')
+      .assert(eq, atanh(pi / 6.0).string(4), '0.5813')
+      .assert(eq, asech(0.5).string(4), '1.3170')
+      .assert(eq, acsch(tau / 6.0).string(4), '0.8491')
+      .assert(eq, acoth(tau / 6.0).string(4), '1.8849');
+
   test.describe("Arrays")
     .it("accessor and length", fn (test: Mut{Testing}) {
       const arr = '1,2,3'.split(',');
@@ -732,6 +782,116 @@ export fn{Test} main {
         .assert(eq, b.map(string).join(', '), '1, 2, 3');
       b[2] = 4;
       test.assert(eq, b.map(string).join(', '), '1, 2, 4');
+    });
+
+  test.describe("Conditionals")
+    .it("if function")
+      .assert(eq, if(1 == 0, fn = "What?", fn = "Math is sane..."), "Math is sane...")
+      .assert(eq, if(1 == 2, fn = "Uhh...").exists, false)
+      .assert(eq, if(1 == 1, 'Correct!')!!, 'Correct!');
+
+  test.describe("Dictionaries")
+    .it("create, store, get, keys, vals, len, has, concat", fn (test: Mut{Testing}) {
+      let d = Dict('foo', 1);
+      // Equivalent to:
+      // let d = Dict{string, i64}();
+      // d.store('foo', 1);
+
+      d.store('bar', 2);
+      d['baz'] = 99;
+
+      test
+        .assert(
+          eq,
+          d.Array.map(fn (n: (string, i64)) = n.0.concat(': ').concat(n.1.string)).join(', '),
+          'foo: 1, bar: 2, baz: 99'
+        )
+        .assert(eq, d.keys.join(', '), 'foo, bar, baz')
+        .assert(eq, d.vals.map(string).join(', '), '1, 2, 99')
+        .assert(eq, d.len, 3)
+        .assert(eq, d.get('foo')!!, 1)
+        .assert(eq, d['bar']!!, 2)
+        .assert(eq, d.has('baz'), true);
+
+      let d2 = Dict('foo', 3);
+      d2['bay'] = 4;
+
+      test.assert(
+        eq,
+        d
+          .concat(d2)
+          .Array
+          .map(fn (n: (string, i64)) = n.0.concat(': ').concat(n.1.string))
+          .join(', '),
+        'foo: 3, bar: 2, baz: 99, bay: 4'
+      );
+    })
+    .it("keyval array to dictionary", fn (test: Mut{Testing}) {
+      const kva = [{(i64, string)}(1, 'foo'), {(i64, string)}(2, 'bar'), {(i64, string)}(3, 'baz')];
+      // TODO: Improve this with anonymous tuples
+      // const kva = [(1, 'foo'), (2, 'bar'), (3, 'baz')];
+      const hm = Dict(kva);
+      test
+        .assert(
+          eq,
+          hm.Array.map(fn (n: (i64, string)) = n.0.string.concat(': ').concat(n.1)).join(', '),
+          '1: foo, 2: bar, 3: baz'
+        )
+        .assert(eq, hm[1]!!, 'foo');
+    });
+
+  test.describe('Sets')
+    .it('usage', fn (test: Mut{Testing}) {
+      let s = Set(0);
+      test
+        .assert(eq, s.len, 1)
+        .assert(eq, s.has(0), true)
+        .assert(eq, s.has(1), false);
+      s.store(1);
+      test.assert(eq, s.len, 2);
+      let s2 = Set([1, 2]);
+      test
+        .assert(eq, s.union(s2).len, 3)
+        .assert(eq, s.intersect(s2).Array.map(string).join(', '), '1')
+        .assert(eq, s.difference(s2).Array.map(string).join(', '), '0')
+        .assert(eq, s.symmetricDifference(s2).len, 2)
+        .assert(eq, s.product(s2).len, 4);
+    });
+
+  test.describe('Sum Types')
+    .it('exists', fn (test: Mut{Testing}) {
+      const intOrStr = {i64 | string}("It's a string!");
+      test
+        .assert(eq, intOrStr.i64.exists, false)
+        .assert(eq, intOrStr.string.exists, true);
+    });
+
+  test.describe('Maybe')
+    .it('exists', fn (test: Mut{Testing}) {
+      const maybe5 = Maybe{i64}(5);
+      const maybeNot = Maybe{i64}();
+      test
+        .assert(eq, maybe5.exists, true)
+        .assert(eq, maybeNot.exists, false);
+    });
+
+  test.describe("Tree")
+    .it('construction and access', fn (test: Mut{Testing}) {
+        let myTree = Tree('foo');
+        const barNode = myTree.addChild('bar');
+        const bazNode = myTree.addChild('baz');
+        const bayNode = barNode.addChild('bay');
+
+        let secondTree = Tree('second');
+        const secondNode = secondTree.addChild('node');
+
+        bayNode.addChild(secondTree);
+
+        test.assert(eq, myTree.rootNode ?? 'wrong', 'foo');
+
+        // TODO: Get these tests working
+        // test.assert(eq, bayNode.parent!! ?? 'wrong', 'bar');
+        // test.assert(eq, myTree.children.map(fn (c: Node{string}) = c ?? 'wrong').join(', '), 'bar, baz');
     });
 
   test.report;
