@@ -61,7 +61,12 @@ export fn{Test} main {
       .assert(eq, 0.i8.clz, 8.i8)
       .assert(eq, 1.i8.clz, 7.i8)
       .assert(eq, 2.i8.clz, 6.i8)
-      .assert(eq, (-128).i8.clz, 0.i8));
+      .assert(eq, (-128).i8.clz, 0.i8))
+    .it("ones", fn (test: Mut{Testing}) = test
+      .assert(eq, 1.i8.ones, 1.i8)
+      .assert(eq, 2.i8.ones, 1.i8)
+      .assert(eq, 3.i8.ones, 2.i8)
+      .assert(eq, (-1).i8.ones, 8.i8));
 
   test.describe("Basic math tests i16")
     .it("add")
@@ -88,7 +93,12 @@ export fn{Test} main {
       .assert(eq, 0.i16.clz, 16.i16)
       .assert(eq, 1.i16.clz, 15.i16)
       .assert(eq, 2.i16.clz, 14.i16)
-      .assert(eq, (-32768).i16.clz, 0.i16));
+      .assert(eq, (-32768).i16.clz, 0.i16))
+    .it("ones", fn (test: Mut{Testing}) = test
+      .assert(eq, 1.i16.ones, 1.i16)
+      .assert(eq, 2.i16.ones, 1.i16)
+      .assert(eq, 3.i16.ones, 2.i16)
+      .assert(eq, (-1).i16.ones, 16.i16));
 
   test.describe("Basic math tests i32")
     .it("add")
@@ -115,7 +125,12 @@ export fn{Test} main {
       .assert(eq, 0.i32.clz, 32.i32)
       .assert(eq, 1.i32.clz, 31.i32)
       .assert(eq, 2.i32.clz, 30.i32)
-      .assert(eq, (-2_147_483_648).i32.clz, 0.i32));
+      .assert(eq, (-2_147_483_648).i32.clz, 0.i32))
+    .it("ones", fn (test: Mut{Testing}) = test
+      .assert(eq, 1.i32.ones, 1.i32)
+      .assert(eq, 2.i32.ones, 1.i32)
+      .assert(eq, 3.i32.ones, 2.i32)
+      .assert(eq, (-1).i32.ones, 32.i32));
 
   test.describe("Basic math tests i64")
     .it("add")
@@ -142,7 +157,12 @@ export fn{Test} main {
       .assert(eq, 0.clz, 64.i64)
       .assert(eq, 1.clz, 63.i64)
       .assert(eq, 2.i64.clz, 62.i64)
-      .assert(eq, -9_223_372_036_854_775_808.clz, 0));
+      .assert(eq, -9_223_372_036_854_775_808.clz, 0))
+    .it("ones", fn (test: Mut{Testing}) = test
+      .assert(eq, 1.ones, 1)
+      .assert(eq, 2.ones, 1)
+      .assert(eq, 3.ones, 2)
+      .assert(eq, -1.ones, 64));
 
   test.describe("Basic math tests u8")
     .it("add")
@@ -165,7 +185,12 @@ export fn{Test} main {
       .assert(eq, 0.u8.clz, 8.u8)
       .assert(eq, 1.u8.clz, 7.u8)
       .assert(eq, 2.u8.clz, 6.u8)
-      .assert(eq, 255.u8.clz, 0.u8));
+      .assert(eq, 255.u8.clz, 0.u8))
+    .it("ones", fn (test: Mut{Testing}) = test
+      .assert(eq, 1.u8.ones, 1.u8)
+      .assert(eq, 2.u8.ones, 1.u8)
+      .assert(eq, 3.u8.ones, 2.u8)
+      .assert(eq, 255.u8.ones, 8.u8));
 
   test.describe("Basic math tests u16")
     .it("add")
@@ -188,7 +213,12 @@ export fn{Test} main {
       .assert(eq, 0.u16.clz, 16.u16)
       .assert(eq, 1.u16.clz, 15.u16)
       .assert(eq, 2.u16.clz, 14.u16)
-      .assert(eq, 65535.u16.clz, 0.u16));
+      .assert(eq, 65535.u16.clz, 0.u16))
+    .it("ones", fn (test: Mut{Testing}) = test
+      .assert(eq, 1.u16.ones, 1.u16)
+      .assert(eq, 2.u16.ones, 1.u16)
+      .assert(eq, 3.u16.ones, 2.u16)
+      .assert(eq, 65535.u16.ones, 16.u16));
 
   test.describe("Basic math tests u32")
     .it("add")
@@ -211,7 +241,12 @@ export fn{Test} main {
       .assert(eq, 0.u32.clz, 32.u32)
       .assert(eq, 1.u32.clz, 31.u32)
       .assert(eq, 2.u32.clz, 30.u32)
-      .assert(eq, 2_147_483_648.u32.clz, 0.u32));
+      .assert(eq, 2_147_483_648.u32.clz, 0.u32))
+    .it("ones", fn (test: Mut{Testing}) = test
+      .assert(eq, 1.u32.ones, 1.u32)
+      .assert(eq, 2.u32.ones, 1.u32)
+      .assert(eq, 3.u32.ones, 2.u32)
+      .assert(eq, 4_294_967_295.u32.ones, 32.u32));
 
   test.describe("Basic math tests u64")
     .it("add")
@@ -233,8 +268,13 @@ export fn{Test} main {
     .it("clz", fn (test: Mut{Testing}) = test
       .assert(eq, 0.u64.clz, 64.u64)
       .assert(eq, 1.u64.clz, 63.u64)
-      .assert(eq, 2.u64.clz, 62.u64));
+      .assert(eq, 2.u64.clz, 62.u64))
       // .assert(eq, 9_223_372_036_854_775_808.u64.clz, 0.u64)); TODO: Fix u64 representation
+    .it("ones", fn (test: Mut{Testing}) = test
+      .assert(eq, 1.u64.ones, 1.u64)
+      .assert(eq, 2.u64.ones, 1.u64)
+      .assert(eq, 3.u64.ones, 2.u64));
+      // .assert(eq, 9_223_372_036_854_775_808.ones, 64.u32)); TODO: Same u64 representation issue
 
   test.describe("Basic math tests f32")
     .it("add")

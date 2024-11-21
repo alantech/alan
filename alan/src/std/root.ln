@@ -736,6 +736,8 @@ fn{Rs} wrr (a: u8, b: u8) = {Method{"rotate_right"} :: (u8, Deref{u32}) -> u8}(a
 fn{Js} wrr Method{"rotateRight"} :: (u8, u8) -> u8;
 fn{Rs} clz (a: u8) = {Method{"leading_zeros"} :: u8 -> u32}(a).u8;
 fn{Js} clz Method{"clz"} :: u8 -> u8;
+fn{Rs} ones (a: u8) = {Method{"count_ones"} :: u8 -> u32}(a).u8;
+fn{Js} ones Method{"ones"} :: u8 -> u8;
 
 fn{Rs} add Method{"wrapping_add"} :: (u16, Deref{u16}) -> u16;
 fn{Js} add Method{"wrappingAdd"} :: (u16, u16) -> u16;
@@ -785,6 +787,8 @@ fn{Rs} wrr (a: u16, b: u16) = {Method{"rotate_right"} :: (u16, Deref{u32}) -> u1
 fn{Js} wrr Method{"rotateRight"} :: (u16, u16) -> u16;
 fn{Rs} clz (a: u16) = {Method{"leading_zeros"} :: u16 -> u32}(a).u16;
 fn{Js} clz Method{"clz"} :: u16 -> u16;
+fn{Rs} ones (a: u16) = {Method{"count_ones"} :: u16 -> u32}(a).u16;
+fn{Js} ones Method{"ones"} :: u16 -> u16;
 
 fn{Rs} add Method{"wrapping_add"} :: (u32, Deref{u32}) -> u32;
 fn{Js} add Method{"wrappingAdd"} :: (u32, u32) -> u32;
@@ -834,6 +838,8 @@ fn{Rs} wrr (a: u32, b: u32) = {Method{"rotate_right"} :: (u32, Deref{u32}) -> u3
 fn{Js} wrr Method{"rotateRight"} :: (u32, u32) -> u32;
 fn{Rs} clz Method{"leading_zeros"} :: u32 -> u32;
 fn{Js} clz Method{"clz"} :: u32 -> u32;
+fn{Rs} ones (a: u32) = {Method{"count_ones"} :: u32 -> u32}(a).u32;
+fn{Js} ones Method{"ones"} :: u32 -> u32;
 
 fn{Rs} add Method{"wrapping_add"} :: (u64, Deref{u64}) -> u64;
 fn{Js} add Method{"wrappingAdd"} :: (u64, u64) -> u64;
@@ -883,6 +889,8 @@ fn{Rs} wrr (a: u64, b: u64) = {Method{"rotate_right"} :: (u64, Deref{u32}) -> u6
 fn{Js} wrr Method{"rotateRight"} :: (u64, u64) -> u64;
 fn{Rs} clz (a: u64) = {Method{"leading_zeros"} :: u64 -> u32}(a).u64;
 fn{Js} clz Method{"clz"} :: u64 -> u64;
+fn{Rs} ones (a: u64) = {Method{"count_ones"} :: u64 -> u32}(a).u64;
+fn{Js} ones Method{"ones"} :: u64 -> u64;
 
 /// Signed Integer-related functions and function bindings
 fn{Rs} add Method{"wrapping_add"} :: (i8, Deref{i8}) -> i8;
@@ -937,6 +945,8 @@ fn{Rs} wrr (a: i8, b: i8) = {Method{"rotate_right"} :: (i8, Deref{u32}) -> i8}(a
 fn{Js} wrr Method{"rotateRight"} :: (i8, i8) -> i8;
 fn{Rs} clz (a: i8) = {Method{"leading_zeros"} :: i8 -> u32}(a).i8;
 fn{Js} clz Method{"clz"} :: i8 -> i8;
+fn{Rs} ones (a: i8) = {Method{"count_ones"} :: i8 -> u32}(a).i8;
+fn{Js} ones Method{"ones"} :: i8 -> i8;
 
 fn{Rs} add Method{"wrapping_add"} :: (i16, Deref{i16}) -> i16;
 fn{Js} add Method{"wrappingAdd"} :: (i16, i16) -> i16;
@@ -990,6 +1000,8 @@ fn{Rs} wrr (a: i16, b: i16) = {Method{"rotate_right"} :: (i16, Deref{u32}) -> i1
 fn{Js} wrr Method{"rotateRight"} :: (i16, i16) -> i16;
 fn{Rs} clz (a: i16) = {Method{"leading_zeros"} :: i16 -> u32}(a).i16;
 fn{Js} clz Method{"clz"} :: i16 -> i16;
+fn{Rs} ones (a: i16) = {Method{"count_ones"} :: i16 -> u32}(a).i16;
+fn{Js} ones Method{"ones"} :: i16 -> i16;
 
 fn{Rs} add Method{"wrapping_add"} :: (i32, Deref{i32}) -> i32;
 fn{Js} add Method{"wrappingAdd"} :: (i32, i32) -> i32;
@@ -1043,6 +1055,8 @@ fn{Rs} wrr (a: i32, b: i32) = {Method{"rotate_right"} :: (i32, Deref{u32}) -> i3
 fn{Js} wrr Method{"rotateRight"} :: (i32, i32) -> i32;
 fn{Rs} clz (a: i32) = {Method{"leading_zeros"} :: i32 -> u32}(a).i32;
 fn{Js} clz Method{"clz"} :: i32 -> i32;
+fn{Rs} ones (a: i32) = {Method{"count_ones"} :: i32 -> u32}(a).i32;
+fn{Js} ones Method{"ones"} :: i32 -> i32;
 
 fn{Rs} add Method{"wrapping_add"} :: (i64, Deref{i64}) -> i64;
 fn{Js} add Method{"wrappingAdd"} :: (i64, i64) -> i64;
@@ -1096,6 +1110,8 @@ fn{Rs} wrr (a: i64, b: i64) = {Method{"rotate_right"} :: (i64, Deref{u32}) -> i6
 fn{Js} wrr Method{"rotateRight"} :: (i64, i64) -> i64;
 fn{Rs} clz (a: i64) = {Method{"leading_zeros"} :: i64 -> u32}(a).i64;
 fn{Js} clz Method{"clz"} :: i64 -> i64;
+fn{Rs} ones (a: i64) = {Method{"count_ones"} :: i64 -> u32}(a).i64;
+fn{Js} ones Method{"ones"} :: i64 -> i64;
 
 /// String related bindings
 fn{Rs} string "format!" :: ("{}", f32) -> string;
@@ -3675,6 +3691,19 @@ fn clz(v: gvec3i) = gclz{gvec3i}(v);
 fn clz(v: gvec3u) = gclz{gvec3u}(v);
 fn clz(v: gvec4i) = gclz{gvec4i}(v);
 fn clz(v: gvec4u) = gclz{gvec4u}(v);
+
+fn gones{I}(v: I) {
+  let varName = 'countOneBits('.concat(v.varName).concat(')');
+  return {I}(varName, v.statements, v.buffers);
+}
+fn ones(v: gi32) = gones{gi32}(v);
+fn ones(v: gu32) = gones{gu32}(v);
+fn ones(v: gvec2i) = gones{gvec2i}(v);
+fn ones(v: gvec2u) = gones{gvec2u}(v);
+fn ones(v: gvec3i) = gones{gvec3i}(v);
+fn ones(v: gvec3u) = gones{gvec3u}(v);
+fn ones(v: gvec4i) = gones{gvec4i}(v);
+fn ones(v: gvec4u) = gones{gvec4u}(v);
 
 fn gadd{A, B}(a: A, b: B) {
   let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
