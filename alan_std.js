@@ -223,6 +223,19 @@ export class Int {
     return this.build(clz);
   }
 
+  ones() {
+    // This returns a count of all ones for the number. No real option other than iterating through
+    // each bit and summing the results. Like clz above, convert everything to an unsigned BigInt.
+    const val = this.val < (this.bits == 64 ? 0n : 0) ? BigInt(this.val + this.size) : BigInt(this.val);
+    let ones = 0;
+    for (let i = 0; i < this.bits; i++) {
+      if ((val & (2n ** BigInt(i))) > 0n) {
+        ones++;
+      }
+    }
+    return this.build(ones);
+  }
+
   valueOf() {
     return this.val;
   }
