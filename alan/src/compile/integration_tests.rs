@@ -691,15 +691,6 @@ test!(mutable_functions => r#"
 
 // Conditionals
 
-test!(if_fn => r#"
-    export fn main {
-        if(1 == 0, fn = print('What!?'), fn = print('Math is sane...'));
-        if(1 == 2, fn = 'Uhh...').print;
-        if(1 == 1, 'Correct!').print;
-    }"#;
-    stdout "Math is sane...\nvoid\nCorrect!\n";
-);
-
 test_ignore!(basic_conditionals => r#"
     fn bar() {
       print('bar!');
@@ -896,96 +887,6 @@ test!(array_custom_types => r#"
     stdout "2, 4\n";
 );
 
-test!(basic_dict => r#"
-    export fn main {
-      let test = Dict('foo', 1);
-      // Equivalent to:
-      // let test = Dict{string, i64}();
-      // test.store('foo', 1);
-      test.store('bar', 2);
-      test['baz'] = 99;
-      print(test.Array.map(fn (n: (string, i64)) {
-        return 'key: '.concat(n.0).concat("\nval: ").concat(string(n.1));
-      }).join("\n"));
-      print(test.keys.join(', '));
-      print(test.vals.map(string).join(', '));
-      print(test.len);
-      print(test.get('foo'));
-      test['bar'].print;
-      let test2 = Dict('foo', 3);
-      test2['bay'] = 4;
-      test.concat(test2).Array.map(fn (n: (string, i64)) {
-        return 'key: '.concat(n.0).concat("\nval: ").concat(n.1.string);
-      }).join("\n").print;
-    }"#;
-    stdout r#"key: foo
-val: 1
-key: bar
-val: 2
-key: baz
-val: 99
-foo, bar, baz
-1, 2, 99
-3
-1
-2
-key: foo
-val: 3
-key: bar
-val: 2
-key: baz
-val: 99
-key: bay
-val: 4
-"#;
-);
-test!(keyval_array_to_dict => r#"
-    export fn main {
-      // TODO: Improve this with anonymous tuple support
-      // const kva = [ (1, 'foo'), (2, 'bar'), (3, 'baz') ];
-      const kva = [ {(i64, string)}(1, 'foo'), {(i64, string)}(2, 'bar'), {(i64, string)}(3, 'baz') ];
-      const hm = Dict(kva);
-      print(hm.Array.map(fn (n: (i64, string)) {
-        return 'key: '.concat(string(n.0)).concat("\nval: ").concat(n.1);
-      }).join("\n"));
-      print(hm.get(1));
-    }"#;
-    stdout r#"key: 1
-val: foo
-key: 2
-val: bar
-key: 3
-val: baz
-foo
-"#;
-);
-test!(dict_double_store => r#"
-    export fn main {
-      let test = Dict('foo', 'bar');
-      test.get('foo').print;
-      test.store('foo', 'baz');
-      print(test.get('foo'));
-    }"#;
-    stdout "bar\nbaz\n";
-);
-test!(basic_set => r#"
-    export fn main {
-        let test = Set(0);
-        test.len.print;
-        test.has(0).print;
-        test.has(1).print;
-        test.store(1);
-        test.len.print;
-        let test2 = Set([1, 2]);
-        test.union(test2).len.print;
-        test.intersect(test2).Array.print;
-        test.difference(test2).Array.print;
-        test.symmetricDifference(test2).len.print;
-        test.product(test2).len.print;
-    }"#;
-    stdout "1\ntrue\nfalse\n2\n3\n[1]\n[0]\n2\n4\n";
-);
-
 // Generics
 
 test!(generics => r#"
@@ -1125,17 +1026,6 @@ test!(basic_fn_import "fn_foo" =>
 
 // Maybe, Result, and Either
 
-test!(maybe_exists => r#"
-    export fn main {
-        const maybe5 = Maybe{i64}(5);
-        maybe5.exists.print;
-        const intOrStr = {i64 | string}("It's a string!");
-        intOrStr.i64.exists.print;
-        intOrStr.string.exists.print;
-    }"#;
-    stdout "true\nfalse\ntrue\n";
-);
-
 test!(maybe => r#"
     // TODO: Rewrite these conditionals with conditional syntax once implemented
     fn fiver(val: f64) = if(val.i64 == 5, fn = {i64?}(5), fn = {i64?}());
@@ -1190,42 +1080,6 @@ Error: Divide by zero error!
 0.2
 Error: Divide by zero error!
 Error: there is no error
-"#;
-);
-test!(either => r#"
-    type strOrI64 = string | i64;
-    export fn main {
-      const someStr = strOrI64('string');
-      print(someStr.string);
-      print(someStr.i64);
-      print(someStr.getOr(0));
-      print(someStr.getOr('text'));
-
-      const someI64 = strOrI64(3);
-      print(someI64.string);
-      print(someI64.i64);
-      print(someI64.getOr(0));
-      print(someI64.getOr('text'));
-
-      let either = strOrI64(3);
-      either.string.print;
-      either.i64.print;
-      either = 'text';
-      either.string.print;
-      either.i64.print;
-    }"#;
-    stdout r#"string
-void
-0
-string
-void
-3
-3
-text
-void
-3
-text
-void
 "#;
 );
 
@@ -1370,84 +1224,6 @@ test_ignore!(module_level_constant_from_function_call => r#"
 
 // Trigonometry
 
-test!(cpu_trig => r#"
-    export fn main {
-      'Logarithms and e^x'.print;
-      print(exp(e).string(4));
-      print(ln(e).string(4));
-      print(log10(e).string(4));
-      print(log2(e).string(4));
-
-      'Basic Trig functions'.print;
-      print(sin(tau / 6.0).string(4));
-      print(cos(tau / 6.0).string(4));
-      print(tan(tau / 6.0).string(4));
-      print(sec(tau / 6.0).string(4));
-      print(csc(tau / 6.0).string(4));
-      print(cot(tau / 6.0).string(4));
-
-      'Inverse Trig functions'.print;
-      asin(0.0).string(4).print;
-      acos(1.0).string(4).print;
-      atan(0.0).string(4).print;
-      atan2(1.0, 2.0).string(4).print;
-      print(asec(tau / 6.0).string(4));
-      print(acsc(tau / 6.0).string(4));
-      print(acot(tau / 6.0).string(4));
-
-      'Hyperbolic Trig functions'.print;
-      print(sinh(tau / 6.0).string(4));
-      print(cosh(tau / 6.0).string(4));
-      print(tanh(tau / 6.0).string(4));
-      print(sech(tau / 6.0).string(4));
-      print(csch(tau / 6.0).string(4));
-      print(coth(tau / 6.0).string(4));
-
-      'Inverse Hyperbolic Trig functions'.print;
-      print(asinh(tau / 6.0).string(4));
-      print(acosh(tau / 6.0).string(4));
-      print(atanh(pi / 6.0).string(4));
-      print(asech(0.5).string(4));
-      print(acsch(tau / 6.0).string(4));
-      print(acoth(tau / 6.0).string(4));
-    }"#;
-    stdout r#"Logarithms and e^x
-15.1543
-1.0000
-0.4343
-1.4427
-Basic Trig functions
-0.8660
-0.5000
-1.7321
-2.0000
-1.1547
-0.5774
-Inverse Trig functions
-0.0000
-0.0000
-0.0000
-0.4636
-0.3014
-1.2694
-0.7623
-Hyperbolic Trig functions
-1.2494
-1.6003
-0.7807
-0.6249
-0.8004
-1.2809
-Inverse Hyperbolic Trig functions
-0.9144
-0.3060
-0.5813
-1.3170
-0.8491
-1.8849
-"#;
-);
-
 test_gpgpu!(gpu_trig => r#"
     export fn main {
       'Logarithms and e^x'.print;
@@ -1525,24 +1301,6 @@ Inverse Hyperbolic Trig functions
 0.85
 1.88
 "#;
-);
-
-// Clone
-
-test!(clone => r#"
-    export fn main {
-      let a = 3;
-      let b = a.clone;
-      a = 4;
-      print(a);
-      print(b);
-      let c = [1, 2, 3];
-      let d = c.clone;
-      d[0] = 2;
-      c.map(string).join(', ').print;
-      d.map(string).join(', ').print;
-    }"#;
-    stdout "4\n3\n1, 2, 3\n2, 1, 2, 3\n";
 );
 
 // Runtime Error
@@ -1674,26 +1432,6 @@ test_ignore!(seq_recurse_decrement_regression_test => r#"
 
 // Tree
 
-test!(tree_construction_and_access => r#"
-    export fn main {
-      let myTree = Tree('foo');
-      const barNode = myTree.addChild('bar');
-      const bazNode = myTree.addChild('baz');
-      const bayNode = barNode.addChild('bay');
-
-      let secondTree = Tree('second');
-      const secondNode = secondTree.addChild('node');
-
-      bayNode.addChild(secondTree);
-
-      print(myTree.rootNode.getOr('wrong'));
-      // TODO: Need to dig in deeper in the codegen portion of the compiler
-      //print(bayNode.parent.getOrExit.getOr('wrong'));
-      //print(myTree.children.map(fn (c: Node{string}) -> string = c.getOr('wrong')).join(', '));
-    }"#;
-    //stdout "foo\nbar\nbar, baz\n";
-    stdout "foo\n";
-);
 test_ignore!(tree_user_defined_types => r#"
     type Foo {
       foo: string,

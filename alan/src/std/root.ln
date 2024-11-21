@@ -1280,7 +1280,7 @@ fn Dict{K, V}(a: Array{(K, V)}) = a.reduce(Dict{K, V}(), fn (d: Dict{K, V}, v: (
   return d;
 });
 fn{Rs} has{K, V} (d: Dict{K, V}, k: K) = {Method{"contains_key"} :: (Dict{K, V}, K) -> bool}(d, k);
-fn{Js} has{K, V} (d: Dict{K, V}, k: K) = {"((d, k) => d.has(k?.val ?? k))" :: (Dict{K, V}, K) -> bool}(d, k);
+fn{Js} has{K, V} (d: Dict{K, V}, k: K) = {"((d, k) => new alan_std.Bool(d.has(k?.val ?? k)))" <- RootBacking :: (Dict{K, V}, K) -> bool}(d, k);
 fn{Rs} get{K, V} "alan_std::getdict" <- RootBacking :: (Dict{K, V}, K) -> V?;
 fn{Js} get{K, V} (d: Dict{K, V}, k: K) = {"((d, k) => d.get(k?.val ?? k) || null)" :: (Dict{K, V}, K) -> V?}(d, k);
 fn{Rs} store{K, V} (d: Mut{Dict{K, V}}, k: K, v: V) {
@@ -1349,7 +1349,7 @@ fn{Js} store{V} (s: Mut{Set{V}}, v: V) {
   {"((s, v) => s.add(v?.val ?? v))" :: (Set{V}, V) -> Set{V}}(s, v);
 }
 fn{Rs} has{V} (s: Set{V}, v: V) = {Method{"contains"} :: (Set{V}, V) -> bool}(s, v);
-fn{Js} has{V} (s: Set{V}, v: V) = {"((s, v) => s.has(v?.val ?? v))" :: (Set{V}, V) -> bool}(s, v);
+fn{Js} has{V} (s: Set{V}, v: V) = {"((s, v) => new alan_std.Bool(s.has(v?.val ?? v)))" <- RootBacking :: (Set{V}, V) -> bool}(s, v);
 fn{Rs} len{V} (s: Set{V}) = {Cast{"i64"} :: Deref{Binds{"usize"}} -> i64}(
   {Method{"len"} :: Set{V} -> Binds{"usize"}}(s));
 fn{Js} len{V} (s: Set{V}) = {Property{"size"} :: Set{V} -> i32}(s).i64;
