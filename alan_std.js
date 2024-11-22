@@ -223,6 +223,28 @@ export class Int {
     return this.build(clz);
   }
 
+  ctz() {
+    // This returns all of the trailing zeros for a number. Like clz above, first convert everything
+    // to an unsigned BigInt to make the work simpler
+    let val = this.val < (this.bits == 64 ? 0n : 0) ? BigInt(this.val + this.size) : BigInt(this.val);
+    if (val == 0n) {
+      return this.build(this.bits);
+    }
+    // Trailing zeros is a bit different. We'll use a shift and check approach, checking the modulus
+    // 2 of the value to determine the last bit and increment the count if it's zero, then right
+    // shift and check again until we get 1 and abort the loop.
+    let ctz = 0;
+    for (let i = 0; i < this.bits; i++) {
+      if (val %2n == 0n) {
+        ctz++;
+        val = val >> 1n;
+      } else {
+        break;
+      }
+    }
+    return this.build(ctz);
+  }
+
   ones() {
     // This returns a count of all ones for the number. No real option other than iterating through
     // each bit and summing the results. Like clz above, convert everything to an unsigned BigInt.
