@@ -16,7 +16,7 @@ jobs:
     - name: Run tests
       run: npm test
   test-js-gpgpu:
-    runs-on: [self-hosted, macOS]
+    runs-on: [self-hosted, macOS, ARM64]
     steps:
     - uses: actions/checkout@v4
     - name: Install deps

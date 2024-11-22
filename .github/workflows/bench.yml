@@ -33,7 +33,7 @@ jobs:
       run: cargo bench
 
   bench-macos:
-    runs-on: [self-hosted, macOS]
+    runs-on: [self-hosted, macOS, X64]
     steps:
     - uses: actions/checkout@v4
     - name: Build Alan
@@ -43,6 +43,15 @@ jobs:
 
   bench-arm-linux:
     runs-on: [self-hosted, linux, ARM64]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build Alan
+      run: cargo build --verbose
+    - name: Rust-managed Benchmarks
+      run: cargo bench
+
+  bench-arm-macos:
+    runs-on: [self-hosted, macOS, ARM64]
     steps:
     - uses: actions/checkout@v4
     - name: Build Alan
