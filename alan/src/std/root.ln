@@ -738,6 +738,8 @@ fn{Rs} clz (a: u8) = {Method{"leading_zeros"} :: u8 -> u32}(a).u8;
 fn{Js} clz Method{"clz"} :: u8 -> u8;
 fn{Rs} ones (a: u8) = {Method{"count_ones"} :: u8 -> u32}(a).u8;
 fn{Js} ones Method{"ones"} :: u8 -> u8;
+fn{Rs} ctz (a: u8) = {Method{"trailing_zeros"} :: u8 -> u32}(a).u8;
+fn{Js} ctz Method{"ctz"} :: u8 -> u8;
 
 fn{Rs} add Method{"wrapping_add"} :: (u16, Deref{u16}) -> u16;
 fn{Js} add Method{"wrappingAdd"} :: (u16, u16) -> u16;
@@ -789,6 +791,8 @@ fn{Rs} clz (a: u16) = {Method{"leading_zeros"} :: u16 -> u32}(a).u16;
 fn{Js} clz Method{"clz"} :: u16 -> u16;
 fn{Rs} ones (a: u16) = {Method{"count_ones"} :: u16 -> u32}(a).u16;
 fn{Js} ones Method{"ones"} :: u16 -> u16;
+fn{Rs} ctz (a: u16) = {Method{"trailing_zeros"} :: u16 -> u32}(a).u16;
+fn{Js} ctz Method{"ctz"} :: u16 -> u16;
 
 fn{Rs} add Method{"wrapping_add"} :: (u32, Deref{u32}) -> u32;
 fn{Js} add Method{"wrappingAdd"} :: (u32, u32) -> u32;
@@ -840,6 +844,8 @@ fn{Rs} clz Method{"leading_zeros"} :: u32 -> u32;
 fn{Js} clz Method{"clz"} :: u32 -> u32;
 fn{Rs} ones (a: u32) = {Method{"count_ones"} :: u32 -> u32}(a).u32;
 fn{Js} ones Method{"ones"} :: u32 -> u32;
+fn{Rs} ctz (a: u32) = {Method{"trailing_zeros"} :: u32 -> u32}(a).u32;
+fn{Js} ctz Method{"ctz"} :: u32 -> u32;
 
 fn{Rs} add Method{"wrapping_add"} :: (u64, Deref{u64}) -> u64;
 fn{Js} add Method{"wrappingAdd"} :: (u64, u64) -> u64;
@@ -891,6 +897,8 @@ fn{Rs} clz (a: u64) = {Method{"leading_zeros"} :: u64 -> u32}(a).u64;
 fn{Js} clz Method{"clz"} :: u64 -> u64;
 fn{Rs} ones (a: u64) = {Method{"count_ones"} :: u64 -> u32}(a).u64;
 fn{Js} ones Method{"ones"} :: u64 -> u64;
+fn{Rs} ctz (a: u64) = {Method{"trailing_zeros"} :: u64 -> u32}(a).u64;
+fn{Js} ctz Method{"ctz"} :: u64 -> u64;
 
 /// Signed Integer-related functions and function bindings
 fn{Rs} add Method{"wrapping_add"} :: (i8, Deref{i8}) -> i8;
@@ -947,6 +955,8 @@ fn{Rs} clz (a: i8) = {Method{"leading_zeros"} :: i8 -> u32}(a).i8;
 fn{Js} clz Method{"clz"} :: i8 -> i8;
 fn{Rs} ones (a: i8) = {Method{"count_ones"} :: i8 -> u32}(a).i8;
 fn{Js} ones Method{"ones"} :: i8 -> i8;
+fn{Rs} ctz (a: i8) = {Method{"trailing_zeros"} :: i8 -> u32}(a).i8;
+fn{Js} ctz Method{"ctz"} :: i8 -> i8;
 
 fn{Rs} add Method{"wrapping_add"} :: (i16, Deref{i16}) -> i16;
 fn{Js} add Method{"wrappingAdd"} :: (i16, i16) -> i16;
@@ -1002,6 +1012,8 @@ fn{Rs} clz (a: i16) = {Method{"leading_zeros"} :: i16 -> u32}(a).i16;
 fn{Js} clz Method{"clz"} :: i16 -> i16;
 fn{Rs} ones (a: i16) = {Method{"count_ones"} :: i16 -> u32}(a).i16;
 fn{Js} ones Method{"ones"} :: i16 -> i16;
+fn{Rs} ctz (a: i16) = {Method{"trailing_zeros"} :: i16 -> u32}(a).i16;
+fn{Js} ctz Method{"ctz"} :: i16 -> i16;
 
 fn{Rs} add Method{"wrapping_add"} :: (i32, Deref{i32}) -> i32;
 fn{Js} add Method{"wrappingAdd"} :: (i32, i32) -> i32;
@@ -1057,6 +1069,8 @@ fn{Rs} clz (a: i32) = {Method{"leading_zeros"} :: i32 -> u32}(a).i32;
 fn{Js} clz Method{"clz"} :: i32 -> i32;
 fn{Rs} ones (a: i32) = {Method{"count_ones"} :: i32 -> u32}(a).i32;
 fn{Js} ones Method{"ones"} :: i32 -> i32;
+fn{Rs} ctz (a: i32) = {Method{"trailing_zeros"} :: i32 -> u32}(a).i32;
+fn{Js} ctz Method{"ctz"} :: i32 -> i32;
 
 fn{Rs} add Method{"wrapping_add"} :: (i64, Deref{i64}) -> i64;
 fn{Js} add Method{"wrappingAdd"} :: (i64, i64) -> i64;
@@ -1112,6 +1126,8 @@ fn{Rs} clz (a: i64) = {Method{"leading_zeros"} :: i64 -> u32}(a).i64;
 fn{Js} clz Method{"clz"} :: i64 -> i64;
 fn{Rs} ones (a: i64) = {Method{"count_ones"} :: i64 -> u32}(a).i64;
 fn{Js} ones Method{"ones"} :: i64 -> i64;
+fn{Rs} ctz (a: i64) = {Method{"trailing_zeros"} :: i64 -> u32}(a).i64;
+fn{Js} ctz Method{"ctz"} :: i64 -> i64;
 
 /// String related bindings
 fn{Rs} string "format!" :: ("{}", f32) -> string;
@@ -3704,6 +3720,19 @@ fn ones(v: gvec3i) = gones{gvec3i}(v);
 fn ones(v: gvec3u) = gones{gvec3u}(v);
 fn ones(v: gvec4i) = gones{gvec4i}(v);
 fn ones(v: gvec4u) = gones{gvec4u}(v);
+
+fn gctz{I}(v: I) {
+  let varName = 'countTrailingZeros('.concat(v.varName).concat(')');
+  return {I}(varName, v.statements, v.buffers);
+}
+fn ctz(v: gi32) = gctz{gi32}(v);
+fn ctz(v: gu32) = gctz{gu32}(v);
+fn ctz(v: gvec2i) = gctz{gvec2i}(v);
+fn ctz(v: gvec2u) = gctz{gvec2u}(v);
+fn ctz(v: gvec3i) = gctz{gvec3i}(v);
+fn ctz(v: gvec3u) = gctz{gvec3u}(v);
+fn ctz(v: gvec4i) = gctz{gvec4i}(v);
+fn ctz(v: gvec4u) = gctz{gvec4u}(v);
 
 fn gadd{A, B}(a: A, b: B) {
   let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');

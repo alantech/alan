@@ -609,6 +609,14 @@ test_gpgpu!(gpu_ones => r#"
     stdout "[1, 1, 2, 32]\n";
 );
 
+test_gpgpu!(gpu_ctz => r#"
+    export fn main {
+        let b = GBuffer([0.i32, 1.i32, 2.i32, -2_147_483_648.i32]);
+        b.map(fn (val: gi32) = val.ctz).read{i32}.print;
+    }"#;
+    stdout "[32, 0, 1, 31]\n";
+);
+
 // TODO: Fix u64 numeric constants to get u64 bitwise tests in the new test suite
 test!(u64_bitwise => r#"
     prefix u64 as ~ precedence 10
