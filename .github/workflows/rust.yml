@@ -47,7 +47,7 @@ jobs:
       run: cargo run --release -- test --js alan/test.ln
 
   test-macos:
-    runs-on: [self-hosted, macOS]
+    runs-on: [self-hosted, macOS, X64]
     steps:
     - uses: actions/checkout@v4
     - name: Node deps
@@ -82,6 +82,30 @@ jobs:
     - if: ${{ github.ref_name != 'main' }}
       name: Run tests
       run: RUST_MIN_STACK=8388608 cargo test --verbose
+    - name: Run native tests
+      run: cargo run --release -- test alan/test.ln
+    - name: Run js tests
+      run: cargo run --release -- test --js alan/test.ln
+
+  test-arm-macos:
+    runs-on: [self-hosted, macOS, ARM64]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Node deps
+      run: yarn
+    - name: Start web server
+      run: yarn start-server
+    - name: Build
+      run: cargo build --verbose
+    - if: ${{ github.ref_name == 'main' }}
+      name: Run tests
+      run: cargo test --verbose -- --include-ignored
+    - if: ${{ github.ref_name != 'main' }}
+      name: Run tests
+      run: cargo test --verbose
+    - if: always()
+      name: Stop web server
+      run: yarn stop-server
     - name: Run native tests
       run: cargo run --release -- test alan/test.ln
     - name: Run js tests
