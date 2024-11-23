@@ -690,6 +690,20 @@ pub fn productset<V: std::clone::Clone + std::hash::Hash + Eq>(
     out
 }
 
+/// Vector-related functions
+
+pub fn cross<V>(a: &[V; 3], b: &[V; 3]) -> [V; 3]
+where
+    V: std::ops::Deref + std::ops::Mul<Output = V> + std::ops::Sub<Output = V>,
+    <V as Deref>::Target: std::ops::Mul<Output = V> + Sized + Copy + std::ops::Sub<Output = V>,
+{
+    [
+        *a[1] * *b[2] - *a[2] * *b[1],
+        *a[2] * *b[0] - *a[0] * *b[2],
+        *a[0] * *b[1] - *a[1] * *b[0],
+    ]
+}
+
 /// GPU-related functions and types
 
 pub struct GPU {
