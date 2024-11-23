@@ -420,6 +420,16 @@ export class Str {
   }
 }
 
+export function cross(a, b) {
+  // Assuming they're all the same type
+  let type = a[0].constructor;
+  return [
+    new type(a[1].val * b[2].val - a[2].val * b[1].val),
+    new type(a[2].val * b[0].val - a[0].val * b[2].val),
+    new type(a[0].val * b[1].val - a[1].val * b[0].val),
+  ];
+}
+
 export class GPU {
   constructor(adapter, device, queue) {
     this.adapter = adapter;

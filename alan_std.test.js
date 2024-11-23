@@ -411,3 +411,15 @@ assert.equal(new alanStd.I64(1).ctz(), 0n, "ctzI64(1) = 0");
 assert.equal(new alanStd.I64(2).ctz(), 1n, "ctzI64(2) = 1");
 assert.equal(new alanStd.I64(3).ctz(), 0n, "ctzI64(3) = 0");
 assert.equal(new alanStd.I64(-9_223_372_036_854_775_808n).ctz(), 63n, "ctzI64(-9_223_372_036_854_775_808n) = 63");
+
+assert.deepEqual(alanStd.cross(
+  [new alanStd.F64(1), new alanStd.F64(0), new alanStd.F64(0)],
+  [new alanStd.F64(0), new alanStd.F64(1), new alanStd.F64(0)],
+), [new alanStd.F64(0), new alanStd.F64(0), new alanStd.F64(1)],
+"cross([1, 0, 0], [0, 1, 0]) = [0, 0, 1]");
+
+assert.deepEqual(alanStd.cross(
+  [new alanStd.F64(0), new alanStd.F64(1), new alanStd.F64(0)],
+  [new alanStd.F64(1), new alanStd.F64(0), new alanStd.F64(0)],
+), [new alanStd.F64(0), new alanStd.F64(0), new alanStd.F64(-1)],
+"cross([0, 1, 0], [1, 0, 0]) = [0, 0, -1]");
