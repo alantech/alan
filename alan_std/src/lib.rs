@@ -692,15 +692,19 @@ pub fn productset<V: std::clone::Clone + std::hash::Hash + Eq>(
 
 /// Vector-related functions
 
-pub fn cross<V>(a: &[V; 3], b: &[V; 3]) -> [V; 3]
-where
-    V: std::ops::Deref + std::ops::Mul<Output = V> + std::ops::Sub<Output = V>,
-    <V as Deref>::Target: std::ops::Mul<Output = V> + Sized + Copy + std::ops::Sub<Output = V>,
-{
+pub fn cross_f32(a: &[f32; 3], b: &[f32; 3]) -> [f32; 3] {
     [
-        *a[1] * *b[2] - *a[2] * *b[1],
-        *a[2] * *b[0] - *a[0] * *b[2],
-        *a[0] * *b[1] - *a[1] * *b[0],
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0],
+    ]
+}
+
+pub fn cross_f64(a: &[f64; 3], b: &[f64; 3]) -> [f64; 3] {
+    [
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0],
     ]
 }
 
