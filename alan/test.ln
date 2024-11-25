@@ -436,6 +436,9 @@ export fn{Test} main {
       .assert(eq, 5.u32 !^ 3.u32, 4_294_967_289.u32);
     // TODO: Fix u64 numeric constants to get u64 bitwise tests in here
 
+  test.describe("Cross Product").it("")
+    .assert(eq, ({f64[3]}(1.0, 0.0, 0.0) >< {f64[3]}(0.0, 1.0, 0.0)).map(fn (v: f64) = string(v)).join(', '), {f64[3]}(0.0, 0.0, 1.0).map(fn (v: f64) = string(v)).join(', '));
+
   test.describe("Boolean logic").it("")
     .assert(eq, true, true)
     .assert(eq, false, false)
