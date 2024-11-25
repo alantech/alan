@@ -619,8 +619,14 @@ test_gpgpu!(gpu_ctz => r#"
 
 test_gpgpu!(gpu_cross => r#"
     // TODO: A nicer test involving `map`
+
+    // TODO: This is horrible
+    fn{Rs} fixJsGBuffer(b: GBuffer) = b;
+    fn{Js} fixJsGBuffer "((b) => { b.ValKind = alan_std.F32; })" :: GBuffer;
+
     export fn main {
       let b = GBuffer(filled(0.f32, 2));
+      fixJsGBuffer(b);
       let idx = gFor(2);
       let compute = b[idx].store(if(
         idx == 0,
