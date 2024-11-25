@@ -189,6 +189,7 @@ infix add as + precedence 3;
 infix sub as - precedence 3;
 prefix neg as - precedence 6;
 infix mul as * precedence 4;
+infix cross as >< precedence 4;
 infix div as / precedence 4;
 infix mod as % precedence 4;
 // export infix template as % precedence 4;
@@ -1298,6 +1299,11 @@ fn{Rs} repeat{T, S} "alan_std::repeatbuffertoarray" <- RootBacking :: (T[S], i64
 fn{Js} repeat{T, S} (a: T[S], c: i64) = {"((a, c) => { let out = []; for (let i = 0n; i < c; i++) { out.push(...a); } return out; })" :: (T[S], i64) -> T[]}(a, c);
 fn{Rs} store{T, S} "alan_std::storebuffer" <- RootBacking :: (Mut{T[S]}, i64, T) -> T!;
 fn{Js} store{T, S} (a: T[S], i: i64, v: T) = {"((a, i, v) => { if (i < 0n || i > BigInt(a.length)) { return new alan_std.AlanError(new alan_std.Str(`Provided array index ${i.toString()} is greater than the length of the array`)); } else { let out = a[Number(i)]; a[Number(i)] = v; return out; } })" :: (T[S], i64, T) -> T!}(a, i, v);
+fn{Rs} cross "alan_std::cross_f32" <- RootBacking :: (Buffer{f32, 3}, Buffer{f32, 3}) -> Buffer{f32, 3};
+fn{Rs} cross "alan_std::cross_f64" <- RootBacking :: (Buffer{f64, 3}, Buffer{f64, 3}) -> Buffer{f64, 3};
+fn{Js} cross{T} "alan_std.cross" <- RootBacking :: (Buffer{T, 3}, Buffer{T, 3}) -> Buffer{T, 3};
+fn{Js} cross(a: Buffer{f32, 3}, b: Buffer{f32, 3}) = cross{f32}(a, b);
+fn{Js} cross(a: Buffer{f64, 3}, b: Buffer{f64, 3}) = cross{f64}(a, b);
 
 /// Dictionary-related bindings
 fn{Rs} Dict{K, V} "alan_std::OrderedHashMap::new" <- RootBacking :: () -> Dict{K, V};
@@ -3734,6 +3740,14 @@ fn ctz(v: gvec3u) = gctz{gvec3u}(v);
 fn ctz(v: gvec4i) = gctz{gvec4i}(v);
 fn ctz(v: gvec4u) = gctz{gvec4u}(v);
 
+fn cross(a: gvec3f, b: gvec3f) {
+  // Yes, this legitimately only works for this exact type in wgsl
+  let varName = 'cross('.concat(a.varName).concat(', ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gvec3f(varName, statements, buffers);
+}
+
 fn gadd{A, B}(a: A, b: B) {
   let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
   let statements = a.statements.concat(b.statements);
@@ -4938,8 +4952,8 @@ fn{Rs} print (d: Duration) = {"println!" :: ("{}.{:0>9}", u64, u32)}(
 fn{Rs} print(v: void) = {"println!" :: "void"}();
 fn{Js} print(v: void) = {"console.log" :: "void"}();
 fn{Rs} print(s: string) = {"println!" :: ("{}", string)}(s);
-fn{Rs} print{T, N}(a: T[N]) = "[".concat(a.map(string).join(", ")).concat("]").print;
-fn{Rs} print{T}(a: T[]) = "[".concat(a.map(string).join(", ")).concat("]").print;
+fn{Rs} print{T, N}(a: T[N]) = "[".concat(a.map(fn (v: T) = string(v)).join(", ")).concat("]").print;
+fn{Rs} print{T}(a: T[]) = "[".concat(a.map(fn (v: T) = string(v)).join(", ")).concat("]").print;
 fn print{T}(v: T?) = if(v.exists,
   fn = print(v!!),
   fn = print("void"));

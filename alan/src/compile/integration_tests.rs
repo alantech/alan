@@ -617,6 +617,28 @@ test_gpgpu!(gpu_ctz => r#"
     stdout "[32, 0, 1, 31]\n";
 );
 
+test_gpgpu!(gpu_cross => r#"
+    // TODO: A nicer test involving `map`
+
+    // TODO: This is horrible
+    fn{Rs} fixJsGBuffer(b: GBuffer) = b;
+    fn{Js} fixJsGBuffer "((b) => { b.ValKind = alan_std.F32; })" :: GBuffer;
+
+    export fn main {
+      let b = GBuffer(filled(0.f32, 2));
+      fixJsGBuffer(b);
+      let idx = gFor(2);
+      let compute = b[idx].store(if(
+        idx == 0,
+        gvec3f(1.0, 0.0, 0.0) >< gvec3f(0.0, 1.0, 0.0),
+        gvec3f(0.0, 1.0, 0.0) >< gvec3f(1.0, 0.0, 0.0)
+      ).z.asI32); // TODO: This isn't right and shouldn't be necessary
+      compute.build.run;
+      b.read{f32}.print;
+    }"#;
+    stdout "[1, -1]\n";
+);
+
 // TODO: Fix u64 numeric constants to get u64 bitwise tests in the new test suite
 test!(u64_bitwise => r#"
     prefix u64 as ~ precedence 10
