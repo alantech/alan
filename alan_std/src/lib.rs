@@ -8,6 +8,10 @@ use std::sync::OnceLock;
 pub use ordered_hash_map::OrderedHashMap;
 pub use uuid::Uuid;
 pub use wgpu::BufferUsages;
+use winit::application::ApplicationHandler;
+use winit::event::WindowEvent;
+use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
+use winit::window::{Window, WindowAttributes, WindowId};
 
 /// The `AlanError` type is a *cloneable* error that all errors are implemented as within Alan, to
 /// simplify error handling. In the future it will have a stack trace based on the Alan source
@@ -1171,5 +1175,49 @@ pub fn replace_buffer<T>(b: &GBuffer, v: &Vec<T>) -> Result<(), AlanError> {
         g.queue.submit(Some(encoder.finish()));
         gb.destroy();
         Ok(())
+    }
+}
+
+/// Window-related types and functions
+
+#[derive(Default)]
+pub struct AlanWindow {
+    config: Option<WindowAttributes>,
+    window: Option<Window>,
+}
+
+impl ApplicationHandler for AlanWindow {
+    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        self.window = Some(
+            event_loop
+                .create_window(self.config.clone().unwrap_or(Window::default_attributes()))
+                .unwrap(),
+        );
+    }
+
+    fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
+        match event {
+            WindowEvent::CloseRequested => {
+                event_loop.exit();
+            }
+            WindowEvent::RedrawRequested => {
+                // From the example but doesn't make sense to me.
+                self.window.as_ref().unwrap().request_redraw();
+            }
+            _ => {} // Ignore all other events
+        }
+    }
+}
+
+pub fn run_window() -> Result<(), AlanError> {
+    // TODO: This should accept a render handler
+    let event_loop = EventLoop::new().unwrap();
+    event_loop.set_control_flow(ControlFlow::Poll); // TODO: This should also be configurable
+    let mut app = AlanWindow::default();
+    match event_loop.run_app(&mut app) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(AlanError {
+            message: format!("{:?}", e),
+        }),
     }
 }
