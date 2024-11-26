@@ -1205,6 +1205,14 @@ impl ApplicationHandler for AlanWindow {
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
         match event {
             WindowEvent::CloseRequested => {
+                // Cleanup the app now that we're caching things
+                self.render_pipeline = None;
+                self.pipeline_layout = None;
+                self.shader = None;
+                self.queue = None;
+                self.device = None;
+                self.adapter = None;
+                self.instance = None;
                 event_loop.exit();
             }
             WindowEvent::Resized(_new_size) => {
