@@ -1219,6 +1219,7 @@ impl ApplicationHandler for AlanWindow {
                 self.window.as_ref().unwrap().request_redraw();
             }
             WindowEvent::RedrawRequested => {
+                let start = std::time::Instant::now();
                 // TODO: The setup starting here should not be done on every frame draw
                 let mut size = self.window.as_ref().unwrap().inner_size();
                 size.width = size.width.max(1);
@@ -1366,6 +1367,11 @@ impl ApplicationHandler for AlanWindow {
 
                 queue.submit(Some(encoder.finish()));
                 frame.present();
+                let render_time = start.elapsed();
+                self.window
+                    .as_ref()
+                    .unwrap()
+                    .set_title(&format!("Render time: {:.3}", render_time.as_secs_f64()));
             }
             _ => {} // Ignore all other events
         }
