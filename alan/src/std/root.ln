@@ -116,7 +116,7 @@ type Rs = Env{"ALAN_OUTPUT_LANG"} == "rs";
 type Js = Env{"ALAN_OUTPUT_LANG"} == "js";
 
 // Importing the Root Scope backing implementation and supporting 3rd party libraries
-type{Rs} RootBacking = Rust{"alan_std" @ "https://github.com/alantech/alan.git"};
+type{Rs} RootBacking = Rust{"alan_std" @ "https://github.com/alantech/alan.git#render-to-window"};
 type{Js} RootBacking = Node{"alan_std" @ "https://github.com/alantech/alan.git"};
 
 // Defining derived types
@@ -4925,6 +4925,9 @@ fn map{G, G2}(gb: GBuffer, f: (G, gu32) -> G2) {
   compute.build.run;
   return out;
 }
+
+/// Window-related bindings
+fn{Rs} runWindow "alan_std::run_window" <- RootBacking :: () -> ()!; // TODO: Make this more useful in the future
 
 /// Process exit-related bindings
 fn{Rs} ExitCode "std::process::ExitCode::from" :: Own{u8} -> ExitCode;
