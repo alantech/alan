@@ -1200,9 +1200,115 @@ impl ApplicationHandler for AlanWindow {
             WindowEvent::CloseRequested => {
                 event_loop.exit();
             }
-            WindowEvent::RedrawRequested => {
-                // From the example but doesn't make sense to me.
+            WindowEvent::Resized(_new_size) => {
                 self.window.as_ref().unwrap().request_redraw();
+            }
+            WindowEvent::RedrawRequested => {
+                // TODO: The setup starting here should not be done on every frame draw
+                let mut size = self.window.as_ref().unwrap().inner_size();
+                size.width = size.width.max(1);
+                size.height = size.height.max(1);
+                let instance = wgpu::Instance::default();
+                let surface = instance
+                    .create_surface(self.window.as_ref().unwrap())
+                    .unwrap();
+                // TODO: We're just assuming that the default-selected configuration is gonna work with this
+                // surface. We should do better here.
+                let g = gpu();
+                // TODO: Just copying stuff from [this
+                // example](https://github.com/gfx-rs/wgpu/blob/trunk/examples/src/hello_triangle/mod.rs) at
+                // the moment. Will be replaced with logic to splat a user-defined compute shader into the
+                // window after I can even get the window rendering something.
+                let shader_code = r#"
+                    @vertex
+                    fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> @builtin(position) vec4<f32> {
+                        let x = f32(i32(in_vertex_index) - 1);
+                        let y = f32(i32(in_vertex_index & 1u) * 2 - 1);
+                        return vec4<f32>(x, y, 0.0, 1.0);
+                    }
+
+                    @fragment
+                    fn fs_main() -> @location(0) vec4<f32> {
+                        return vec4<f32>(1.0, 0.0, 0.0, 1.0);
+                    }
+                "#;
+                let shader = g.device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: None,
+                    source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(shader_code)),
+                });
+                let pipeline_layout =
+                    g.device
+                        .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                            label: None,
+                            bind_group_layouts: &[],
+                            push_constant_ranges: &[],
+                        });
+
+                let surface_capabilities = surface.get_capabilities(&g.adapter);
+                let surface_format = surface_capabilities.formats[0];
+
+                let render_pipeline =
+                    g.device
+                        .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                            label: None,
+                            layout: Some(&pipeline_layout),
+                            vertex: wgpu::VertexState {
+                                module: &shader,
+                                entry_point: Some("vs_main"),
+                                buffers: &[],
+                                compilation_options: Default::default(),
+                            },
+                            fragment: Some(wgpu::FragmentState {
+                                module: &shader,
+                                entry_point: Some("fs_main"),
+                                compilation_options: Default::default(),
+                                targets: &[Some(surface_format.into())],
+                            }),
+                            primitive: wgpu::PrimitiveState::default(),
+                            depth_stencil: None,
+                            multisample: wgpu::MultisampleState::default(),
+                            multiview: None,
+                            cache: None,
+                        });
+
+                let mut config = surface
+                    .get_default_config(&g.adapter, size.width, size.height)
+                    .unwrap();
+                surface.configure(&g.device, &config);
+                // TODO: The setup above should not be done on every frame draw
+                // The following code *should* be in every frame draw
+                let frame = surface.get_current_texture().unwrap();
+                let view = frame
+                    .texture
+                    .create_view(&wgpu::TextureViewDescriptor::default());
+                let mut encoder = g
+                    .device
+                    .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+                {
+                    // The following is in a block in the example, presumably to make the borrow
+                    // checker happy
+                    let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                        label: None,
+                        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                            view: &view,
+                            resolve_target: None,
+                            ops: wgpu::Operations {
+                                load: wgpu::LoadOp::Clear(wgpu::Color::GREEN),
+                                store: wgpu::StoreOp::Store,
+                            },
+                        })],
+                        depth_stencil_attachment: None,
+                        timestamp_writes: None,
+                        occlusion_query_set: None,
+                    });
+                    rpass.set_pipeline(&render_pipeline);
+                    rpass.draw(0..3, 0..1);
+                }
+
+                g.queue.submit(Some(encoder.finish()));
+                frame.present();
+                // From the example but doesn't make sense to me.
+                //self.window.as_ref().unwrap().request_redraw();
             }
             _ => {} // Ignore all other events
         }
@@ -1211,9 +1317,9 @@ impl ApplicationHandler for AlanWindow {
 
 pub fn run_window() -> Result<(), AlanError> {
     // TODO: This should accept a render handler
+    let mut app = AlanWindow::default();
     let event_loop = EventLoop::new().unwrap();
     event_loop.set_control_flow(ControlFlow::Poll); // TODO: This should also be configurable
-    let mut app = AlanWindow::default();
     match event_loop.run_app(&mut app) {
         Ok(_) => Ok(()),
         Err(e) => Err(AlanError {
