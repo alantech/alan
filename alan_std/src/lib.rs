@@ -1184,6 +1184,13 @@ pub fn replace_buffer<T>(b: &GBuffer, v: &Vec<T>) -> Result<(), AlanError> {
 pub struct AlanWindow {
     config: Option<WindowAttributes>,
     window: Option<Window>,
+    instance: Option<wgpu::Instance>,
+    adapter: Option<wgpu::Adapter>,
+    device: Option<wgpu::Device>,
+    queue: Option<wgpu::Queue>,
+    shader: Option<wgpu::ShaderModule>,
+    pipeline_layout: Option<wgpu::PipelineLayout>,
+    render_pipeline: Option<wgpu::RenderPipeline>,
 }
 
 impl ApplicationHandler for AlanWindow {
@@ -1208,93 +1215,120 @@ impl ApplicationHandler for AlanWindow {
                 let mut size = self.window.as_ref().unwrap().inner_size();
                 size.width = size.width.max(1);
                 size.height = size.height.max(1);
-                let instance = wgpu::Instance::default();
+                // The first frame render will be slower because the GPU types are initialized, but
+                // follow-up frames can skip straight to rendering the frame only.
+                if let None = self.instance {
+                    self.instance = Some(wgpu::Instance::default());
+                }
+                let instance = self.instance.as_ref().unwrap();
                 let surface = instance
                     .create_surface(self.window.as_ref().unwrap())
                     .unwrap();
-                // TODO: We're just assuming that the default-selected configuration is gonna work with this
-                // surface. We should do better here.
-                //let g = gpu();
                 // TODO: Just copying stuff from [this
                 // example](https://github.com/gfx-rs/wgpu/blob/trunk/examples/src/hello_triangle/mod.rs) at
                 // the moment. Will be replaced with logic to splat a user-defined compute shader into the
                 // window after I can even get the window rendering something.
-                let adapter =
-                    pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-                        power_preference: wgpu::PowerPreference::default(), // TODO: Configure this
-                        force_fallback_adapter: false,
-                        compatible_surface: Some(&surface),
-                    }))
+                if let None = self.adapter {
+                    self.adapter = Some(
+                        pollster::block_on(instance.request_adapter(
+                            &wgpu::RequestAdapterOptions {
+                                power_preference: wgpu::PowerPreference::default(), // TODO: Configure this
+                                force_fallback_adapter: false,
+                                compatible_surface: Some(&surface),
+                            },
+                        ))
+                        .unwrap(),
+                    );
+                }
+                if let None = self.device {
+                    // We can do both device and queue here as they're created at the same time
+                    let adapter = self.adapter.as_ref().unwrap();
+                    let (device, queue) = pollster::block_on(
+                        adapter.request_device(
+                            &wgpu::DeviceDescriptor {
+                                label: None,
+                                required_features: wgpu::Features::empty(),
+                                required_limits: wgpu::Limits::downlevel_webgl2_defaults()
+                                    .using_resolution(adapter.limits()),
+                                memory_hints: wgpu::MemoryHints::MemoryUsage,
+                            },
+                            None,
+                        ),
+                    )
                     .unwrap();
-                let (device, queue) = pollster::block_on(
-                    adapter.request_device(
-                        &wgpu::DeviceDescriptor {
+                    self.device = Some(device);
+                    self.queue = Some(queue);
+                }
+                if let None = self.shader {
+                    let device = self.device.as_ref().unwrap();
+                    let shader_code = r#"
+                        @vertex
+                        fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> @builtin(position) vec4<f32> {
+                            let x = f32(i32(in_vertex_index) - 1);
+                            let y = f32(i32(in_vertex_index & 1u) * 2 - 1);
+                            return vec4<f32>(x, y, 0.0, 1.0);
+                        }
+
+                        @fragment
+                        fn fs_main() -> @location(0) vec4<f32> {
+                            return vec4<f32>(1.0, 0.0, 0.0, 1.0);
+                        }
+                    "#;
+                    self.shader = Some(device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                        label: None,
+                        source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(shader_code)),
+                    }));
+                }
+                if let None = self.pipeline_layout {
+                    let device = self.device.as_ref().unwrap();
+                    self.pipeline_layout = Some(device.create_pipeline_layout(
+                        &wgpu::PipelineLayoutDescriptor {
                             label: None,
-                            required_features: wgpu::Features::empty(),
-                            required_limits: wgpu::Limits::downlevel_webgl2_defaults()
-                                .using_resolution(adapter.limits()),
-                            memory_hints: wgpu::MemoryHints::MemoryUsage,
+                            bind_group_layouts: &[],
+                            push_constant_ranges: &[],
                         },
-                        None,
-                    ),
-                )
-                .unwrap();
-                let shader_code = r#"
-                    @vertex
-                    fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> @builtin(position) vec4<f32> {
-                        let x = f32(i32(in_vertex_index) - 1);
-                        let y = f32(i32(in_vertex_index & 1u) * 2 - 1);
-                        return vec4<f32>(x, y, 0.0, 1.0);
-                    }
+                    ));
+                }
+                if let None = self.render_pipeline {
+                    let adapter = self.adapter.as_ref().unwrap();
+                    let device = self.device.as_ref().unwrap();
+                    let pipeline_layout = self.pipeline_layout.as_ref().unwrap();
+                    let shader = self.shader.as_ref().unwrap();
+                    let surface_capabilities = surface.get_capabilities(&adapter);
+                    let surface_format = surface_capabilities.formats[0];
 
-                    @fragment
-                    fn fs_main() -> @location(0) vec4<f32> {
-                        return vec4<f32>(1.0, 0.0, 0.0, 1.0);
-                    }
-                "#;
-                let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: None,
-                    source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(shader_code)),
-                });
-                let pipeline_layout =
-                    device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                        label: None,
-                        bind_group_layouts: &[],
-                        push_constant_ranges: &[],
-                    });
-
-                let surface_capabilities = surface.get_capabilities(&adapter);
-                let surface_format = surface_capabilities.formats[0];
-
-                let render_pipeline =
-                    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                        label: None,
-                        layout: Some(&pipeline_layout),
-                        vertex: wgpu::VertexState {
-                            module: &shader,
-                            entry_point: Some("vs_main"),
-                            buffers: &[],
-                            compilation_options: Default::default(),
+                    self.render_pipeline = Some(device.create_render_pipeline(
+                        &wgpu::RenderPipelineDescriptor {
+                            label: None,
+                            layout: Some(&pipeline_layout),
+                            vertex: wgpu::VertexState {
+                                module: &shader,
+                                entry_point: Some("vs_main"),
+                                buffers: &[],
+                                compilation_options: Default::default(),
+                            },
+                            fragment: Some(wgpu::FragmentState {
+                                module: &shader,
+                                entry_point: Some("fs_main"),
+                                compilation_options: Default::default(),
+                                targets: &[Some(surface_format.into())],
+                            }),
+                            primitive: wgpu::PrimitiveState::default(),
+                            depth_stencil: None,
+                            multisample: wgpu::MultisampleState::default(),
+                            multiview: None,
+                            cache: None,
                         },
-                        fragment: Some(wgpu::FragmentState {
-                            module: &shader,
-                            entry_point: Some("fs_main"),
-                            compilation_options: Default::default(),
-                            targets: &[Some(surface_format.into())],
-                        }),
-                        primitive: wgpu::PrimitiveState::default(),
-                        depth_stencil: None,
-                        multisample: wgpu::MultisampleState::default(),
-                        multiview: None,
-                        cache: None,
-                    });
-
+                    ));
+                }
+                let adapter = self.adapter.as_ref().unwrap();
+                let device = self.device.as_ref().unwrap();
+                let render_pipeline = self.render_pipeline.as_ref().unwrap();
+                let queue = self.queue.as_ref().unwrap();
                 let config = surface
                     .get_default_config(&adapter, size.width, size.height)
                     .unwrap();
                 surface.configure(&device, &config);
-                // TODO: The setup above should not be done on every frame draw
-                // The following code *should* be in every frame draw
                 let frame = surface.get_current_texture().unwrap();
                 let view = frame
                     .texture
@@ -1324,8 +1358,6 @@ impl ApplicationHandler for AlanWindow {
 
                 queue.submit(Some(encoder.finish()));
                 frame.present();
-                // From the example but doesn't make sense to me.
-                //self.window.as_ref().unwrap().request_redraw();
             }
             _ => {} // Ignore all other events
         }
