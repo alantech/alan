@@ -1245,6 +1245,11 @@ impl ApplicationHandler for AlanWindow {
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
         match event {
             WindowEvent::CloseRequested => {
+                println!("CloseRequested");
+                use std::io::Write;
+                match std::io::stdout().flush() {
+                    _ => {}
+                }
                 // Cleanup the app now that we're caching things
                 self.queue = None;
                 self.device = None;
@@ -1253,6 +1258,11 @@ impl ApplicationHandler for AlanWindow {
                 event_loop.exit();
             }
             WindowEvent::Resized(new_size) => {
+                println!("Resized");
+                use std::io::Write;
+                match std::io::stdout().flush() {
+                    _ => {}
+                }
                 window_gpu_init(self);
                 self.buffer_width = Some(if (4 * new_size.width) % 256 == 0 {
                     4 * new_size.width
@@ -1275,6 +1285,11 @@ impl ApplicationHandler for AlanWindow {
                 self.window.as_ref().unwrap().request_redraw();
             }
             WindowEvent::RedrawRequested => {
+                println!("RedrawRequested");
+                use std::io::Write;
+                match std::io::stdout().flush() {
+                    _ => {}
+                }
                 let start = std::time::Instant::now();
                 // TODO: The setup starting here should not be done on every frame draw
                 let mut size = self.window.as_ref().unwrap().inner_size();
