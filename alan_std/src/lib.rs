@@ -1215,7 +1215,8 @@ impl ApplicationHandler for AlanWindow {
                 self.instance = None;
                 event_loop.exit();
             }
-            WindowEvent::Resized(_new_size) => {
+            WindowEvent::Resized(new_size) => {
+                println!("new_size {:?}", new_size);
                 self.window.as_ref().unwrap().request_redraw();
             }
             WindowEvent::RedrawRequested => {
@@ -1304,7 +1305,6 @@ impl ApplicationHandler for AlanWindow {
                     let pipeline_layout = self.pipeline_layout.as_ref().unwrap();
                     let shader = self.shader.as_ref().unwrap();
                     let surface_capabilities = surface.get_capabilities(&adapter);
-                    println!("surface_capabilities {:?}", surface_capabilities);
                     let surface_format = surface_capabilities.formats[0];
 
                     self.render_pipeline = Some(device.create_render_pipeline(
