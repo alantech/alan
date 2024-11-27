@@ -1291,6 +1291,26 @@ impl ApplicationHandler for AlanWindow {
                     .unwrap();
                 let adapter = self.adapter.as_ref().unwrap();
                 let device = self.device.as_ref().unwrap();
+                if let None = self.buffer {
+                    self.buffer_width = Some(if (4 * size.width) % 256 == 0 {
+                        4 * size.width
+                    } else {
+                        (4 * size.width) + (256 - ((4 * size.width) % 256))
+                    });
+                    let buffer_height = size.height;
+                    let buffer_size = (self.buffer_width.unwrap() as u64) * (buffer_height as u64);
+                    self.buffer = Some(GBuffer {
+                        buffer: Rc::new(device.create_buffer(&wgpu::BufferDescriptor {
+                            label: None,
+                            size: buffer_size,
+                            usage: storage_buffer_type(),
+                            mapped_at_creation: false,
+                        })),
+                        id: format!("buffer_{}", format!("{}", Uuid::new_v4()).replace("-", "_")),
+                        element_size: 1, // TODO: Should this be 4?
+                    });
+                }
+
                 let queue = self.queue.as_ref().unwrap();
                 let mut config = surface
                     .get_default_config(&adapter, size.width, size.height)
