@@ -1304,6 +1304,7 @@ impl ApplicationHandler for AlanWindow {
                     let pipeline_layout = self.pipeline_layout.as_ref().unwrap();
                     let shader = self.shader.as_ref().unwrap();
                     let surface_capabilities = surface.get_capabilities(&adapter);
+                    println!("surface_capabilities {:?}", surface_capabilities);
                     let surface_format = surface_capabilities.formats[0];
 
                     self.render_pipeline = Some(device.create_render_pipeline(
