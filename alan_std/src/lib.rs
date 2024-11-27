@@ -1305,9 +1305,11 @@ impl ApplicationHandler for AlanWindow {
                 let adapter = self.adapter.as_ref().unwrap();
                 let device = self.device.as_ref().unwrap();
                 let queue = self.queue.as_ref().unwrap();
-                let config = surface
+                let mut config = surface
                     .get_default_config(&adapter, size.width, size.height)
                     .unwrap();
+                config.usage =
+                    wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::RENDER_ATTACHMENT;
                 surface.configure(&device, &config);
                 let frame = surface.get_current_texture().unwrap();
                 let mut encoder =
