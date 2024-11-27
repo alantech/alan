@@ -1216,7 +1216,20 @@ impl ApplicationHandler for AlanWindow {
                 event_loop.exit();
             }
             WindowEvent::Resized(new_size) => {
-                println!("new_size {:?}", new_size);
+                println!(
+                    "new_size {:?}, buffer_size {} x {}",
+                    new_size,
+                    if new_size.width % 256 == 0 {
+                        new_size.width
+                    } else {
+                        new_size.width + (256 - new_size.width % 256)
+                    },
+                    if new_size.height % 256 == 0 {
+                        new_size.height
+                    } else {
+                        new_size.height + (256 - new_size.height % 256)
+                    }
+                );
                 self.window.as_ref().unwrap().request_redraw();
             }
             WindowEvent::RedrawRequested => {
