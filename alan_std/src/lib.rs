@@ -1284,7 +1284,7 @@ impl ApplicationHandler for AlanWindow {
                 size.height = size.height.max(1);
                 // The first frame render will be slower because the GPU types are initialized, but
                 // follow-up frames can skip straight to rendering the frame only.
-                //window_gpu_init(self);
+                window_gpu_init(self);
                 let instance = self.instance.as_ref().unwrap();
                 let surface = instance
                     .create_surface(self.window.as_ref().unwrap())
