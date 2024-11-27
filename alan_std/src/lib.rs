@@ -1196,15 +1196,15 @@ fn window_gpu_init(win: &mut AlanWindow) {
     if let None = win.instance {
         win.instance = Some(wgpu::Instance::default());
     }
-    let instance = win.instance.as_ref().unwrap();
-    let surface = instance
-        .create_surface(win.window.as_ref().unwrap())
-        .unwrap();
     // TODO: Just copying stuff from [this
     // example](https://github.com/gfx-rs/wgpu/blob/trunk/examples/src/hello_triangle/mod.rs) at
     // the moment. Will be replaced with logic to splat a user-defined compute shader into the
     // window after I can even get the window rendering something.
     if let None = win.adapter {
+        let instance = win.instance.as_ref().unwrap();
+        let surface = instance
+            .create_surface(win.window.as_ref().unwrap())
+            .unwrap();
         win.adapter = Some(
             pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::default(), // TODO: Configure this
@@ -1253,18 +1253,25 @@ impl ApplicationHandler for AlanWindow {
                 event_loop.exit();
             }
             WindowEvent::Resized(new_size) => {
+                window_gpu_init(self);
                 self.buffer_width = Some(if (4 * new_size.width) % 256 == 0 {
                     4 * new_size.width
                 } else {
                     (4 * new_size.width) + (256 - ((4 * new_size.width) % 256))
                 });
                 let buffer_height = new_size.height;
-                let buffer_size = self.buffer_width.unwrap() * buffer_height;
-                self.buffer = Some(create_empty_buffer(
-                    &storage_buffer_type(),
-                    &buffer_size.into(),
-                    &1,
-                ));
+                let buffer_size = (self.buffer_width.unwrap() as u64) * (buffer_height as u64);
+                let device = self.device.as_ref().unwrap();
+                self.buffer = Some(GBuffer {
+                    buffer: Rc::new(device.create_buffer(&wgpu::BufferDescriptor {
+                        label: None,
+                        size: buffer_size,
+                        usage: storage_buffer_type(),
+                        mapped_at_creation: false,
+                    })),
+                    id: format!("buffer_{}", format!("{}", Uuid::new_v4()).replace("-", "_")),
+                    element_size: 1, // TODO: Should this be 4?
+                });
                 self.window.as_ref().unwrap().request_redraw();
             }
             WindowEvent::RedrawRequested => {
