@@ -1254,7 +1254,7 @@ fn window_gpu_init(win: &mut AlanWindow) {
              let green = 0.0;
              let blue = f32(id.y) / f32(height);
              let alpha = 1.0;
-             let loc = id.x + width * id.y;
+             let loc = id.x + textureWidth * id.y;
              pixels[loc] = pack4x8unorm(vec4f(blue, green, red, alpha));
           }"#;
         win.shader = Some(device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -1378,7 +1378,7 @@ impl ApplicationHandler for AlanWindow {
                     let context_array = [
                         size.width as u32,
                         size.height as u32,
-                        self.buffer_width.unwrap(),
+                        self.buffer_width.unwrap() / 4,
                     ];
                     println!("context_array {:?}", context_array);
                     let context_slice = &context_array[..];
