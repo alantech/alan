@@ -1188,6 +1188,8 @@ pub struct AlanWindow {
     adapter: Option<wgpu::Adapter>,
     device: Option<wgpu::Device>,
     queue: Option<wgpu::Queue>,
+    shader: Option<wgpu::ShaderModule>,
+    compute_pipeline: Option<wgpu::ComputePipeline>,
     buffer: Option<GBuffer>,
     buffer_width: Option<u32>,
 }
@@ -1230,6 +1232,50 @@ fn window_gpu_init(win: &mut AlanWindow) {
         win.device = Some(device);
         win.queue = Some(queue);
     }
+    if let None = win.shader {
+        let device = win.device.as_ref().unwrap();
+        // TODO: This shouldn't be hardcoded like this. I just wanted a nice demo
+        let shader_source = r#"
+           @group(0)
+           @binding(0)
+           var<storage, read_write> pixels: array<u32>;
+
+           @group(0)
+           @binding(1)
+           var<storage, read> context: array<u32>;
+
+           @compute
+           @workgroup_size(1)
+           fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+             let width = context[0];
+             let height = context[1];
+             let textureWidth = context[2];
+             let red = f32(id.x) / f32(width);
+             let green = 0.0;
+             let blue = f32(id.y) / f32(height);
+             let alpha = 1.0;
+             let loc = id.x + textureWidth * id.y;
+             pixels[loc] = pack4x8unorm(vec4f(red, green, blue, alpha));
+          }"#;
+        win.shader = Some(device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: None,
+            source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(&shader_source)),
+        }));
+    }
+    if let None = win.compute_pipeline {
+        let device = win.device.as_ref().unwrap();
+        let shader = win.shader.as_ref().unwrap();
+        win.compute_pipeline = Some(device.create_compute_pipeline(
+            &wgpu::ComputePipelineDescriptor {
+                label: None,
+                layout: None,
+                module: shader,
+                entry_point: Some("main"),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                cache: None,
+            },
+        ));
+    }
 }
 
 impl ApplicationHandler for AlanWindow {
@@ -1245,6 +1291,7 @@ impl ApplicationHandler for AlanWindow {
         match event {
             WindowEvent::CloseRequested => {
                 // Cleanup the app now that we're caching things
+                self.shader = None;
                 self.buffer_width = None;
                 self.buffer = None;
                 self.queue = None;
@@ -1320,6 +1367,50 @@ impl ApplicationHandler for AlanWindow {
                 let frame = surface.get_current_texture().unwrap();
                 let mut encoder =
                     device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+                {
+                    let compute_pipeline = self.compute_pipeline.as_ref().unwrap();
+                    let mut cpass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                        label: None,
+                        timestamp_writes: None,
+                    });
+                    cpass.set_pipeline(compute_pipeline);
+                    let context_array = [
+                        size.width as u32,
+                        size.height as u32,
+                        self.buffer_width.unwrap(),
+                    ];
+                    let context_slice = &context_array[..];
+                    let context_ptr = context_slice.as_ptr();
+                    let context_u8_len = context_array.len() * 4;
+                    let context_u8: &[u8] = unsafe {
+                        std::slice::from_raw_parts(context_ptr as *const u8, context_u8_len)
+                    };
+                    let context_buffer = wgpu::util::DeviceExt::create_buffer_init(
+                        device,
+                        &wgpu::util::BufferInitDescriptor {
+                            label: None,
+                            contents: context_u8,
+                            usage: storage_buffer_type(),
+                        },
+                    );
+                    let bind_group_layout = compute_pipeline.get_bind_group_layout(0);
+                    let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                        label: None,
+                        layout: &bind_group_layout,
+                        entries: &[
+                            wgpu::BindGroupEntry {
+                                binding: 0,
+                                resource: self.buffer.as_ref().unwrap().as_entire_binding(),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 1,
+                                resource: context_buffer.as_entire_binding(),
+                            },
+                        ],
+                    });
+                    cpass.set_bind_group(0, &bind_group, &[]);
+                    cpass.dispatch_workgroups(1, 1, 1);
+                }
                 encoder.copy_buffer_to_texture(
                     wgpu::ImageCopyBuffer {
                         buffer: &self.buffer.as_ref().unwrap().buffer,
