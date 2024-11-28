@@ -1291,9 +1291,10 @@ impl ApplicationHandler for AlanWindow {
         match event {
             WindowEvent::CloseRequested => {
                 // Cleanup the app now that we're caching things
-                self.shader = None;
                 self.buffer_width = None;
                 self.buffer = None;
+                self.compute_pipeline = None;
+                self.shader = None;
                 self.queue = None;
                 self.device = None;
                 self.adapter = None;
@@ -1409,7 +1410,7 @@ impl ApplicationHandler for AlanWindow {
                         ],
                     });
                     cpass.set_bind_group(0, &bind_group, &[]);
-                    cpass.dispatch_workgroups(1, 1, 1);
+                    cpass.dispatch_workgroups(size.width, size.height, 1);
                 }
                 encoder.copy_buffer_to_texture(
                     wgpu::ImageCopyBuffer {
