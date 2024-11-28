@@ -1380,7 +1380,6 @@ impl ApplicationHandler for AlanWindow {
                         size.height as u32,
                         self.buffer_width.unwrap() / 4,
                     ];
-                    println!("context_array {:?}", context_array);
                     let context_slice = &context_array[..];
                     let context_ptr = context_slice.as_ptr();
                     let context_u8_len = context_array.len() * 4;
