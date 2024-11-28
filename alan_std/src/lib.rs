@@ -1220,9 +1220,8 @@ fn window_gpu_init(win: &mut AlanWindow) {
         let (device, queue) = pollster::block_on(adapter.request_device(
             &wgpu::DeviceDescriptor {
                 label: None,
-                required_features: wgpu::Features::empty(),
-                required_limits:
-                    wgpu::Limits::downlevel_webgl2_defaults().using_resolution(adapter.limits()),
+                required_features: adapter.features(),
+                required_limits: adapter.limits(),
                 memory_hints: wgpu::MemoryHints::MemoryUsage,
             },
             None,
