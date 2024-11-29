@@ -1369,6 +1369,7 @@ impl ApplicationHandler for AlanWindow {
                     .unwrap();
                 config.usage =
                     wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::RENDER_ATTACHMENT;
+                config.present_mode = wgpu::PresentMode::Fifo;
                 surface.configure(&device, &config);
                 let frame = surface.get_current_texture().unwrap();
                 let mut encoder =
@@ -1420,10 +1421,6 @@ impl ApplicationHandler for AlanWindow {
                     cpass.set_bind_group(0, &bind_group, &[]);
                     cpass.dispatch_workgroups(size.width, size.height, 1);
                 }
-                queue.submit(Some(encoder.finish()));
-                device.poll(wgpu::Maintain::Wait);
-                let mut encoder =
-                    device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
                 encoder.copy_buffer_to_texture(
                     wgpu::ImageCopyBuffer {
                         buffer: &self.buffer.as_ref().unwrap().buffer,
@@ -1437,23 +1434,6 @@ impl ApplicationHandler for AlanWindow {
                     frame.texture.size(),
                 );
                 queue.submit(Some(encoder.finish()));
-                device.poll(wgpu::Maintain::Wait);
-                let mut encoder =
-                    device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-                encoder.copy_buffer_to_texture(
-                    wgpu::ImageCopyBuffer {
-                        buffer: &self.buffer.as_ref().unwrap().buffer,
-                        layout: wgpu::ImageDataLayout {
-                            offset: 0,
-                            bytes_per_row: self.buffer_width,
-                            rows_per_image: None,
-                        },
-                    },
-                    frame.texture.as_image_copy(),
-                    frame.texture.size(),
-                );
-                queue.submit(Some(encoder.finish()));
-                device.poll(wgpu::Maintain::Wait);
                 frame.present();
                 let render_time = start.elapsed();
                 self.window
