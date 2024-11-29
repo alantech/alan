@@ -1290,11 +1290,6 @@ impl ApplicationHandler for AlanWindow {
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
         match event {
             WindowEvent::CloseRequested => {
-                println!("CloseRequested");
-                use std::io::Write;
-                match std::io::stdout().flush() {
-                    _ => {}
-                }
                 // Cleanup the app now that we're caching things
                 self.buffer_width = None;
                 self.buffer = None;
@@ -1307,11 +1302,6 @@ impl ApplicationHandler for AlanWindow {
                 event_loop.exit();
             }
             WindowEvent::Resized(new_size) => {
-                println!("Resized");
-                use std::io::Write;
-                match std::io::stdout().flush() {
-                    _ => {}
-                }
                 window_gpu_init(self);
                 self.buffer_width = Some(if (4 * new_size.width) % 256 == 0 {
                     4 * new_size.width
@@ -1334,11 +1324,6 @@ impl ApplicationHandler for AlanWindow {
                 self.window.as_ref().unwrap().request_redraw();
             }
             WindowEvent::RedrawRequested => {
-                println!("RedrawRequested");
-                use std::io::Write;
-                match std::io::stdout().flush() {
-                    _ => {}
-                }
                 let start = std::time::Instant::now();
                 // TODO: The setup starting here should not be done on every frame draw
                 let mut size = self.window.as_ref().unwrap().inner_size();
@@ -1427,6 +1412,13 @@ impl ApplicationHandler for AlanWindow {
                     cpass.set_bind_group(0, &bind_group, &[]);
                     cpass.dispatch_workgroups(size.width, size.height, 1);
                 }
+                queue.submit(Some(encoder.finish()));
+                // Put the texture copy in a second queued command list to avoid
+                // an issue on the Raspberry Pi 5 (and possibly other low-powered
+                // machines) where the buffer copy starts before the buffer write
+                // finishes.
+                let mut encoder =
+                    device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
                 encoder.copy_buffer_to_texture(
                     wgpu::ImageCopyBuffer {
                         buffer: &self.buffer.as_ref().unwrap().buffer,
