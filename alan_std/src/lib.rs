@@ -1370,6 +1370,7 @@ impl ApplicationHandler for AlanWindow {
                 config.usage =
                     wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::RENDER_ATTACHMENT;
                 config.present_mode = wgpu::PresentMode::Fifo;
+                config.desired_maximum_frame_latency = 3;
                 surface.configure(&device, &config);
                 let frame = surface.get_current_texture().unwrap();
                 let mut encoder =
@@ -1434,7 +1435,7 @@ impl ApplicationHandler for AlanWindow {
                     frame.texture.size(),
                 );
                 queue.submit(Some(encoder.finish()));
-                device.poll(wgpu::Maintain::Wait);
+                //device.poll(wgpu::Maintain::Wait);
                 frame.present();
                 let render_time = start.elapsed();
                 self.window
