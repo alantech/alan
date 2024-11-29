@@ -1368,7 +1368,9 @@ impl ApplicationHandler for AlanWindow {
                 let frame = surface.get_current_texture().unwrap();
                 let mut encoder =
                     device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-                //encoder.clear_buffer(&self.buffer.as_ref().unwrap().buffer, 0, None);
+                // This shouldn't be done normally, the buffer is just an output, but trying to
+                // debug an issue on the RPi5
+                encoder.clear_buffer(&self.buffer.as_ref().unwrap().buffer, 0, None);
                 {
                     let compute_pipeline = self.compute_pipeline.as_ref().unwrap();
                     let mut cpass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -1413,6 +1415,10 @@ impl ApplicationHandler for AlanWindow {
                     cpass.set_bind_group(0, &bind_group, &[]);
                     cpass.dispatch_workgroups(size.width, size.height, 1);
                 }
+                queue.submit(Some(encoder.finish()));
+                device.poll(wgpu::Maintain::Wait);
+                let mut encoder =
+                    device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
                 encoder.copy_buffer_to_texture(
                     wgpu::ImageCopyBuffer {
                         buffer: &self.buffer.as_ref().unwrap().buffer,
