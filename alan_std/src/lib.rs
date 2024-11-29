@@ -1412,13 +1412,20 @@ impl ApplicationHandler for AlanWindow {
                     cpass.set_bind_group(0, &bind_group, &[]);
                     cpass.dispatch_workgroups(size.width, size.height, 1);
                 }
-                queue.submit(Some(encoder.finish()));
-                // Put the texture copy in a second queued command list to avoid
-                // an issue on the Raspberry Pi 5 (and possibly other low-powered
-                // machines) where the buffer copy starts before the buffer write
-                // finishes.
-                let mut encoder =
-                    device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+                encoder.copy_buffer_to_texture(
+                    wgpu::ImageCopyBuffer {
+                        buffer: &self.buffer.as_ref().unwrap().buffer,
+                        layout: wgpu::ImageDataLayout {
+                            offset: 0,
+                            bytes_per_row: self.buffer_width,
+                            rows_per_image: None,
+                        },
+                    },
+                    frame.texture.as_image_copy(),
+                    frame.texture.size(),
+                );
+                // Separate command lists didn't work, so let's try just copying the buffer twice
+                // to make sure the second copy is done appropriately
                 encoder.copy_buffer_to_texture(
                     wgpu::ImageCopyBuffer {
                         buffer: &self.buffer.as_ref().unwrap().buffer,
