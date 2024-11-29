@@ -1353,7 +1353,7 @@ impl ApplicationHandler for AlanWindow {
                 queue.submit(Some(encoder.finish()));
                 // Two copies didn't work, so maybe the frame presentation is happening too
                 // quickly?
-                //device.poll(wgpu::Maintain::Wait);
+                device.poll(wgpu::Maintain::Wait);
                 frame.present();
                 let render_time = start.elapsed();
                 self.window
