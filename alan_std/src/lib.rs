@@ -1368,7 +1368,7 @@ impl ApplicationHandler for AlanWindow {
                 let frame = surface.get_current_texture().unwrap();
                 let mut encoder =
                     device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-                encoder.clear_buffer(&self.buffer.as_ref().unwrap().buffer, 0, None);
+                //encoder.clear_buffer(&self.buffer.as_ref().unwrap().buffer, 0, None);
                 {
                     let compute_pipeline = self.compute_pipeline.as_ref().unwrap();
                     let mut cpass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
