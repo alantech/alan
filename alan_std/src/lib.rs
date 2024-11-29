@@ -1424,21 +1424,10 @@ impl ApplicationHandler for AlanWindow {
                     frame.texture.as_image_copy(),
                     frame.texture.size(),
                 );
-                // Separate command lists didn't work, so let's try just copying the buffer twice
-                // to make sure the second copy is done appropriately
-                encoder.copy_buffer_to_texture(
-                    wgpu::ImageCopyBuffer {
-                        buffer: &self.buffer.as_ref().unwrap().buffer,
-                        layout: wgpu::ImageDataLayout {
-                            offset: 0,
-                            bytes_per_row: self.buffer_width,
-                            rows_per_image: None,
-                        },
-                    },
-                    frame.texture.as_image_copy(),
-                    frame.texture.size(),
-                );
                 queue.submit(Some(encoder.finish()));
+                // Two copies didn't work, so maybe the frame presentation is happening too
+                // quickly?
+                device.poll(wgpu::Maintain::Wait);
                 frame.present();
                 let render_time = start.elapsed();
                 self.window
