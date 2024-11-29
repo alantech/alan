@@ -1368,6 +1368,7 @@ impl ApplicationHandler for AlanWindow {
                 let frame = surface.get_current_texture().unwrap();
                 let mut encoder =
                     device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+                encoder.clear_buffer(&self.buffer.as_ref().unwrap().buffer, 0, None);
                 {
                     let compute_pipeline = self.compute_pipeline.as_ref().unwrap();
                     let mut cpass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -1412,13 +1413,6 @@ impl ApplicationHandler for AlanWindow {
                     cpass.set_bind_group(0, &bind_group, &[]);
                     cpass.dispatch_workgroups(size.width, size.height, 1);
                 }
-                queue.submit(Some(encoder.finish()));
-                // Let's try a combination of things, as it's still glitching on the rendering
-                device.poll(wgpu::Maintain::Wait);
-                let mut encoder =
-                    device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-                // Two copies didn't work, so maybe the frame presentation is happening too
-                // quickly?
                 encoder.copy_buffer_to_texture(
                     wgpu::ImageCopyBuffer {
                         buffer: &self.buffer.as_ref().unwrap().buffer,
@@ -1432,8 +1426,6 @@ impl ApplicationHandler for AlanWindow {
                     frame.texture.size(),
                 );
                 queue.submit(Some(encoder.finish()));
-                // Two copies didn't work, so maybe the frame presentation is happening too
-                // quickly?
                 device.poll(wgpu::Maintain::Wait);
                 frame.present();
                 let render_time = start.elapsed();
@@ -1441,6 +1433,7 @@ impl ApplicationHandler for AlanWindow {
                     .as_ref()
                     .unwrap()
                     .set_title(&format!("Render time: {:.3}", render_time.as_secs_f64()));
+                self.window.as_ref().unwrap().request_redraw();
             }
             _ => {} // Ignore all other events
         }
