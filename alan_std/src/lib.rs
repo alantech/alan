@@ -1192,6 +1192,7 @@ pub struct AlanWindow {
     compute_pipeline: Option<wgpu::ComputePipeline>,
     buffer: Option<GBuffer>,
     buffer_width: Option<u32>,
+    exiting: bool,
 }
 
 fn window_gpu_init(win: &mut AlanWindow) {
@@ -1280,6 +1281,7 @@ fn window_gpu_init(win: &mut AlanWindow) {
 
 impl ApplicationHandler for AlanWindow {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        if self.exiting { return; }
         self.window = Some(
             event_loop
                 .create_window(self.config.clone().unwrap_or(Window::default_attributes()))
@@ -1290,6 +1292,7 @@ impl ApplicationHandler for AlanWindow {
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
         match event {
             WindowEvent::CloseRequested => {
+                self.exiting = true;
                 // Cleanup the app now that we're caching things
                 self.buffer_width = None;
                 self.buffer = None;
@@ -1302,6 +1305,7 @@ impl ApplicationHandler for AlanWindow {
                 event_loop.exit();
             }
             WindowEvent::Resized(new_size) => {
+                if self.exiting { return; }
                 window_gpu_init(self);
                 self.buffer_width = Some(if (4 * new_size.width) % 256 == 0 {
                     4 * new_size.width
@@ -1324,6 +1328,7 @@ impl ApplicationHandler for AlanWindow {
                 self.window.as_ref().unwrap().request_redraw();
             }
             WindowEvent::RedrawRequested => {
+                if self.exiting { return; }
                 let start = std::time::Instant::now();
                 // TODO: The setup starting here should not be done on every frame draw
                 let mut size = self.window.as_ref().unwrap().inner_size();
