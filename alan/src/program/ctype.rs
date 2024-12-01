@@ -102,7 +102,8 @@ impl CType {
                             Box::new(CType::Node(Box::new(CType::Dependency(
                                 Box::new(CType::TString("alan_std".to_string())),
                                 Box::new(CType::TString(
-                                    "https://github.com/alantech/alan.git".to_string(),
+                                    "https://github.com/alantech/alan.git#array-and-buffer-swap"
+                                        .to_string(), // TODO: This *really* needs to be derived from the root scope
                                 )),
                             )))),
                         )),
@@ -135,7 +136,8 @@ impl CType {
                             Box::new(CType::Node(Box::new(CType::Dependency(
                                 Box::new(CType::TString("alan_std".to_string())),
                                 Box::new(CType::TString(
-                                    "https://github.com/alantech/alan.git".to_string(),
+                                    "https://github.com/alantech/alan.git#array-and-buffer-swap"
+                                        .to_string(), // TODO: This *really* needs to be derived from the root scope
                                 )),
                             )))),
                         )),
@@ -168,7 +170,8 @@ impl CType {
                             Box::new(CType::Node(Box::new(CType::Dependency(
                                 Box::new(CType::TString("alan_std".to_string())),
                                 Box::new(CType::TString(
-                                    "https://github.com/alantech/alan.git".to_string(),
+                                    "https://github.com/alantech/alan.git#array-and-buffer-swap"
+                                        .to_string(), // TODO: This *really* needs to be derived from the root scope
                                 )),
                             )))),
                         )),
@@ -201,7 +204,8 @@ impl CType {
                             Box::new(CType::Node(Box::new(CType::Dependency(
                                 Box::new(CType::TString("alan_std".to_string())),
                                 Box::new(CType::TString(
-                                    "https://github.com/alantech/alan.git".to_string(),
+                                    "https://github.com/alantech/alan.git#array-and-buffer-swap"
+                                        .to_string(), // TODO: This *really* needs to be derived from the root scope
                                 )),
                             )))),
                         )),

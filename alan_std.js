@@ -420,6 +420,18 @@ export class Str {
   }
 }
 
+export function swap(a, i, j) {
+  if (i.val < 0 || i.val > a.length) {
+    return new AlanError(`Provided index ${i.val} is beyond the bounds of the array`);
+  }
+  if (j.val < 0 || j.val > a.length) {
+    return new AlanError(`Provided index ${j.val} is beyond the bounds of the array`);
+  }
+  let temp = a[i.val];
+  a[i.val] = a[j.val];
+  a[j.val] = temp;
+}
+
 export function cross(a, b) {
   // Assuming they're all the same type
   let type = a[0].constructor;
