@@ -816,6 +816,13 @@ export fn{Test} main {
       let arr = [1, 2, 5];
       arr.swap(0, 2);
       test.assert(eq, arr.map(string).join(', '), '5, 2, 1');
+    })
+    .it('sort', fn (test: Mut{Testing}) {
+      let arr = [3, 4, 5, 1, 2];
+      arr.sort;
+      test.assert(eq, arr.map(string).join(', '), '1, 2, 3, 4, 5');
+      arr.sort(fn (a: i64, b: i64) = i8(b - a));
+      test.assert(eq, arr.map(string).join(', '), '5, 4, 3, 2, 1');
     });
 
   test.describe("Buffers")
@@ -875,6 +882,13 @@ export fn{Test} main {
       let b = {i64[3]}(1, 2, 5);
       b.swap(0, 2);
       test.assert(eq, b.map(string).join(', '), '5, 2, 1');
+    })
+    .it('sort', fn (test: Mut{Testing}) {
+      let buf = {i64[5]}(3, 4, 5, 1, 2);
+      buf.sort;
+      test.assert(eq, buf.map(string).join(', '), '1, 2, 3, 4, 5');
+      buf.sort(fn (a: i64, b: i64) = i8(b - a));
+      test.assert(eq, buf.map(string).join(', '), '5, 4, 3, 2, 1');
     });
 
   test.describe("Conditionals")

@@ -116,8 +116,8 @@ type Rs = Env{"ALAN_OUTPUT_LANG"} == "rs";
 type Js = Env{"ALAN_OUTPUT_LANG"} == "js";
 
 // Importing the Root Scope backing implementation and supporting 3rd party libraries
-type{Rs} RootBacking = Rust{"alan_std" @ "https://github.com/alantech/alan.git"};
-type{Js} RootBacking = Node{"alan_std" @ "https://github.com/alantech/alan.git"};
+type{Rs} RootBacking = Rust{"alan_std" @ "https://github.com/alantech/alan.git#sort"};
+type{Js} RootBacking = Node{"alan_std" @ "https://github.com/alantech/alan.git#sort"};
 
 // Defining derived types
 type void = ();
@@ -1265,6 +1265,9 @@ fn{Rs} last{T} (v: T[]) = {Method{"cloned"} :: T? -> T?}({Method{"last"} :: T[] 
 fn{Js} last{T} (v: T[]) = {Method{"at"} :: (T[], -1) -> T?}(v);
 fn{Rs} swap{T} "alan_std::swaparray" <- RootBacking :: (Mut{T[]}, i64, i64) -> void!;
 fn{Js} swap{T} "alan_std.swap" <- RootBacking :: (T[], i64, i64) -> void!;
+fn{Rs} sort{T} "alan_std::sortarray" <- RootBacking :: (Mut{T[]}, (T, T) -> i8) -> void;
+fn{Js} sort{T} "alan_std.sort" <- RootBacking :: (Mut{T[]}, (T, T) -> i8) -> void;
+fn sort{T} (arr: Mut{T[]}) = sort(arr, fn (a: T, b: T) = if(a == b, 0.i8, if(a < b, -1.i8, 1.i8)));
 
 /// Buffer related bindings
 fn{Rs} get{T, S} "alan_std::getbuffer" <- RootBacking :: (T[S], i64) -> T?;
@@ -1308,6 +1311,9 @@ fn{Js} cross(a: Buffer{f32, 3}, b: Buffer{f32, 3}) = cross{f32}(a, b);
 fn{Js} cross(a: Buffer{f64, 3}, b: Buffer{f64, 3}) = cross{f64}(a, b);
 fn{Rs} swap{T, S} "alan_std::swapbuffer" <- RootBacking :: (Mut{Buffer{T, S}}, i64, i64) -> void!;
 fn{Js} swap{T, S} "alan_std.swap" <- RootBacking :: (Buffer{T, S}, i64, i64) -> void!;
+fn{Rs} sort{T, S} "alan_std::sortbuffer" <- RootBacking :: (Mut{Buffer{T, S}}, (T, T) -> i8) -> void;
+fn{Js} sort{T, S} "alan_std.sort" <- RootBacking :: (Mut{Buffer{T, S}}, (T, T) -> i8) -> void;
+fn sort{T, S} (arr: Mut{Buffer{T, S}}) = sort(arr, fn (a: T, b: T) = if(a == b, 0.i8, if(a < b, -1.i8, 1.i8)));
 
 /// Dictionary-related bindings
 fn{Rs} Dict{K, V} "alan_std::OrderedHashMap::new" <- RootBacking :: () -> Dict{K, V};
