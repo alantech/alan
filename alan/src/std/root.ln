@@ -1263,6 +1263,8 @@ fn{Rs} delete{T} "alan_std::deletearray" <- RootBacking :: (Mut{T[]}, i64) -> T!
 fn{Js} delete{T} (a: T[], i: i64) = {"((a, i) => { if (i < 0n || i >= BigInt(a.length)) { return new alan_std.AlanError(new alan_std.Str(`Provided array index ${i.toString()} is beyond the bounds of the array`)); } else { return a.splice(Number(i), 1)[0]; } })" :: (T[], i64) -> T!}(a, i);
 fn{Rs} last{T} (v: T[]) = {Method{"cloned"} :: T? -> T?}({Method{"last"} :: T[] -> T?}(v));
 fn{Js} last{T} (v: T[]) = {Method{"at"} :: (T[], -1) -> T?}(v);
+fn{Rs} swap{T} "alan_std::swaparray" <- RootBacking :: (Mut{T[]}, i64, i64) -> void!;
+fn{Js} swap{T} "alan_std.swap" <- RootBacking :: (T[], i64, i64) -> void!;
 
 /// Buffer related bindings
 fn{Rs} get{T, S} "alan_std::getbuffer" <- RootBacking :: (T[S], i64) -> T?;
@@ -1304,6 +1306,8 @@ fn{Rs} cross "alan_std::cross_f64" <- RootBacking :: (Buffer{f64, 3}, Buffer{f64
 fn{Js} cross{T} "alan_std.cross" <- RootBacking :: (Buffer{T, 3}, Buffer{T, 3}) -> Buffer{T, 3};
 fn{Js} cross(a: Buffer{f32, 3}, b: Buffer{f32, 3}) = cross{f32}(a, b);
 fn{Js} cross(a: Buffer{f64, 3}, b: Buffer{f64, 3}) = cross{f64}(a, b);
+fn{Rs} swap{T, S} "alan_std::swapbuffer" <- RootBacking :: (Mut{Buffer{T, S}}, i64, i64) -> void!;
+fn{Js} swap{T, S} "alan_std.swap" <- RootBacking :: (Buffer{T, S}, i64, i64) -> void!;
 
 /// Dictionary-related bindings
 fn{Rs} Dict{K, V} "alan_std::OrderedHashMap::new" <- RootBacking :: () -> Dict{K, V};

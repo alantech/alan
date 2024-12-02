@@ -811,6 +811,11 @@ export fn{Test} main {
       test.assert(eq, arr.map(string).join(', '), '1, 2, 3, 4, 5');
       test.assert(eq, arr.delete(4)!!, 5);
       test.assert(eq, arr.map(string).join(', '), '1, 2, 3, 4');
+    })
+    .it('swap', fn (test: Mut{Testing}) {
+      let arr = [1, 2, 5];
+      arr.swap(0, 2);
+      test.assert(eq, arr.map(string).join(', '), '5, 2, 1');
     });
 
   test.describe("Buffers")
@@ -865,6 +870,11 @@ export fn{Test} main {
         .assert(eq, b.map(string).join(', '), '1, 2, 3');
       b[2] = 4;
       test.assert(eq, b.map(string).join(', '), '1, 2, 4');
+    })
+    .it('swap', fn (test: Mut{Testing}) {
+      let b = {i64[3]}(1, 2, 5);
+      b.swap(0, 2);
+      test.assert(eq, b.map(string).join(', '), '5, 2, 1');
     });
 
   test.describe("Conditionals")

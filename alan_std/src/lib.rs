@@ -410,6 +410,53 @@ pub fn deletearray<T: std::clone::Clone>(a: &mut Vec<T>, i: &i64) -> Result<T, A
     }
 }
 
+/// `swaparray` swaps the values at the specified indicies (or fails if either index is out of
+/// bounds). It returns a Fallible void value.
+#[inline(always)]
+pub fn swaparray<T>(a: &mut Vec<T>, i: &i64, j: &i64) -> Result<(), AlanError> {
+    if *i < 0 {
+        return Err(format!(
+            "Provided array index {} is beyond the bounds of the array",
+            i
+        )
+        .into());
+    }
+    if *j < 0 {
+        return Err(format!(
+            "Provided array index {} is beyond the bounds of the array",
+            j
+        )
+        .into());
+    }
+    let i = *i as usize;
+    let j = *j as usize;
+    if i >= a.len() {
+        return Err(format!(
+            "Provided array index {} is beyond the bounds of the array",
+            i
+        )
+        .into());
+    }
+    if j >= a.len() {
+        return Err(format!(
+            "Provided array index {} is beyond the bounds of the array",
+            j
+        )
+        .into());
+    }
+    if i == j {
+        return Ok(());
+    }
+    if i < j {
+        let (i_section, j_section) = a.split_at_mut(j);
+        std::mem::swap(&mut i_section[i], &mut j_section[0]);
+    } else {
+        let (j_section, i_section) = a.split_at_mut(j);
+        std::mem::swap(&mut j_section[j], &mut i_section[0]);
+    }
+    Ok(())
+}
+
 /// Buffer-related functions
 
 /// `getbuffer` returns the value at the given index presuming it exists
@@ -563,6 +610,53 @@ pub fn storebuffer<T: std::clone::Clone, const S: usize>(
         .into()),
         true => Ok(std::mem::replace(a.each_mut()[*i as usize], v.clone())),
     }
+}
+
+/// `swapbuffer` swaps the values at the specified indicies (or fails if either index is out of
+/// bounds). It returns a Fallible void value.
+#[inline(always)]
+pub fn swapbuffer<T, const S: usize>(a: &mut [T; S], i: &i64, j: &i64) -> Result<(), AlanError> {
+    if *i < 0 {
+        return Err(format!(
+            "Provided buffer index {} is beyond the bounds of the buffer",
+            i
+        )
+        .into());
+    }
+    if *j < 0 {
+        return Err(format!(
+            "Provided buffer index {} is beyond the bounds of the buffer",
+            j
+        )
+        .into());
+    }
+    let i = *i as usize;
+    let j = *j as usize;
+    if i >= a.len() {
+        return Err(format!(
+            "Provided buffer index {} is beyond the bounds of the buffer",
+            i
+        )
+        .into());
+    }
+    if j >= a.len() {
+        return Err(format!(
+            "Provided buffer index {} is beyond the bounds of the buffer",
+            j
+        )
+        .into());
+    }
+    if i == j {
+        return Ok(());
+    }
+    if i < j {
+        let (i_section, j_section) = a.split_at_mut(j);
+        std::mem::swap(&mut i_section[i], &mut j_section[0]);
+    } else {
+        let (j_section, i_section) = a.split_at_mut(i);
+        std::mem::swap(&mut j_section[j], &mut i_section[0]);
+    }
+    Ok(())
 }
 
 /// Dictionary-related bindings
