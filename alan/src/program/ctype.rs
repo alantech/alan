@@ -102,7 +102,7 @@ impl CType {
                             Box::new(CType::Node(Box::new(CType::Dependency(
                                 Box::new(CType::TString("alan_std".to_string())),
                                 Box::new(CType::TString(
-                                    "https://github.com/alantech/alan.git#sort".to_string(),
+                                    "https://github.com/alantech/alan.git".to_string(),
                                 )),
                             )))),
                         )),
@@ -135,7 +135,7 @@ impl CType {
                             Box::new(CType::Node(Box::new(CType::Dependency(
                                 Box::new(CType::TString("alan_std".to_string())),
                                 Box::new(CType::TString(
-                                    "https://github.com/alantech/alan.git#sort".to_string(),
+                                    "https://github.com/alantech/alan.git".to_string(),
                                 )),
                             )))),
                         )),
@@ -168,7 +168,7 @@ impl CType {
                             Box::new(CType::Node(Box::new(CType::Dependency(
                                 Box::new(CType::TString("alan_std".to_string())),
                                 Box::new(CType::TString(
-                                    "https://github.com/alantech/alan.git#sort".to_string(),
+                                    "https://github.com/alantech/alan.git".to_string(),
                                 )),
                             )))),
                         )),
@@ -201,7 +201,7 @@ impl CType {
                             Box::new(CType::Node(Box::new(CType::Dependency(
                                 Box::new(CType::TString("alan_std".to_string())),
                                 Box::new(CType::TString(
-                                    "https://github.com/alantech/alan.git#sort".to_string(),
+                                    "https://github.com/alantech/alan.git".to_string(),
                                 )),
                             )))),
                         )),
