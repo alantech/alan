@@ -173,7 +173,17 @@ edition = "2021"
                 deps.iter()
                     .map(|(k, v)| {
                         if v.starts_with("http") {
-                            format!("{} = {{ git = \"{}\" }}", k, v)
+                            let parts = v.split("#").collect::<Vec<&str>>();
+                            if parts.len() == 2 {
+                                format!(
+                                    "{} = {{ git = \"{}\", branch = \"{}\" }}",
+                                    k, parts[0], parts[1]
+                                )
+                            } else {
+                                // We'll assume there's only one part, since the alternative
+                                // wouldn't parse properly. If it blows up, it's on them.
+                                format!("{} = {{ git = \"{}\" }}", k, v)
+                            }
                         } else {
                             format!("{} = \"{}\"", k, v)
                         }
@@ -263,10 +273,16 @@ edition = "2021"
             cargo_str,
             deps.iter()
                 .map(|(k, v)| {
-                    if v.starts_with("http") {
-                        format!("{} = {{ git = \"{}\" }}", k, v)
+                    let parts = v.split("#").collect::<Vec<&str>>();
+                    if parts.len() == 2 {
+                        format!(
+                            "{} = {{ git = \"{}\", branch = \"{}\" }}",
+                            k, parts[0], parts[1]
+                        )
                     } else {
-                        format!("{} = \"{}\"", k, v)
+                        // We'll assume there's only one part, since the alternative
+                        // wouldn't parse properly. If it blows up, it's on them.
+                        format!("{} = {{ git = \"{}\" }}", k, v)
                     }
                 })
                 .collect::<Vec<String>>()
@@ -755,10 +771,16 @@ pub fn to_rs(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
                 .to_string_lossy(),
             deps.iter()
                 .map(|(k, v)| {
-                    if v.starts_with("http") {
-                        format!("{} = {{ git = \"{}\" }}", k, v)
+                    let parts = v.split("#").collect::<Vec<&str>>();
+                    if parts.len() == 2 {
+                        format!(
+                            "{} = {{ git = \"{}\", branch = \"{}\" }}",
+                            k, parts[0], parts[1]
+                        )
                     } else {
-                        format!("{} = \"{}\"", k, v)
+                        // We'll assume there's only one part, since the alternative
+                        // wouldn't parse properly. If it blows up, it's on them.
+                        format!("{} = {{ git = \"{}\" }}", k, v)
                     }
                 })
                 .collect::<Vec<String>>()
