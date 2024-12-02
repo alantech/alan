@@ -432,6 +432,35 @@ export function swap(a, i, j) {
   a[j.val] = temp;
 }
 
+async function merge(left, right, sorter) {
+  let arr = [];
+  while (left.length && right.length) {
+    if ((await sorter(left[0], right[0])) < 0) {
+      arr.push(left.shift());
+    } else {
+      arr.push(right.shift());
+    }
+  }
+  return [ ...arr, ...left, ...right ];
+}
+
+export async function sort(a, sorter) {
+  // I really didn't want to write my own sorter, but here we are. This is a merge sort. It's not a
+  // true in-place merge sort, but I fake it at the end. Should be made better in the future.
+  if (a.length < 2) {
+    return;
+  }
+  let half = Math.floor(a.length / 2);
+  let right = [...a];
+  let left = right.splice(0, half);
+  await sort(left, sorter);
+  await sort(right, sorter);
+  let res = await merge(left, right, sorter);
+  for (let i = 0; i < res.length; i++) {
+    a[i] = res[i];
+  }
+}
+
 export function cross(a, b) {
   // Assuming they're all the same type
   let type = a[0].constructor;
