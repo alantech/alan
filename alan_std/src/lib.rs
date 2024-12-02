@@ -457,6 +457,13 @@ pub fn swaparray<T>(a: &mut Vec<T>, i: &i64, j: &i64) -> Result<(), AlanError> {
     Ok(())
 }
 
+/// `sortarray` is a thin wrapper around `sort_by` allowing for the sort decision to be done by
+/// numeric operation rather than the `Ordering` enum, which is not exposed
+#[inline(always)]
+pub fn sortarray<T>(a: &mut Vec<T>, mut sorter: impl FnMut(&T, &T) -> i8) {
+    a.sort_by(|a, b| sorter(a, b).cmp(&0));
+}
+
 /// Buffer-related functions
 
 /// `getbuffer` returns the value at the given index presuming it exists
@@ -657,6 +664,13 @@ pub fn swapbuffer<T, const S: usize>(a: &mut [T; S], i: &i64, j: &i64) -> Result
         std::mem::swap(&mut j_section[j], &mut i_section[0]);
     }
     Ok(())
+}
+
+/// `sortbuffer` is a thin wrapper around `sort_by` allowing for the sort decision to be done by
+/// numeric operation rather than the `Ordering` enum, which is not exposed
+#[inline(always)]
+pub fn sortbuffer<T, const S: usize>(a: &mut [T; S], mut sorter: impl FnMut(&T, &T) -> i8) {
+    a.sort_by(|a, b| sorter(a, b).cmp(&0));
 }
 
 /// Dictionary-related bindings
