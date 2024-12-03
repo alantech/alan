@@ -171,7 +171,6 @@ type{Js} Performance = Binds{"Performance"}
 // Binding the uuid type
 type{Rs} uuid = Binds{"alan_std::Uuid" <- RootBacking};
 type{Js} uuid = Binds{"alan_std.uuidv4" <- RootBacking};
-// TODO: JS variant
 
 // Binding the Dict and Set types
 type{Rs} Dict{K, V} = Binds{"alan_std::OrderedHashMap" <- RootBacking, K, V};
@@ -1669,8 +1668,7 @@ type gbool = WgpuType{"bool"};
 fn build{N}(ret: N) {
   // TODO: Don't assume all of the buffers involved here are storage buffers
   // Also TODO: Support other buffer types than i32
-  let bufferArray = Array{GBuffer}().concat(ret.buffers.Array); // TODO: Shouldn't need this concat
-  // let bufferArray = ret.buffers.Array;
+  let bufferArray = ret.buffers.Array;
   let wgslHeader = bufferArray.map(fn (gb: GBuffer, i: i64) {
     return "@group(0)\n@binding("
       .concat(i.string)
