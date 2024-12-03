@@ -1222,13 +1222,13 @@ fn{Js} filter{T} (a: T[], f: T -> bool) = {"(async (a, f) => { let out = []; for
 fn{Rs} filter{T} "alan_std::filter_twoarg" <- RootBacking :: (T[], (T, i64) -> bool) -> T[];
 fn{Js} filter{T} (a: T[], f: (T, i64) -> bool) = {"(async (a, f) => { let out = []; for (let i = 0; i < a.length; i++) { if ((await f(a[i], new alan_std.I64(i))).val) { out.push(a[i]); } } return out; })" <- RootBacking :: (T[], (T, i64) -> bool) -> T[]}(a, f);
 fn{Rs} reduce{T} "alan_std::reduce_sametype" <- RootBacking :: (T[], (T, T) -> T) -> T?;
-fn{Js} reduce{T} (a: T[], f: (T, T) -> T) = {"(async (a, f) => { if (a.length === 0) { return null; } let out = a[0]; for (let i = 1; i < a.length; i++) { out = await f(out, a[i]); } return out; })" :: (T[], (T, T) -> T) -> T?}(a, f);
+fn{Js} reduce{T} "(async (a, f) => { if (a.length === 0) { return null; } let out = a[0]; for (let i = 1; i < a.length; i++) { out = await f(out, a[i]); } return out; })" :: (T[], (T, T) -> T) -> T?;
 fn{Rs} reduce{T} "alan_std::reduce_sametype_idx" <- RootBacking :: (T[], (T, T, i64) -> T) -> T?;
-fn{Js} reduce{T} (a: T[], f: (T, T, i64) -> T) = {"(async (a, f) => { if (a.length === 0) { return null; } let out = a[0]; for (let i = 1; i < a.length; i++) { out = await f(out, a[i], new alan_std.I64(i)); } return out; })" <- RootBacking :: (T[], (T, T, i64) -> T) -> T?}(a, f);
+fn{Js} reduce{T} "(async (a, f) => { if (a.length === 0) { return null; } let out = a[0]; for (let i = 1; i < a.length; i++) { out = await f(out, a[i], new alan_std.I64(i)); } return out; })" <- RootBacking :: (T[], (T, T, i64) -> T) -> T?;
 fn{Rs} reduce{T, U} "alan_std::reduce_difftype" <- RootBacking :: (T[], U, (U, T) -> U) -> U;
-fn{Js} reduce{T, U} (a: T[], i: U, f: (U, T) -> U) = {"(async (a, i, f) => { let out = i; for (let i = 0; i < a.length; i++) { out = await f(out, a[i]); } return out; })" :: (T[], U, (U, T) -> U) -> U}(a, i, f);
+fn{Js} reduce{T, U} "(async (a, i, f) => { let out = i; for (let i = 0; i < a.length; i++) { out = await f(out, a[i]); } return out; })" :: (T[], U, (U, T) -> U) -> U;
 fn{Rs} reduce{T, U} "alan_std::reduce_difftype_idx" <- RootBacking :: (T[], U, (U, T, i64) -> U) -> U;
-fn{Js} reduce{T, U} (a: T[], i: U, f: (U, T, i64) -> U) = {"(async (a, i, f) => { let out = i; for (let i = 0; i < a.length; i++) { out = await f(out, a[i], new alan_std.I64(i)); } return out; })" <- RootBacking :: (T[], U, (U, T, i64) -> U) -> U}(a, i, f);
+fn{Js} reduce{T, U} "(async (a, i, f) => { let out = i; for (let i = 0; i < a.length; i++) { out = await f(out, a[i], new alan_std.I64(i)); } return out; })" <- RootBacking :: (T[], U, (U, T, i64) -> U) -> U;
 fn{Rs} concat{T} "alan_std::concat" <- RootBacking :: (T[], T[]) -> T[];
 fn{Js} concat{T} (a: T[], b: T[]) -> T[] = {Method{"concat"} :: (T[], T[]) -> T[]}(a, b);
 fn{Rs} append{T} "alan_std::append" <- RootBacking :: (Mut{T[]}, T[]);
