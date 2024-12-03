@@ -999,8 +999,6 @@ pub fn baseassignablelist_to_microstatements<'a>(
                 return Err("TODO: Implement IIFE support".into());
             }
             BaseChunk::GFuncCall(prior, f, g, h) => {
-                // TODO: Actually implement generic functions, for now this is just another way to
-                // do a `TypeCall`
                 // Get all of the arguments for the function into an array. If there's a prior
                 // value it becomes the first argument.
                 let mut arg_microstatements = match prior {
@@ -1027,48 +1025,18 @@ pub fn baseassignablelist_to_microstatements<'a>(
                 for arg in &arg_microstatements {
                     arg_types.push(arg.get_type());
                 }
-                let generics = {
-                    let mut generic_string = g.to_string();
-                    match generic_string.strip_prefix('{') {
-                        Some(s) => generic_string = s.to_string(),
-                        None => { /* Do nothing */ }
+                let generic_types = {
+                    let mut out = vec![];
+                    for tc in g.typecalllist.split(|tc| match tc {
+                        parse::WithTypeOperators::Operators(o) if o.op == "," => true,
+                        _ => false,
+                    }) {
+                        out.push(withtypeoperatorslist_to_ctype(&tc.to_vec(), &scope)?);
                     }
-                    match generic_string.strip_suffix('}') {
-                        Some(s) => generic_string = s.to_string(),
-                        None => { /* Do nothing */ }
-                    }
-                    // TODO: This is still sketchy, but a bit less so? It will fail with a sub-type
-                    // being a generic with multiple args. Do this the right way, later.
-                    generic_string
-                        .replace(['{', '}'], "_")
-                        .split(',')
-                        .map(|s| s.to_string().trim().to_string())
-                        .collect::<Vec<String>>()
+                    out
                 };
-                let mut generic_types = Vec::new();
-                for g in generics {
-                    let t = match scope.resolve_type(&g) {
-                        Some(t) => Ok(t.clone()), // TODO: Drop the cloning
-                        None => {
-                            // TODO: This should be inside of `resolve_type`, but that requires it
-                            // to mutate scope and *that* is a whole refactoring can of worms
-                            match g.parse::<i128>() {
-                                Ok(i) => Ok(CType::Int(i)),
-                                Err(_) => match g.parse::<f64>() {
-                                    Ok(f) => Ok(CType::Float(f)),
-                                    Err(_) => match g.as_str() {
-                                        "true" => Ok(CType::Bool(true)),
-                                        "false" => Ok(CType::Bool(false)),
-                                        _ => {
-                                            // TODO: Add string support
-                                            Err(format!("Could not find type {}", g))
-                                        }
-                                    },
-                                },
-                            }
-                        }
-                    }?;
-                    generic_types.push(t);
+                for g in &generic_types {
+                    scope = CType::from_ctype(scope, g.to_callable_string(), g.clone());
                 }
                 let maybe_type = scope.resolve_type(f);
                 let temp_scope = scope.child();
