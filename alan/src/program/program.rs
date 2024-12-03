@@ -55,7 +55,7 @@ impl<'a> Program<'a> {
         Program::return_program(program);
         let ln_src = if path.starts_with('@') {
             match path.as_str() {
-                //"@std/app" => include_str!("../std/app.ln").to_string(),
+                "@std/fs" => include_str!("../std/fs.ln").to_string(),
                 _ => {
                     return Err(format!("Unknown standard library named {}", &path).into());
                 }

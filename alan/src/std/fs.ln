@@ -1,0 +1,5 @@
+// For now all file operations open and close the actual file handle, so we don't need anything more
+export type File = path: string;
+
+export fn{Rs} string(f: File) = {Method{"map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"} :: Own{Binds{"Result<String, std::io::Error>"}} -> string!}({"std::fs::read_to_string" :: string -> Binds{"Result<String, std::io::Error>"}}(f.path));
+export fn{Js} string(f: File) = {"(async (p) => { try { return new alan_std.Str((await import('node:fs')).readFileSync(p.val, { encoding: 'utf8' })); } catch (e) { return new alan_std.AlanError(e.message); } })" :: string -> string!}(f.path);

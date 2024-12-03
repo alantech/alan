@@ -1062,6 +1062,19 @@ test!(basic_fn_import "fn_foo" =>
     stdout "Bar\n";
 );
 
+test!(file_reading "file_reading" =>
+    "test_file.txt" => "Hello, World!",
+    "file_reading.ln" => r#"
+        type File <-- '@std/fs';
+        fn string <-- '@std/fs'; // TODO: Should this be auto-imported?
+
+        export fn main {
+            File('./test_file.txt').string.print;
+        }
+    "#;
+    stdout "Hello, World!\n";
+);
+
 // Maybe, Result, and Either
 
 test!(maybe => r#"
