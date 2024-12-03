@@ -1027,10 +1027,9 @@ pub fn baseassignablelist_to_microstatements<'a>(
                 }
                 let generic_types = {
                     let mut out = vec![];
-                    for tc in g.typecalllist.split(|tc| match tc {
-                        parse::WithTypeOperators::Operators(o) if o.op == "," => true,
-                        _ => false,
-                    }) {
+                    for tc in g.typecalllist.split(
+                        |tc| matches!(tc, parse::WithTypeOperators::Operators(o) if o.op == ","),
+                    ) {
                         out.push(withtypeoperatorslist_to_ctype(&tc.to_vec(), &scope)?);
                     }
                     out
