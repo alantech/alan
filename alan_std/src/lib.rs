@@ -1306,7 +1306,9 @@ impl ApplicationHandler for AlanWindow {
             }
             WindowEvent::Resized(new_size) => {
                 if self.exiting { return; }
-                window_gpu_init(self);
+                self.buffer = None;
+                self.buffer_width = None;
+                /*window_gpu_init(self);
                 self.buffer_width = Some(if (4 * new_size.width) % 256 == 0 {
                     4 * new_size.width
                 } else {
@@ -1324,7 +1326,7 @@ impl ApplicationHandler for AlanWindow {
                     })),
                     id: format!("buffer_{}", format!("{}", Uuid::new_v4()).replace("-", "_")),
                     element_size: 1, // TODO: Should this be 4?
-                });
+                });*/
                 self.window.as_ref().unwrap().request_redraw();
             }
             WindowEvent::RedrawRequested => {
