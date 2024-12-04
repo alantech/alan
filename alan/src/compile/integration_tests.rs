@@ -833,10 +833,10 @@ test!(conditional_compilation => r#"
     const{true} var = "Hello, World!";
     const{false} var = 32;
 
-    infix{true} add as + precedence 5;
+    infix{true} add as + precedence 7;
     infix{false} add as + precedence 0;
 
-    type infix{true} Add as + precedence 5;
+    type infix{true} Add as + precedence 7;
     type infix{false} Add as + precedence 0;
 
     fn{true} bar = print(true);
