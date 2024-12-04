@@ -37,6 +37,10 @@ pub fn ctype_to_jtype(
                                 deps = res.1;
                             }
                         }
+                        CType::Array(t) => {
+                            let res = ctype_to_jtype(t, deps)?;
+                            deps = res.1;
+                        }
                         otherwise => {
                             return Err(format!("TODO: What is this? {:?}", otherwise).into());
                         }

@@ -761,7 +761,8 @@ pub fn from_microstatement(
                                 let enum_name = match enum_type {
                                     CType::Field(n, _) => Ok(n.clone()),
                                     CType::Type(n, _) => Ok(n.clone()),
-                                    _ => Err(format!("Cannot generate an constructor function for {} type as the input type has no name?", ret_name)),
+                                    CType::Array(_) => Ok(enum_type.to_callable_string()),
+                                    otherwise => Err(format!("Cannot generate an constructor function for {} type as the input type has no name? {:?}", ret_name, otherwise)),
                                 }?;
                                 for t in &ts {
                                     let inner_type = t.degroup();
@@ -928,7 +929,8 @@ pub fn from_microstatement(
                                 let enum_name = match &enum_type {
                                     CType::Field(n, _) => Ok(n.clone()),
                                     CType::Type(n, _) => Ok(n.clone()),
-                                    _ => Err(format!("Cannot generate an constructor function for {} type as the input type has no name?", function.name)),
+                                    CType::Array(_) => Ok(enum_type.to_callable_string()),
+                                    otherwise => Err(format!("Cannot generate an constructor function for {} type as the input type has no name?, {:?}", function.name, otherwise)),
                                 }?;
                                 for t in &ts {
                                     let mut inner_type = t.degroup();
@@ -938,6 +940,9 @@ pub fn from_microstatement(
                                         }
                                     }
                                     match &inner_type {
+                                        CType::Array(_) => {
+                                            return Ok((argstrs[0].clone(), out, deps));
+                                        }
                                         CType::Field(n, _) if *n == enum_name => {
                                             // Special-casing for Option and Result mapping. TODO:
                                             // Make this more centralized

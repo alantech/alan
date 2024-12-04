@@ -1208,6 +1208,7 @@ fn{Js} len{T} (a: T[]) = {Property{"length"} :: T[] -> i32}(a).i64;
 fn{Rs} get{T} "alan_std::getarray" <- RootBacking :: (T[], i64) -> T?;
 fn{Js} get{T} (a: T[], i: i64) = if((i >= 0) & (i < a.len),
   fn = {Method{"at"} :: (T[], i32) -> T}(a, i.i32));
+fn get{T} (a: Maybe{T[]}, i: i64) = if(a.exists, fn = (a!!).get(i), fn = {T?}());
 fn push{T} (a: Mut{T[]}, v: T) = {Method{"push"} :: (Mut{T[]}, Own{T})}(a, v);
 fn{Rs} pop{T} (a: Mut{T[]}) -> T? = {Method{"pop"} :: Mut{T[]} -> T?}(a);
 fn{Js} pop{T} (a: Mut{T[]}) -> T? = {"((a) => a || null)" :: T? -> T?}({Method{"pop"} :: Mut{T[]} -> T?}(a));
