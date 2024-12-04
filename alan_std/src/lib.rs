@@ -1304,35 +1304,15 @@ impl ApplicationHandler for AlanWindow {
                 self.instance = None;
                 event_loop.exit();
             }
-            WindowEvent::Resized(new_size) => {
+            WindowEvent::Resized(_new_size) => {
                 if self.exiting { return; }
                 self.buffer = None;
                 self.buffer_width = None;
-                /*window_gpu_init(self);
-                self.buffer_width = Some(if (4 * new_size.width) % 256 == 0 {
-                    4 * new_size.width
-                } else {
-                    (4 * new_size.width) + (256 - ((4 * new_size.width) % 256))
-                });
-                let buffer_height = new_size.height;
-                let buffer_size = (self.buffer_width.unwrap() as u64) * (buffer_height as u64);
-                let device = self.device.as_ref().unwrap();
-                self.buffer = Some(GBuffer {
-                    buffer: Rc::new(device.create_buffer(&wgpu::BufferDescriptor {
-                        label: None,
-                        size: buffer_size,
-                        usage: storage_buffer_type(),
-                        mapped_at_creation: false,
-                    })),
-                    id: format!("buffer_{}", format!("{}", Uuid::new_v4()).replace("-", "_")),
-                    element_size: 1, // TODO: Should this be 4?
-                });*/
                 self.window.as_ref().unwrap().request_redraw();
             }
             WindowEvent::RedrawRequested => {
                 if self.exiting { return; }
                 let start = std::time::Instant::now();
-                // TODO: The setup starting here should not be done on every frame draw
                 let mut size = self.window.as_ref().unwrap().inner_size();
                 size.width = size.width.max(1);
                 size.height = size.height.max(1);
@@ -1437,7 +1417,7 @@ impl ApplicationHandler for AlanWindow {
                     frame.texture.size(),
                 );
                 queue.submit(Some(encoder.finish()));
-                //device.poll(wgpu::Maintain::Wait);
+                device.poll(wgpu::Maintain::Wait);
                 frame.present();
                 let render_time = start.elapsed();
                 self.window
