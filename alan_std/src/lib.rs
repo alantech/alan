@@ -1367,6 +1367,26 @@ impl ApplicationHandler for AlanWindow {
                 let frame = surface.get_current_texture().unwrap();
                 let mut encoder =
                     device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+	        let context_array = [
+		    size.width as u32,
+		    size.height as u32,
+		    self.buffer_width.unwrap() / 4,
+		    u32::from_le_bytes(start.elapsed().as_secs_f32().to_le_bytes()),
+	        ];
+	        let context_slice = &context_array[..];
+	        let context_ptr = context_slice.as_ptr();
+	        let context_u8_len = context_array.len() * 4;
+	        let context_u8: &[u8] = unsafe {
+		    std::slice::from_raw_parts(context_ptr as *const u8, context_u8_len)
+	        };
+	        let context_buffer = wgpu::util::DeviceExt::create_buffer_init(
+		    device,
+		    &wgpu::util::BufferInitDescriptor {
+		        label: None,
+		        contents: context_u8,
+		        usage: storage_buffer_type(),
+		    },
+	        );
                 {
                     let compute_pipeline = self.compute_pipeline.as_ref().unwrap();
                     let mut cpass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -1374,26 +1394,6 @@ impl ApplicationHandler for AlanWindow {
                         timestamp_writes: None,
                     });
                     cpass.set_pipeline(compute_pipeline);
-                    let context_array = [
-                        size.width as u32,
-                        size.height as u32,
-                        self.buffer_width.unwrap() / 4,
-                        u32::from_le_bytes(start.elapsed().as_secs_f32().to_le_bytes()),
-                    ];
-                    let context_slice = &context_array[..];
-                    let context_ptr = context_slice.as_ptr();
-                    let context_u8_len = context_array.len() * 4;
-                    let context_u8: &[u8] = unsafe {
-                        std::slice::from_raw_parts(context_ptr as *const u8, context_u8_len)
-                    };
-                    let context_buffer = wgpu::util::DeviceExt::create_buffer_init(
-                        device,
-                        &wgpu::util::BufferInitDescriptor {
-                            label: None,
-                            contents: context_u8,
-                            usage: storage_buffer_type(),
-                        },
-                    );
                     let bind_group_layout = compute_pipeline.get_bind_group_layout(0);
                     let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
                         label: None,
@@ -1426,6 +1426,7 @@ impl ApplicationHandler for AlanWindow {
                 );
                 queue.submit(Some(encoder.finish()));
                 frame.present();
+                context_buffer.destroy();
                 let render_time = frame_start.elapsed();
                 self.window
                     .as_ref()
