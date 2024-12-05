@@ -1253,7 +1253,7 @@ fn window_gpu_init(win: &mut AlanWindow) {
              let textureWidth = context[2];
              let time = bitcast<f32>(context[3]);
              let per10sec = time / 10.0;
-             let cycle = abs(per10sec - floor(per10sec) - 0.5);
+             let cycle = 2.0 * abs(per10sec - floor(per10sec) - 0.5);
              let red = cycle * f32(id.x) / f32(width);
              let green = 1.0 - red;
              let blue = f32(id.y) / f32(height);
