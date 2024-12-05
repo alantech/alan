@@ -1298,7 +1298,7 @@ impl ApplicationHandler for AlanWindow {
                 self.exiting = true;
                 // Cleanup the app now that we're caching things
                 self.buffer_width = None;
-                if let Some(b) = self.buffer {
+                if let Some(b) = &self.buffer {
                     b.destroy();
                 }
                 self.buffer = None;
@@ -1312,7 +1312,7 @@ impl ApplicationHandler for AlanWindow {
             }
             WindowEvent::Resized(_new_size) => {
                 if self.exiting { return; }
-                if let Some(b) = self.buffer {
+                if let Some(b) = &self.buffer {
                     b.destroy();
                 }
                 self.buffer = None;
