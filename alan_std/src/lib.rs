@@ -1184,6 +1184,7 @@ pub fn replace_buffer<T>(b: &GBuffer, v: &Vec<T>) -> Result<(), AlanError> {
 pub struct AlanWindow {
     config: Option<WindowAttributes>,
     window: Option<Window>,
+    start: Option<std::time::Instant>,
     instance: Option<wgpu::Instance>,
     adapter: Option<wgpu::Adapter>,
     device: Option<wgpu::Device>,
@@ -1196,13 +1197,12 @@ pub struct AlanWindow {
 }
 
 fn window_gpu_init(win: &mut AlanWindow) {
+    if let None = win.start {
+        win.start = Some(std::time::Instant::now());
+    }
     if let None = win.instance {
         win.instance = Some(wgpu::Instance::default());
     }
-    // TODO: Just copying stuff from [this
-    // example](https://github.com/gfx-rs/wgpu/blob/trunk/examples/src/hello_triangle/mod.rs) at
-    // the moment. Will be replaced with logic to splat a user-defined compute shader into the
-    // window after I can even get the window rendering something.
     if let None = win.adapter {
         let instance = win.instance.as_ref().unwrap();
         let surface = instance
@@ -1251,8 +1251,11 @@ fn window_gpu_init(win: &mut AlanWindow) {
              let width = context[0];
              let height = context[1];
              let textureWidth = context[2];
-             let red = f32(id.x) / f32(width);
-             let green = 0.0;
+             let time = bitcast<f32>(context[3]);
+             let per10sec = time / 10.0;
+             let cycle = per10sec - floor(per10sec);
+             let red = cycle * f32(id.x) / f32(width);
+             let green = 1.0 - red;
              let blue = f32(id.y) / f32(height);
              let alpha = 1.0;
              let loc = id.x + textureWidth * id.y;
@@ -1312,13 +1315,13 @@ impl ApplicationHandler for AlanWindow {
             }
             WindowEvent::RedrawRequested => {
                 if self.exiting { return; }
-                let start = std::time::Instant::now();
                 let mut size = self.window.as_ref().unwrap().inner_size();
                 size.width = size.width.max(1);
                 size.height = size.height.max(1);
                 // The first frame render will be slower because the GPU types are initialized, but
                 // follow-up frames can skip straight to rendering the frame only.
                 window_gpu_init(self);
+                let start = self.start.as_ref().unwrap();
                 let instance = self.instance.as_ref().unwrap();
                 let surface = instance
                     .create_surface(self.window.as_ref().unwrap())
@@ -1368,6 +1371,7 @@ impl ApplicationHandler for AlanWindow {
                         size.width as u32,
                         size.height as u32,
                         self.buffer_width.unwrap() / 4,
+                        u32::from_le_bytes(start.elapsed().as_secs_f32().to_le_bytes()),
                     ];
                     let context_slice = &context_array[..];
                     let context_ptr = context_slice.as_ptr();
@@ -1414,7 +1418,6 @@ impl ApplicationHandler for AlanWindow {
                     frame.texture.size(),
                 );
                 queue.submit(Some(encoder.finish()));
-                //device.poll(wgpu::Maintain::Wait);
                 frame.present();
                 let render_time = start.elapsed();
                 self.window
