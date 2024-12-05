@@ -1253,7 +1253,7 @@ fn window_gpu_init(win: &mut AlanWindow) {
              let textureWidth = context[2];
              let time = bitcast<f32>(context[3]);
              let per10sec = time / 10.0;
-             let cycle = per10sec - floor(per10sec);
+             let cycle = abs(per10sec - floor(per10sec) - 0.5);
              let red = cycle * f32(id.x) / f32(width);
              let green = 1.0 - red;
              let blue = f32(id.y) / f32(height);
@@ -1315,6 +1315,7 @@ impl ApplicationHandler for AlanWindow {
             }
             WindowEvent::RedrawRequested => {
                 if self.exiting { return; }
+                let frame_start = std::time::Instant::now();
                 let mut size = self.window.as_ref().unwrap().inner_size();
                 size.width = size.width.max(1);
                 size.height = size.height.max(1);
@@ -1419,7 +1420,7 @@ impl ApplicationHandler for AlanWindow {
                 );
                 queue.submit(Some(encoder.finish()));
                 frame.present();
-                let render_time = start.elapsed();
+                let render_time = frame_start.elapsed();
                 self.window
                     .as_ref()
                     .unwrap()
