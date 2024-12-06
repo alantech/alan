@@ -727,6 +727,23 @@ test!(mutable_functions => r#"
     stdout "3\n5\n";
 );
 
+test!(complex_cloning => r#"
+    type struct = b: bool, d: Dict{string, Set{i64}};
+
+    export fn main {
+      let s = Set([1, 2, 3]);
+      s.len.print;
+      s.clone.len.print;
+      let d = Dict('foo', s);
+      d.len.print;
+      d.clone.len.print;
+      let b = struct(true, d);
+      b.d.len.print;
+      b.clone{struct}.d.len.print;
+    }"#;
+    stdout "3\n3\n1\n1\n1\n1\n";
+);
+
 // Conditionals
 
 test_ignore!(basic_conditionals => r#"

@@ -117,7 +117,7 @@ type Js = Env{"ALAN_OUTPUT_LANG"} == "js";
 
 // Importing the Root Scope backing implementation and supporting 3rd party libraries
 type{Rs} RootBacking = Rust{"alan_std" @ "https://github.com/alantech/alan.git"};
-type{Js} RootBacking = Node{"alan_std" @ "https://github.com/alantech/alan.git"};
+type{Js} RootBacking = Node{"alan_std" @ "https://github.com/alantech/alan.git#js-clone-fix"};
 
 // Defining derived types
 type void = ();
@@ -221,8 +221,7 @@ infix store as = precedence 0;
 
 /// Functions for (potentially) every type
 fn{Rs} clone{T} (v: T) -> T = {Method{"clone"} :: T -> T}(v);
-// TODO: This needs to be turned into a JS function that's bound
-fn{Js} clone{T} (v: T) -> T = {"(function clone(t) { if (t instanceof Array) { return t.map(clone); } else if (t.build instanceof Function) { return t.build(t.val); } else if (t instanceof Set) { return t.union(new Set()); } else { return structuredClone(t); } })" :: T -> T}(v);
+fn{Js} clone{T} (v: T) -> T = {"alan_std.clone" <- RootBacking :: T -> T}(v);
 fn void{T}(v: T) -> void {}
 fn void() -> void {}
 fn{Rs} store{T} (a: Mut{T}, b: T) -> T = {"std::mem::replace" :: (Mut{T}, Own{T}) -> T}(a, b);

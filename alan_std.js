@@ -23,6 +23,22 @@ export function ifbool(b, t, f) {
   }
 }
 
+export function clone(v) {
+  if (v instanceof Array) {
+    return v.map(clone);
+  } else if (v instanceof Set) {
+    return v.union(new Set());
+  } else if (v instanceof Map) {
+    return new Map(v.entries().map((kv) => [clone(kv[0]), clone(kv[1])]));
+  } else if (v.build instanceof Function) {
+    return v.build(v.val);
+  } else if (v instanceof Object) {
+    return Object.fromEntries(Object.entries(v).map((kv) => [kv[0], clone(kv[1])]));
+  } else {
+    return structuredClone(v);
+  }
+}
+
 // For those reading this binding support code, you might be wondering *why* all of the primitive
 // types are now boxed in their own classes. The reason is that in Alan (and Rust), you can mark
 // any input argument as mutable instead of the default being immutable, but in Javascript, all
