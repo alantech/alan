@@ -31,7 +31,7 @@ export function clone(v) {
   } else if (v instanceof Set) {
     return v.union(new Set());
   } else if (v instanceof Object) {
-    return Object.entries(v).map((kv) => [kv[0], clone(kv[1])]).fromEntries();
+    return Object.fromEntries(Object.entries(v).map((kv) => [kv[0], clone(kv[1])]));
   } else {
     return structuredClone(v);
   }
