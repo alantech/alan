@@ -24,16 +24,16 @@ export function ifbool(b, t, f) {
 }
 
 export function clone(v) {
-  if (t instanceof Array) {
-    return t.map(clone);
-  } else if (t.build instanceof Function) {
-    return t.build(t.val);
-  } else if (t instanceof Set) {
-    return t.union(new Set());
-  } else if (t instanceof Object) {
-    return Object.entries().map((kv) => [kv[0], clone(kv[1])]).fromEntries();
+  if (v instanceof Array) {
+    return v.map(clone);
+  } else if (v.build instanceof Function) {
+    return v.build(v.val);
+  } else if (v instanceof Set) {
+    return v.union(new Set());
+  } else if (v instanceof Object) {
+    return Object.entries(v).map((kv) => [kv[0], clone(kv[1])]).fromEntries();
   } else {
-    return structuredClone(t);
+    return structuredClone(v);
   }
 }
 
