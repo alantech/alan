@@ -26,10 +26,12 @@ export function ifbool(b, t, f) {
 export function clone(v) {
   if (v instanceof Array) {
     return v.map(clone);
-  } else if (v.build instanceof Function) {
-    return v.build(v.val);
   } else if (v instanceof Set) {
     return v.union(new Set());
+  } else if (v instanceof Map) {
+    return new Map(v.entries().map((kv) => [clone(kv[0]), clone(kv[1])]));
+  } else if (v.build instanceof Function) {
+    return v.build(v.val);
   } else if (v instanceof Object) {
     return Object.fromEntries(Object.entries(v).map((kv) => [kv[0], clone(kv[1])]));
   } else {
