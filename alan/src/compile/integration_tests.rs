@@ -739,7 +739,7 @@ test!(complex_cloning => r#"
       d.clone.len.print;
       let b = struct(true, d);
       b.d.len.print;
-      b.clone{struct}.d.len.print;
+      b.clone.d.len.print;
     }"#;
     stdout "3\n3\n1\n1\n1\n1\n";
 );

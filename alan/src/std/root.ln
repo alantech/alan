@@ -220,8 +220,8 @@ infix wrr as >>> precedence 5;
 infix store as = precedence 0;
 
 /// Functions for (potentially) every type
-fn{Rs} clone{T} (v: T) -> T = {Method{"clone"} :: T -> T}(v);
-fn{Js} clone{T} (v: T) -> T = {"alan_std.clone" <- RootBacking :: T -> T}(v);
+fn{Rs} clone{T} (v: T) -> T = {Method{"clone"} :: (v: T) -> T}(v);
+fn{Js} clone{T} (v: T) -> T = {"alan_std.clone" <- RootBacking :: (v: T) -> T}(v);
 fn void{T}(v: T) -> void {}
 fn void() -> void {}
 fn{Rs} store{T} (a: Mut{T}, b: T) -> T = {"std::mem::replace" :: (Mut{T}, Own{T}) -> T}(a, b);

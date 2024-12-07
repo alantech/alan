@@ -934,7 +934,8 @@ export fn{Test} main {
       );
     })
     .it("keyval array to dictionary", fn (test: Mut{Testing}) {
-      const kva = [{(i64, string)}(1, 'foo'), {(i64, string)}(2, 'bar'), {(i64, string)}(3, 'baz')];
+      // This is an improvement, but figure out why `{(i64, string)}` doesn't work
+      const kva = [{i64, string}(1, 'foo'), {i64, string}(2, 'bar'), {i64, string}(3, 'baz')];
       // TODO: Improve this with anonymous tuples
       // const kva = [(1, 'foo'), (2, 'bar'), (3, 'baz')];
       const hm = Dict(kva);
