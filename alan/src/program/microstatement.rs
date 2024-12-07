@@ -757,31 +757,9 @@ pub fn baseassignablelist_to_microstatements<'a>(
                 for arg in &arg_microstatements {
                     arg_types.push(arg.get_type());
                 }
-                // We create a type on-the-fly from the contents the GnCall block. It's given a
-                // name based on the CType tree with all non-`a-zA-Z0-9_` chars replaced with `-`
-                // TODO: Eliminate the duplication of CType generation logic by abstracting out the
-                // automatic function creation into a reusable component
                 let ctype = withtypeoperatorslist_to_ctype(&g.typecalllist, &scope)?;
                 let name = ctype.to_callable_string();
-                let parse_type = parse::Types {
-                    typen: "type".to_string(),
-                    a: "".to_string(),
-                    opttypegenerics: None,
-                    b: "".to_string(),
-                    fulltypename: parse::FullTypename {
-                        typename: name.clone(),
-                        opttypegenerics: None,
-                    },
-                    c: "".to_string(),
-                    typedef: parse::TypeDef {
-                        a: Some("=".to_string()),
-                        b: "".to_string(),
-                        typeassignables: g.typecalllist.clone(),
-                    },
-                    optsemicolon: ";".to_string(),
-                };
-                let res = CType::from_ast(scope, &parse_type, false)?;
-                scope = res.0;
+                scope = CType::from_ctype(scope, name.clone(), ctype.clone());
                 let temp_scope = scope.child();
                 // Now we are sure the type and function exist, and we know the name for the
                 // function. It would be best if we could just pass it to ourselves and run the
