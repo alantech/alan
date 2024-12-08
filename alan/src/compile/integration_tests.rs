@@ -1408,14 +1408,15 @@ test_ignore!(seq_each => r#"
     }"#;
     stdout "0\n1\n2\n";
 );
-test_ignore!(seq_while => r#"
-    from @std/seq import seq, while
+test!(seq_while => r#"
+    fn while <-- '@std/seq';
 
     export fn main {
-      let s = seq(100);
       let sum = 0;
-      s.while(fn = sum < 10, fn {
-        sum = sum + 1 || 0;
+      while(fn = sum < 10, fn {
+        // sum = sum + 1;
+        let s2 = sum.clone; // Need to fix Rust codegen to do this right
+        sum = s2 + 1;
       });
       print(sum);
     }"#;

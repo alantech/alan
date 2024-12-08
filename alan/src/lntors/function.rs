@@ -326,7 +326,7 @@ pub fn from_microstatement(
                     out = res.1;
                     deps = res.2;
                     let res = from_microstatement(&args[1], parent_fn, scope, out, deps)?;
-                    let successblock = res.0.replace("|| ", "");
+                    let successblock = res.0.replace("|| {", "{");
                     out = res.1;
                     deps = res.2;
                     return Ok((
@@ -340,16 +340,33 @@ pub fn from_microstatement(
                     out = res.1;
                     deps = res.2;
                     let res = from_microstatement(&args[1], parent_fn, scope, out, deps)?;
-                    let successblock = res.0.replace("|| ", "");
+                    let successblock = res.0.replace("|| {", "{");
                     out = res.1;
                     deps = res.2;
                     let res = from_microstatement(&args[2], parent_fn, scope, out, deps)?;
-                    let failblock = res.0.replace("|| ", "");
+                    let failblock = res.0.replace("|| {", "{");
                     out = res.1;
                     deps = res.2;
                     return Ok((
                         format!("if {} {} else {}", conditional, successblock, failblock)
                             .to_string(),
+                        out,
+                        deps,
+                    ));
+                } else if fname == "whileloophack" {
+                    let res = from_microstatement(&args[0], parent_fn, scope, out, deps)?;
+                    let conditionalparts = res.0.split("return").collect::<Vec<&str>>();
+                    let conditional = [conditionalparts[0], &conditionalparts[1].replace(";", "")]
+                        .join("")
+                        .replace("|| {", "{");
+                    out = res.1;
+                    deps = res.2;
+                    let res = from_microstatement(&args[1], parent_fn, scope, out, deps)?;
+                    let loopblock = res.0.replace("|| {", "{");
+                    out = res.1;
+                    deps = res.2;
+                    return Ok((
+                        format!("while {} {}", conditional, loopblock).to_string(),
                         out,
                         deps,
                     ));
