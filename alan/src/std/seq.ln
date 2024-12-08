@@ -1,0 +1,2 @@
+export fn{Rs} while "whileloophack" :: (() -> bool, () -> ()) -> ();
+export fn{Js} while "(async (c, l) => { while ((await c()).val) { await l(); } })" :: (() -> bool, () -> ()) -> ();
