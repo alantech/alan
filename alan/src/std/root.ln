@@ -5129,8 +5129,8 @@ fn{Test} assert{T}(groupname: string[], comparator: (T, T) -> bool, actual: T, e
   "\u{1b}[0m".stdout;
   let res = comparator(actual, expected);
   if(res,
-    fn = "\u{0d}\u{1b}[32;1m✅".stdout,
-    fn = "\u{0d}\u{1b}[31;1m❎".stdout);
+    fn { "\u{0d}\u{1b}[32;1m✅".stdout; },
+    fn { "\u{0d}\u{1b}[31;1m❎".stdout; });
   line.stdout;
   "\u{1b}[0m".print;
   if(!res, fn {

@@ -1101,13 +1101,13 @@ test!(maybe => r#"
     export fn main {
       const maybe5 = fiver(5.5);
       if(maybe5.exists,
-        fn = maybe5.getOr(0).print,
-        fn = 'what?'.print);
+        fn { maybe5.getOr(0).print; },
+        fn { 'what?'.print; });
 
       const maybeNot5 = fiver(4.4);
       if(!maybeNot5.exists,
-        fn = 'Correctly received nothing!'.print,
-        fn = 'uhhh'.print);
+        fn { 'Correctly received nothing!'.print; },
+        fn { 'uhhh'.print; });
 
       maybe5.print;
       maybeNot5.print;
@@ -1129,13 +1129,13 @@ test!(fallible => r#"
     export fn main {
       const oneFifth = reciprocal(5.0);
       if(oneFifth.f64.exists,
-        fn = print(oneFifth.getOr(0.0)),
-        fn = print('what?'));
+        fn { print(oneFifth.getOr(0.0)); },
+        fn { print('what?'); });
 
       const oneZeroth = reciprocal(0.0);
       if(oneZeroth.Error.exists,
-        fn = print(oneZeroth.Error.getOr(Error('No error'))),
-        fn = print('uhhh'));
+        fn { print(oneZeroth.Error.getOr(Error('No error'))); },
+        fn { print('uhhh'); });
 
       oneFifth.print;
       oneZeroth.print;
