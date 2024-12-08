@@ -318,6 +318,43 @@ pub fn from_microstatement(
             ))
         }
         Microstatement::FnCall { function, args } => {
+            // Hackery to inline `if` calls *if* it's safe to do so.
+            if let FnKind::Bind(fname) = &function.kind {
+                if fname == "ifstatementhack" {
+                    let res = from_microstatement(&args[0], parent_fn, scope, out, deps)?;
+                    let conditional = res.0;
+                    out = res.1;
+                    deps = res.2;
+                    let res = from_microstatement(&args[1], parent_fn, scope, out, deps)?;
+                    let successblock = res.0.replace("|| ", "");
+                    out = res.1;
+                    deps = res.2;
+                    return Ok((
+                        format!("if {} {}", conditional, successblock).to_string(),
+                        out,
+                        deps,
+                    ));
+                } else if fname == "ifelsestatementhack" {
+                    let res = from_microstatement(&args[0], parent_fn, scope, out, deps)?;
+                    let conditional = res.0;
+                    out = res.1;
+                    deps = res.2;
+                    let res = from_microstatement(&args[1], parent_fn, scope, out, deps)?;
+                    let successblock = res.0.replace("|| ", "");
+                    out = res.1;
+                    deps = res.2;
+                    let res = from_microstatement(&args[2], parent_fn, scope, out, deps)?;
+                    let failblock = res.0.replace("|| ", "");
+                    out = res.1;
+                    deps = res.2;
+                    return Ok((
+                        format!("if {} {} else {}", conditional, successblock, failblock)
+                            .to_string(),
+                        out,
+                        deps,
+                    ));
+                }
+            }
             let mut arg_types = Vec::new();
             let mut arg_type_strs = Vec::new();
             for arg in args {

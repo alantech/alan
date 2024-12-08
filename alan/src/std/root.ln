@@ -520,6 +520,11 @@ fn if{T}(c: bool, t: T, f: T) = if(c, fn () = t, fn () = f);
 fn if{T}(c: bool, t: () -> T) = if(c, fn () = Maybe{T}(t()), fn () = Maybe{T}());
 fn{Rs} if{T} "alan_std::ifbool" <- RootBacking :: (bool, () -> T, () -> T) -> T;
 fn{Js} if{T} "alan_std.ifbool" <- RootBacking :: (bool, () -> T, () -> T) -> T;
+fn{Js} if(c: bool, t: () -> ()) {
+  if(c, t, fn { 0; });
+}
+fn{Rs} if "ifstatementhack" :: (bool, () -> ()) -> ();
+fn{Rs} if "ifelsestatementhack" :: (bool, () -> (), () -> ()) -> ();
 
 /// Float-related functions and function bindings
 fn{Rs} add Infix{"+"} :: (f32, f32) -> f32;
@@ -5124,8 +5129,8 @@ fn{Test} assert{T}(groupname: string[], comparator: (T, T) -> bool, actual: T, e
   "\u{1b}[0m".stdout;
   let res = comparator(actual, expected);
   if(res,
-    fn = "\u{0d}\u{1b}[32;1m✅".stdout,
-    fn = "\u{0d}\u{1b}[31;1m❎".stdout);
+    fn { "\u{0d}\u{1b}[32;1m✅".stdout; },
+    fn { "\u{0d}\u{1b}[31;1m❎".stdout; });
   line.stdout;
   "\u{1b}[0m".print;
   if(!res, fn {
