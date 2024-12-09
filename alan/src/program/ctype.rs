@@ -2646,6 +2646,16 @@ impl CType {
                         origin_scope_path: scope.path.clone(),
                     });
                 }
+                // Also include accessor functions for each
+                for i in 0..size {
+                    fs.push(Function {
+                        name: format!("{}", i),
+                        typen: CType::Function(Box::new(t.clone()), b.clone()),
+                        microstatements: Vec::new(),
+                        kind: FnKind::Derived,
+                        origin_scope_path: scope.path.clone(),
+                    })
+                }
             }
             CType::Array(a) => {
                 // For Arrays we create only one kind of array, one that takes any

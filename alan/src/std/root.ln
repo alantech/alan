@@ -1398,10 +1398,10 @@ fn{Rs} store{V} (s: Mut{Set{V}}, v: V) {
   {Method{"insert"} :: (Mut{Set{V}}, Own{V}) -> bool}(s, v);
 }
 fn{Js} store{V} (s: Mut{Set{V}}, v: V) {
-  {"((s, v) => s.add(v?.val ?? v))" :: (Set{V}, V) -> Set{V}}(s, v);
+  {"((s, v) => s.add(v.toString()))" :: (Set{V}, V) -> Set{V}}(s, v);
 }
 fn{Rs} has{V} (s: Set{V}, v: V) = {Method{"contains"} :: (Set{V}, V) -> bool}(s, v);
-fn{Js} has{V} (s: Set{V}, v: V) = {"((s, v) => new alan_std.Bool(s.has(v?.val ?? v)))" <- RootBacking :: (Set{V}, V) -> bool}(s, v);
+fn{Js} has{V} (s: Set{V}, v: V) = {"((s, v) => new alan_std.Bool(s.has(v.toString())))" <- RootBacking :: (Set{V}, V) -> bool}(s, v);
 fn{Rs} len{V} (s: Set{V}) = {Cast{"i64"} :: Deref{Binds{"usize"}} -> i64}(
   {Method{"len"} :: Set{V} -> Binds{"usize"}}(s));
 fn{Js} len{V} (s: Set{V}) = {Property{"size"} :: Set{V} -> i32}(s).i64;
