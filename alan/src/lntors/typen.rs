@@ -50,7 +50,6 @@ pub fn ctype_to_rtype(
             }
         }
         CType::Mut(t) => {
-            println!("t {:?}", t);
             ctype_to_rtype(t, in_function_type, deps)
         }
         CType::Void => Ok(("void".to_string(), deps)),
@@ -287,7 +286,6 @@ pub fn ctype_to_rtype(
             Ok((format!("({})", s), deps))
         }
         CType::Function(i, o) => {
-            println!("ctype {:?}", ctype);
             if let CType::Void = **i {
                 let res = ctype_to_rtype(o, true, deps)?;
                 let s = res.0;
