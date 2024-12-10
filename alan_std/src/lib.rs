@@ -54,7 +54,13 @@ pub fn stringify<T: std::string::ToString>(v: T) -> String {
 /// `splitstring` creates a vector of strings split by the specified separator string
 #[inline(always)]
 pub fn splitstring(a: &String, b: &String) -> Vec<String> {
-    a.split(b).map(|v| v.to_string()).collect::<Vec<String>>()
+    // For now, special handling if the split string is an empty string to make it behave as
+    // expected as creating a character array
+    if b.is_empty() {
+        a.chars().map(|v| v.to_string()).collect::<Vec<String>>()
+    } else {
+        a.split(b).map(|v| v.to_string()).collect::<Vec<String>>()
+    }
 }
 
 /// `getstring` returns the character at the specified index (TODO: What is a "character" in Alan?)
