@@ -34,7 +34,7 @@ export class FuzzySet {
   }
 
   has(val) {
-    return this.map.hasOwnProperty(val.toString());
+    return new Bool(this.map.hasOwnProperty(val.toString()));
   }
 
   len() {
