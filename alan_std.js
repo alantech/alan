@@ -68,7 +68,7 @@ export class FuzzySet {
   intersect(other) {
     let set = {};
     for (let a of Object.keys(this.map)) {
-      if (other.has(a)) {
+      if (other.has(a).val) {
         set[a] = true;
       }
     }
@@ -79,7 +79,7 @@ export class FuzzySet {
   difference(other) {
     let set = {};
     for (let a of Object.keys(this.map)) {
-      if (!other.has(a)) {
+      if (!other.has(a).val) {
         set[a] = true;
       }
     }
@@ -90,12 +90,12 @@ export class FuzzySet {
   symmetricDifference(other) {
     let set = {};
     for (let a of Object.keys(this.map)) {
-      if (!other.has(a)) {
+      if (!other.has(a).val) {
         set[a] = true;
       }
     }
     for (let b of Object.keys(other.map)) {
-      if (!this.has(b)) {
+      if (!this.has(b).val) {
         set[b] = true;
       }
     }
