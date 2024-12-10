@@ -31,13 +31,13 @@ export class FuzzySet {
   store(val) {
     // TODO: Create a 'universal' hash function for JS to make the key
     // TODO: Remove this GPUBuffer hack eventually
-    this.map[val instanceof globalThis.GPUBuffer ? val.label : val.toString()] = val;
+    this.map[globalThis.GPUBuffer && val instanceof globalThis.GPUBuffer ? val.label : val.toString()] = val;
   }
 
   has(val) {
     return new Bool(
       this.map.hasOwnProperty(
-        val instanceof globalThis.GPUBuffer ? val.label : val.toString()
+        globalThis.GPUBuffer && val instanceof globalThis.GPUBuffer ? val.label : val.toString()
       )
     );
   }
