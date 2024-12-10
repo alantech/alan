@@ -24,66 +24,90 @@ export function ifbool(b, t, f) {
 }
 
 export class FuzzySet {
-  constructor(set, map) {
-    this.set = set ?? new Set();
-    this.map = map ?? new Map();
+  constructor(map) {
+    this.map = map ?? {};
   }
 
   store(val) {
     // TODO: Create a 'universal' hash function for JS to make the key
-    this.set.add(val.toString());
-    this.map.set(val.toString(), val);
+    this.map[val.toString()] = val;
   }
 
   has(val) {
-    return this.set.has(val.toString());
+    return this.map.hasOwnProperty(val.toString());
   }
 
   len() {
-    return new I64(this.set.size);
+    return new I64(Object.keys(this.map).length);
   }
 
   array() {
-    return [...this.map.values()];
+    return [...Object.values(this.map)];
   }
 
   makeMapWith(keys, other) {
-    let map = new Map();
+    let map = {};
     for (let key of keys) {
-      map.set(key, this.map.has(key) ? this.map.get(key) : other.map.get(key));
+      map[key] = this.has(key) ? this.map[key] : other.map[key];
     }
     return map;
   }
 
   union(other) {
-    let set = this.set.union(other.set);
-    let map = this.makeMapWith(set.values(), other);
-    return new FuzzySet(set, map);
+    let set = {};
+    for (let a of Object.keys(this.map)) {
+      set[a] = true;
+    }
+    for (let b of Object.keys(other.map)) {
+      set[b] = true;
+    }
+    let map = this.makeMapWith(Object.keys(set), other);
+    return new FuzzySet(map);
   }
 
   intersect(other) {
-    let set = this.set.intersect(other.set);
-    let map = this.makeMapWith(set.values(), other);
-    return new FuzzySet(set, map);
+    let set = {};
+    for (let a of Object.keys(this.map)) {
+      if (other.has(a)) {
+        set[a] = true;
+      }
+    }
+    let map = this.makeMapWith(Object.keys(set), other);
+    return new FuzzySet(map);
   }
 
   difference(other) {
-    let set = this.set.difference(other.set);
-    let map = this.makeMapWith(set.values(), other);
-    return new FuzzySet(set, map);
+    let set = {};
+    for (let a of Object.keys(this.map)) {
+      if (!other.has(a)) {
+        set[a] = true;
+      }
+    }
+    let map = this.makeMapWith(Object.keys(set), other);
+    return new FuzzySet(map);
   }
 
   symmetricDifference(other) {
-    let set = this.set.symmetricDifference(other.set);
-    let map = this.makeMapWith(set.values(), other);
-    return new FuzzySet(set, map);
+    let set = {};
+    for (let a of Object.keys(this.map)) {
+      if (!other.has(a)) {
+        set[a] = true;
+      }
+    }
+    for (let b of Object.keys(other.map)) {
+      if (!this.has(b)) {
+        set[b] = true;
+      }
+    }
+    let map = this.makeMapWith(Object.keys(set), other);
+    return new FuzzySet(map);
   }
 
   product(other) {
     let out = new FuzzySet();
-    for (let a of this.set.values()) {
-      for (let b of other.set.values()) {
-        out.store([this.map.get(a), other.map.get(b)]);
+    for (let a of Object.keys(this.map)) {
+      for (let b of Object.keys(other.map)) {
+        out.store([this.map[a], other.map[b]]);
       }
     }
     return out;
