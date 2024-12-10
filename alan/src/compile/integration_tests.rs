@@ -1422,6 +1422,19 @@ test!(seq_while => r#"
     }"#;
     stdout "10\n";
 );
+test!(seq_iter => r#"
+    fn iter <-- '@std/seq';
+
+    export fn main {
+      let sum = 0;
+      fn (i: i64) {
+        let s2 = sum.clone; // TODO: Fix rust codegen
+        sum = s2 + i * i;
+      }.iter(10);
+      print(sum);
+    }"#;
+    stdout "285\n";
+);
 test_ignore!(seq_do_while => r#"
     from @std/seq import seq, doWhile
 

@@ -9,7 +9,50 @@ pub fn ctype_to_rtype(
     mut deps: OrderedHashMap<String, String>,
 ) -> Result<(String, OrderedHashMap<String, String>), Box<dyn std::error::Error>> {
     match ctype {
-        CType::Mut(t) => ctype_to_rtype(t, in_function_type, deps),
+        CType::Mut(t) if matches!(&**t, CType::Function(..)) => {
+            // Special path to mark a closure as allowed to mutate its originating scope
+            if let CType::Function(i, o) = &**t {
+                if let CType::Void = **i {
+                    let res = ctype_to_rtype(o, true, deps)?;
+                    let s = res.0;
+                    deps = res.1;
+                    Ok((format!("impl FnMut() -> {}", s), deps))
+                } else {
+                    Ok((format!(
+                        "impl FnMut(&{}) -> {}",
+                        match &**i {
+                            CType::Tuple(ts) => {
+                                let mut out = Vec::new();
+                                for t in ts {
+                                    let res = ctype_to_rtype(t, true, deps)?;
+                                    let s = res.0;
+                                    deps = res.1;
+                                    out.push(s);
+                                }
+                                out.join(", &")
+                            },
+                            otherwise => {
+                                let res = ctype_to_rtype(otherwise, true, deps)?;
+                                let s = res.0;
+                                deps = res.1;
+                                s
+                            }
+                        }, {
+                            let res = ctype_to_rtype(o, true, deps)?;
+                            let s = res.0;
+                            deps = res.1;
+                            s
+                        }
+                    ), deps))
+                }
+            } else {
+                unreachable!();
+            }
+        }
+        CType::Mut(t) => {
+            println!("t {:?}", t);
+            ctype_to_rtype(t, in_function_type, deps)
+        }
         CType::Void => Ok(("void".to_string(), deps)),
         CType::Infer(s, _) => Err(format!(
             "Inferred type matching {} was not realized before code generation",
@@ -244,6 +287,7 @@ pub fn ctype_to_rtype(
             Ok((format!("({})", s), deps))
         }
         CType::Function(i, o) => {
+            println!("ctype {:?}", ctype);
             if let CType::Void = **i {
                 let res = ctype_to_rtype(o, true, deps)?;
                 let s = res.0;
