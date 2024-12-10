@@ -56,7 +56,7 @@ pub fn stringify<T: std::string::ToString>(v: T) -> String {
 pub fn splitstring(a: &String, b: &String) -> Vec<String> {
     // For now, special handling if the split string is an empty string to make it behave as
     // expected as creating a character array
-    if b == "" {
+    if b.is_empty() {
         a.chars().map(|v| v.to_string()).collect::<Vec<String>>()
     } else {
         a.split(b).map(|v| v.to_string()).collect::<Vec<String>>()
