@@ -23,11 +23,107 @@ export function ifbool(b, t, f) {
   }
 }
 
+export class FuzzySet {
+  constructor(map) {
+    this.map = map ?? {};
+  }
+
+  store(val) {
+    // TODO: Create a 'universal' hash function for JS to make the key
+    // TODO: Remove this GPUBuffer hack eventually
+    this.map[globalThis.GPUBuffer && val instanceof globalThis.GPUBuffer ? val.label : val.toString()] = val;
+  }
+
+  has(val) {
+    return new Bool(
+      this.map.hasOwnProperty(
+        globalThis.GPUBuffer && val instanceof globalThis.GPUBuffer ? val.label : val.toString()
+      )
+    );
+  }
+
+  len() {
+    return new I64(Object.keys(this.map).length);
+  }
+
+  array() {
+    return [...Object.values(this.map)];
+  }
+
+  makeMapWith(keys, other) {
+    let map = {};
+    for (let key of keys) {
+      map[key] = this.has(key).val ? this.map[key] : other.map[key];
+    }
+    return map;
+  }
+
+  union(other) {
+    let set = {};
+    for (let a of Object.keys(this.map)) {
+      set[a] = true;
+    }
+    for (let b of Object.keys(other.map)) {
+      set[b] = true;
+    }
+    let map = this.makeMapWith(Object.keys(set), other);
+    return new FuzzySet(map);
+  }
+
+  intersect(other) {
+    let set = {};
+    for (let a of Object.keys(this.map)) {
+      if (other.has(a).val) {
+        set[a] = true;
+      }
+    }
+    let map = this.makeMapWith(Object.keys(set), other);
+    return new FuzzySet(map);
+  }
+
+  difference(other) {
+    let set = {};
+    for (let a of Object.keys(this.map)) {
+      if (!other.has(a).val) {
+        set[a] = true;
+      }
+    }
+    let map = this.makeMapWith(Object.keys(set), other);
+    return new FuzzySet(map);
+  }
+
+  symmetricDifference(other) {
+    let set = {};
+    for (let a of Object.keys(this.map)) {
+      if (!other.has(a).val) {
+        set[a] = true;
+      }
+    }
+    for (let b of Object.keys(other.map)) {
+      if (!this.has(b).val) {
+        set[b] = true;
+      }
+    }
+    let map = this.makeMapWith(Object.keys(set), other);
+    return new FuzzySet(map);
+  }
+
+  product(other) {
+    let out = new FuzzySet();
+    for (let a of Object.keys(this.map)) {
+      for (let b of Object.keys(other.map)) {
+        out.store([this.map[a], other.map[b]]);
+      }
+    }
+    return out;
+  }
+}
+
 export function clone(v) {
   if (v instanceof Array) {
     return v.map(clone);
-  } else if (v instanceof Set) {
-    return v.union(new Set());
+  } else if (v instanceof FuzzySet) {
+    return v.union(new FuzzySet());
   } else if (v instanceof Map) {
     return new Map(v.entries().map((kv) => [clone(kv[0]), clone(kv[1])]));
   } else if (v.build instanceof Function) {

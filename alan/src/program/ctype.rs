@@ -102,7 +102,7 @@ impl CType {
                             Box::new(CType::Node(Box::new(CType::Dependency(
                                 Box::new(CType::TString("alan_std".to_string())),
                                 Box::new(CType::TString(
-                                    "https://github.com/alantech/alan.git".to_string(),
+                                    "https://github.com/alantech/alan.git#buffer-direct-access-and-js-set-fixes".to_string(),
                                 )),
                             )))),
                         )),
@@ -135,7 +135,7 @@ impl CType {
                             Box::new(CType::Node(Box::new(CType::Dependency(
                                 Box::new(CType::TString("alan_std".to_string())),
                                 Box::new(CType::TString(
-                                    "https://github.com/alantech/alan.git".to_string(),
+                                    "https://github.com/alantech/alan.git#buffer-direct-access-and-js-set-fixes".to_string(),
                                 )),
                             )))),
                         )),
@@ -168,7 +168,7 @@ impl CType {
                             Box::new(CType::Node(Box::new(CType::Dependency(
                                 Box::new(CType::TString("alan_std".to_string())),
                                 Box::new(CType::TString(
-                                    "https://github.com/alantech/alan.git".to_string(),
+                                    "https://github.com/alantech/alan.git#buffer-direct-access-and-js-set-fixes".to_string(),
                                 )),
                             )))),
                         )),
@@ -201,7 +201,7 @@ impl CType {
                             Box::new(CType::Node(Box::new(CType::Dependency(
                                 Box::new(CType::TString("alan_std".to_string())),
                                 Box::new(CType::TString(
-                                    "https://github.com/alantech/alan.git".to_string(),
+                                    "https://github.com/alantech/alan.git#buffer-direct-access-and-js-set-fixes".to_string(),
                                 )),
                             )))),
                         )),
@@ -2645,6 +2645,16 @@ impl CType {
                         kind: FnKind::Derived,
                         origin_scope_path: scope.path.clone(),
                     });
+                }
+                // Also include accessor functions for each
+                for i in 0..size {
+                    fs.push(Function {
+                        name: format!("{}", i),
+                        typen: CType::Function(Box::new(t.clone()), b.clone()),
+                        microstatements: Vec::new(),
+                        kind: FnKind::Derived,
+                        origin_scope_path: scope.path.clone(),
+                    })
                 }
             }
             CType::Array(a) => {

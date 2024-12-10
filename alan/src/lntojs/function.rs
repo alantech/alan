@@ -623,6 +623,20 @@ pub fn from_microstatement(
                                     return Ok((format!("{}.{}", argstrs[0], n), out, deps));
                                 }
                             }
+                            CType::Buffer(_, s) => {
+                                // Similarly short-circuit for direct `<N>` function calls
+                                if let Ok(i) = function.name.parse::<i64>() {
+                                    if let CType::Int(l) = **s {
+                                        if i128::from(i) < l {
+                                            return Ok((
+                                                format!("{}[{}]", argstrs[0], i),
+                                                out,
+                                                deps,
+                                            ));
+                                        }
+                                    }
+                                }
+                            }
                             CType::Field(..) => {
                                 return Ok((format!("{}.arg0", argstrs[0]), out, deps));
                             }
