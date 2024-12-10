@@ -23,11 +23,78 @@ export function ifbool(b, t, f) {
   }
 }
 
+export class FuzzySet {
+  constructor(set, map) {
+    this.set = set ?? new Set();
+    this.map = map ?? new Map();
+  }
+
+  store(val) {
+    // TODO: Create a 'universal' hash function for JS to make the key
+    this.set.add(val.toString());
+    this.map.set(val.toString(), val);
+  }
+
+  has(val) {
+    return this.set.has(val.toString());
+  }
+
+  len() {
+    return new I64(this.set.size);
+  }
+
+  array() {
+    return [...this.map.values()];
+  }
+
+  makeMapWith(keys, other) {
+    let map = new Map();
+    for (let key of keys) {
+      map.set(key, this.map.has(key) ? this.map.get(key) : other.map.get(key));
+    }
+    return map;
+  }
+
+  union(other) {
+    let set = this.set.union(other.set);
+    let map = this.makeMapWith(set.values(), other);
+    return new FuzzySet(set, map);
+  }
+
+  intersect(other) {
+    let set = this.set.intersect(other.set);
+    let map = this.makeMapWith(set.values(), other);
+    return new FuzzySet(set, map);
+  }
+
+  difference(other) {
+    let set = this.set.difference(other.set);
+    let map = this.makeMapWith(set.values(), other);
+    return new FuzzySet(set, map);
+  }
+
+  symmetricDifference(other) {
+    let set = this.set.symmetricDifference(other.set);
+    let map = this.makeMapWith(set.values(), other);
+    return new FuzzySet(set, map);
+  }
+
+  product(other) {
+    let out = new FuzzySet();
+    for (let a of this.set.values()) {
+      for (let b of other.set.values()) {
+        out.store([this.map.get(a), other.map.get(b)]);
+      }
+    }
+    return out;
+  }
+}
+
 export function clone(v) {
   if (v instanceof Array) {
     return v.map(clone);
-  } else if (v instanceof Set) {
-    return v.union(new Set());
+  } else if (v instanceof FuzzySet) {
+    return v.union(new FuzzySet());
   } else if (v instanceof Map) {
     return new Map(v.entries().map((kv) => [clone(kv[0]), clone(kv[1])]));
   } else if (v.build instanceof Function) {
