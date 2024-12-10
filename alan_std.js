@@ -53,7 +53,7 @@ export class FuzzySet {
   makeMapWith(keys, other) {
     let map = {};
     for (let key of keys) {
-      map[key] = this.has(key) ? this.map[key] : other.map[key];
+      map[key] = this.has(key).val ? this.map[key] : other.map[key];
     }
     return map;
   }
