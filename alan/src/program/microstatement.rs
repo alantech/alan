@@ -885,9 +885,6 @@ pub fn baseassignablelist_to_microstatements<'a>(
                     // types
                     let mut temp_scope = scope.child();
                     let maybe_origin_scope;
-                    if f == "iter" || f == "while" {
-                        println!("scope.functions {:?}", scope.functions);
-                    }
                     let res = match temp_scope.resolve_function(f, &arg_types) {
                         Some(r) => Some(r),
                         None => match &parent_fn {

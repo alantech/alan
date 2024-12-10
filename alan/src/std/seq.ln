@@ -10,3 +10,11 @@ export fn iter{T}(f: Mut{(i64) -> T}, n: i64) -> T[] {
   });
   return out;
 }
+export fn iter(f: Mut{(i64) -> ()}, n: i64) -> () {
+  let i = 0;
+  while(fn = i < n, fn {
+    f(i);
+    let next = i + 1;
+    i = next;
+  });
+}

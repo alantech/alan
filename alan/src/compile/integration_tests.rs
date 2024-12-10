@@ -1432,8 +1432,12 @@ test!(seq_iter => r#"
         sum = s2 + i * i;
       }.iter(10);
       print(sum);
+      let arr = fn (i: i64) {
+        return i * i;
+      }.iter(10);
+      arr.map(string).join(', ').print;
     }"#;
-    stdout "285\n";
+    stdout "285\n0, 1, 4, 9, 16, 25, 36, 49, 64, 81\n";
 );
 test_ignore!(seq_do_while => r#"
     from @std/seq import seq, doWhile

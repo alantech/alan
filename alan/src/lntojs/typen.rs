@@ -209,7 +209,11 @@ pub fn ctype_to_jtype(
             let res = ctype_to_jtype(g, deps)?;
             let s = res.0;
             deps = res.1;
-            Ok((format!("({})", s), deps))
+            if !s.is_empty() {
+                Ok((format!("({})", s), deps))
+            } else {
+                Ok(("".to_string(), deps))
+            }
         }
         CType::Function(i, o) => {
             let res = ctype_to_jtype(i, deps)?;
