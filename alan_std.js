@@ -694,14 +694,14 @@ export class GPGPU {
 
 export async function gpuRun(gg) {
   let g = await gpu();
-  if (!this.module) {
-    this.module = g.device.createShaderModule({
+  if (!gg.module) {
+    gg.module = g.device.createShaderModule({
       code: gg.source,
     });
   }
-  let module = this.module;
-  if (!this.computePipeline) {
-    this.computePipeline = g.device.createComputePipeline({
+  let module = gg.module;
+  if (!gg.computePipeline) {
+    gg.computePipeline = g.device.createComputePipeline({
       layout: "auto",
       compute: {
         entryPoint: gg.entryPoint,
@@ -709,7 +709,7 @@ export async function gpuRun(gg) {
       },
     });
   }
-  let computePipeline = this.computePipeline;
+  let computePipeline = gg.computePipeline;
   let encoder = g.device.createCommandEncoder();
   let cpass = encoder.beginComputePass();
   cpass.setPipeline(computePipeline);
