@@ -986,6 +986,8 @@ pub struct GPGPU {
     pub entrypoint: String,
     pub buffers: Vec<Vec<GBuffer>>,
     pub workgroup_sizes: [i64; 3],
+    pub module: Option<wgpu::ShaderModule>,
+    pub compute_pipeline: Option<wgpu::ComputePipeline>,
 }
 
 impl GPGPU {
@@ -995,26 +997,34 @@ impl GPGPU {
             entrypoint: "main".to_string(),
             buffers,
             workgroup_sizes,
+            module: None,
+            compute_pipeline: None,
         }
     }
 }
 
-pub fn gpu_run(gg: &GPGPU) {
+pub fn gpu_run(gg: &mut GPGPU) {
     let g = gpu();
-    let module = g.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: None,
-        source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(&gg.source)),
-    });
-    let compute_pipeline = g
-        .device
-        .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+    if gg.module.is_none() {
+        gg.module = Some(g.device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: None,
-            layout: None,
-            module: &module,
-            entry_point: Some(&gg.entrypoint),
-            compilation_options: wgpu::PipelineCompilationOptions::default(),
-            cache: None, // TODO: Might be worthwhile
-        });
+            source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(&gg.source)),
+        }));
+    }
+    let module = gg.module.as_ref().unwrap();
+    if gg.compute_pipeline.is_none() {
+        gg.compute_pipeline = Some(g.device.create_compute_pipeline(
+            &wgpu::ComputePipelineDescriptor {
+                label: None,
+                layout: None,
+                module,
+                entry_point: Some(&gg.entrypoint),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                cache: None,
+            },
+        ));
+    }
+    let compute_pipeline = gg.compute_pipeline.as_ref().unwrap();
     let mut bind_groups = Vec::new();
     let mut encoder = g
         .device
@@ -1024,7 +1034,7 @@ pub fn gpu_run(gg: &GPGPU) {
             label: None,
             timestamp_writes: None,
         });
-        cpass.set_pipeline(&compute_pipeline);
+        cpass.set_pipeline(compute_pipeline);
         for i in 0..gg.buffers.len() {
             let bind_group_layout = compute_pipeline.get_bind_group_layout(i.try_into().unwrap());
             let bind_group_buffers = &gg.buffers[i];
