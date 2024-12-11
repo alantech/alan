@@ -372,18 +372,6 @@ pub fn from_microstatement(
                     ));
                 }
             }
-            let mut arg_types = Vec::new();
-            let mut arg_type_strs = Vec::new();
-            for arg in args {
-                let arg_type = arg.get_type();
-                let (_, o, d) = typen::generate(&arg_type, out, deps)?;
-                out = o;
-                deps = d;
-                arg_types.push(arg_type.clone());
-                let res = typen::ctype_to_rtype(&arg_type, true, deps)?;
-                arg_type_strs.push(res.0);
-                deps = res.1;
-            }
             match &function.kind {
                 FnKind::Generic(..) | FnKind::BoundGeneric(..) | FnKind::ExternalGeneric(..) => {
                     Err("Generic functions should have been resolved before reaching here".into())
@@ -1680,11 +1668,25 @@ pub fn generate(
     let mut arg_strs = Vec::new();
     for arg in &function.args() {
         let (l, k, t) = arg;
-        let (t_str, o, d) = typen::generate(t, out, deps)?;
+        // Re-add Mut{} for closure function arguments but then mark it as a reference
+        let ty = if let ArgKind::Mut = k {
+            if let CType::Function(..) = &t {
+                CType::Mut(Box::new(t.clone()))
+            } else {
+                t.clone()
+            }
+        } else {
+            t.clone()
+        };
+        let (t_str, o, d) = typen::generate(&ty, out, deps)?;
         out = o;
         deps = d;
         if t_str.starts_with("impl") || t_str.starts_with("&") {
-            arg_strs.push(format!("{}: {}", l, t_str));
+            if t_str.contains("FnMut") {
+                arg_strs.push(format!("mut {}: {}", l, t_str));
+            } else {
+                arg_strs.push(format!("{}: {}", l, t_str));
+            }
         } else {
             match k {
                 ArgKind::Mut => arg_strs.push(format!("{}: &mut {}", l, t_str)),

@@ -883,8 +883,29 @@ pub fn baseassignablelist_to_microstatements<'a>(
                 } else {
                     // Now confirm that there's actually a function with this name that takes these
                     // types
-                    let temp_scope = scope.child();
-                    let res = temp_scope.resolve_function(f, &arg_types);
+                    let mut temp_scope = scope.child();
+                    let maybe_origin_scope;
+                    let res = match temp_scope.resolve_function(f, &arg_types) {
+                        Some(r) => Some(r),
+                        None => match &parent_fn {
+                            Some(parent) => {
+                                // Perhaps this function is defined in the parent function's origin scope?
+                                let program = Program::get_program();
+                                let origin_scope = program.scope_by_file(&parent.origin_scope_path);
+                                let out = match origin_scope {
+                                    Ok(origin) => {
+                                        maybe_origin_scope = Some(origin.clone());
+                                        temp_scope = maybe_origin_scope.as_ref().unwrap().child();
+                                        temp_scope.resolve_function(f, &arg_types)
+                                    }
+                                    Err(_) => None,
+                                };
+                                Program::return_program(program);
+                                out
+                            }
+                            None => None,
+                        },
+                    };
                     match res {
                         Some((mut temp_scope, fun)) => {
                             // Success! Let's emit this
