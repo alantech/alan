@@ -1005,14 +1005,14 @@ impl GPGPU {
 
 pub fn gpu_run(gg: &mut GPGPU) {
     let g = gpu();
-    if let None = &gg.module {
+    if gg.module.is_none() {
         gg.module = Some(g.device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: None,
             source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(&gg.source)),
         }));
     }
     let module = gg.module.as_ref().unwrap();
-    if let None = &gg.compute_pipeline {
+    if gg.compute_pipeline.is_none() {
         gg.compute_pipeline = Some(g.device.create_compute_pipeline(
             &wgpu::ComputePipelineDescriptor {
                 label: None,
