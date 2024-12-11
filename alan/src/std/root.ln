@@ -1613,7 +1613,7 @@ fn GPGPU(src: string, buf: GBuffer) -> GPGPU {
   let x = max(yRem, 1);
   return GPGPU(src, [[buf]], {i64[3]}(x, y, z));
 }
-fn{Rs} run "alan_std::gpu_run" <- RootBacking :: GPGPU;
+fn{Rs} run "alan_std::gpu_run" <- RootBacking :: Mut{GPGPU};
 fn{Js} run "alan_std.gpuRun" <- RootBacking :: GPGPU;
 fn{Rs} read{T}(gb: GBuffer) = {"alan_std::read_buffer" <- RootBacking :: GBuffer -> T[]}(gb);
 fn{Js} read{T} "alan_std.readBuffer" <- RootBacking :: GBuffer -> T[];
