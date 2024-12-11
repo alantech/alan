@@ -326,7 +326,7 @@ pub fn from_microstatement(
                     out = res.1;
                     deps = res.2;
                     let res = from_microstatement(&args[1], parent_fn, scope, out, deps)?;
-                    let successblock = res.0.replace("|| {", "{");
+                    let successblock = res.0.replacen("|| {", "{", 1);
                     out = res.1;
                     deps = res.2;
                     return Ok((
@@ -340,11 +340,11 @@ pub fn from_microstatement(
                     out = res.1;
                     deps = res.2;
                     let res = from_microstatement(&args[1], parent_fn, scope, out, deps)?;
-                    let successblock = res.0.replace("|| {", "{");
+                    let successblock = res.0.replacen("|| {", "{", 1);
                     out = res.1;
                     deps = res.2;
                     let res = from_microstatement(&args[2], parent_fn, scope, out, deps)?;
-                    let failblock = res.0.replace("|| {", "{");
+                    let failblock = res.0.replacen("|| {", "{", 1);
                     out = res.1;
                     deps = res.2;
                     return Ok((
@@ -358,11 +358,11 @@ pub fn from_microstatement(
                     let conditionalparts = res.0.split("return").collect::<Vec<&str>>();
                     let conditional = [conditionalparts[0], &conditionalparts[1].replace(";", "")]
                         .join("")
-                        .replace("|| {", "{");
+                        .replacen("|| {", "{", 1);
                     out = res.1;
                     deps = res.2;
                     let res = from_microstatement(&args[1], parent_fn, scope, out, deps)?;
-                    let loopblock = res.0.replace("|| {", "{");
+                    let loopblock = res.0.replacen("|| {", "{", 1);
                     out = res.1;
                     deps = res.2;
                     return Ok((
