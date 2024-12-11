@@ -687,21 +687,29 @@ export class GPGPU {
     this.entrypoint = entrypoint ?? "main";
     this.buffers = buffers;
     this.workgroupSizes = workgroupSizes;
+    this.module = undefined;
+    this.computePipeline = undefined;
   }
 }
 
 export async function gpuRun(gg) {
   let g = await gpu();
-  let module = g.device.createShaderModule({
-    code: gg.source,
-  });
-  let computePipeline = g.device.createComputePipeline({
-    layout: "auto",
-    compute: {
-      entryPoint: gg.entrypoint,
-      module,
-    },
-  });
+  if (!this.module) {
+    this.module = g.device.createShaderModule({
+      code: gg.source,
+    });
+  }
+  let module = this.module;
+  if (!this.computePipeline) {
+    this.computePipeline = g.device.createComputePipeline({
+      layout: "auto",
+      compute: {
+        entryPoint: gg.entryPoint,
+        module,
+      },
+    });
+  }
+  let computePipeline = this.computePipeline;
   let encoder = g.device.createCommandEncoder();
   let cpass = encoder.beginComputePass();
   cpass.setPipeline(computePipeline);
