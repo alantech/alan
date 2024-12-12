@@ -738,6 +738,54 @@ export async function gpuRun(gg) {
   g.queue.submit([encoder.finish()]);
 }
 
+export async function gpuRunList(ggs) {
+  let g = await gpu();
+  let encoder = g.device.createCommandEncoder();
+  for (let gg of ggs) {
+    if (!gg.module) {
+      gg.module = g.device.createShaderModule({
+        code: gg.source,
+      });
+    }
+    let module = gg.module;
+    if (!gg.computePipeline) {
+      gg.computePipeline = g.device.createComputePipeline({
+        layout: "auto",
+        compute: {
+          entryPoint: gg.entryPoint,
+          module,
+        },
+      });
+    }
+    let computePipeline = gg.computePipeline;
+    let cpass = encoder.beginComputePass();
+    cpass.setPipeline(computePipeline);
+    for (let i = 0; i < gg.buffers.length; i++) {
+      let bindGroupLayout = computePipeline.getBindGroupLayout(i);
+      let bindGroupBuffers = gg.buffers[i];
+      let bindGroupEntries = [];
+      for (let j = 0; j < bindGroupBuffers.length; j++) {
+        bindGroupEntries.push({
+          binding: j,
+          resource: { buffer: bindGroupBuffers[j] }
+        });
+      }
+      let bindGroup = g.device.createBindGroup({
+        layout: bindGroupLayout,
+        entries: bindGroupEntries,
+      });
+      cpass.setBindGroup(i, bindGroup);
+    }
+    cpass.dispatchWorkgroups(
+      gg.workgroupSizes[0].valueOf(),
+      (gg.workgroupSizes[1] ?? 1).valueOf(),
+      (gg.workgroupSizes[2] ?? 1).valueOf()
+    );
+    cpass.end();
+  }
+  g.queue.submit([encoder.finish()]);
+}
+
 export async function readBuffer(b) {
   let g = await gpu();
   await g.queue.onSubmittedWorkDone(); // Don't try to read until you're sure it's safe to
