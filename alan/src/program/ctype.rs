@@ -79,139 +79,6 @@ pub enum CType {
 }
 
 impl CType {
-    // TODO: Find a better way to handle these primitive types
-    pub fn i64() -> CType {
-        let program = Program::get_program();
-        let output_lang = program.env.get("ALAN_OUTPUT_LANG").unwrap().clone();
-        Program::return_program(program);
-        match output_lang.as_str() {
-            "rs" => CType::Type(
-                "i64".to_string(),
-                Box::new(CType::Binds(
-                    Box::new(CType::TString("i64".to_string())),
-                    Vec::new(),
-                )),
-            ),
-            "js" => CType::Type(
-                "i64".to_string(),
-                Box::new(CType::Binds(
-                    Box::new(CType::Import(
-                        Box::new(CType::TString("alan_std.I64".to_string())),
-                        Box::new(CType::Type(
-                            "RootBacking".to_string(),
-                            Box::new(CType::Node(Box::new(CType::Dependency(
-                                Box::new(CType::TString("alan_std".to_string())),
-                                Box::new(CType::TString(
-                                    "https://github.com/alantech/alan.git".to_string(),
-                                )),
-                            )))),
-                        )),
-                    )),
-                    Vec::new(),
-                )),
-            ),
-            _ => unreachable!(),
-        }
-    }
-    pub fn f64() -> CType {
-        let program = Program::get_program();
-        let output_lang = program.env.get("ALAN_OUTPUT_LANG").unwrap().clone();
-        Program::return_program(program);
-        match output_lang.as_str() {
-            "rs" => CType::Type(
-                "f64".to_string(),
-                Box::new(CType::Binds(
-                    Box::new(CType::TString("f64".to_string())),
-                    Vec::new(),
-                )),
-            ),
-            "js" => CType::Type(
-                "f64".to_string(),
-                Box::new(CType::Binds(
-                    Box::new(CType::Import(
-                        Box::new(CType::TString("alan_std.F64".to_string())),
-                        Box::new(CType::Type(
-                            "RootBacking".to_string(),
-                            Box::new(CType::Node(Box::new(CType::Dependency(
-                                Box::new(CType::TString("alan_std".to_string())),
-                                Box::new(CType::TString(
-                                    "https://github.com/alantech/alan.git".to_string(),
-                                )),
-                            )))),
-                        )),
-                    )),
-                    Vec::new(),
-                )),
-            ),
-            _ => unreachable!(),
-        }
-    }
-    pub fn bool() -> CType {
-        let program = Program::get_program();
-        let output_lang = program.env.get("ALAN_OUTPUT_LANG").unwrap().clone();
-        Program::return_program(program);
-        match output_lang.as_str() {
-            "rs" => CType::Type(
-                "bool".to_string(),
-                Box::new(CType::Binds(
-                    Box::new(CType::TString("bool".to_string())),
-                    Vec::new(),
-                )),
-            ),
-            "js" => CType::Type(
-                "bool".to_string(),
-                Box::new(CType::Binds(
-                    Box::new(CType::Import(
-                        Box::new(CType::TString("alan_std.Bool".to_string())),
-                        Box::new(CType::Type(
-                            "RootBacking".to_string(),
-                            Box::new(CType::Node(Box::new(CType::Dependency(
-                                Box::new(CType::TString("alan_std".to_string())),
-                                Box::new(CType::TString(
-                                    "https://github.com/alantech/alan.git".to_string(),
-                                )),
-                            )))),
-                        )),
-                    )),
-                    Vec::new(),
-                )),
-            ),
-            _ => unreachable!(),
-        }
-    }
-    pub fn string() -> CType {
-        let program = Program::get_program();
-        let output_lang = program.env.get("ALAN_OUTPUT_LANG").unwrap().clone();
-        Program::return_program(program);
-        match output_lang.as_str() {
-            "rs" => CType::Type(
-                "string".to_string(),
-                Box::new(CType::Binds(
-                    Box::new(CType::TString("String".to_string())),
-                    Vec::new(),
-                )),
-            ),
-            "js" => CType::Type(
-                "string".to_string(),
-                Box::new(CType::Binds(
-                    Box::new(CType::Import(
-                        Box::new(CType::TString("alan_std.Str".to_string())),
-                        Box::new(CType::Type(
-                            "RootBacking".to_string(),
-                            Box::new(CType::Node(Box::new(CType::Dependency(
-                                Box::new(CType::TString("alan_std".to_string())),
-                                Box::new(CType::TString(
-                                    "https://github.com/alantech/alan.git".to_string(),
-                                )),
-                            )))),
-                        )),
-                    )),
-                    Vec::new(),
-                )),
-            ),
-            _ => unreachable!(),
-        }
-    }
     #[allow(clippy::inherent_to_string)]
     pub fn to_string(&self) -> String {
         self.to_strict_string(true)
@@ -2324,7 +2191,7 @@ impl CType {
                                     // Create an accessor function for this value, but do not add
                                     // it to the args array to construct it. The accessor function
                                     // will return this value as a string.
-                                    let string = CType::string();
+                                    let string = scope.resolve_type("string").unwrap().clone();
                                     fs.push(Function {
                                         name: n.clone(),
                                         typen: CType::Function(
@@ -2346,7 +2213,7 @@ impl CType {
                                     // Create an accessor function for this value, but do not add
                                     // it to the args array to construct it. The accessor function
                                     // will return this value as an i64.
-                                    let int64 = CType::i64();
+                                    let int64 = scope.resolve_type("i64").unwrap().clone();
                                     fs.push(Function {
                                         name: n.clone(),
                                         typen: CType::Function(
@@ -2365,7 +2232,7 @@ impl CType {
                                     // Create an accessor function for this value, but do not add
                                     // it to the args array to construct it. The accessor function
                                     // will return this value as an f64.
-                                    let float64 = CType::f64();
+                                    let float64 = scope.resolve_type("f64").unwrap().clone();
                                     fs.push(Function {
                                         name: n.clone(),
                                         typen: CType::Function(
@@ -2384,7 +2251,7 @@ impl CType {
                                     // Create an accessor function for this value, but do not add
                                     // it to the args array to construct it. The accessor function
                                     // will return this value as a bool.
-                                    let booln = CType::bool();
+                                    let booln = scope.resolve_type("bool").unwrap().clone();
                                     fs.push(Function {
                                         name: n.clone(),
                                         typen: CType::Function(
@@ -2469,7 +2336,7 @@ impl CType {
                         // Create an accessor function for this value, but do not add
                         // it to the args array to construct it. The accessor function
                         // will return this value as a string.
-                        let string = CType::string();
+                        let string = scope.resolve_type("string").unwrap().clone();
                         fs.push(Function {
                             name: n.clone(),
                             typen: CType::Function(Box::new(t.clone()), Box::new(string.clone())),
@@ -2485,7 +2352,7 @@ impl CType {
                         // Create an accessor function for this value, but do not add
                         // it to the args array to construct it. The accessor function
                         // will return this value as an i64.
-                        let int64 = CType::i64();
+                        let int64 = scope.resolve_type("i64").unwrap().clone();
                         fs.push(Function {
                             name: n.clone(),
                             typen: CType::Function(Box::new(t.clone()), Box::new(int64.clone())),
@@ -2501,7 +2368,7 @@ impl CType {
                         // Create an accessor function for this value, but do not add
                         // it to the args array to construct it. The accessor function
                         // will return this value as an f64.
-                        let float64 = CType::f64();
+                        let float64 = scope.resolve_type("f64").unwrap().clone();
                         fs.push(Function {
                             name: n.clone(),
                             typen: CType::Function(Box::new(t.clone()), Box::new(float64.clone())),
@@ -2517,7 +2384,7 @@ impl CType {
                         // Create an accessor function for this value, but do not add
                         // it to the args array to construct it. The accessor function
                         // will return this value as a bool.
-                        let booln = CType::bool();
+                        let booln = scope.resolve_type("bool").unwrap().clone();
                         fs.push(Function {
                             name: n.clone(),
                             typen: CType::Function(Box::new(t.clone()), Box::new(booln.clone())),
@@ -2675,7 +2542,7 @@ impl CType {
             }
             CType::Int(i) => {
                 // TODO: Support construction of other integer types
-                let int64 = CType::i64();
+                let int64 = scope.resolve_type("i64").unwrap().clone();
                 fs.push(Function {
                     name: constructor_fn_name.clone(),
                     typen: CType::Function(Box::new(CType::Void), Box::new(int64.clone())),
@@ -2691,7 +2558,7 @@ impl CType {
             }
             CType::Float(f) => {
                 // TODO: Support construction of other float types
-                let float64 = CType::f64();
+                let float64 = scope.resolve_type("f64").unwrap().clone();
                 fs.push(Function {
                     name: constructor_fn_name.clone(),
                     typen: CType::Function(Box::new(CType::Void), Box::new(float64.clone())),
@@ -2706,25 +2573,33 @@ impl CType {
                 });
             }
             CType::Bool(b) => {
-                let booln = CType::bool();
-                fs.push(Function {
-                    name: constructor_fn_name.clone(),
-                    typen: CType::Function(Box::new(CType::Void), Box::new(booln.clone())),
-                    microstatements: vec![Microstatement::Return {
-                        value: Some(Box::new(Microstatement::Value {
-                            typen: booln,
-                            representation: match b {
-                                true => "true".to_string(),
-                                false => "false".to_string(),
-                            },
-                        })),
-                    }],
-                    kind: FnKind::Normal,
-                    origin_scope_path: scope.path.clone(),
-                });
+                // A special exception exists for a few booleans that are created *before* the bool
+                // type is created in the root scope. TODO: Find a better solution for this so they
+                // have accessor functions defined for run-time code to use them.
+                match scope.resolve_type("bool") {
+                    Some(boolt) => {
+                        let booln = boolt.clone();
+                        fs.push(Function {
+                            name: constructor_fn_name.clone(),
+                            typen: CType::Function(Box::new(CType::Void), Box::new(booln.clone())),
+                            microstatements: vec![Microstatement::Return {
+                                value: Some(Box::new(Microstatement::Value {
+                                    typen: booln,
+                                    representation: match b {
+                                        true => "true".to_string(),
+                                        false => "false".to_string(),
+                                    },
+                                })),
+                            }],
+                            kind: FnKind::Normal,
+                            origin_scope_path: scope.path.clone(),
+                        });
+                    }
+                    None => {}
+                }
             }
             CType::TString(s) => {
-                let string = CType::string();
+                let string = scope.resolve_type("string").unwrap().clone();
                 fs.push(Function {
                     name: constructor_fn_name.clone(),
                     typen: CType::Function(Box::new(CType::Void), Box::new(string.clone())),

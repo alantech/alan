@@ -239,7 +239,7 @@ impl<'a> Scope<'a> {
         }
     }
 
-    pub fn resolve_type(&'a self, typename: &String) -> Option<&CType> {
+    pub fn resolve_type(&'a self, typename: &str) -> Option<&CType> {
         // Tries to find the specified type within the portion of the program accessible from the
         // current scope (so first checking the current scope, then all imports, then the root
         // scope) Returns a reference to the type and the scope it came from.
