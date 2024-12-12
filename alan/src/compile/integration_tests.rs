@@ -542,6 +542,20 @@ test_gpgpu!(hello_gpu_new => r#"
     }"#;
     stdout "[0, 2, 4, 6]\n";
 );
+test_gpgpu!(list_of_gpu_tasks => r#"
+    export fn main {
+      let b1 = GBuffer(filled(2.i32, 8));
+      let b2 = GBuffer(filled(5.i32, 4));
+      let i1 = gFor(8);
+      let i2 = gFor(4);
+      let c1 = b1[i1].store(b1[i1] * i1.gi32);
+      let c2 = b2[i2].store(b1[i2] + i2.gi32);
+      [c1.build, c2.build].run; // Execution order determined here
+      b1.read{i32}.print;
+      b2.read{i32}.print;
+    }"#;
+    stdout "[0, 2, 4, 6, 8, 10, 12, 14]\n[0, 3, 6, 9]\n";
+);
 
 test_gpgpu!(hello_gpu_odd => r#"
     export fn main {

@@ -1615,6 +1615,8 @@ fn GPGPU(src: string, buf: GBuffer) -> GPGPU {
 }
 fn{Rs} run "alan_std::gpu_run" <- RootBacking :: Mut{GPGPU};
 fn{Js} run "alan_std.gpuRun" <- RootBacking :: GPGPU;
+fn{Rs} run "alan_std::gpu_run_list" <- RootBacking :: Mut{GPGPU[]};
+fn{Js} run "alan_std.gpuRunList" <- RootBacking :: GPGPU[];
 fn{Rs} read{T}(gb: GBuffer) = {"alan_std::read_buffer" <- RootBacking :: GBuffer -> T[]}(gb);
 fn{Js} read{T} "alan_std.readBuffer" <- RootBacking :: GBuffer -> T[];
 fn{Rs} replace{T} "alan_std::replace_buffer" <- RootBacking :: (GBuffer, T[]) -> ()!;

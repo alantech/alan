@@ -278,14 +278,16 @@ pub fn baseassignablelist_to_microstatements<'a>(
             BaseChunk::Constant(c) => {
                 match c {
                     parse::Constants::Bool(b) => {
+                        let booln = scope.resolve_type("bool").unwrap().clone();
                         prior_value = Some(Microstatement::Value {
-                            typen: CType::bool(),
+                            typen: booln,
                             representation: b.clone(),
                         });
                     }
                     parse::Constants::Strn(s) => {
+                        let string = scope.resolve_type("string").unwrap().clone();
                         prior_value = Some(Microstatement::Value {
-                            typen: CType::string(),
+                            typen: string,
                             representation: if s.starts_with('"') {
                                 s.clone()
                             } else {
@@ -299,18 +301,20 @@ pub fn baseassignablelist_to_microstatements<'a>(
                     }
                     parse::Constants::Num(n) => match n {
                         parse::Number::RealNum(r) => {
+                            let float64 = scope.resolve_type("f64").unwrap().clone();
                             prior_value = Some(Microstatement::Value {
                                 // TODO: Replace this with the `CType::Float` and have built-ins
                                 // that accept them
-                                typen: CType::f64(),
+                                typen: float64,
                                 representation: r.clone(),
                             });
                         }
                         parse::Number::IntNum(i) => {
+                            let int64 = scope.resolve_type("i64").unwrap().clone();
                             prior_value = Some(Microstatement::Value {
                                 // TODO: Replace this with `CType::Int` and have built-ins that
                                 // accept them
-                                typen: CType::i64(),
+                                typen: int64,
                                 representation: i.clone(),
                             });
                         }

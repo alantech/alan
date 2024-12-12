@@ -1065,6 +1065,71 @@ pub fn gpu_run(gg: &mut GPGPU) {
     g.queue.submit(Some(encoder.finish()));
 }
 
+pub fn gpu_run_list(ggs: &mut Vec<GPGPU>) {
+    let g = gpu();
+    let mut encoder = g
+        .device
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+    for gg in ggs {
+        if gg.module.is_none() {
+            gg.module = Some(g.device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: None,
+                source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(&gg.source)),
+            }));
+        }
+        let module = gg.module.as_ref().unwrap();
+        if gg.compute_pipeline.is_none() {
+            gg.compute_pipeline = Some(g.device.create_compute_pipeline(
+                &wgpu::ComputePipelineDescriptor {
+                    label: None,
+                    layout: None,
+                    module,
+                    entry_point: Some(&gg.entrypoint),
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                    cache: None,
+                },
+            ));
+        }
+        let compute_pipeline = gg.compute_pipeline.as_ref().unwrap();
+        let mut bind_groups = Vec::new();
+        {
+            let mut cpass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: None,
+                timestamp_writes: None,
+            });
+            cpass.set_pipeline(compute_pipeline);
+            for i in 0..gg.buffers.len() {
+                let bind_group_layout =
+                    compute_pipeline.get_bind_group_layout(i.try_into().unwrap());
+                let bind_group_buffers = &gg.buffers[i];
+                let mut bind_group_entries = Vec::new();
+                for j in 0..bind_group_buffers.len() {
+                    bind_group_entries.push(wgpu::BindGroupEntry {
+                        binding: j.try_into().unwrap(),
+                        resource: bind_group_buffers[j].as_entire_binding(),
+                    });
+                }
+                let bind_group = g.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: None,
+                    layout: &bind_group_layout,
+                    entries: &bind_group_entries[..],
+                });
+                bind_groups.push(bind_group);
+            }
+            for i in 0..gg.buffers.len() {
+                // The Rust borrow checker is forcing my hand here
+                cpass.set_bind_group(i.try_into().unwrap(), &bind_groups[i], &[]);
+            }
+            cpass.dispatch_workgroups(
+                gg.workgroup_sizes[0].try_into().unwrap(),
+                gg.workgroup_sizes[1].try_into().unwrap(),
+                gg.workgroup_sizes[2].try_into().unwrap(),
+            );
+        }
+    }
+    g.queue.submit(Some(encoder.finish()));
+}
+
 pub fn read_buffer<T: std::clone::Clone>(b: &GBuffer) -> Vec<T> {
     let g = gpu();
     let temp_buffer = create_empty_buffer(&map_read_buffer_type(), &bufferlen(b), &b.element_size);
