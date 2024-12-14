@@ -1325,6 +1325,7 @@ where
                 if event_loop.exiting() {
                     return;
                 }
+                window_gpu_init(self);
                 // We need to create a new buffer with the right size *and* replace all instances
                 // of the old buffer in the GPGPU array with the new one.
                 let device = self.device.as_ref().unwrap();
