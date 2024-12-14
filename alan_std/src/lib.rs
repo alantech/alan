@@ -1180,6 +1180,52 @@ pub fn replace_buffer<T>(b: &GBuffer, v: &Vec<T>) -> Result<(), AlanError> {
 
 /// Window-related types and functions
 
+/// We need to know which adapter to use for the actual window, but winit provides no good
+/// (non-deprecated) way to determine this, so we have this special ProbeWindow type that spins up
+/// and immediately exits once it has acquired the needed wgpu Adapter, which we copy into the
+/// actual window.
+#[derive(Default)]
+pub struct ProbeWindow {
+    window: Option<Window>,
+    instance: Option<wgpu::Instance>,
+    adapter: Option<wgpu::Adapter>,
+}
+
+impl ApplicationHandler for ProbeWindow {
+    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        let mut config = Window::default_attributes();
+        config.visible = false;
+        self.window = Some(event_loop.create_window(config).unwrap());
+    }
+
+    fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
+        match event {
+            _anything => {
+                if let None = self.instance {
+                    self.instance = Some(wgpu::Instance::default());
+                }
+                if let None = self.adapter {
+                    let instance = self.instance.as_ref().unwrap();
+                    let surface = instance
+                        .create_surface(self.window.as_ref().unwrap())
+                        .unwrap();
+                    self.adapter = Some(
+                        pollster::block_on(instance.request_adapter(
+                            &wgpu::RequestAdapterOptions {
+                                power_preference: wgpu::PowerPreference::default(), // TODO: Configure this
+                                force_fallback_adapter: false,
+                                compatible_surface: Some(&surface),
+                            },
+                        ))
+                        .unwrap(),
+                    );
+                }
+                event_loop.exit();
+            }
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct AlanWindow {
     config: Option<WindowAttributes>,
@@ -1201,23 +1247,6 @@ pub struct AlanWindow {
 fn window_gpu_init(win: &mut AlanWindow) {
     if let None = win.start {
         win.start = Some(std::time::Instant::now());
-    }
-    if let None = win.instance {
-        win.instance = Some(wgpu::Instance::default());
-    }
-    if let None = win.adapter {
-        let instance = win.instance.as_ref().unwrap();
-        let surface = instance
-            .create_surface(win.window.as_ref().unwrap())
-            .unwrap();
-        win.adapter = Some(
-            pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::default(), // TODO: Configure this
-                force_fallback_adapter: false,
-                compatible_surface: Some(&surface),
-            }))
-            .unwrap(),
-        );
     }
     if let None = win.device {
         // We can do both device and queue here as they're created at the same time
@@ -1442,11 +1471,21 @@ impl ApplicationHandler for AlanWindow {
 }
 
 pub fn run_window(shader: &String) -> Result<(), AlanError> {
-    // TODO: This should accept a render handler
-    let mut app = AlanWindow::default();
-    app.shader_source = Some(shader.clone());
+    let probe_event_loop = EventLoop::new().unwrap();
+    probe_event_loop.set_control_flow(ControlFlow::Poll);
+    let mut probe = ProbeWindow::default();
+    match probe_event_loop.run_app(&mut probe) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(AlanError {
+            message: format!("{:?}", e),
+        }),
+    }?;
     let event_loop = EventLoop::new().unwrap();
     event_loop.set_control_flow(ControlFlow::Poll); // TODO: This should also be configurable
+    let mut app = AlanWindow::default();
+    app.instance = probe.instance;
+    app.adapter = probe.adapter;
+    app.shader_source = Some(shader.clone());
     match event_loop.run_app(&mut app) {
         Ok(_) => Ok(()),
         Err(e) => Err(AlanError {
