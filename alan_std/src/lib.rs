@@ -1180,8 +1180,10 @@ pub fn replace_buffer<T>(b: &GBuffer, v: &Vec<T>) -> Result<(), AlanError> {
 
 /// Window-related types and functions
 
-#[derive(Default)]
-pub struct AlanWindow {
+pub struct AlanWindow<T>
+where
+    T: Fn(&i64, &i64, &Vec<Vec<GBuffer>>) -> Vec<GPGPU>,
+{
     config: Option<WindowAttributes>,
     window: Option<Window>,
     start: Option<std::time::Instant>,
@@ -1192,11 +1194,14 @@ pub struct AlanWindow {
     context: Option<GBuffer>,
     buffer: Option<GBuffer>,
     buffer_width: Option<u32>,
-    gpgpu_shader_fn: Option<fn(i64, i64, Vec<Vec<GBuffer>>) -> Vec<GPGPU>>,
+    gpgpu_shader_fn: Option<T>,
     gpgpu_shaders: Option<Vec<GPGPU>>,
 }
 
-fn window_gpu_init(win: &mut AlanWindow) {
+fn window_gpu_init<T>(win: &mut AlanWindow<T>)
+where
+    T: Fn(&i64, &i64, &Vec<Vec<GBuffer>>) -> Vec<GPGPU>,
+{
     if let None = win.start {
         win.start = Some(std::time::Instant::now());
     }
@@ -1273,10 +1278,12 @@ fn window_gpu_init(win: &mut AlanWindow) {
         let mut size = win.window.as_ref().unwrap().inner_size();
         size.width = size.width.max(1);
         size.height = size.height.max(1);
-        win.gpgpu_shaders = Some(win.gpgpu_shader_fn.unwrap()(
-            size.width.into(),
-            size.height.into(),
-            vec![vec![
+        let width: i64 = size.width.into();
+        let height: i64 = size.height.into();
+        win.gpgpu_shaders = Some(win.gpgpu_shader_fn.as_ref().unwrap()(
+            &width,
+            &height,
+            &vec![vec![
                 win.buffer.as_ref().unwrap().clone(),
                 win.context.as_ref().unwrap().clone(),
             ]],
@@ -1284,7 +1291,10 @@ fn window_gpu_init(win: &mut AlanWindow) {
     }
 }
 
-impl ApplicationHandler for AlanWindow {
+impl<T> ApplicationHandler for AlanWindow<T>
+where
+    T: Fn(&i64, &i64, &Vec<Vec<GBuffer>>) -> Vec<GPGPU>,
+{
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         if event_loop.exiting() {
             return;
@@ -1471,12 +1481,24 @@ impl ApplicationHandler for AlanWindow {
 }
 
 pub fn run_window(
-    gpgpu_shaders: fn(i64, i64, Vec<Vec<GBuffer>>) -> Vec<GPGPU>,
+    gpgpu_shader_fn: impl Fn(&i64, &i64, &Vec<Vec<GBuffer>>) -> Vec<GPGPU>,
 ) -> Result<(), AlanError> {
     let event_loop = EventLoop::new().unwrap();
     event_loop.set_control_flow(ControlFlow::Poll); // TODO: This should also be configurable
-    let mut app = AlanWindow::default();
-    app.gpgpu_shader_fn = Some(gpgpu_shaders);
+    let mut app = AlanWindow {
+        config: None,
+        window: None,
+        start: None,
+        instance: None,
+        adapter: None,
+        device: None,
+        queue: None,
+        context: None,
+        buffer: None,
+        buffer_width: None,
+        gpgpu_shader_fn: Some(gpgpu_shader_fn),
+        gpgpu_shaders: None,
+    };
     match event_loop.run_app(&mut app) {
         Ok(_) => Ok(()),
         Err(e) => Err(AlanError {
