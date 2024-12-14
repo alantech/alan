@@ -1189,6 +1189,8 @@ pub struct AlanWindow {
     adapter: Option<wgpu::Adapter>,
     device: Option<wgpu::Device>,
     queue: Option<wgpu::Queue>,
+    context: Option<GBuffer>,
+    shader_source: Option<String>,
     shader: Option<wgpu::ShaderModule>,
     compute_pipeline: Option<wgpu::ComputePipeline>,
     buffer: Option<GBuffer>,
@@ -1235,35 +1237,10 @@ fn window_gpu_init(win: &mut AlanWindow) {
     }
     if let None = win.shader {
         let device = win.device.as_ref().unwrap();
-        // TODO: This shouldn't be hardcoded like this. I just wanted a nice demo
-        let shader_source = r#"
-           @group(0)
-           @binding(0)
-           var<storage, read_write> pixels: array<u32>;
-
-           @group(0)
-           @binding(1)
-           var<storage, read> context: array<u32>;
-
-           @compute
-           @workgroup_size(1)
-           fn main(@builtin(global_invocation_id) id: vec3<u32>) {
-             let width = context[0];
-             let height = context[1];
-             let textureWidth = context[2];
-             let time = bitcast<f32>(context[3]);
-             let per10sec = time / 10.0;
-             let cycle = 2.0 * abs(per10sec - floor(per10sec) - 0.5);
-             let red = cycle * f32(id.x) / f32(width);
-             let green = 1.0 - red;
-             let blue = f32(id.y) / f32(height);
-             let alpha = 1.0;
-             let loc = id.x + textureWidth * id.y;
-             pixels[loc] = pack4x8unorm(vec4f(blue, green, red, alpha));
-          }"#;
+        let shader_source = win.shader_source.as_ref().unwrap();
         win.shader = Some(device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: None,
-            source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(&shader_source)),
+            source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(shader_source)),
         }));
     }
     if let None = win.compute_pipeline {
@@ -1284,7 +1261,9 @@ fn window_gpu_init(win: &mut AlanWindow) {
 
 impl ApplicationHandler for AlanWindow {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        if self.exiting { return; }
+        if self.exiting {
+            return;
+        }
         self.window = Some(
             event_loop
                 .create_window(self.config.clone().unwrap_or(Window::default_attributes()))
@@ -1302,6 +1281,7 @@ impl ApplicationHandler for AlanWindow {
                     b.destroy();
                 }
                 self.buffer = None;
+                self.context = None;
                 self.compute_pipeline = None;
                 self.shader = None;
                 self.queue = None;
@@ -1311,7 +1291,9 @@ impl ApplicationHandler for AlanWindow {
                 event_loop.exit();
             }
             WindowEvent::Resized(_new_size) => {
-                if self.exiting { return; }
+                if self.exiting {
+                    return;
+                }
                 if let Some(b) = &self.buffer {
                     b.destroy();
                 }
@@ -1320,7 +1302,9 @@ impl ApplicationHandler for AlanWindow {
                 self.window.as_ref().unwrap().request_redraw();
             }
             WindowEvent::RedrawRequested => {
-                if self.exiting { return; }
+                if self.exiting {
+                    return;
+                }
                 let frame_start = std::time::Instant::now();
                 let mut size = self.window.as_ref().unwrap().inner_size();
                 size.width = size.width.max(1);
@@ -1351,10 +1335,22 @@ impl ApplicationHandler for AlanWindow {
                             mapped_at_creation: false,
                         })),
                         id: format!("buffer_{}", format!("{}", Uuid::new_v4()).replace("-", "_")),
-                        element_size: 1, // TODO: Should this be 4?
+                        element_size: 4,
                     });
                 }
-
+                if let None = self.context {
+                    self.context = Some(GBuffer {
+                        buffer: Rc::new(device.create_buffer(&wgpu::BufferDescriptor {
+                            label: None,
+                            size: 16, // TODO: Not hardwired
+                            usage: storage_buffer_type(),
+                            mapped_at_creation: false,
+                        })),
+                        id: format!("buffer_{}", format!("{}", Uuid::new_v4()).replace("-", "_")),
+                        element_size: 4,
+                    });
+                }
+                let context_buffer = self.context.as_ref().unwrap();
                 let queue = self.queue.as_ref().unwrap();
                 let mut config = surface
                     .get_default_config(&adapter, size.width, size.height)
@@ -1367,26 +1363,32 @@ impl ApplicationHandler for AlanWindow {
                 let frame = surface.get_current_texture().unwrap();
                 let mut encoder =
                     device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-	        let context_array = [
-		    size.width as u32,
-		    size.height as u32,
-		    self.buffer_width.unwrap() / 4,
-		    u32::from_le_bytes(start.elapsed().as_secs_f32().to_le_bytes()),
-	        ];
-	        let context_slice = &context_array[..];
-	        let context_ptr = context_slice.as_ptr();
-	        let context_u8_len = context_array.len() * 4;
-	        let context_u8: &[u8] = unsafe {
-		    std::slice::from_raw_parts(context_ptr as *const u8, context_u8_len)
-	        };
-	        let context_buffer = wgpu::util::DeviceExt::create_buffer_init(
-		    device,
-		    &wgpu::util::BufferInitDescriptor {
-		        label: None,
-		        contents: context_u8,
-		        usage: storage_buffer_type(),
-		    },
-	        );
+                let context_array = [
+                    size.width as u32,
+                    size.height as u32,
+                    self.buffer_width.unwrap() / 4,
+                    u32::from_le_bytes(start.elapsed().as_secs_f32().to_le_bytes()),
+                ];
+                let context_slice = &context_array[..];
+                let context_ptr = context_slice.as_ptr();
+                let context_u8_len = context_array.len() * 4;
+                let context_u8: &[u8] =
+                    unsafe { std::slice::from_raw_parts(context_ptr as *const u8, context_u8_len) };
+                let new_context_buffer = wgpu::util::DeviceExt::create_buffer_init(
+                    device,
+                    &wgpu::util::BufferInitDescriptor {
+                        label: None,
+                        contents: context_u8,
+                        usage: storage_buffer_type(),
+                    },
+                );
+                encoder.copy_buffer_to_buffer(
+                    &new_context_buffer,
+                    0,
+                    context_buffer,
+                    0,
+                    context_buffer.size(),
+                );
                 {
                     let compute_pipeline = self.compute_pipeline.as_ref().unwrap();
                     let mut cpass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -1439,9 +1441,10 @@ impl ApplicationHandler for AlanWindow {
     }
 }
 
-pub fn run_window() -> Result<(), AlanError> {
+pub fn run_window(shader: &String) -> Result<(), AlanError> {
     // TODO: This should accept a render handler
     let mut app = AlanWindow::default();
+    app.shader_source = Some(shader.clone());
     let event_loop = EventLoop::new().unwrap();
     event_loop.set_control_flow(ControlFlow::Poll); // TODO: This should also be configurable
     match event_loop.run_app(&mut app) {
