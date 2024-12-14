@@ -1428,7 +1428,7 @@ impl ApplicationHandler for AlanWindow {
                 );
                 queue.submit(Some(encoder.finish()));
                 frame.present();
-                context_buffer.destroy();
+                new_context_buffer.destroy();
                 let render_time = frame_start.elapsed();
                 self.window
                     .as_ref()
