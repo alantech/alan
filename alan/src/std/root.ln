@@ -4927,7 +4927,7 @@ fn map{G, G2}(gb: GBuffer, f: (G, gu32) -> G2) {
 }
 
 /// Window-related bindings
-fn{Rs} runWindow "alan_std::run_window" <- RootBacking :: ((i64, i64, Array{Array{GBuffer}}) -> GPGPU[]) -> ()!; // TODO: Make this more useful in the future
+fn{Rs} runWindow "alan_std::run_window" <- RootBacking :: ((Array{Array{GBuffer}}) -> GPGPU[]) -> ()!; // TODO: Make this more useful in the future
 
 /// Process exit-related bindings
 fn{Rs} ExitCode "std::process::ExitCode::from" :: Own{u8} -> ExitCode;

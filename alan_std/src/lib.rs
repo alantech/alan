@@ -1182,7 +1182,7 @@ pub fn replace_buffer<T>(b: &GBuffer, v: &Vec<T>) -> Result<(), AlanError> {
 
 pub struct AlanWindow<T>
 where
-    T: Fn(&i64, &i64, &Vec<Vec<GBuffer>>) -> Vec<GPGPU>,
+    T: Fn(&Vec<Vec<GBuffer>>) -> Vec<GPGPU>,
 {
     config: Option<WindowAttributes>,
     window: Option<Window>,
@@ -1200,7 +1200,7 @@ where
 
 fn window_gpu_init<T>(win: &mut AlanWindow<T>)
 where
-    T: Fn(&i64, &i64, &Vec<Vec<GBuffer>>) -> Vec<GPGPU>,
+    T: Fn(&Vec<Vec<GBuffer>>) -> Vec<GPGPU>,
 {
     if let None = win.start {
         win.start = Some(std::time::Instant::now());
@@ -1278,22 +1278,19 @@ where
         let mut size = win.window.as_ref().unwrap().inner_size();
         size.width = size.width.max(1);
         size.height = size.height.max(1);
-        let width: i64 = size.width.into();
-        let height: i64 = size.height.into();
-        win.gpgpu_shaders = Some(win.gpgpu_shader_fn.as_ref().unwrap()(
-            &width,
-            &height,
-            &vec![vec![
-                win.buffer.as_ref().unwrap().clone(),
-                win.context.as_ref().unwrap().clone(),
-            ]],
-        ));
+        let mut gpgpu_shaders = win.gpgpu_shader_fn.as_ref().unwrap()(&vec![vec![
+            win.buffer.as_ref().unwrap().clone(),
+            win.context.as_ref().unwrap().clone(),
+        ]]);
+        gpgpu_shaders.last_mut().unwrap().workgroup_sizes =
+            [size.width.into(), size.height.into(), 1];
+        win.gpgpu_shaders = Some(gpgpu_shaders);
     }
 }
 
 impl<T> ApplicationHandler for AlanWindow<T>
 where
-    T: Fn(&i64, &i64, &Vec<Vec<GBuffer>>) -> Vec<GPGPU>,
+    T: Fn(&Vec<Vec<GBuffer>>) -> Vec<GPGPU>,
 {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         if event_loop.exiting() {
@@ -1324,15 +1321,57 @@ where
                 self.instance = None;
                 event_loop.exit();
             }
-            WindowEvent::Resized(_new_size) => {
+            WindowEvent::Resized(mut new_size) => {
                 if event_loop.exiting() {
                     return;
                 }
+                // We need to create a new buffer with the right size *and* replace all instances
+                // of the old buffer in the GPGPU array with the new one.
+                let device = self.device.as_ref().unwrap();
+                new_size.width = new_size.width.max(1);
+                new_size.height = new_size.height.max(1);
+                self.buffer_width = Some(if (4 * new_size.width) % 256 == 0 {
+                    4 * new_size.width
+                } else {
+                    (4 * new_size.width) + (256 - ((4 * new_size.width) % 256))
+                });
+                let buffer_height = new_size.height;
+                let buffer_size = (self.buffer_width.unwrap() as u64) * (buffer_height as u64);
+                let old_buffer_id = self.buffer.as_ref().unwrap().id.clone();
+                let new_buffer = GBuffer {
+                    buffer: Rc::new(device.create_buffer(&wgpu::BufferDescriptor {
+                        label: None,
+                        size: buffer_size,
+                        usage: storage_buffer_type(),
+                        mapped_at_creation: false,
+                    })),
+                    id: format!("buffer_{}", format!("{}", Uuid::new_v4()).replace("-", "_")),
+                    element_size: 4,
+                };
+                for shader in self.gpgpu_shaders.as_mut().unwrap() {
+                    for group in &mut shader.buffers {
+                        let mut idx = None;
+                        for (i, buffer) in group.iter().enumerate() {
+                            if buffer.id == old_buffer_id {
+                                idx = Some(i);
+                                break;
+                            }
+                        }
+                        if let Some(id) = idx {
+                            group[id] = new_buffer.clone();
+                        }
+                    }
+                }
+                self.gpgpu_shaders
+                    .as_mut()
+                    .unwrap()
+                    .last_mut()
+                    .unwrap()
+                    .workgroup_sizes = [new_size.width.into(), new_size.height.into(), 1];
                 if let Some(b) = &self.buffer {
                     b.destroy();
                 }
-                self.buffer = None;
-                self.buffer_width = None;
+                self.buffer = Some(new_buffer);
                 self.window.as_ref().unwrap().request_redraw();
             }
             WindowEvent::RedrawRequested => {
@@ -1481,7 +1520,7 @@ where
 }
 
 pub fn run_window(
-    gpgpu_shader_fn: impl Fn(&i64, &i64, &Vec<Vec<GBuffer>>) -> Vec<GPGPU>,
+    gpgpu_shader_fn: impl Fn(&Vec<Vec<GBuffer>>) -> Vec<GPGPU>,
 ) -> Result<(), AlanError> {
     let event_loop = EventLoop::new().unwrap();
     event_loop.set_control_flow(ControlFlow::Poll); // TODO: This should also be configurable
