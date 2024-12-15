@@ -1196,6 +1196,7 @@ where
     buffer_width: Option<u32>,
     gpgpu_shader_fn: Option<T>,
     gpgpu_shaders: Option<Vec<GPGPU>>,
+    inited: bool,
 }
 
 fn window_gpu_init<T>(win: &mut AlanWindow<T>)
@@ -1286,6 +1287,7 @@ where
             [size.width.into(), size.height.into(), 1];
         win.gpgpu_shaders = Some(gpgpu_shaders);
     }
+    win.inited = true;
 }
 
 impl<T> ApplicationHandler for AlanWindow<T>
@@ -1325,7 +1327,9 @@ where
                 if event_loop.exiting() {
                     return;
                 }
-                window_gpu_init(self);
+                if !self.inited {
+                    window_gpu_init(self);
+                }
                 // We need to create a new buffer with the right size *and* replace all instances
                 // of the old buffer in the GPGPU array with the new one.
                 let device = self.device.as_ref().unwrap();
@@ -1379,13 +1383,13 @@ where
                 if event_loop.exiting() {
                     return;
                 }
+                if !self.inited {
+                    window_gpu_init(self);
+                }
                 let frame_start = std::time::Instant::now();
                 let mut size = self.window.as_ref().unwrap().inner_size();
                 size.width = size.width.max(1);
                 size.height = size.height.max(1);
-                // The first frame render will be slower because the GPU types are initialized, but
-                // follow-up frames can skip straight to rendering the frame only.
-                window_gpu_init(self);
                 let start = self.start.as_ref().unwrap();
                 let instance = self.instance.as_ref().unwrap();
                 let surface = instance
@@ -1393,7 +1397,7 @@ where
                     .unwrap();
                 let adapter = self.adapter.as_ref().unwrap();
                 let device = self.device.as_ref().unwrap();
-                let context_buffer = self.context.as_ref().unwrap();
+                let old_context_buffer_id = self.context.as_ref().unwrap().id.clone();
                 let queue = self.queue.as_ref().unwrap();
                 let mut config = surface
                     .get_default_config(&adapter, size.width, size.height)
@@ -1417,21 +1421,18 @@ where
                 let context_u8_len = context_array.len() * 4;
                 let context_u8: &[u8] =
                     unsafe { std::slice::from_raw_parts(context_ptr as *const u8, context_u8_len) };
-                let new_context_buffer = wgpu::util::DeviceExt::create_buffer_init(
-                    device,
-                    &wgpu::util::BufferInitDescriptor {
-                        label: None,
-                        contents: context_u8,
-                        usage: storage_buffer_type(),
-                    },
-                );
-                encoder.copy_buffer_to_buffer(
-                    &new_context_buffer,
-                    0,
-                    context_buffer,
-                    0,
-                    context_buffer.size(),
-                );
+                let new_context_buffer = GBuffer {
+                    buffer: Rc::new(wgpu::util::DeviceExt::create_buffer_init(
+                        device,
+                        &wgpu::util::BufferInitDescriptor {
+                            label: None,
+                            contents: context_u8,
+                            usage: storage_buffer_type(),
+                        },
+                    )),
+                    id: old_context_buffer_id.clone(),
+                    element_size: 4,
+                };
                 let ggs = self.gpgpu_shaders.as_mut().unwrap();
                 for gg in ggs {
                     if gg.module.is_none() {
@@ -1467,7 +1468,12 @@ where
                         for i in 0..gg.buffers.len() {
                             let bind_group_layout =
                                 compute_pipeline.get_bind_group_layout(i.try_into().unwrap());
-                            let bind_group_buffers = &gg.buffers[i];
+                            let bind_group_buffers = &mut gg.buffers[i];
+                            for j in 0..bind_group_buffers.len() {
+                                if bind_group_buffers[j].id == old_context_buffer_id {
+                                    bind_group_buffers[j] = new_context_buffer.clone();
+                                }
+                            }
                             let mut bind_group_entries = Vec::new();
                             for j in 0..bind_group_buffers.len() {
                                 bind_group_entries.push(wgpu::BindGroupEntry {
@@ -1493,6 +1499,8 @@ where
                         );
                     }
                 }
+                self.context.as_ref().unwrap().destroy();
+                self.context = Some(new_context_buffer);
                 encoder.copy_buffer_to_texture(
                     wgpu::ImageCopyBuffer {
                         buffer: &self.buffer.as_ref().unwrap().buffer,
@@ -1507,7 +1515,6 @@ where
                 );
                 queue.submit(Some(encoder.finish()));
                 frame.present();
-                new_context_buffer.destroy();
                 let render_time = frame_start.elapsed();
                 self.window
                     .as_ref()
@@ -1538,6 +1545,7 @@ pub fn run_window(
         buffer_width: None,
         gpgpu_shader_fn: Some(gpgpu_shader_fn),
         gpgpu_shaders: None,
+        inited: false,
     };
     match event_loop.run_app(&mut app) {
         Ok(_) => Ok(()),
