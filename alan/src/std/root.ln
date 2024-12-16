@@ -1566,6 +1566,7 @@ type{Rs} GBuffer = Binds{"alan_std::GBuffer" <- RootBacking};
 type{Js} GBuffer = Binds{"GPUBuffer"};
 type{Rs} GPGPU = Binds{"alan_std::GPGPU" <- RootBacking};
 type{Js} GPGPU = Binds{"alan_std.GPGPU" <- RootBacking};
+
 fn{Rs} mapReadBuffer "alan_std::map_read_buffer_type" <- RootBacking :: () -> BufferUsages;
 fn{Js} mapReadBuffer "alan_std.mapReadBufferType" <- RootBacking :: () -> BufferUsages;
 fn{Rs} mapWriteBuffer "alan_std::map_write_buffer_type" <- RootBacking :: () -> BufferUsages;
@@ -1617,6 +1618,8 @@ fn{Rs} run "alan_std::gpu_run" <- RootBacking :: Mut{GPGPU};
 fn{Js} run "alan_std.gpuRun" <- RootBacking :: GPGPU;
 fn{Rs} run "alan_std::gpu_run_list" <- RootBacking :: Mut{GPGPU[]};
 fn{Js} run "alan_std.gpuRunList" <- RootBacking :: GPGPU[];
+fn{Rs} shader Property{"source.clone()"} :: GPGPU -> string;
+fn{Js} shader Property{"source"} :: GPGPU -> string;
 fn{Rs} read{T}(gb: GBuffer) = {"alan_std::read_buffer" <- RootBacking :: GBuffer -> T[]}(gb);
 fn{Js} read{T} "alan_std.readBuffer" <- RootBacking :: GBuffer -> T[];
 fn{Rs} replace{T} "alan_std::replace_buffer" <- RootBacking :: (GBuffer, T[]) -> ()!;
@@ -1718,6 +1721,7 @@ fn gPrimitiveConvert{I, O}(i: I) {
   return {O}(varName, statements, buffers);
 }
 fn gu32(u: u32) = gu32(u.string, Dict{string, string}(), Set{GBuffer}());
+fn gu32(gu: gu32) = gu;
 fn gu32(gi: gi32) = gPrimitiveConvert{gi32, gu32}(gi);
 fn gu32(gf: gf32) = gPrimitiveConvert{gf32, gu32}(gf);
 fn gu32(gb: gbool) = gPrimitiveConvert{gbool, gu32}(gb);
@@ -1725,6 +1729,7 @@ fn gu32{T}(u: T) = gu32(u.u32);
 
 fn gi32(i: i32) = gi32(i.string, Dict{string, string}(), Set{GBuffer}());
 fn gi32(gu: gu32) = gPrimitiveConvert{gu32, gi32}(gu);
+fn gi32(gi: gi32) = gi;
 fn gi32(gf: gf32) = gPrimitiveConvert{gf32, gi32}(gf);
 fn gi32(gb: gbool) = gPrimitiveConvert{gbool, gi32}(gb);
 fn gi32{T}(i: T) = gi32(i.i32);
@@ -1732,6 +1737,7 @@ fn gi32{T}(i: T) = gi32(i.i32);
 fn gf32(f: f32) = gf32(if(f.string.eq(f.i32.string), f.string(1), f.string), Dict{string, string}(), Set{GBuffer}());
 fn gf32(gu: gu32) = gPrimitiveConvert{gu32, gf32}(gu);
 fn gf32(gi: gi32) = gPrimitiveConvert{gi32, gf32}(gi);
+fn gf32(gf: gf32) = gf;
 fn gf32(gb: gbool) = gPrimitiveConvert{gbool, gf32}(gb);
 fn gf32{T}(f: T) = gf32(f.f32);
 
@@ -1739,6 +1745,7 @@ fn gbool(b: bool) = gbool(b.string, Dict{string, string}(), Set{GBuffer}());
 fn gbool(gu: gu32) = gPrimitiveConvert{gu32, gbool}(gu);
 fn gbool(gi: gi32) = gPrimitiveConvert{gi32, gbool}(gi);
 fn gbool(gf: gf32) = gPrimitiveConvert{gf32, gbool}(gf);
+fn gbool(gb: gbool) = gb;
 fn gbool{T}(b: T) = gbool(b.bool);
 
 // Vector types and constructors
@@ -1855,6 +1862,7 @@ fn gvec4i{T}(a: T, b: T, c: T, d: T) = gvec4i(a.gi32, b.gi32, c.gi32, d.gi32);
 fn gvec4i{T}(a: T) = gvec4i(a, a, a, a);
 
 fn gvec4f() = gvec4f("vec4f()", Dict{string, string}(), Set{GBuffer}());
+fn gvec4f{A, B, C, D}(a: A, b: B, c: C, d: D) = gvec4f(a.gf32, b.gf32, c.gf32, d.gf32);
 fn gvec4f(a: gf32, b: gf32, c: gf32, d: gf32) = gvec4Primitive{gf32, gvec4f}(
   a, b, c, d
 );
@@ -1878,6 +1886,12 @@ fn gFor(x: u32, y: u32, z: u32) {
 fn gFor{T}(x: T, y: T, z: T) = gFor(x.u32, y.u32, z.u32);
 fn gFor{T}(x: T, y: T) = gFor(x.u32, y.u32, 1.u32);
 fn gFor{T}(x: T) = gFor(x.u32, 1.u32, 1.u32).x;
+// TODO: More hackery to eliminate
+fn gFor(x: i64, y: i64) {
+  let initialStatement = "@builtin(global_invocation_id) id: vec3u";
+  let statements = Dict(initialStatement, x.string.concat(',').concat(y.string).concat(',1'));
+  return gvec3u('id', statements, Set{GBuffer}());
+}
 
 // Matrix types
 type gmat2x2f = WgpuType{"mat2x2f"};
@@ -3674,17 +3688,36 @@ fn abgr(v: gvec4b) = v.wzyx;
 
 // TODO: Improve GBuffer to support other buffer types
 fn get(gb: GBuffer, i: gu32) {
-  let statement = gb.id.concat('[').concat(i.varName).concat(']');
+  let varName = gb.id.concat('[').concat(i.varName).concat(']');
   let buffers = i.buffers.union(Set(gb));
-  return gi32(statement, i.statements, buffers);
+  return gi32(varName, i.statements, buffers);
+}
+fn get(gb: GBuffer, i: gi32) {
+  let varName = gb.id.concat('[').concat(i.varName).concat(']');
+  let buffers = i.buffers.union(Set(gb));
+  return gi32(varName, i.statements, buffers);
+}
+fn get(gb: GBuffer, i: i64) {
+  let varName = gb.id.concat('[').concat(i.string).concat(']');
+  let statements = Dict{string, string}();
+  let buffers = Set(gb);
+  return gi32(varName, statements, buffers);
 }
 
 fn store(a: gi32, b: gi32) {
-    let statement = a.varName.concat(" = ").concat(b.varName);
-    let statements = a.statements.concat(b.statements).concat(Dict(statement, statement));
-    let buffers = a.buffers.union(b.buffers);
-    return gi32(statement, statements, buffers);
+  let statement = a.varName.concat(" = ").concat(b.varName);
+  let statements = a.statements.concat(b.statements).concat(Dict(statement, statement));
+  let buffers = a.buffers.union(b.buffers);
+  return gi32(statement, statements, buffers);
 }
+// TODO: This potentially generates bad shader code, but works around other bad shader code that
+// can be generated right now, further pointing to how I need to better type the GBuffers.
+/*fn store(gb: GBuffer, i: gi32, v: gu32) {
+  let statement = gb.id.concat('[').concat(i.varName).concat('] = ').concat(v.varName);
+  let statements = i.statements.concat(v.statements).concat(Dict(statement, statement));
+  let buffers = i.buffers.union(v.buffers).union(Set(gb));
+  return gu32(statement, statements, buffers);
+}*/
 
 // GPU Math
 
@@ -4870,6 +4903,13 @@ fn if(c: gvec4b, t: gvec4u, f: gvec4u) = piecewiseIf{gvec4b, gvec4u}(c, t, f);
 fn if(c: gvec4b, t: gvec4i, f: gvec4i) = piecewiseIf{gvec4b, gvec4i}(c, t, f);
 fn if(c: gvec4b, t: gvec4f, f: gvec4f) = piecewiseIf{gvec4b, gvec4f}(c, t, f);
 fn if(c: gvec4b, t: gvec4b, f: gvec4b) = piecewiseIf{gvec4b, gvec4b}(c, t, f);
+
+fn pack4x8unorm(v: gvec4f) {
+  let varName = 'pack4x8unorm('.concat(v.varName).concat(')');
+  let statements = v.statements.clone;
+  let buffers = v.buffers.clone;
+  return gu32(varName, statements, buffers);
+}
 
 // GBuffer methods
 
