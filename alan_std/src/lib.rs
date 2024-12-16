@@ -1210,10 +1210,15 @@ impl AlanWindowContext {
     }
 }
 
+pub struct AlanWindowFrame {
+    pub context: GBuffer,
+    pub framebuffer: GBuffer,
+}
+
 pub struct AlanWindow<C, R>
 where
     C: Fn(&AlanWindowContext) -> Vec<u32>,
-    R: Fn(&Vec<Vec<GBuffer>>) -> Vec<GPGPU>,
+    R: Fn(&AlanWindowFrame) -> Vec<GPGPU>,
 {
     config: Option<WindowAttributes>,
     context: AlanWindowContext,
@@ -1232,7 +1237,7 @@ where
 impl<C, R> AlanWindow<C, R>
 where
     C: Fn(&AlanWindowContext) -> Vec<u32>,
-    R: Fn(&Vec<Vec<GBuffer>>) -> Vec<GPGPU>,
+    R: Fn(&AlanWindowFrame) -> Vec<GPGPU>,
 {
     fn window_gpu_init(&mut self) {
         if self.context.start.is_none() {
@@ -1311,10 +1316,10 @@ where
             let mut size = self.context.window.as_ref().unwrap().inner_size();
             size.width = size.width.max(1);
             size.height = size.height.max(1);
-            let mut gpgpu_shaders = self.gpgpu_shader_fn.as_ref().unwrap()(&vec![vec![
-                self.buffer.as_ref().unwrap().clone(),
-                self.context_buffer.as_ref().unwrap().clone(),
-            ]]);
+            let mut gpgpu_shaders = self.gpgpu_shader_fn.as_ref().unwrap()(&AlanWindowFrame {
+                context: self.context_buffer.as_ref().unwrap().clone(),
+                framebuffer: self.buffer.as_ref().unwrap().clone(),
+            });
             gpgpu_shaders.last_mut().unwrap().workgroup_sizes =
                 [size.width.into(), size.height.into(), 1];
             self.gpgpu_shaders = Some(gpgpu_shaders);
@@ -1326,7 +1331,7 @@ where
 impl<C, R> ApplicationHandler for AlanWindow<C, R>
 where
     C: Fn(&AlanWindowContext) -> Vec<u32>,
-    R: Fn(&Vec<Vec<GBuffer>>) -> Vec<GPGPU>,
+    R: Fn(&AlanWindowFrame) -> Vec<GPGPU>,
 {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         if event_loop.exiting() {
@@ -1563,7 +1568,7 @@ where
 pub fn run_window<C, R>(context_fn: C, gpgpu_shader_fn: R) -> Result<(), AlanError>
 where
     C: Fn(&AlanWindowContext) -> Vec<u32>,
-    R: Fn(&Vec<Vec<GBuffer>>) -> Vec<GPGPU>,
+    R: Fn(&AlanWindowFrame) -> Vec<GPGPU>,
 {
     let event_loop = EventLoop::new().unwrap();
     event_loop.set_control_flow(ControlFlow::Poll); // TODO: This should also be configurable
