@@ -1199,95 +1199,97 @@ where
     inited: bool,
 }
 
-fn window_gpu_init<T>(win: &mut AlanWindow<T>)
+impl<T> AlanWindow<T>
 where
     T: Fn(&Vec<Vec<GBuffer>>) -> Vec<GPGPU>,
 {
-    if let None = win.start {
-        win.start = Some(std::time::Instant::now());
-    }
-    if let None = win.instance {
-        win.instance = Some(wgpu::Instance::default());
-    }
-    if let None = win.adapter {
-        let instance = win.instance.as_ref().unwrap();
-        let surface = instance
-            .create_surface(win.window.as_ref().unwrap())
+    fn window_gpu_init(&mut self) {
+        if self.start.is_none() {
+            self.start = Some(std::time::Instant::now());
+        }
+        if self.instance.is_none() {
+            self.instance = Some(wgpu::Instance::default());
+        }
+        if self.adapter.is_none() {
+            let instance = self.instance.as_ref().unwrap();
+            let surface = instance
+                .create_surface(self.window.as_ref().unwrap())
+                .unwrap();
+            self.adapter = Some(
+                pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+                    power_preference: wgpu::PowerPreference::default(), // TODO: Configure this
+                    force_fallback_adapter: false,
+                    compatible_surface: Some(&surface),
+                }))
+                .unwrap(),
+            );
+        }
+        if self.device.is_none() {
+            // We can do both device and queue here as they're created at the same time
+            let adapter = self.adapter.as_ref().unwrap();
+            let (device, queue) = pollster::block_on(adapter.request_device(
+                &wgpu::DeviceDescriptor {
+                    label: None,
+                    required_features: adapter.features(),
+                    required_limits: adapter.limits(),
+                    memory_hints: wgpu::MemoryHints::MemoryUsage,
+                },
+                None,
+            ))
             .unwrap();
-        win.adapter = Some(
-            pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::default(), // TODO: Configure this
-                force_fallback_adapter: false,
-                compatible_surface: Some(&surface),
-            }))
-            .unwrap(),
-        );
+            self.device = Some(device);
+            self.queue = Some(queue);
+        }
+        if self.context.is_none() {
+            let device = self.device.as_ref().unwrap();
+            self.context = Some(GBuffer {
+                buffer: Rc::new(device.create_buffer(&wgpu::BufferDescriptor {
+                    label: None,
+                    size: 16, // TODO: Not hardwired
+                    usage: storage_buffer_type(),
+                    mapped_at_creation: false,
+                })),
+                id: format!("buffer_{}", format!("{}", Uuid::new_v4()).replace("-", "_")),
+                element_size: 4,
+            });
+        }
+        if self.buffer.is_none() {
+            let device = self.device.as_ref().unwrap();
+            let mut size = self.window.as_ref().unwrap().inner_size();
+            size.width = size.width.max(1);
+            size.height = size.height.max(1);
+            self.buffer_width = Some(if (4 * size.width) % 256 == 0 {
+                4 * size.width
+            } else {
+                (4 * size.width) + (256 - ((4 * size.width) % 256))
+            });
+            let buffer_height = size.height;
+            let buffer_size = (self.buffer_width.unwrap() as u64) * (buffer_height as u64);
+            self.buffer = Some(GBuffer {
+                buffer: Rc::new(device.create_buffer(&wgpu::BufferDescriptor {
+                    label: None,
+                    size: buffer_size,
+                    usage: storage_buffer_type(),
+                    mapped_at_creation: false,
+                })),
+                id: format!("buffer_{}", format!("{}", Uuid::new_v4()).replace("-", "_")),
+                element_size: 4,
+            });
+        }
+        if self.gpgpu_shaders.is_none() {
+            let mut size = self.window.as_ref().unwrap().inner_size();
+            size.width = size.width.max(1);
+            size.height = size.height.max(1);
+            let mut gpgpu_shaders = self.gpgpu_shader_fn.as_ref().unwrap()(&vec![vec![
+                self.buffer.as_ref().unwrap().clone(),
+                self.context.as_ref().unwrap().clone(),
+            ]]);
+            gpgpu_shaders.last_mut().unwrap().workgroup_sizes =
+                [size.width.into(), size.height.into(), 1];
+            self.gpgpu_shaders = Some(gpgpu_shaders);
+        }
+        self.inited = true;
     }
-    if let None = win.device {
-        // We can do both device and queue here as they're created at the same time
-        let adapter = win.adapter.as_ref().unwrap();
-        let (device, queue) = pollster::block_on(adapter.request_device(
-            &wgpu::DeviceDescriptor {
-                label: None,
-                required_features: adapter.features(),
-                required_limits: adapter.limits(),
-                memory_hints: wgpu::MemoryHints::MemoryUsage,
-            },
-            None,
-        ))
-        .unwrap();
-        win.device = Some(device);
-        win.queue = Some(queue);
-    }
-    if let None = win.context {
-        let device = win.device.as_ref().unwrap();
-        win.context = Some(GBuffer {
-            buffer: Rc::new(device.create_buffer(&wgpu::BufferDescriptor {
-                label: None,
-                size: 16, // TODO: Not hardwired
-                usage: storage_buffer_type(),
-                mapped_at_creation: false,
-            })),
-            id: format!("buffer_{}", format!("{}", Uuid::new_v4()).replace("-", "_")),
-            element_size: 4,
-        });
-    }
-    if let None = win.buffer {
-        let device = win.device.as_ref().unwrap();
-        let mut size = win.window.as_ref().unwrap().inner_size();
-        size.width = size.width.max(1);
-        size.height = size.height.max(1);
-        win.buffer_width = Some(if (4 * size.width) % 256 == 0 {
-            4 * size.width
-        } else {
-            (4 * size.width) + (256 - ((4 * size.width) % 256))
-        });
-        let buffer_height = size.height;
-        let buffer_size = (win.buffer_width.unwrap() as u64) * (buffer_height as u64);
-        win.buffer = Some(GBuffer {
-            buffer: Rc::new(device.create_buffer(&wgpu::BufferDescriptor {
-                label: None,
-                size: buffer_size,
-                usage: storage_buffer_type(),
-                mapped_at_creation: false,
-            })),
-            id: format!("buffer_{}", format!("{}", Uuid::new_v4()).replace("-", "_")),
-            element_size: 4,
-        });
-    }
-    if let None = win.gpgpu_shaders {
-        let mut size = win.window.as_ref().unwrap().inner_size();
-        size.width = size.width.max(1);
-        size.height = size.height.max(1);
-        let mut gpgpu_shaders = win.gpgpu_shader_fn.as_ref().unwrap()(&vec![vec![
-            win.buffer.as_ref().unwrap().clone(),
-            win.context.as_ref().unwrap().clone(),
-        ]]);
-        gpgpu_shaders.last_mut().unwrap().workgroup_sizes =
-            [size.width.into(), size.height.into(), 1];
-        win.gpgpu_shaders = Some(gpgpu_shaders);
-    }
-    win.inited = true;
 }
 
 impl<T> ApplicationHandler for AlanWindow<T>
@@ -1328,7 +1330,7 @@ where
                     return;
                 }
                 if !self.inited {
-                    window_gpu_init(self);
+                    self.window_gpu_init();
                 }
                 // We need to create a new buffer with the right size *and* replace all instances
                 // of the old buffer in the GPGPU array with the new one.
@@ -1384,7 +1386,7 @@ where
                     return;
                 }
                 if !self.inited {
-                    window_gpu_init(self);
+                    self.window_gpu_init();
                 }
                 let frame_start = std::time::Instant::now();
                 let mut size = self.window.as_ref().unwrap().inner_size();
