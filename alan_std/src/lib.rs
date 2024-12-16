@@ -1180,9 +1180,10 @@ pub fn replace_buffer<T>(b: &GBuffer, v: &Vec<T>) -> Result<(), AlanError> {
 
 /// Window-related types and functions
 
-pub struct AlanWindow<T>
+pub struct AlanWindow<C, R>
 where
-    T: Fn(&Vec<Vec<GBuffer>>) -> Vec<GPGPU>,
+    C: Fn(&AlanWindow<C, R>) -> Vec<u32>,
+    R: Fn(&Vec<Vec<GBuffer>>) -> Vec<GPGPU>,
 {
     config: Option<WindowAttributes>,
     window: Option<Window>,
@@ -1194,14 +1195,16 @@ where
     context: Option<GBuffer>,
     buffer: Option<GBuffer>,
     buffer_width: Option<u32>,
-    gpgpu_shader_fn: Option<T>,
+    context_fn: Option<C>,
+    gpgpu_shader_fn: Option<R>,
     gpgpu_shaders: Option<Vec<GPGPU>>,
     inited: bool,
 }
 
-impl<T> AlanWindow<T>
+impl<C, R> AlanWindow<C, R>
 where
-    T: Fn(&Vec<Vec<GBuffer>>) -> Vec<GPGPU>,
+    C: Fn(&AlanWindow<C, R>) -> Vec<u32>,
+    R: Fn(&Vec<Vec<GBuffer>>) -> Vec<GPGPU>,
 {
     fn window_gpu_init(&mut self) {
         if self.start.is_none() {
@@ -1290,11 +1293,47 @@ where
         }
         self.inited = true;
     }
+
+    pub fn width(&self) -> u32 {
+        self.window
+            .as_ref()
+            .unwrap()
+            .inner_size()
+            .width
+            .max(1)
+            .into()
+    }
+
+    pub fn height(&self) -> u32 {
+        self.window
+            .as_ref()
+            .unwrap()
+            .inner_size()
+            .height
+            .max(1)
+            .into()
+    }
+
+    pub fn buffer_width(&self) -> u32 {
+        self.buffer_width.unwrap() / 4
+    }
+
+    pub fn runtime(&self) -> u32 {
+        u32::from_le_bytes(
+            self.start
+                .as_ref()
+                .unwrap()
+                .elapsed()
+                .as_secs_f32()
+                .to_le_bytes(),
+        )
+    }
 }
 
-impl<T> ApplicationHandler for AlanWindow<T>
+impl<C, R> ApplicationHandler for AlanWindow<C, R>
 where
-    T: Fn(&Vec<Vec<GBuffer>>) -> Vec<GPGPU>,
+    C: Fn(&AlanWindow<C, R>) -> Vec<u32>,
+    R: Fn(&Vec<Vec<GBuffer>>) -> Vec<GPGPU>,
 {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         if event_loop.exiting() {
@@ -1392,7 +1431,6 @@ where
                 let mut size = self.window.as_ref().unwrap().inner_size();
                 size.width = size.width.max(1);
                 size.height = size.height.max(1);
-                let start = self.start.as_ref().unwrap();
                 let instance = self.instance.as_ref().unwrap();
                 let surface = instance
                     .create_surface(self.window.as_ref().unwrap())
@@ -1412,12 +1450,7 @@ where
                 let frame = surface.get_current_texture().unwrap();
                 let mut encoder =
                     device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-                let context_array = [
-                    size.width as u32,
-                    size.height as u32,
-                    self.buffer_width.unwrap() / 4,
-                    u32::from_le_bytes(start.elapsed().as_secs_f32().to_le_bytes()),
-                ];
+                let context_array = self.context_fn.as_ref().unwrap()(&self);
                 let context_slice = &context_array[..];
                 let context_ptr = context_slice.as_ptr();
                 let context_u8_len = context_array.len() * 4;
@@ -1529,9 +1562,11 @@ where
     }
 }
 
-pub fn run_window(
-    gpgpu_shader_fn: impl Fn(&Vec<Vec<GBuffer>>) -> Vec<GPGPU>,
-) -> Result<(), AlanError> {
+pub fn run_window<C, R>(context_fn: C, gpgpu_shader_fn: R) -> Result<(), AlanError>
+where
+    C: Fn(&AlanWindow<C, R>) -> Vec<u32>,
+    R: Fn(&Vec<Vec<GBuffer>>) -> Vec<GPGPU>,
+{
     let event_loop = EventLoop::new().unwrap();
     event_loop.set_control_flow(ControlFlow::Poll); // TODO: This should also be configurable
     let mut app = AlanWindow {
@@ -1545,6 +1580,7 @@ pub fn run_window(
         context: None,
         buffer: None,
         buffer_width: None,
+        context_fn: Some(context_fn),
         gpgpu_shader_fn: Some(gpgpu_shader_fn),
         gpgpu_shaders: None,
         inited: false,
