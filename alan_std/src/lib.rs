@@ -1505,6 +1505,7 @@ where
                                 }
                             }
                             let mut bind_group_entries = Vec::new();
+                            #[allow(clippy::needless_range_loop)]
                             for j in 0..bind_group_buffers.len() {
                                 bind_group_entries.push(wgpu::BindGroupEntry {
                                     binding: j.try_into().unwrap(),
