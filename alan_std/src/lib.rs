@@ -1179,7 +1179,6 @@ pub fn replace_buffer<T>(b: &GBuffer, v: &Vec<T>) -> Result<(), AlanError> {
 }
 
 /// Window-related types and functions
-
 pub struct AlanWindowContext {
     window: Option<Window>,
     start: Option<std::time::Instant>,
@@ -1188,23 +1187,11 @@ pub struct AlanWindowContext {
 
 impl AlanWindowContext {
     pub fn width(&self) -> u32 {
-        self.window
-            .as_ref()
-            .unwrap()
-            .inner_size()
-            .width
-            .max(1)
-            .into()
+        self.window.as_ref().unwrap().inner_size().width.max(1)
     }
 
     pub fn height(&self) -> u32 {
-        self.window
-            .as_ref()
-            .unwrap()
-            .inner_size()
-            .height
-            .max(1)
-            .into()
+        self.window.as_ref().unwrap().inner_size().height.max(1)
     }
 
     pub fn buffer_width(&self) -> u32 {
@@ -1447,13 +1434,13 @@ where
                 let old_context_buffer_id = self.context_buffer.as_ref().unwrap().id.clone();
                 let queue = self.queue.as_ref().unwrap();
                 let mut config = surface
-                    .get_default_config(&adapter, size.width, size.height)
+                    .get_default_config(adapter, size.width, size.height)
                     .unwrap();
                 config.usage =
                     wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::RENDER_ATTACHMENT;
                 config.present_mode = wgpu::PresentMode::Fifo;
                 config.desired_maximum_frame_latency = 3;
-                surface.configure(&device, &config);
+                surface.configure(device, &config);
                 let frame = surface.get_current_texture().unwrap();
                 let mut encoder =
                     device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
@@ -1511,6 +1498,7 @@ where
                             let bind_group_layout =
                                 compute_pipeline.get_bind_group_layout(i.try_into().unwrap());
                             let bind_group_buffers = &mut gg.buffers[i];
+                            #[allow(clippy::needless_range_loop)]
                             for j in 0..bind_group_buffers.len() {
                                 if bind_group_buffers[j].id == old_context_buffer_id {
                                     bind_group_buffers[j] = new_context_buffer.clone();
@@ -1530,6 +1518,7 @@ where
                             });
                             bind_groups.push(bind_group);
                         }
+                        #[allow(clippy::needless_range_loop)]
                         for i in 0..gg.buffers.len() {
                             // The Rust borrow checker is forcing my hand here
                             cpass.set_bind_group(i.try_into().unwrap(), &bind_groups[i], &[]);
