@@ -4937,6 +4937,8 @@ fn{Rs} bufferWidth Method{"buffer_width"} :: Window -> u32;
 fn{Rs} runtime Method{"runtime"} :: Window -> u32;
 fn{Rs} context Property{"context.clone()"} :: Frame -> GBuffer;
 fn{Rs} framebuffer Property{"framebuffer.clone()"} :: Frame -> GBuffer;
+fn{Rs} width Frame -> i64 = -1;
+fn{Rs} height Frame -> i64 = -2;
 
 /// Process exit-related bindings
 fn{Rs} ExitCode "std::process::ExitCode::from" :: Own{u8} -> ExitCode;

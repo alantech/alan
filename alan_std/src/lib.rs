@@ -1407,12 +1407,6 @@ where
                         }
                     }
                 }
-                self.gpgpu_shaders
-                    .as_mut()
-                    .unwrap()
-                    .last_mut()
-                    .unwrap()
-                    .workgroup_sizes = [new_size.width.into(), new_size.height.into(), 1];
                 if let Some(b) = &self.buffer {
                     b.destroy();
                 }
@@ -1530,9 +1524,22 @@ where
                             cpass.set_bind_group(i.try_into().unwrap(), &bind_groups[i], &[]);
                         }
                         cpass.dispatch_workgroups(
-                            gg.workgroup_sizes[0].try_into().unwrap(),
-                            gg.workgroup_sizes[1].try_into().unwrap(),
-                            gg.workgroup_sizes[2].try_into().unwrap(),
+                            // TODO: Can I avoid this branching somehow?
+                            match gg.workgroup_sizes[0] {
+                                -1 => size.width,
+                                -2 => size.height,
+                                otherwise => otherwise.try_into().unwrap(),
+                            },
+                            match gg.workgroup_sizes[1] {
+                                -1 => size.width,
+                                -2 => size.height,
+                                otherwise => otherwise.try_into().unwrap(),
+                            },
+                            match gg.workgroup_sizes[2] {
+                                -1 => size.width,
+                                -2 => size.height,
+                                otherwise => otherwise.try_into().unwrap(),
+                            },
                         );
                     }
                 }
