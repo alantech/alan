@@ -8,6 +8,10 @@ use std::sync::OnceLock;
 pub use ordered_hash_map::OrderedHashMap;
 pub use uuid::Uuid;
 pub use wgpu::BufferUsages;
+use winit::application::ApplicationHandler;
+use winit::event::WindowEvent;
+use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
+use winit::window::{Window, WindowAttributes, WindowId};
 
 /// The `AlanError` type is a *cloneable* error that all errors are implemented as within Alan, to
 /// simplify error handling. In the future it will have a stack trace based on the Alan source
@@ -1171,5 +1175,429 @@ pub fn replace_buffer<T>(b: &GBuffer, v: &Vec<T>) -> Result<(), AlanError> {
         g.queue.submit(Some(encoder.finish()));
         gb.destroy();
         Ok(())
+    }
+}
+
+/// Window-related types and functions
+pub struct AlanWindowContext {
+    window: Option<Window>,
+    start: Option<std::time::Instant>,
+    buffer_width: Option<u32>,
+}
+
+impl AlanWindowContext {
+    pub fn width(&self) -> u32 {
+        self.window.as_ref().unwrap().inner_size().width.max(1)
+    }
+
+    pub fn height(&self) -> u32 {
+        self.window.as_ref().unwrap().inner_size().height.max(1)
+    }
+
+    pub fn buffer_width(&self) -> u32 {
+        self.buffer_width.unwrap() / 4
+    }
+
+    pub fn runtime(&self) -> u32 {
+        u32::from_le_bytes(
+            self.start
+                .as_ref()
+                .unwrap()
+                .elapsed()
+                .as_secs_f32()
+                .to_le_bytes(),
+        )
+    }
+}
+
+pub struct AlanWindowFrame {
+    pub context: GBuffer,
+    pub framebuffer: GBuffer,
+}
+
+pub struct AlanWindow<C, R>
+where
+    C: Fn(&AlanWindowContext) -> Vec<u32>,
+    R: Fn(&AlanWindowFrame) -> Vec<GPGPU>,
+{
+    config: Option<WindowAttributes>,
+    context: AlanWindowContext,
+    instance: Option<wgpu::Instance>,
+    adapter: Option<wgpu::Adapter>,
+    device: Option<wgpu::Device>,
+    queue: Option<wgpu::Queue>,
+    context_buffer: Option<GBuffer>,
+    buffer: Option<GBuffer>,
+    context_fn: Option<C>,
+    gpgpu_shader_fn: Option<R>,
+    gpgpu_shaders: Option<Vec<GPGPU>>,
+    inited: bool,
+}
+
+impl<C, R> AlanWindow<C, R>
+where
+    C: Fn(&AlanWindowContext) -> Vec<u32>,
+    R: Fn(&AlanWindowFrame) -> Vec<GPGPU>,
+{
+    fn window_gpu_init(&mut self) {
+        if self.context.start.is_none() {
+            self.context.start = Some(std::time::Instant::now());
+        }
+        if self.instance.is_none() {
+            self.instance = Some(wgpu::Instance::default());
+        }
+        if self.adapter.is_none() {
+            let instance = self.instance.as_ref().unwrap();
+            let surface = instance
+                .create_surface(self.context.window.as_ref().unwrap())
+                .unwrap();
+            self.adapter = Some(
+                pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+                    power_preference: wgpu::PowerPreference::default(), // TODO: Configure this
+                    force_fallback_adapter: false,
+                    compatible_surface: Some(&surface),
+                }))
+                .unwrap(),
+            );
+        }
+        if self.device.is_none() {
+            // We can do both device and queue here as they're created at the same time
+            let adapter = self.adapter.as_ref().unwrap();
+            let (device, queue) = pollster::block_on(adapter.request_device(
+                &wgpu::DeviceDescriptor {
+                    label: None,
+                    required_features: adapter.features(),
+                    required_limits: adapter.limits(),
+                    memory_hints: wgpu::MemoryHints::MemoryUsage,
+                },
+                None,
+            ))
+            .unwrap();
+            self.device = Some(device);
+            self.queue = Some(queue);
+        }
+        if self.context_buffer.is_none() {
+            let device = self.device.as_ref().unwrap();
+            self.context_buffer = Some(GBuffer {
+                buffer: Rc::new(device.create_buffer(&wgpu::BufferDescriptor {
+                    label: None,
+                    size: 16, // TODO: Not hardwired
+                    usage: storage_buffer_type(),
+                    mapped_at_creation: false,
+                })),
+                id: format!("buffer_{}", format!("{}", Uuid::new_v4()).replace("-", "_")),
+                element_size: 4,
+            });
+        }
+        if self.buffer.is_none() {
+            let device = self.device.as_ref().unwrap();
+            let mut size = self.context.window.as_ref().unwrap().inner_size();
+            size.width = size.width.max(1);
+            size.height = size.height.max(1);
+            self.context.buffer_width = Some(if (4 * size.width) % 256 == 0 {
+                4 * size.width
+            } else {
+                (4 * size.width) + (256 - ((4 * size.width) % 256))
+            });
+            let buffer_height = size.height;
+            let buffer_size = (self.context.buffer_width.unwrap() as u64) * (buffer_height as u64);
+            self.buffer = Some(GBuffer {
+                buffer: Rc::new(device.create_buffer(&wgpu::BufferDescriptor {
+                    label: None,
+                    size: buffer_size,
+                    usage: storage_buffer_type(),
+                    mapped_at_creation: false,
+                })),
+                id: format!("buffer_{}", format!("{}", Uuid::new_v4()).replace("-", "_")),
+                element_size: 4,
+            });
+        }
+        if self.gpgpu_shaders.is_none() {
+            let mut size = self.context.window.as_ref().unwrap().inner_size();
+            size.width = size.width.max(1);
+            size.height = size.height.max(1);
+            self.gpgpu_shaders = Some(self.gpgpu_shader_fn.as_ref().unwrap()(&AlanWindowFrame {
+                context: self.context_buffer.as_ref().unwrap().clone(),
+                framebuffer: self.buffer.as_ref().unwrap().clone(),
+            }));
+        }
+        self.inited = true;
+    }
+}
+
+impl<C, R> ApplicationHandler for AlanWindow<C, R>
+where
+    C: Fn(&AlanWindowContext) -> Vec<u32>,
+    R: Fn(&AlanWindowFrame) -> Vec<GPGPU>,
+{
+    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        if event_loop.exiting() {
+            return;
+        }
+        self.context.window = Some(
+            event_loop
+                .create_window(self.config.clone().unwrap_or(Window::default_attributes()))
+                .unwrap(),
+        );
+    }
+
+    fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
+        match event {
+            WindowEvent::CloseRequested => {
+                // Cleanup the app now that we're caching things
+                self.gpgpu_shaders = None;
+                self.gpgpu_shader_fn = None;
+                self.context.buffer_width = None;
+                if let Some(b) = &self.buffer {
+                    b.destroy();
+                }
+                self.buffer = None;
+                self.context_buffer = None;
+                self.queue = None;
+                self.device = None;
+                self.adapter = None;
+                self.instance = None;
+                event_loop.exit();
+            }
+            WindowEvent::Resized(mut new_size) => {
+                if event_loop.exiting() {
+                    return;
+                }
+                if !self.inited {
+                    self.window_gpu_init();
+                }
+                // We need to create a new buffer with the right size *and* replace all instances
+                // of the old buffer in the GPGPU array with the new one.
+                let device = self.device.as_ref().unwrap();
+                new_size.width = new_size.width.max(1);
+                new_size.height = new_size.height.max(1);
+                self.context.buffer_width = Some(if (4 * new_size.width) % 256 == 0 {
+                    4 * new_size.width
+                } else {
+                    (4 * new_size.width) + (256 - ((4 * new_size.width) % 256))
+                });
+                let buffer_height = new_size.height;
+                let buffer_size =
+                    (self.context.buffer_width.unwrap() as u64) * (buffer_height as u64);
+                let old_buffer_id = self.buffer.as_ref().unwrap().id.clone();
+                let new_buffer = GBuffer {
+                    buffer: Rc::new(device.create_buffer(&wgpu::BufferDescriptor {
+                        label: None,
+                        size: buffer_size,
+                        usage: storage_buffer_type(),
+                        mapped_at_creation: false,
+                    })),
+                    id: format!("buffer_{}", format!("{}", Uuid::new_v4()).replace("-", "_")),
+                    element_size: 4,
+                };
+                for shader in self.gpgpu_shaders.as_mut().unwrap() {
+                    for group in &mut shader.buffers {
+                        let mut idx = None;
+                        for (i, buffer) in group.iter().enumerate() {
+                            if buffer.id == old_buffer_id {
+                                idx = Some(i);
+                                break;
+                            }
+                        }
+                        if let Some(id) = idx {
+                            group[id] = new_buffer.clone();
+                        }
+                    }
+                }
+                if let Some(b) = &self.buffer {
+                    b.destroy();
+                }
+                self.buffer = Some(new_buffer);
+                self.context.window.as_ref().unwrap().request_redraw();
+            }
+            WindowEvent::RedrawRequested => {
+                if event_loop.exiting() {
+                    return;
+                }
+                if !self.inited {
+                    self.window_gpu_init();
+                }
+                let frame_start = std::time::Instant::now();
+                let mut size = self.context.window.as_ref().unwrap().inner_size();
+                size.width = size.width.max(1);
+                size.height = size.height.max(1);
+                let instance = self.instance.as_ref().unwrap();
+                let surface = instance
+                    .create_surface(self.context.window.as_ref().unwrap())
+                    .unwrap();
+                let adapter = self.adapter.as_ref().unwrap();
+                let device = self.device.as_ref().unwrap();
+                let old_context_buffer_id = self.context_buffer.as_ref().unwrap().id.clone();
+                let queue = self.queue.as_ref().unwrap();
+                let mut config = surface
+                    .get_default_config(adapter, size.width, size.height)
+                    .unwrap();
+                config.usage =
+                    wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::RENDER_ATTACHMENT;
+                config.present_mode = wgpu::PresentMode::Fifo;
+                config.desired_maximum_frame_latency = 3;
+                surface.configure(device, &config);
+                let frame = surface.get_current_texture().unwrap();
+                let mut encoder =
+                    device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+                let context_array = self.context_fn.as_ref().unwrap()(&self.context);
+                let context_slice = &context_array[..];
+                let context_ptr = context_slice.as_ptr();
+                let context_u8_len = context_array.len() * 4;
+                let context_u8: &[u8] =
+                    unsafe { std::slice::from_raw_parts(context_ptr as *const u8, context_u8_len) };
+                let new_context_buffer = GBuffer {
+                    buffer: Rc::new(wgpu::util::DeviceExt::create_buffer_init(
+                        device,
+                        &wgpu::util::BufferInitDescriptor {
+                            label: None,
+                            contents: context_u8,
+                            usage: storage_buffer_type(),
+                        },
+                    )),
+                    id: old_context_buffer_id.clone(),
+                    element_size: 4,
+                };
+                let ggs = self.gpgpu_shaders.as_mut().unwrap();
+                for gg in ggs {
+                    if gg.module.is_none() {
+                        gg.module =
+                            Some(device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                                label: None,
+                                source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(
+                                    &gg.source,
+                                )),
+                            }));
+                    }
+                    let module = gg.module.as_ref().unwrap();
+                    if gg.compute_pipeline.is_none() {
+                        gg.compute_pipeline = Some(device.create_compute_pipeline(
+                            &wgpu::ComputePipelineDescriptor {
+                                label: None,
+                                layout: None,
+                                module,
+                                entry_point: Some(&gg.entrypoint),
+                                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                                cache: None,
+                            },
+                        ));
+                    }
+                    let compute_pipeline = gg.compute_pipeline.as_ref().unwrap();
+                    let mut bind_groups = Vec::new();
+                    {
+                        let mut cpass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                            label: None,
+                            timestamp_writes: None,
+                        });
+                        cpass.set_pipeline(compute_pipeline);
+                        for i in 0..gg.buffers.len() {
+                            let bind_group_layout =
+                                compute_pipeline.get_bind_group_layout(i.try_into().unwrap());
+                            let bind_group_buffers = &mut gg.buffers[i];
+                            #[allow(clippy::needless_range_loop)]
+                            for j in 0..bind_group_buffers.len() {
+                                if bind_group_buffers[j].id == old_context_buffer_id {
+                                    bind_group_buffers[j] = new_context_buffer.clone();
+                                }
+                            }
+                            let mut bind_group_entries = Vec::new();
+                            #[allow(clippy::needless_range_loop)]
+                            for j in 0..bind_group_buffers.len() {
+                                bind_group_entries.push(wgpu::BindGroupEntry {
+                                    binding: j.try_into().unwrap(),
+                                    resource: bind_group_buffers[j].as_entire_binding(),
+                                });
+                            }
+                            let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                                label: None,
+                                layout: &bind_group_layout,
+                                entries: &bind_group_entries[..],
+                            });
+                            bind_groups.push(bind_group);
+                        }
+                        #[allow(clippy::needless_range_loop)]
+                        for i in 0..gg.buffers.len() {
+                            // The Rust borrow checker is forcing my hand here
+                            cpass.set_bind_group(i.try_into().unwrap(), &bind_groups[i], &[]);
+                        }
+                        cpass.dispatch_workgroups(
+                            // TODO: Can I avoid this branching somehow?
+                            match gg.workgroup_sizes[0] {
+                                -1 => size.width,
+                                -2 => size.height,
+                                otherwise => otherwise.try_into().unwrap(),
+                            },
+                            match gg.workgroup_sizes[1] {
+                                -1 => size.width,
+                                -2 => size.height,
+                                otherwise => otherwise.try_into().unwrap(),
+                            },
+                            match gg.workgroup_sizes[2] {
+                                -1 => size.width,
+                                -2 => size.height,
+                                otherwise => otherwise.try_into().unwrap(),
+                            },
+                        );
+                    }
+                }
+                self.context_buffer.as_ref().unwrap().destroy();
+                self.context_buffer = Some(new_context_buffer);
+                encoder.copy_buffer_to_texture(
+                    wgpu::ImageCopyBuffer {
+                        buffer: &self.buffer.as_ref().unwrap().buffer,
+                        layout: wgpu::ImageDataLayout {
+                            offset: 0,
+                            bytes_per_row: self.context.buffer_width,
+                            rows_per_image: None,
+                        },
+                    },
+                    frame.texture.as_image_copy(),
+                    frame.texture.size(),
+                );
+                queue.submit(Some(encoder.finish()));
+                frame.present();
+                let render_time = frame_start.elapsed();
+                self.context
+                    .window
+                    .as_ref()
+                    .unwrap()
+                    .set_title(&format!("Render time: {:.3}", render_time.as_secs_f64()));
+                self.context.window.as_ref().unwrap().request_redraw();
+            }
+            _ => {} // Ignore all other events
+        }
+    }
+}
+
+pub fn run_window<C, R>(context_fn: C, gpgpu_shader_fn: R) -> Result<(), AlanError>
+where
+    C: Fn(&AlanWindowContext) -> Vec<u32>,
+    R: Fn(&AlanWindowFrame) -> Vec<GPGPU>,
+{
+    let event_loop = EventLoop::new().unwrap();
+    event_loop.set_control_flow(ControlFlow::Poll); // TODO: This should also be configurable
+    let mut app = AlanWindow {
+        config: None,
+        context: AlanWindowContext {
+            window: None,
+            start: None,
+            buffer_width: None,
+        },
+        instance: None,
+        adapter: None,
+        device: None,
+        queue: None,
+        context_buffer: None,
+        buffer: None,
+        context_fn: Some(context_fn),
+        gpgpu_shader_fn: Some(gpgpu_shader_fn),
+        gpgpu_shaders: None,
+        inited: false,
+    };
+    match event_loop.run_app(&mut app) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(AlanError {
+            message: format!("{:?}", e),
+        }),
     }
 }
