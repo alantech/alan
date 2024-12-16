@@ -3710,14 +3710,6 @@ fn store(a: gi32, b: gi32) {
   let buffers = a.buffers.union(b.buffers);
   return gi32(statement, statements, buffers);
 }
-// TODO: This potentially generates bad shader code, but works around other bad shader code that
-// can be generated right now, further pointing to how I need to better type the GBuffers.
-/*fn store(gb: GBuffer, i: gi32, v: gu32) {
-  let statement = gb.id.concat('[').concat(i.varName).concat('] = ').concat(v.varName);
-  let statements = i.statements.concat(v.statements).concat(Dict(statement, statement));
-  let buffers = i.buffers.union(v.buffers).union(Set(gb));
-  return gu32(statement, statements, buffers);
-}*/
 
 // GPU Math
 
