@@ -1316,13 +1316,10 @@ where
             let mut size = self.context.window.as_ref().unwrap().inner_size();
             size.width = size.width.max(1);
             size.height = size.height.max(1);
-            let mut gpgpu_shaders = self.gpgpu_shader_fn.as_ref().unwrap()(&AlanWindowFrame {
+            self.gpgpu_shaders = Some(self.gpgpu_shader_fn.as_ref().unwrap()(&AlanWindowFrame {
                 context: self.context_buffer.as_ref().unwrap().clone(),
                 framebuffer: self.buffer.as_ref().unwrap().clone(),
-            });
-            gpgpu_shaders.last_mut().unwrap().workgroup_sizes =
-                [size.width.into(), size.height.into(), 1];
-            self.gpgpu_shaders = Some(gpgpu_shaders);
+            }));
         }
         self.inited = true;
     }
