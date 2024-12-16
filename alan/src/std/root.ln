@@ -4927,7 +4927,13 @@ fn map{G, G2}(gb: GBuffer, f: (G, gu32) -> G2) {
 }
 
 /// Window-related bindings
-fn{Rs} runWindow "alan_std::run_window" <- RootBacking :: ((Array{Array{GBuffer}}) -> GPGPU[]) -> ()!; // TODO: Make this more useful in the future
+type{Rs} Window = Binds{"alan_std::AlanWindowContext" <- RootBacking};
+
+fn{Rs} window "alan_std::run_window" <- RootBacking :: ((Window) -> u32[], (Array{Array{GBuffer}}) -> GPGPU[]) -> ()!;
+fn{Rs} width Method{"width"} :: Window -> u32;
+fn{Rs} height Method{"height"} :: Window -> u32;
+fn{Rs} bufferWidth Method{"buffer_width"} :: Window -> u32;
+fn{Rs} runtime Method{"runtime"} :: Window -> u32;
 
 /// Process exit-related bindings
 fn{Rs} ExitCode "std::process::ExitCode::from" :: Own{u8} -> ExitCode;
