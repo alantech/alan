@@ -746,6 +746,7 @@ fn{Rs} ctz (a: u8) = {Method{"trailing_zeros"} :: u8 -> u32}(a).u8;
 fn{Js} ctz Method{"ctz"} :: u8 -> u8;
 fn{Rs} reverseBits Method{"reverse_bits"} :: Deref{u8} -> u8;
 fn{Js} reverseBits Method{"reverseBits"} :: u8 -> u8;
+fn extractBits(v: u8, offset: u8, count: u8) = (v >> offset) & (2.u8 ** count - 1.u8);
 
 fn{Rs} add Method{"wrapping_add"} :: (u16, Deref{u16}) -> u16;
 fn{Js} add Method{"wrappingAdd"} :: (u16, u16) -> u16;
@@ -801,6 +802,7 @@ fn{Rs} ctz (a: u16) = {Method{"trailing_zeros"} :: u16 -> u32}(a).u16;
 fn{Js} ctz Method{"ctz"} :: u16 -> u16;
 fn{Rs} reverseBits Method{"reverse_bits"} :: Deref{u16} -> u16;
 fn{Js} reverseBits Method{"reverseBits"} :: u16 -> u16;
+fn extractBits(v: u16, offset: u16, count: u16) = (v >> offset) & (2.u16 ** count - 1.u16);
 
 fn{Rs} add Method{"wrapping_add"} :: (u32, Deref{u32}) -> u32;
 fn{Js} add Method{"wrappingAdd"} :: (u32, u32) -> u32;
@@ -856,6 +858,7 @@ fn{Rs} ctz (a: u32) = {Method{"trailing_zeros"} :: u32 -> u32}(a).u32;
 fn{Js} ctz Method{"ctz"} :: u32 -> u32;
 fn{Rs} reverseBits Method{"reverse_bits"} :: Deref{u32} -> u32;
 fn{Js} reverseBits Method{"reverseBits"} :: u32 -> u32;
+fn extractBits(v: u32, offset: u32, count: u32) = (v >> offset) & (2.u32 ** count - 1.u32);
 
 fn{Rs} add Method{"wrapping_add"} :: (u64, Deref{u64}) -> u64;
 fn{Js} add Method{"wrappingAdd"} :: (u64, u64) -> u64;
@@ -911,6 +914,7 @@ fn{Rs} ctz (a: u64) = {Method{"trailing_zeros"} :: u64 -> u32}(a).u64;
 fn{Js} ctz Method{"ctz"} :: u64 -> u64;
 fn{Rs} reverseBits Method{"reverse_bits"} :: Deref{u64} -> u64;
 fn{Js} reverseBits Method{"reverseBits"} :: u64 -> u64;
+fn extractBits(v: u64, offset: u64, count: u64) = (v >> offset) & (2.u64 ** count - 1.u64);
 
 /// Signed Integer-related functions and function bindings
 fn{Rs} add Method{"wrapping_add"} :: (i8, Deref{i8}) -> i8;
@@ -1736,7 +1740,7 @@ fn gPrimitiveConvert{I, O}(i: I) {
   let buffers = i.buffers.clone();
   return {O}(varName, statements, buffers);
 }
-fn gu32(u: u32) = gu32(u.string, Dict{string, string}(), Set{GBuffer}());
+fn gu32(u: u32) = gu32(u.string.concat('u'), Dict{string, string}(), Set{GBuffer}());
 fn gu32(gu: gu32) = gu;
 fn gu32(gi: gi32) = gPrimitiveConvert{gi32, gu32}(gi);
 fn gu32(gf: gf32) = gPrimitiveConvert{gf32, gu32}(gf);
@@ -3806,6 +3810,27 @@ fn reverseBits(v: gvec3i) = gReverseBits(v);
 fn reverseBits(v: gvec3u) = gReverseBits(v);
 fn reverseBits(v: gvec4i) = gReverseBits(v);
 fn reverseBits(v: gvec4u) = gReverseBits(v);
+
+fn gExtractBits{I}(v: I, offset: gu32, count: gu32) {
+  let varName = 'extractBits('
+    .concat(v.varName)
+    .concat(', ')
+    .concat(offset.varName)
+    .concat(', ')
+    .concat(count.varName)
+    .concat(')');
+  let statements = v.statements.concat(offset.statements).concat(count.statements);
+  let buffers = v.buffers.union(offset.buffers).union(count.buffers);
+  return {I}(varName, statements, buffers);
+}
+fn extractBits(v: gu32, offset: gu32, count: gu32) = gExtractBits(v, offset, count);
+fn extractBits{A, B}(v: gu32, offset: A, count: B) = gExtractBits(v, offset.gu32, count.gu32);
+fn extractBits(v: gvec2u, offset: gu32, count: gu32) = gExtractBits(v, offset, count);
+fn extractBits{A, B}(v: gvec2u, offset: A, count: B) = gExtractBits(v, offset.gu32, count.gu32);
+fn extractBits(v: gvec3u, offset: gu32, count: gu32) = gExtractBits(v, offset, count);
+fn extractBits{A, B}(v: gvec3u, offset: A, count: B) = gExtractBits(v, offset.gu32, count.gu32);
+fn extractBits(v: gvec4u, offset: gu32, count: gu32) = gExtractBits(v, offset, count);
+fn extractBits{A, B}(v: gvec4u, offset: A, count: B) = gExtractBits(v, offset.gu32, count.gu32);
 
 fn cross(a: gvec3f, b: gvec3f) {
   // Yes, this legitimately only works for this exact type in wgsl
