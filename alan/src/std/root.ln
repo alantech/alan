@@ -116,8 +116,8 @@ type Rs = Env{"ALAN_OUTPUT_LANG"} == "rs";
 type Js = Env{"ALAN_OUTPUT_LANG"} == "js";
 
 // Importing the Root Scope backing implementation and supporting 3rd party libraries
-type{Rs} RootBacking = Rust{"alan_std" @ "https://github.com/alantech/alan.git#render-to-window"};
-type{Js} RootBacking = Node{"alan_std" @ "https://github.com/alantech/alan.git#bitcasting-and-packing"};
+type{Rs} RootBacking = Rust{"alan_std" @ "https://github.com/alantech/alan.git"};
+type{Js} RootBacking = Node{"alan_std" @ "https://github.com/alantech/alan.git"};
 
 // Defining derived types
 type void = ();
