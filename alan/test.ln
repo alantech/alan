@@ -1002,5 +1002,35 @@ export fn{Test} main {
         // test.assert(eq, myTree.children.map(fn (c: Node{string}) = c ?? 'wrong').join(', '), 'bar, baz');
     });
 
+  test.describe('Pack and Unpack')
+    .it('f32[4] to u32 and back via Signed Normalization', fn (test: Mut{Testing}) {
+      test
+        .assert(eq, 0.u32.unpack4x8snorm.pack4x8snorm, 0.u32)
+        .assert(eq, {f32[4]}(0.f32, 0.f32, 0.f32, 0.f32).pack4x8snorm, 0.u32)
+        .assert(eq, {f32[4]}(-0.0001.f32, -0.0001.f32, -0.0001.f32, -0.0001.f32).pack4x8snorm, 4_294_967_295.u32)
+        .assert(eq, 127.u32.unpack4x8snorm.map(fn (f: f32) = string(f)).join(', '), '0, 0, 0, 1');
+    })
+    .it('f32[4] to u32 and back via Unsigned Normalization', fn (test: Mut{Testing}) {
+      test
+        .assert(eq, 0.u32.unpack4x8unorm.pack4x8unorm, 0.u32)
+        .assert(eq, {f32[4]}(0.f32, 0.f32, 0.f32, 0.f32).pack4x8unorm, 0.u32)
+        .assert(eq, {f32[4]}(1.f32, 1.f32, 1.f32, 1.f32).pack4x8unorm, 4_294_967_295.u32)
+        .assert(eq, 255.u32.unpack4x8unorm.map(fn (f: f32) = string(f)).join(', '), '0, 0, 0, 1');
+    })
+    .it('f32[2] to u32 and back via Signed Normalization', fn (test: Mut{Testing}) {
+      test
+        .assert(eq, 0.u32.unpack2x16snorm.pack2x16snorm, 0.u32)
+        .assert(eq, {f32[2]}(0.f32, 0.f32).pack2x16snorm, 0.u32)
+        .assert(eq, {f32[2]}(-0.00001.f32, -0.00001.f32).pack2x16snorm, 4_294_967_295.u32)
+        .assert(eq, 32767.u32.unpack2x16snorm.map(fn (f: f32) = string(f)).join(', '), '0, 1');
+    })
+    .it('f32[2] to u32 and back via Unsigned Normalization', fn (test: Mut{Testing}) {
+      test
+        .assert(eq, 0.u32.unpack2x16unorm.pack2x16unorm, 0.u32)
+        .assert(eq, {f32[2]}(0.f32, 0.f32).pack2x16unorm, 0.u32)
+        .assert(eq, {f32[2]}(1.f32, 1.f32).pack2x16unorm, 4_294_967_295.u32)
+        .assert(eq, 65535.u32.unpack2x16unorm.map(fn (f: f32) = string(f)).join(', '), '0, 1');
+    });
+
   test.report;
 }
