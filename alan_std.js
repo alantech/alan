@@ -369,6 +369,19 @@ export class Int {
     return this.build(ones);
   }
 
+  reverseBits() {
+    // This reverses the bits of the number in question, converting signed integers into unsigned
+    // beforehand and then converting back after it is done. For simplicity all of the work is done
+    // with BigInt and converted back again at the end if necessary.
+    let val = this.val < (this.bits == 64 ? 0n : 0) ? BigInt(this.val + this.size) : BigInt(this.val);
+    let out = 0n;
+    for (let i = 0; i < this.bits; i++) {
+      out += (val & 1n) << BigInt(this.bits - i - 1);
+      val = val >> 1n;
+    }
+    return this.build(this.upper < out ? out - BigInt(this.size) : out);
+  }
+
   valueOf() {
     return this.val;
   }

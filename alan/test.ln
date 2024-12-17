@@ -71,7 +71,12 @@ export fn{Test} main {
       .assert(eq, 0.i8.ctz, 8.i8)
       .assert(eq, 1.i8.ctz, 0.i8)
       .assert(eq, 2.i8.ctz, 1.i8)
-      .assert(eq, (-128).i8.ctz, 7.i8));
+      .assert(eq, (-128).i8.ctz, 7.i8))
+    .it('reverseBits', fn (test: Mut{Testing}) = test
+      .assert(eq, 0.i8.reverseBits, 0.i8)
+      .assert(eq, 1.i8.reverseBits, (-128).i8)
+      .assert(eq, 2.i8.reverseBits, 64.i8)
+      .assert(eq, (-128).i8.reverseBits, 1.i8));
 
   test.describe("Basic math tests i16")
     .it("add")
@@ -108,7 +113,12 @@ export fn{Test} main {
       .assert(eq, 0.i16.ctz, 16.i16)
       .assert(eq, 1.i16.ctz, 0.i16)
       .assert(eq, 2.i16.ctz, 1.i16)
-      .assert(eq, (-32768).i16.ctz, 15.i16));
+      .assert(eq, (-32768).i16.ctz, 15.i16))
+    .it('reverseBits', fn (test: Mut{Testing}) = test
+      .assert(eq, 0.i16.reverseBits, 0.i16)
+      .assert(eq, 1.i16.reverseBits, (-32768).i16)
+      .assert(eq, 2.i16.reverseBits, 16384.i16)
+      .assert(eq, (-32768).i16.reverseBits, 1.i16));
 
   test.describe("Basic math tests i32")
     .it("add")
@@ -145,7 +155,12 @@ export fn{Test} main {
       .assert(eq, 0.i32.ctz, 32.i32)
       .assert(eq, 1.i32.ctz, 0.i32)
       .assert(eq, 2.i32.ctz, 1.i32)
-      .assert(eq, (-2_147_483_648).i32.ctz, 31.i32));
+      .assert(eq, (-2_147_483_648).i32.ctz, 31.i32))
+    .it('reverseBits', fn (test: Mut{Testing}) = test
+      .assert(eq, 0.i32.reverseBits, 0.i32)
+      .assert(eq, 1.i32.reverseBits, (-2_147_483_648).i32)
+      .assert(eq, 2.i32.reverseBits, 1_073_741_824.i32)
+      .assert(eq, (-2_147_483_648).i32.reverseBits, 1.i32));
 
   test.describe("Basic math tests i64")
     .it("add")
@@ -182,7 +197,12 @@ export fn{Test} main {
       .assert(eq, 0.ctz, 64)
       .assert(eq, 1.ctz, 0)
       .assert(eq, 2.ctz, 1)
-      .assert(eq, (-9_223_372_036_854_775_808).ctz, 63));
+      .assert(eq, (-9_223_372_036_854_775_808).ctz, 63))
+    .it('reverseBits', fn (test: Mut{Testing}) = test
+      .assert(eq, 0.reverseBits, 0)
+      .assert(eq, 1.reverseBits, -9_223_372_036_854_775_808)
+      .assert(eq, 2.reverseBits, 4_611_686_018_427_387_904)
+      .assert(eq, -9_223_372_036_854_775_808.reverseBits, 1));
 
   test.describe("Basic math tests u8")
     .it("add")
@@ -215,7 +235,12 @@ export fn{Test} main {
       .assert(eq, 0.u8.ctz, 8.u8)
       .assert(eq, 1.u8.ctz, 0.u8)
       .assert(eq, 2.u8.ctz, 1.u8)
-      .assert(eq, 128.u8.ctz, 7.u8));
+      .assert(eq, 128.u8.ctz, 7.u8))
+    .it('reverseBits', fn (test: Mut{Testing}) = test
+      .assert(eq, 0.u8.reverseBits, 0.u8)
+      .assert(eq, 1.u8.reverseBits, 128.u8)
+      .assert(eq, 2.u8.reverseBits, 64.u8)
+      .assert(eq, 128.u8.reverseBits, 1.u8));
 
   test.describe("Basic math tests u16")
     .it("add")
@@ -248,7 +273,12 @@ export fn{Test} main {
       .assert(eq, 0.u16.ctz, 16.u16)
       .assert(eq, 1.u16.ctz, 0.u16)
       .assert(eq, 2.u16.ctz, 1.u16)
-      .assert(eq, 32768.u16.ctz, 15.u16));
+      .assert(eq, 32768.u16.ctz, 15.u16))
+    .it('reverseBits', fn (test: Mut{Testing}) = test
+      .assert(eq, 0.u16.reverseBits, 0.u16)
+      .assert(eq, 1.u16.reverseBits, 32768.u16)
+      .assert(eq, 2.u16.reverseBits, 16384.u16)
+      .assert(eq, 32768.u16.reverseBits, 1.u16));
 
   test.describe("Basic math tests u32")
     .it("add")
@@ -281,7 +311,12 @@ export fn{Test} main {
       .assert(eq, 0.u32.ctz, 32.u32)
       .assert(eq, 1.u32.ctz, 0.u32)
       .assert(eq, 2.u32.ctz, 1.u32)
-      .assert(eq, 2_147_483_648.u32.ctz, 31.u32));
+      .assert(eq, 2_147_483_648.u32.ctz, 31.u32))
+    .it('reverseBits', fn (test: Mut{Testing}) = test
+      .assert(eq, 0.u32.reverseBits, 0.u32)
+      .assert(eq, 1.u32.reverseBits, 2_147_483_648.u32)
+      .assert(eq, 2.u32.reverseBits, 1_073_741_824.u32)
+      .assert(eq, 2_147_483_648.u32.reverseBits, 1.u32));
 
   test.describe("Basic math tests u64")
     .it("add")
@@ -313,8 +348,13 @@ export fn{Test} main {
     .it("ctz", fn (test: Mut{Testing}) = test
       .assert(eq, 0.u64.ctz, 64.u64)
       .assert(eq, 1.u64.ctz, 0.u64)
-      .assert(eq, 2.u64.ctz, 1.u64));
+      .assert(eq, 2.u64.ctz, 1.u64))
       // .assert(eq, 9_223_372_036_854_775_808.u64.ctz, 63.u64)); TODO: Same u64 representation
+    .it('reverseBits', fn (test: Mut{Testing}) = test
+      .assert(eq, 0.u64.reverseBits, 0.u64)
+      // .assert(eq, 1.u64.reverseBits, 9_223_372_036_854_775_808.u64) TODO: u64 representation
+      .assert(eq, 2.u64.reverseBits, 4_611_686_018_427_387_904.u64));
+      // .assert(eq, 9_223_372_036_854_775_808.reverseBits, 1)); TODO: u64 representation
 
   test.describe("Basic math tests f32")
     .it("add")

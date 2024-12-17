@@ -73,6 +73,9 @@ assert.equal(new alanStd.I8(0b01010101).rotateRight(new alanStd.I8(1)).val, 0b10
 assert.equal(new alanStd.I8(0b01010101).rotateRight(new alanStd.I8(2)).val, 0b01010101, "rotateRightI8 0b01010101 <<< 2 = 0b01010101");
 assert.equal(new alanStd.I8(0b01010101).rotateRight(new alanStd.I8(3)).val, 0b10101010 - 256, "rotateRightI8 0b01010101 <<< 3 = 0b10101010");
 
+assert.equal(new alanStd.I8(0b01010101).reverseBits(), 0b10101010 - 256, "reverseBitsI8 0b01010101 = 0b10101010");
+assert.equal(new alanStd.I8(0b00000100).reverseBits(), 0b00100000, "reverseBitsI8 0b00000100 = 0b00100000");
+
 assert.strictEqual(new alanStd.I16(1).wrappingAdd(new alanStd.I16(2)).val, 3, "wrappingAddI16 1 + 2 = 3");
 assert.strictEqual(new alanStd.I16(32_767).wrappingAdd(new alanStd.I16(1)).val, -32_768, "wrappingAddI16 32_767 + 1 = -32_768");
 
@@ -94,6 +97,9 @@ assert.equal(new alanStd.I16(-32_768).wrappingShr(new alanStd.I16(1)), 16_384, "
 assert.equal(new alanStd.I16(-32_768).rotateLeft(new alanStd.I16(1)), 1, "rotateLeftI16 -32_768 <<< 1 = 1");
 
 assert.equal(new alanStd.I16(16_384).rotateRight(new alanStd.I16(1)), 8_192, "rotateRightI16 16_384 >>> 1 = -32_768");
+
+assert.equal(new alanStd.I16(1).reverseBits(), -32768, "reverseBitsI16 1 = -32768");
+assert.equal(new alanStd.I16(4).reverseBits(), 8192, "reverseBitsI16 4 = 8192");
 
 assert.strictEqual(new alanStd.I32(1).wrappingAdd(new alanStd.I32(2)).val, 3, "wrappingAddI32 1 + 2 = 3");
 assert.strictEqual(new alanStd.I32(2_147_483_647).wrappingAdd(new alanStd.I32(1)).val, -2_147_483_648, "wrappingAddI32 2_147_483_647 + 1 = -2_147_483_648");
@@ -117,6 +123,9 @@ assert.equal(new alanStd.I32(-2_147_483_648).rotateLeft(new alanStd.I32(1)), 1, 
 
 assert.equal(new alanStd.I32(1_073_741_824).rotateRight(new alanStd.I32(1)), 536_870_912, "rotateRightI32 1_073_741_824 >>> 1 = 536_870_912");
 
+assert.equal(new alanStd.I32(1).reverseBits(), -2_147_483_648, "reverseBitsI32 1 = -2_147_483_648");
+assert.equal(new alanStd.I32(4).reverseBits(), 536_870_912, "reverseBitsI32 4 = 536_870_912");
+
 assert.strictEqual(new alanStd.I64(1n).wrappingAdd(new alanStd.I64(2n)).val, 3n, "wrappingAddI64 1 + 2 = 3");
 assert.strictEqual(new alanStd.I64(9_223_372_036_854_775_807n).wrappingAdd(new alanStd.I64(1n)).val, -9_223_372_036_854_775_808n, "wrappingAddI64 9_223_372_036_854_775_807 + 1 = -9_223_372_036_854_775_808");
 
@@ -138,6 +147,9 @@ assert.equal(new alanStd.I64(-9_223_372_036_854_775_808n).wrappingShr(new alanSt
 assert.equal(new alanStd.I64(-9_223_372_036_854_775_808n).rotateLeft(new alanStd.I64(1n)), 1n, "rotateLeftI64 -9_223_372_036_854_775_808 <<< 1 = 1");
 
 assert.equal(new alanStd.I64(4_611_686_018_427_387_904n).rotateRight(new alanStd.I64(1n)), 2_305_843_009_213_693_952n, "rotateRightI64 4_611_686_018_427_387_904 >>> 1 = 2_305_843_009_213_693_952");
+
+assert.equal(new alanStd.I64(1).reverseBits(), -9_223_372_036_854_775_808n, "reverseBitsI64 1 = -9_223_372_036_854_775_808");
+assert.equal(new alanStd.I64(4).reverseBits(), 2_305_843_009_213_693_952n, "reverseBitsI64 4 = 2_305_843_009_213_693_952");
 
 assert.strictEqual(new alanStd.U8(1).wrappingAdd(new alanStd.U8(2)).val, 3, "wrappingAddU8 1 + 2 = 3");
 assert.strictEqual(new alanStd.U8(255).wrappingAdd(new alanStd.U8(1)).val, 0, "wrappingAddU8 255 + 1 = 0");
@@ -190,6 +202,9 @@ assert.equal(new alanStd.U8(0b00000001).rotateRight(new alanStd.U8(7)), 0b000000
 assert.equal(new alanStd.U8(0b00000001).rotateRight(new alanStd.U8(8)), 0b00000001, "rotateRightU8 0b00000001 >>> 8 = 0b00000008");
 assert.equal(new alanStd.U8(100).rotateRight(new alanStd.U8(2)), 25, "rotateRightU8 100 >>> 2 = 25");
 
+assert.equal(new alanStd.U8(0b01010101).reverseBits(), 0b10101010, "reverseBitsU8 0b01010101 = 0b10101010");
+assert.equal(new alanStd.U8(0b00000100).reverseBits(), 0b00100000, "reverseBitsU8 0b00000100 = 0b00100000");
+
 assert.strictEqual(new alanStd.U16(1).wrappingAdd(new alanStd.U16(2)).val, 3, "wrappingAddU16 1 + 2 = 3");
 assert.strictEqual(new alanStd.U16(65_535).wrappingAdd(new alanStd.U16(1)).val, 0, "wrappingAddU16 65_535 + 1 = 0");
 
@@ -213,6 +228,9 @@ assert.equal(new alanStd.U16(128).wrappingShr(new alanStd.U16(1)), 64, "wrapping
 assert.equal(new alanStd.U16(32_768).rotateLeft(new alanStd.U16(1)), 1, "rotateLeftU16 128 <<< 1 = 1");
 
 assert.equal(new alanStd.U16(64).rotateRight(new alanStd.U16(1)), 32, "rotateRightU16 64 >>> 1 = 128");
+
+assert.equal(new alanStd.U16(1).reverseBits(), 32768, "reverseBitsU16 1 = 32768");
+assert.equal(new alanStd.U16(4).reverseBits(), 8192, "reverseBitsU16 4 = 8192");
 
 assert.strictEqual(new alanStd.U32(1).wrappingAdd(new alanStd.U32(2)).val, 3, "wrappingAddU32 1 + 2 = 3");
 assert.strictEqual(new alanStd.U32(4_294_967_295).wrappingAdd(new alanStd.U32(1)).val, 0, "wrappingAddU32 4_294_967_295 + 1 = 0");
@@ -238,6 +256,9 @@ assert.equal(new alanStd.U32(2_147_483_648).rotateLeft(new alanStd.U32(1)), 1, "
 
 assert.equal(new alanStd.U32(64).rotateRight(new alanStd.U32(1)), 32, "rotateRightU32 64 >>> 1 = 32");
 
+assert.equal(new alanStd.U32(1).reverseBits(), 2_147_483_648, "reverseBitsU32 1 = 2_147_483_648");
+assert.equal(new alanStd.U32(4).reverseBits(), 536_870_912, "reverseBitsU32 4 = 536_870_912");
+
 assert.strictEqual(new alanStd.U64(1n).wrappingAdd(new alanStd.U64(2n)).val, 3n, "wrappingAddU64 1 + 2 = 3");
 assert.strictEqual(new alanStd.U64(18_446_744_073_709_551_615n).wrappingAdd(new alanStd.U64(1n)).val, 0n, "wrappingAddU64 18_446_744_073_709_551_615 + 1 = 0");
 
@@ -262,6 +283,9 @@ assert.equal(new alanStd.U64(9_223_372_036_854_775_808n).rotateLeft(new alanStd.
 assert.equal(new alanStd.U64(100n).rotateLeft(new alanStd.U64(2n)), 400n, "rotateLeftU64 100 <<< 2 = 400");
 
 assert.equal(new alanStd.U64(64n).rotateRight(new alanStd.U64(1n)), 32n, "rotateRightU64 64 >>> 1 = 32");
+
+assert.equal(new alanStd.U64(1).reverseBits(), 9_223_372_036_854_775_808n, "reverseBitsU64 1 = 9_223_372_036_854_775_808");
+assert.equal(new alanStd.U64(4).reverseBits(), 2_305_843_009_213_693_952n, "reverseBitsU64 4 = 2_305_843_009_213_693_952");
 
 assert.equal(new alanStd.U8(255).clz(), 0, "clzU8(255) = 0");
 assert.equal(new alanStd.U8(0).clz(), 8, "clzU8(0) = 8");
