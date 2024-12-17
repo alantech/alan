@@ -503,6 +503,134 @@ export class F64 extends Float {
   }
 }
 
+export function i8AsU8(i8) {
+  const buffer = new ArrayBuffer(1);
+  const i8View = new Int8Array(buffer, 0, 1);
+  const u8View = new Uint8Array(buffer, 0, 1);
+  i8View[0] = i8.val;
+  return new U8(u8View[0]);
+}
+
+export function i16AsU16(i16) {
+  const buffer = new ArrayBuffer(2);
+  const i16View = new Int16Array(buffer, 0, 2);
+  const u16View = new Uint16Array(buffer, 0, 2);
+  i16View[0] = i16.val;
+  return new U16(u16View[0]);
+}
+
+export function i32AsU32(i32) {
+  const buffer = new ArrayBuffer(4);
+  const i32View = new Int32Array(buffer, 0, 4);
+  const u32View = new Uint32Array(buffer, 0, 4);
+  i32View[0] = i32.val;
+  return new U32(u32View[0]);
+}
+
+export function i32AsF32(i32) {
+  const buffer = new ArrayBuffer(4);
+  const i32View = new Int32Array(buffer, 0, 4);
+  const f32View = new Float32Array(buffer, 0, 4);
+  i32View[0] = i32.val;
+  return new F32(f32View[0]);
+}
+
+export function i64AsU64(i64) {
+  const buffer = new ArrayBuffer(8);
+  const i64View = new BigInt64Array(buffer, 0, 8);
+  const u64View = new BigUint64Array(buffer, 0, 8);
+  i64View[0] = i64.val;
+  return new U64(u64View[0]);
+}
+
+export function i64AsF64(i64) {
+  const buffer = new ArrayBuffer(8);
+  const i64View = new BigInt64Array(buffer, 0, 8);
+  const f64View = new Float64Array(buffer, 0, 8);
+  i64View[0] = i64.val;
+  return new F64(f64View[0]);
+}
+
+export function u8AsI8(u8) {
+  const buffer = new ArrayBuffer(1);
+  const u8View = new Uint8Array(buffer, 0, 1);
+  const i8View = new Int8Array(buffer, 0, 1);
+  u8View[0] = u8.val;
+  return new I8(i8View[0]);
+}
+
+export function u16AsI16(u16) {
+  const buffer = new ArrayBuffer(2);
+  const u16View = new Uint16Array(buffer, 0, 2);
+  const i16View = new Int16Array(buffer, 0, 2);
+  u16View[0] = u16.val;
+  return new I16(i16View[0]);
+}
+
+export function u32AsI32(u32) {
+  const buffer = new ArrayBuffer(4);
+  const u32View = new Uint32Array(buffer, 0, 4);
+  const i32View = new Int32Array(buffer, 0, 4);
+  u32View[0] = u32.val;
+  return new I32(i32View[0]);
+}
+
+export function u32AsF32(u32) {
+  const buffer = new ArrayBuffer(4);
+  const u32View = new Uint32Array(buffer, 0, 4);
+  const f32View = new Float32Array(buffer, 0, 4);
+  u32View[0] = u32.val;
+  return new F32(f32View[0]);
+}
+
+export function u64AsI64(u64) {
+  const buffer = new ArrayBuffer(8);
+  const u64View = new BigUint64Array(buffer, 0, 8);
+  const i64View = new BigInt64Array(buffer, 0, 8);
+  u64View[0] = u64.val;
+  return new I64(i64View[0]);
+}
+
+export function u64AsF64(u64) {
+  const buffer = new ArrayBuffer(8);
+  const u64View = new BigUint64Array(buffer, 0, 8);
+  const f64View = new Float64Array(buffer, 0, 8);
+  u64View[0] = u64.val;
+  return new F64(f64View[0]);
+}
+
+export function f32AsI32(f32) {
+  const buffer = new ArrayBuffer(4);
+  const f32View = new Float32Array(buffer, 0, 4);
+  const i32View = new Int32Array(buffer, 0, 4);
+  f32View[0] = f32.val;
+  return new I32(i32View[0]);
+}
+
+export function f32AsU32(f32) {
+  const buffer = new ArrayBuffer(4);
+  const f32View = new Float32Array(buffer, 0, 4);
+  const u32View = new Uint32Array(buffer, 0, 4);
+  f32View[0] = f32.val;
+  return new U32(u32View[0]);
+}
+
+export function f64AsI64(f64) {
+  const buffer = new ArrayBuffer(8);
+  const f64View = new Float64Array(buffer, 0, 8);
+  const i64View = new BigInt64Array(buffer, 0, 8);
+  f64View[0] = f64.val;
+  return new I64(i64View[0]);
+}
+
+export function f64AsU64(f64) {
+  const buffer = new ArrayBuffer(8);
+  const f64View = new Float64Array(buffer, 0, 8);
+  const u64View = new BigUint64Array(buffer, 0, 8);
+  f64View[0] = f64.val;
+  return new U64(u64View[0]);
+}
+
 export class Bool {
   constructor(val) {
     this.val = Boolean(val);
