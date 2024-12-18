@@ -1562,6 +1562,7 @@ where
                     .as_ref()
                     .unwrap()
                     .set_title(&format!("Render time: {:.3}", render_time.as_secs_f64()));
+                std::thread::sleep(std::time::Duration::from_millis(100));
                 self.context.window.as_ref().unwrap().request_redraw();
             }
             _ => {} // Ignore all other events
