@@ -17,7 +17,7 @@ jobs:
     - name: Check formatting
       run: cargo fmt --check
     - name: Build
-      run: cargo build --verbose
+      run: cargo build --release --verbose
     - if: ${{ github.ref_name == 'main' }}
       name: Run tests
       run: cargo test --release --verbose -- --include-ignored
@@ -34,7 +34,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Build
-      run: cargo build --verbose
+      run: cargo build --release --verbose
     - if: ${{ github.ref_name == 'main' }}
       name: Run tests
       run: cargo test --release --verbose -- --include-ignored
@@ -55,7 +55,7 @@ jobs:
     - name: Start web server
       run: yarn start-server
     - name: Build
-      run: cargo build --verbose
+      run: cargo build --release --verbose
     - if: ${{ github.ref_name == 'main' }}
       name: Run tests
       run: cargo test --release --verbose -- --include-ignored
@@ -75,13 +75,13 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Build
-      run: cargo build --verbose
+      run: cargo build --release --verbose
     - if: ${{ github.ref_name == 'main' }}
       name: Run tests
-      run: RUST_MIN_STACK=8388608 cargo test --release --verbose -- --include-ignored
+      run: cargo test --release --verbose -- --include-ignored
     - if: ${{ github.ref_name != 'main' }}
       name: Run tests
-      run: RUST_MIN_STACK=8388608 cargo test --release --verbose
+      run: cargo test --release --verbose
     - name: Run native tests
       run: cargo run --release -- test alan/test.ln
     - name: Run js tests
@@ -96,13 +96,13 @@ jobs:
     - name: Start web server
       run: yarn start-server
     - name: Build
-      run: cargo build --verbose
+      run: cargo build --release --verbose
     - if: ${{ github.ref_name == 'main' }}
       name: Run tests
-      run: RUST_MIN_STACK=8388608 cargo test --release --verbose -- --include-ignored
+      run: cargo test --release --verbose -- --include-ignored
     - if: ${{ github.ref_name != 'main' }}
       name: Run tests
-      run: RUST_MIN_STACK=8388608 cargo test --release --verbose
+      run: cargo test --release --verbose
     - if: always()
       name: Stop web server
       run: yarn stop-server
