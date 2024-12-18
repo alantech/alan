@@ -661,6 +661,14 @@ test_gpgpu!(gpu_reversebits => r#"
     stdout "[0, -2147483648, 1073741824, 1]\n";
 );
 
+test_gpgpu!(gpu_extractbits => r#"
+    export fn main {
+        let b = GBuffer([0.u32, 1.u32, 2.u32, 5.u32]);
+        b.map(fn (val: gu32) = val.extractBits(1, 2)).read{u32}.print;
+    }"#;
+    stdout "[0, 0, 1, 2]\n";
+);
+
 // TODO: Fix u64 numeric constants to get u64 bitwise tests in the new test suite
 test!(u64_bitwise => r#"
     prefix u64 as ~ precedence 10
