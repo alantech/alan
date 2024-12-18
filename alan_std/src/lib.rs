@@ -1180,7 +1180,7 @@ pub fn replace_buffer<T>(b: &GBuffer, v: &Vec<T>) -> Result<(), AlanError> {
 
 /// Window-related types and functions
 pub struct AlanWindowContext {
-    window: Option<Window>,
+    window: Option<std::sync::Arc<Window>>,
     start: Option<std::time::Instant>,
     buffer_width: Option<u32>,
 }
@@ -1223,7 +1223,7 @@ where
     config: Option<WindowAttributes>,
     context: AlanWindowContext,
     instance: Option<wgpu::Instance>,
-    surface: Option<wgpu::Surface>,
+    surface: Option<wgpu::Surface<'static>>,
     adapter: Option<wgpu::Adapter>,
     device: Option<wgpu::Device>,
     queue: Option<wgpu::Queue>,
@@ -1249,9 +1249,11 @@ where
         }
         if self.surface.is_none() {
             let instance = self.instance.as_ref().unwrap();
-            self.surface = Some(instance
-                .create_surface(self.context.window.as_ref().unwrap())
-                .unwrap());
+            self.surface = Some(
+                instance
+                    .create_surface(self.context.window.as_ref().unwrap().clone())
+                    .unwrap(),
+            );
         }
         if self.adapter.is_none() {
             let instance = self.instance.as_ref().unwrap();
@@ -1339,11 +1341,11 @@ where
         if event_loop.exiting() {
             return;
         }
-        self.context.window = Some(
+        self.context.window = Some(std::sync::Arc::new(
             event_loop
                 .create_window(self.config.clone().unwrap_or(Window::default_attributes()))
                 .unwrap(),
-        );
+        ));
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
@@ -1426,7 +1428,6 @@ where
                 let mut size = self.context.window.as_ref().unwrap().inner_size();
                 size.width = size.width.max(1);
                 size.height = size.height.max(1);
-                let instance = self.instance.as_ref().unwrap();
                 let surface = self.surface.as_ref().unwrap();
                 let adapter = self.adapter.as_ref().unwrap();
                 let device = self.device.as_ref().unwrap();
@@ -1588,6 +1589,7 @@ where
             buffer_width: None,
         },
         instance: None,
+        surface: None,
         adapter: None,
         device: None,
         queue: None,
