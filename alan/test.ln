@@ -433,7 +433,10 @@ export fn{Test} main {
       .assert(eq, (-1.5).f32.round, (-2).f32)
       .assert(eq, (-1.75).f32.round, (-2).f32)
       .assert(eq, (-2.5).f32.round, (-2).f32)
-      .assert(eq, (-2.75).f32.round, (-3).f32));
+      .assert(eq, (-2.75).f32.round, (-3).f32))
+    .it('magnitude', fn (test: Mut{Testing}) = test
+      .assert(eq, 1.5.f32.magnitude, 1.5.f32)
+      .assert(eq, (-1.5).f32.magnitude, 1.5.f32));
 
   test.describe("Basic math tests f64")
     .it("add")
@@ -468,7 +471,10 @@ export fn{Test} main {
       .assert(eq, -1.5.round, -2.0)
       .assert(eq, -1.75.round, -2.0)
       .assert(eq, -2.5.round, -2.0)
-      .assert(eq, -2.75.round, -3.0));
+      .assert(eq, -2.75.round, -3.0))
+    .it('magnitude', fn (test: Mut{Testing}) = test
+      .assert(eq, 1.5.magnitude, 1.5)
+      .assert(eq, -1.5.magnitude, 1.5));
 
   test.describe("Basic math tests")
     .it("grouping")
@@ -925,6 +931,14 @@ export fn{Test} main {
       test.assert(eq, arr.map(string).join(', '), '1, 2, 3, 4, 5');
       arr.sort(fn (a: i64, b: i64) = i8(b - a));
       test.assert(eq, arr.map(string).join(', '), '5, 4, 3, 2, 1');
+    })
+    .it('magnitude', fn (test: Mut{Testing}) {
+      let sides = [3.0, 4.0];
+      let hypotenuse = sides.magnitude;
+      test.assert(eq, hypotenuse, 5.0);
+      let youGottaThinkFourthDimensionally = [4.0, 4.0, 4.0, 4.0];
+      let gr8Scott = youGottaThinkFourthDimensionally.magnitude;
+      test.assert(eq, gr8Scott, 8.0);
     });
 
   test.describe("Buffers")
@@ -991,6 +1005,14 @@ export fn{Test} main {
       test.assert(eq, buf.map(string).join(', '), '1, 2, 3, 4, 5');
       buf.sort(fn (a: i64, b: i64) = i8(b - a));
       test.assert(eq, buf.map(string).join(', '), '5, 4, 3, 2, 1');
+    })
+    .it('magnitude', fn (test: Mut{Testing}) {
+      let sides = {f64[2]}(3.0, 4.0);
+      let hypotenuse = sides.magnitude;
+      test.assert(eq, hypotenuse, 5.0);
+      let youGottaThinkFourthDimensionally = {f64[4]}(4.0, 4.0, 4.0, 4.0);
+      let gr8Scott = youGottaThinkFourthDimensionally.magnitude;
+      test.assert(eq, gr8Scott, 8.0);
     });
 
   test.describe("Conditionals")

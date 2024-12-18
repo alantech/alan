@@ -610,6 +610,7 @@ fn acsch(x: f32) = ln(1.0.f32 / x + sqrt(1.0.f32 / x ** 2.0.f32 + 1.0.f32));
 fn acoth(x: f32) = ln((x + 1.0.f32) / (x - 1.0.f32)) / 2.0.f32;
 fn{Rs} round Method{"round_ties_even"} :: Deref{f32} -> f32;
 fn{Js} round Method{"roundTiesEven"} :: f32 -> f32;
+fn magnitude f32 = arg0.abs;
 
 fn{Rs} add Infix{"+"} :: (f64, f64) -> f64;
 fn{Js} add "((a, b) => new alan_std.F64(a.val + b.val))" <- RootBacking :: (f64, f64) -> f64;
@@ -694,6 +695,7 @@ fn acsch(x: f64) = ln(1.0 / x + sqrt(1.0 / x ** 2.0 + 1.0));
 fn acoth(x: f64) = ln((x + 1.0) / (x - 1.0)) / 2.0;
 fn{Rs} round Method{"round_ties_even"} :: Deref{f64} -> f64;
 fn{Js} round Method{"roundTiesEven"} :: f64 -> f64;
+fn magnitude f64 = arg0.abs;
 
 /// Unsigned Integer-related functions and function bindings
 fn{Rs} add Method{"wrapping_add"} :: (u8, Deref{u8}) -> u8;
@@ -1312,6 +1314,8 @@ fn{Js} swap{T} "alan_std.swap" <- RootBacking :: (T[], i64, i64) -> void!;
 fn{Rs} sort{T} "alan_std::sortarray" <- RootBacking :: (Mut{T[]}, (T, T) -> i8) -> void;
 fn{Js} sort{T} "alan_std.sort" <- RootBacking :: (Mut{T[]}, (T, T) -> i8) -> void;
 fn sort{T} (arr: Mut{T[]}) = sort(arr, fn (a: T, b: T) = if(a == b, 0.i8, if(a < b, -1.i8, 1.i8)));
+fn magnitude (arr: f32[]) = (arr.map(fn (v: f32) = v ** 2.0.f32).reduce(add) ?? 0.0.f32).sqrt;
+fn magnitude (arr: f64[]) = (arr.map(fn (v: f64) = v ** 2.0).reduce(add) ?? 0.0).sqrt;
 
 /// Buffer related bindings
 fn{Rs} get{T, S} "alan_std::getbuffer" <- RootBacking :: (T[S], i64) -> T?;
@@ -1358,6 +1362,8 @@ fn{Js} swap{T, S} "alan_std.swap" <- RootBacking :: (Buffer{T, S}, i64, i64) -> 
 fn{Rs} sort{T, S} "alan_std::sortbuffer" <- RootBacking :: (Mut{Buffer{T, S}}, (T, T) -> i8) -> void;
 fn{Js} sort{T, S} "alan_std.sort" <- RootBacking :: (Mut{Buffer{T, S}}, (T, T) -> i8) -> void;
 fn sort{T, S} (arr: Mut{Buffer{T, S}}) = sort(arr, fn (a: T, b: T) = if(a == b, 0.i8, if(a < b, -1.i8, 1.i8)));
+fn magnitude{S} (buf: f32[S]) = (buf.map(fn (v: f32) = v ** 2.0.f32).reduce(add) ?? 0.0.f32).sqrt;
+fn magnitude{S} (buf: f64[S]) = (buf.map(fn (v: f64) = v ** 2.0).reduce(add) ?? 0.0).sqrt;
 
 /// Dictionary-related bindings
 fn{Rs} Dict{K, V} "alan_std::OrderedHashMap::new" <- RootBacking :: () -> Dict{K, V};
@@ -3898,6 +3904,15 @@ fn cross(a: gvec3f, b: gvec3f) {
   let buffers = a.buffers.union(b.buffers);
   return gvec3f(varName, statements, buffers);
 }
+
+fn gMagnitude{I}(v: I) {
+  let varName = 'length('.concat(v.varName).concat(')');
+  return gf32(varName, v.statements, v.buffers);
+}
+fn magnitude(v: gf32) = gMagnitude(v);
+fn magnitude(v: gvec2f) = gMagnitude(v);
+fn magnitude(v: gvec3f) = gMagnitude(v);
+fn magnitude(v: gvec4f) = gMagnitude(v);
 
 fn gRound{I}(v: I) {
   let varName = 'round('.concat(v.varName).concat(')');
