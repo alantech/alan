@@ -424,7 +424,16 @@ export fn{Test} main {
     .it("floor")
       .assert(eq, 2.5.f32.floor, 2.f32)
     .it("ceil")
-      .assert(eq, 2.5.f32.ceil, 3.f32);
+      .assert(eq, 2.5.f32.ceil, 3.f32)
+    .it('round', fn (test: Mut{Testing}) = test
+      .assert(eq, 1.5.f32.round, 2.f32)
+      .assert(eq, 1.75.f32.round, 2.f32)
+      .assert(eq, 2.5.f32.round, 2.f32)
+      .assert(eq, 2.75.f32.round, 3.f32)
+      .assert(eq, (-1.5).f32.round, (-2).f32)
+      .assert(eq, (-1.75).f32.round, (-2).f32)
+      .assert(eq, (-2.5).f32.round, (-2).f32)
+      .assert(eq, (-2.75).f32.round, (-3).f32));
 
   test.describe("Basic math tests f64")
     .it("add")
@@ -450,7 +459,16 @@ export fn{Test} main {
     .it("floor")
       .assert(eq, 2.5.floor, 2.0)
     .it("ceil")
-      .assert(eq, 2.5.ceil, 3.0);
+      .assert(eq, 2.5.ceil, 3.0)
+    .it('round', fn (test: Mut{Testing}) = test
+      .assert(eq, 1.5.round, 2.0)
+      .assert(eq, 1.75.round, 2.0)
+      .assert(eq, 2.5.round, 2.0)
+      .assert(eq, 2.75.round, 3.0)
+      .assert(eq, -1.5.round, -2.0)
+      .assert(eq, -1.75.round, -2.0)
+      .assert(eq, -2.5.round, -2.0)
+      .assert(eq, -2.75.round, -3.0));
 
   test.describe("Basic math tests")
     .it("grouping")

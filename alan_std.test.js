@@ -447,3 +447,21 @@ assert.deepEqual(alanStd.cross(
   [new alanStd.F64(1), new alanStd.F64(0), new alanStd.F64(0)],
 ), [new alanStd.F64(0), new alanStd.F64(0), new alanStd.F64(-1)],
 "cross([0, 1, 0], [1, 0, 0]) = [0, 0, -1]");
+
+assert.equal(new alanStd.F32(1.5).roundTiesEven(), 2.0, "roundTiesEvenF32 1.5 == 2.0");
+assert.equal(new alanStd.F32(1.75).roundTiesEven(), 2.0, "roundTiesEvenF32 1.75 == 2.0");
+assert.equal(new alanStd.F32(2.5).roundTiesEven(), 2.0, "roundTiesEvenF32 2.5 == 2.0");
+assert.equal(new alanStd.F32(2.75).roundTiesEven(), 3.0, "roundTiesEvenF32 2.75 == 3.0");
+assert.equal(new alanStd.F32(-1.5).roundTiesEven(), -2.0, "roundTiesEvenF32 -1.5 == -2.0");
+assert.equal(new alanStd.F32(-1.75).roundTiesEven(), -2.0, "roundTiesEvenF32 -1.75 == -2.0");
+assert.equal(new alanStd.F32(-2.5).roundTiesEven(), -2.0, "roundTiesEvenF32 -2.5 == -2.0");
+assert.equal(new alanStd.F32(-2.75).roundTiesEven(), -3.0, "roundTiesEvenF32 -2.75 == -3.0");
+
+assert.equal(new alanStd.F64(1.5).roundTiesEven(), 2.0, "roundTiesEvenF64 1.5 == 2.0");
+assert.equal(new alanStd.F64(1.75).roundTiesEven(), 2.0, "roundTiesEvenF64 1.75 == 2.0");
+assert.equal(new alanStd.F64(2.5).roundTiesEven(), 2.0, "roundTiesEvenF64 2.5 == 2.0");
+assert.equal(new alanStd.F64(2.75).roundTiesEven(), 3.0, "roundTiesEvenF64 2.75 == 3.0");
+assert.equal(new alanStd.F64(-1.5).roundTiesEven(), -2.0, "roundTiesEvenF64 -1.5 == -2.0");
+assert.equal(new alanStd.F64(-1.75).roundTiesEven(), -2.0, "roundTiesEvenF64 -1.75 == -2.0");
+assert.equal(new alanStd.F64(-2.5).roundTiesEven(), -2.0, "roundTiesEvenF64 -2.5 == -2.0");
+assert.equal(new alanStd.F64(-2.75).roundTiesEven(), -3.0, "roundTiesEvenF64 -2.75 == -3.0");

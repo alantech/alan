@@ -117,7 +117,7 @@ type Js = Env{"ALAN_OUTPUT_LANG"} == "js";
 
 // Importing the Root Scope backing implementation and supporting 3rd party libraries
 type{Rs} RootBacking = Rust{"alan_std" @ "https://github.com/alantech/alan.git"};
-type{Js} RootBacking = Node{"alan_std" @ "https://github.com/alantech/alan.git"};
+type{Js} RootBacking = Node{"alan_std" @ "https://github.com/alantech/alan.git#round"};
 
 // Defining derived types
 type void = ();
@@ -608,6 +608,8 @@ fn coth(x: f32) = 1.0.f32 / tanh(x);
 fn asech(x: f32) = ln((1.0.f32 + sqrt(1.0.f32 - x ** 2.0.f32)) / x);
 fn acsch(x: f32) = ln(1.0.f32 / x + sqrt(1.0.f32 / x ** 2.0.f32 + 1.0.f32));
 fn acoth(x: f32) = ln((x + 1.0.f32) / (x - 1.0.f32)) / 2.0.f32;
+fn{Rs} round Method{"round_ties_even"} :: Deref{f32} -> f32;
+fn{Js} round Method{"roundTiesEven"} :: f32 -> f32;
 
 fn{Rs} add Infix{"+"} :: (f64, f64) -> f64;
 fn{Js} add "((a, b) => new alan_std.F64(a.val + b.val))" <- RootBacking :: (f64, f64) -> f64;
@@ -690,6 +692,8 @@ fn coth(x: f64) = 1.0 / tanh(x);
 fn asech(x: f64) = ln((1.0 + sqrt(1.0 - x ** 2.0)) / x);
 fn acsch(x: f64) = ln(1.0 / x + sqrt(1.0 / x ** 2.0 + 1.0));
 fn acoth(x: f64) = ln((x + 1.0) / (x - 1.0)) / 2.0;
+fn{Rs} round Method{"round_ties_even"} :: Deref{f64} -> f64;
+fn{Js} round Method{"roundTiesEven"} :: f64 -> f64;
 
 /// Unsigned Integer-related functions and function bindings
 fn{Rs} add Method{"wrapping_add"} :: (u8, Deref{u8}) -> u8;
@@ -3894,6 +3898,15 @@ fn cross(a: gvec3f, b: gvec3f) {
   let buffers = a.buffers.union(b.buffers);
   return gvec3f(varName, statements, buffers);
 }
+
+fn gRound{I}(v: I) {
+  let varName = 'round('.concat(v.varName).concat(')');
+  return {I}(varName, v.statements, v.buffers);
+}
+fn round(v: gf32) = gRound(v);
+fn round(v: gvec2f) = gRound(v);
+fn round(v: gvec3f) = gRound(v);
+fn round(v: gvec4f) = gRound(v);
 
 fn gadd{A, B}(a: A, b: B) {
   let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
