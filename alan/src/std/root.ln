@@ -747,6 +747,8 @@ fn{Js} ctz Method{"ctz"} :: u8 -> u8;
 fn{Rs} reverseBits Method{"reverse_bits"} :: Deref{u8} -> u8;
 fn{Js} reverseBits Method{"reverseBits"} :: u8 -> u8;
 fn extractBits(v: u8, offset: u8, count: u8) = (v >> offset) & (2.u8 ** count - 1.u8);
+fn insertBits(v: u8, newbits: u8, offset: u8, count: u8) =
+  ((newbits & (2.u8 ** count - 1.u8)) << offset) + (v & !((2.u8 ** count - 1.u8) << offset));
 
 fn{Rs} add Method{"wrapping_add"} :: (u16, Deref{u16}) -> u16;
 fn{Js} add Method{"wrappingAdd"} :: (u16, u16) -> u16;
@@ -803,6 +805,8 @@ fn{Js} ctz Method{"ctz"} :: u16 -> u16;
 fn{Rs} reverseBits Method{"reverse_bits"} :: Deref{u16} -> u16;
 fn{Js} reverseBits Method{"reverseBits"} :: u16 -> u16;
 fn extractBits(v: u16, offset: u16, count: u16) = (v >> offset) & (2.u16 ** count - 1.u16);
+fn insertBits(v: u16, newbits: u16, offset: u16, count: u16) =
+  ((newbits & (2.u16 ** count - 1.u16)) << offset) + (v & !((2.u16 ** count - 1.u16) << offset));
 
 fn{Rs} add Method{"wrapping_add"} :: (u32, Deref{u32}) -> u32;
 fn{Js} add Method{"wrappingAdd"} :: (u32, u32) -> u32;
@@ -859,6 +863,8 @@ fn{Js} ctz Method{"ctz"} :: u32 -> u32;
 fn{Rs} reverseBits Method{"reverse_bits"} :: Deref{u32} -> u32;
 fn{Js} reverseBits Method{"reverseBits"} :: u32 -> u32;
 fn extractBits(v: u32, offset: u32, count: u32) = (v >> offset) & (2.u32 ** count - 1.u32);
+fn insertBits(v: u32, newbits: u32, offset: u32, count: u32) =
+  ((newbits & (2.u32 ** count - 1.u32)) << offset) + (v & !((2.u32 ** count - 1.u32) << offset));
 
 fn{Rs} add Method{"wrapping_add"} :: (u64, Deref{u64}) -> u64;
 fn{Js} add Method{"wrappingAdd"} :: (u64, u64) -> u64;
@@ -915,6 +921,8 @@ fn{Js} ctz Method{"ctz"} :: u64 -> u64;
 fn{Rs} reverseBits Method{"reverse_bits"} :: Deref{u64} -> u64;
 fn{Js} reverseBits Method{"reverseBits"} :: u64 -> u64;
 fn extractBits(v: u64, offset: u64, count: u64) = (v >> offset) & (2.u64 ** count - 1.u64);
+fn insertBits(v: u64, newbits: u64, offset: u64, count: u64) =
+  ((newbits & (2.u64 ** count - 1.u64)) << offset) + (v & !((2.u64 ** count - 1.u64) << offset));
 
 /// Signed Integer-related functions and function bindings
 fn{Rs} add Method{"wrapping_add"} :: (i8, Deref{i8}) -> i8;
@@ -975,6 +983,8 @@ fn{Rs} ctz (a: i8) = {Method{"trailing_zeros"} :: i8 -> u32}(a).i8;
 fn{Js} ctz Method{"ctz"} :: i8 -> i8;
 fn{Rs} reverseBits Method{"reverse_bits"} :: Deref{i8} -> i8;
 fn{Js} reverseBits Method{"reverseBits"} :: i8 -> i8;
+fn insertBits(v: i8, newbits: i8, offset: i8, count: i8) =
+  ((newbits & (2.i8 ** count - 1.i8)) << offset) + (v & !((2.i8 ** count - 1.i8) << offset));
 
 fn{Rs} add Method{"wrapping_add"} :: (i16, Deref{i16}) -> i16;
 fn{Js} add Method{"wrappingAdd"} :: (i16, i16) -> i16;
@@ -1034,6 +1044,8 @@ fn{Rs} ctz (a: i16) = {Method{"trailing_zeros"} :: i16 -> u32}(a).i16;
 fn{Js} ctz Method{"ctz"} :: i16 -> i16;
 fn{Rs} reverseBits Method{"reverse_bits"} :: Deref{i16} -> i16;
 fn{Js} reverseBits Method{"reverseBits"} :: i16 -> i16;
+fn insertBits(v: i16, newbits: i16, offset: i16, count: i16) =
+  ((newbits & (2.i16 ** count - 1.i16)) << offset) + (v & !((2.i16 ** count - 1.i16) << offset));
 
 fn{Rs} add Method{"wrapping_add"} :: (i32, Deref{i32}) -> i32;
 fn{Js} add Method{"wrappingAdd"} :: (i32, i32) -> i32;
@@ -1093,6 +1105,8 @@ fn{Rs} ctz (a: i32) = {Method{"trailing_zeros"} :: i32 -> u32}(a).i32;
 fn{Js} ctz Method{"ctz"} :: i32 -> i32;
 fn{Rs} reverseBits Method{"reverse_bits"} :: Deref{i32} -> i32;
 fn{Js} reverseBits Method{"reverseBits"} :: i32 -> i32;
+fn insertBits(v: i32, newbits: i32, offset: i32, count: i32) =
+  ((newbits & (2.i32 ** count - 1.i32)) << offset) + (v & !((2.i32 ** count - 1.i32) << offset));
 
 fn{Rs} add Method{"wrapping_add"} :: (i64, Deref{i64}) -> i64;
 fn{Js} add Method{"wrappingAdd"} :: (i64, i64) -> i64;
@@ -1152,6 +1166,8 @@ fn{Rs} ctz (a: i64) = {Method{"trailing_zeros"} :: i64 -> u32}(a).i64;
 fn{Js} ctz Method{"ctz"} :: i64 -> i64;
 fn{Rs} reverseBits Method{"reverse_bits"} :: Deref{i64} -> i64;
 fn{Js} reverseBits Method{"reverseBits"} :: i64 -> i64;
+fn insertBits(v: i64, newbits: i64, offset: i64, count: i64) =
+  ((newbits & (2 ** count - 1)) << offset) + (v & !((2 ** count - 1) << offset));
 
 /// String related bindings
 fn{Rs} string "format!" :: ("{}", f32) -> string;
@@ -3823,14 +3839,53 @@ fn gExtractBits{I}(v: I, offset: gu32, count: gu32) {
   let buffers = v.buffers.union(offset.buffers).union(count.buffers);
   return {I}(varName, statements, buffers);
 }
-fn extractBits(v: gu32, offset: gu32, count: gu32) = gExtractBits(v, offset, count);
 fn extractBits{A, B}(v: gu32, offset: A, count: B) = gExtractBits(v, offset.gu32, count.gu32);
-fn extractBits(v: gvec2u, offset: gu32, count: gu32) = gExtractBits(v, offset, count);
 fn extractBits{A, B}(v: gvec2u, offset: A, count: B) = gExtractBits(v, offset.gu32, count.gu32);
-fn extractBits(v: gvec3u, offset: gu32, count: gu32) = gExtractBits(v, offset, count);
 fn extractBits{A, B}(v: gvec3u, offset: A, count: B) = gExtractBits(v, offset.gu32, count.gu32);
-fn extractBits(v: gvec4u, offset: gu32, count: gu32) = gExtractBits(v, offset, count);
 fn extractBits{A, B}(v: gvec4u, offset: A, count: B) = gExtractBits(v, offset.gu32, count.gu32);
+
+fn gInsertBits{I}(v: I, newbits: I, offset: gu32, count: gu32) {
+  let varName = 'insertBits('
+    .concat(v.varName)
+    .concat(', ')
+    .concat(newbits.varName)
+    .concat(', ')
+    .concat(offset.varName)
+    .concat(', ')
+    .concat(count.varName)
+    .concat(')');
+  let statements = v
+    .statements
+    .concat(newbits.statements)
+    .concat(offset.statements)
+    .concat(count.statements);
+  let buffers = v.buffers.union(newbits.buffers).union(offset.buffers).union(count.buffers);
+  return {I}(varName, statements, buffers);
+}
+fn insertBits{A, B, C}(v: gu32, newbits: A, offset: B, count: C) = gInsertBits(
+  v, newbits.gu32, offset.gu32, count.gu32
+);
+fn insertBits{A, B, C}(v: gi32, newbits: A, offset: B, count: C) = gInsertBits(
+  v, newbits.gi32, offset.gu32, count.gu32
+);
+fn insertBits{A, B, C}(v: gvec2u, newbits: A, offset: B, count: C) = gInsertBits(
+  v, newbits.gvec2u, offset.gu32, count.gu32
+);
+fn insertBits{A, B, C}(v: gvec2i, newbits: A, offset: B, count: C) = gInsertBits(
+  v, newbits.gvec2i, offset.gu32, count.gu32
+);
+fn insertBits{A, B, C}(v: gvec3u, newbits: A, offset: B, count: C) = gInsertBits(
+  v, newbits.gvec3u, offset.gu32, count.gu32
+);
+fn insertBits{A, B, C}(v: gvec3i, newbits: A, offset: B, count: C) = gInsertBits(
+  v, newbits.gvec3i, offset.gu32, count.gu32
+);
+fn insertBits{A, B, C}(v: gvec4u, newbits: A, offset: B, count: C) = gInsertBits(
+  v, newbits.gvec4u, offset.gu32, count.gu32
+);
+fn insertBits{A, B, C}(v: gvec4i, newbits: A, offset: B, count: C) = gInsertBits(
+  v, newbits.gvec4i, offset.gu32, count.gu32
+);
 
 fn cross(a: gvec3f, b: gvec3f) {
   // Yes, this legitimately only works for this exact type in wgsl

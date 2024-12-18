@@ -76,7 +76,10 @@ export fn{Test} main {
       .assert(eq, 0.i8.reverseBits, 0.i8)
       .assert(eq, 1.i8.reverseBits, (-128).i8)
       .assert(eq, 2.i8.reverseBits, 64.i8)
-      .assert(eq, (-128).i8.reverseBits, 1.i8));
+      .assert(eq, (-128).i8.reverseBits, 1.i8))
+    .it('insertBits', fn (test: Mut{Testing}) = test
+      .assert(eq, 0.i8.insertBits(1.i8, 2.i8, 3.i8), 4.i8)
+      .assert(eq, 31.i8.insertBits(1.i8, 2.i8, 3.i8), 7.i8));
 
   test.describe("Basic math tests i16")
     .it("add")
@@ -118,7 +121,10 @@ export fn{Test} main {
       .assert(eq, 0.i16.reverseBits, 0.i16)
       .assert(eq, 1.i16.reverseBits, (-32768).i16)
       .assert(eq, 2.i16.reverseBits, 16384.i16)
-      .assert(eq, (-32768).i16.reverseBits, 1.i16));
+      .assert(eq, (-32768).i16.reverseBits, 1.i16))
+    .it('insertBits', fn (test: Mut{Testing}) = test
+      .assert(eq, 0.i16.insertBits(1.i16, 2.i16, 3.i16), 4.i16)
+      .assert(eq, 31.i16.insertBits(1.i16, 2.i16, 3.i16), 7.i16));
 
   test.describe("Basic math tests i32")
     .it("add")
@@ -160,7 +166,10 @@ export fn{Test} main {
       .assert(eq, 0.i32.reverseBits, 0.i32)
       .assert(eq, 1.i32.reverseBits, (-2_147_483_648).i32)
       .assert(eq, 2.i32.reverseBits, 1_073_741_824.i32)
-      .assert(eq, (-2_147_483_648).i32.reverseBits, 1.i32));
+      .assert(eq, (-2_147_483_648).i32.reverseBits, 1.i32))
+    .it('insertBits', fn (test: Mut{Testing}) = test
+      .assert(eq, 0.i32.insertBits(1.i32, 2.i32, 3.i32), 4.i32)
+      .assert(eq, 31.i32.insertBits(1.i32, 2.i32, 3.i32), 7.i32));
 
   test.describe("Basic math tests i64")
     .it("add")
@@ -202,7 +211,10 @@ export fn{Test} main {
       .assert(eq, 0.reverseBits, 0)
       .assert(eq, 1.reverseBits, -9_223_372_036_854_775_808)
       .assert(eq, 2.reverseBits, 4_611_686_018_427_387_904)
-      .assert(eq, -9_223_372_036_854_775_808.reverseBits, 1));
+      .assert(eq, -9_223_372_036_854_775_808.reverseBits, 1))
+    .it('insertBits', fn (test: Mut{Testing}) = test
+      .assert(eq, 0.insertBits(1, 2, 3), 4)
+      .assert(eq, 31.insertBits(1, 2, 3), 7));
 
   test.describe("Basic math tests u8")
     .it("add")
@@ -245,7 +257,10 @@ export fn{Test} main {
       .assert(eq, 0.u8.extractBits(1.u8, 2.u8), 0.u8)
       .assert(eq, 1.u8.extractBits(1.u8, 2.u8), 0.u8)
       .assert(eq, 2.u8.extractBits(1.u8, 2.u8), 1.u8)
-      .assert(eq, 5.u8.extractBits(1.u8, 2.u8), 2.u8));
+      .assert(eq, 5.u8.extractBits(1.u8, 2.u8), 2.u8))
+    .it('insertBits', fn (test: Mut{Testing}) = test
+      .assert(eq, 0.u8.insertBits(1.u8, 2.u8, 3.u8), 4.u8)
+      .assert(eq, 31.u8.insertBits(1.u8, 2.u8, 3.u8), 7.u8));
 
   test.describe("Basic math tests u16")
     .it("add")
@@ -288,7 +303,10 @@ export fn{Test} main {
       .assert(eq, 0.u16.extractBits(1.u16, 2.u16), 0.u16)
       .assert(eq, 1.u16.extractBits(1.u16, 2.u16), 0.u16)
       .assert(eq, 2.u16.extractBits(1.u16, 2.u16), 1.u16)
-      .assert(eq, 5.u16.extractBits(1.u16, 2.u16), 2.u16));
+      .assert(eq, 5.u16.extractBits(1.u16, 2.u16), 2.u16))
+    .it('insertBits', fn (test: Mut{Testing}) = test
+      .assert(eq, 0.u16.insertBits(1.u16, 2.u16, 3.u16), 4.u16)
+      .assert(eq, 31.u16.insertBits(1.u16, 2.u16, 3.u16), 7.u16));
 
   test.describe("Basic math tests u32")
     .it("add")
@@ -331,7 +349,10 @@ export fn{Test} main {
       .assert(eq, 0.u32.extractBits(1.u32, 2.u32), 0.u32)
       .assert(eq, 1.u32.extractBits(1.u32, 2.u32), 0.u32)
       .assert(eq, 2.u32.extractBits(1.u32, 2.u32), 1.u32)
-      .assert(eq, 5.u32.extractBits(1.u32, 2.u32), 2.u32));
+      .assert(eq, 5.u32.extractBits(1.u32, 2.u32), 2.u32))
+    .it('insertBits', fn (test: Mut{Testing}) = test
+      .assert(eq, 0.u32.insertBits(1.u32, 2.u32, 3.u32), 4.u32)
+      .assert(eq, 31.u32.insertBits(1.u32, 2.u32, 3.u32), 7.u32));
 
   test.describe("Basic math tests u64")
     .it("add")
@@ -374,7 +395,10 @@ export fn{Test} main {
       .assert(eq, 0.u64.extractBits(1.u64, 2.u64), 0.u64)
       .assert(eq, 1.u64.extractBits(1.u64, 2.u64), 0.u64)
       .assert(eq, 2.u64.extractBits(1.u64, 2.u64), 1.u64)
-      .assert(eq, 5.u64.extractBits(1.u64, 2.u64), 2.u64));
+      .assert(eq, 5.u64.extractBits(1.u64, 2.u64), 2.u64))
+    .it('insertBits', fn (test: Mut{Testing}) = test
+      .assert(eq, 0.u64.insertBits(1.u64, 2.u64, 3.u64), 4.u64)
+      .assert(eq, 31.u64.insertBits(1.u64, 2.u64, 3.u64), 7.u64));
 
   test.describe("Basic math tests f32")
     .it("add")
