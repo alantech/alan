@@ -485,6 +485,19 @@ export class Float {
     this.bits = bits;
   }
 
+  roundTiesEven() {
+    // Matches the behavior of WGSL rounding logic (and my high school chemistry teacher years ago)
+    // by rounding `.5` towards the even number, so 1.5 becomes 2.0 and 2.5 becomes 2.0, which seems
+    // odd at first glance, but eliminates rounding direction bias that affects calculations across
+    // a dataset, so it really makes sense to be the default rounding rule.
+    let floored = Math.floor(this.val);
+    if (this.val - floored == 0.5) {
+      return this.build(floored % 2 == 0 ? floored : floored + 1);
+    } else {
+      return this.build(Math.round(this.val));
+    }
+  }
+
   valueOf() {
     return this.val;
   }
