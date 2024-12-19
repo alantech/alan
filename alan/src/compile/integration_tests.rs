@@ -687,6 +687,30 @@ test_gpgpu!(gpu_round => r#"
     stdout "[2, 2, 2, 3, -2, -2, -2, -3]\n";
 );
 
+test_gpgpu!(gpu_magnitude => r#"
+    export fn{Js} main {
+      let b = GBuffer([2.5.f32, -2.5.f32, 2.5.f32, -2.5.f32]);
+      b.map(fn (val: gf32) = val.magnitude).read{f32}.print;
+      let id = gFor(1);
+      let out = GBuffer{f32}(1);
+      // Hack to get this to work in JS, because the generic is not passed through there
+      {"((b) => { b.ValKind = alan_std.F32; })" :: GBuffer}(out);
+      let compute = out[id].store(gvec4f(b[0].asF32, b[1].asF32, b[2].asF32, b[3].asF32).magnitude.asI32);
+      compute.build.run;
+      out.read{f32}.print;
+    }
+    export fn{Rs} main {
+      let b = GBuffer([2.5.f32, -2.5.f32, 2.5.f32, -2.5.f32]);
+      b.map(fn (val: gf32) = val.magnitude).read{f32}.print;
+      let id = gFor(1);
+      let out = GBuffer{f32}(1);
+      let compute = out[id].store(gvec4f(b[0].asF32, b[1].asF32, b[2].asF32, b[3].asF32).magnitude.asI32);
+      compute.build.run;
+      out.read{f32}.print;
+    }"#;
+    stdout "[2.5, 2.5, 2.5, 2.5]\n[5]\n";
+);
+
 // TODO: Fix u64 numeric constants to get u64 bitwise tests in the new test suite
 test!(u64_bitwise => r#"
     prefix u64 as ~ precedence 10
