@@ -1465,7 +1465,7 @@ where
                 let frame = surface.get_current_texture().unwrap();
                 let mut encoder =
                     device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-                let context_array = (self.context_fn)(&self.context);
+                let context_array = (self.context_fn)(&mut self.context);
                 let context_slice = &context_array[..];
                 let context_ptr = context_slice.as_ptr();
                 let context_u8_len = context_array.len() * 4;
