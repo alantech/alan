@@ -1316,6 +1316,16 @@ fn{Js} sort{T} "alan_std.sort" <- RootBacking :: (Mut{T[]}, (T, T) -> i8) -> voi
 fn sort{T} (arr: Mut{T[]}) = sort(arr, fn (a: T, b: T) = if(a == b, 0.i8, if(a < b, -1.i8, 1.i8)));
 fn magnitude (arr: f32[]) = (arr.map(fn (v: f32) = v ** 2.0.f32).reduce(add) ?? 0.0.f32).sqrt;
 fn magnitude (arr: f64[]) = (arr.map(fn (v: f64) = v ** 2.0).reduce(add) ?? 0.0).sqrt;
+fn normalize (arr: f32[]) {
+  let mag = magnitude(arr);
+  let arr1 = arr.clone; // TODO: Needed for Rust codegen, but should not
+  return if(mag == 0.0.f32, fn = arr1.clone, fn = arr.map(fn (v: f32) = v / mag));
+}
+fn normalize (arr: f64[]) {
+  let mag = magnitude(arr);
+  let arr1 = arr.clone; // TODO: Needed for Rust codegen, but should not
+  return if(mag == 0.0, fn = arr1.clone, fn = arr.map(fn (v: f64) = v / mag));
+}
 
 /// Buffer related bindings
 fn{Rs} get{T, S} "alan_std::getbuffer" <- RootBacking :: (T[S], i64) -> T?;
@@ -1364,6 +1374,16 @@ fn{Js} sort{T, S} "alan_std.sort" <- RootBacking :: (Mut{Buffer{T, S}}, (T, T) -
 fn sort{T, S} (arr: Mut{Buffer{T, S}}) = sort(arr, fn (a: T, b: T) = if(a == b, 0.i8, if(a < b, -1.i8, 1.i8)));
 fn magnitude{S} (buf: f32[S]) = (buf.map(fn (v: f32) = v ** 2.0.f32).reduce(add) ?? 0.0.f32).sqrt;
 fn magnitude{S} (buf: f64[S]) = (buf.map(fn (v: f64) = v ** 2.0).reduce(add) ?? 0.0).sqrt;
+fn normalize{S} (arr: f32[S]) {
+  let mag = magnitude(arr);
+  let arr1 = arr.clone; // TODO: Needed for Rust codegen, but should not
+  return if(mag == 0.0.f32, fn = arr1.clone, fn = arr.map(fn (v: f32) = v / mag));
+}
+fn normalize{S} (arr: f64[S]) {
+  let mag = magnitude(arr);
+  let arr1 = arr.clone; // TODO: Needed for Rust codegen, but should not
+  return if(mag == 0.0, fn = arr1.clone, fn = arr.map(fn (v: f64) = v / mag));
+}
 
 /// Dictionary-related bindings
 fn{Rs} Dict{K, V} "alan_std::OrderedHashMap::new" <- RootBacking :: () -> Dict{K, V};
@@ -1750,6 +1770,15 @@ fn build{N}(ret: N) {
   let buffers = Array{Array{GBuffer}}();
   buffers.push(bufferArray);
   return GPGPU(wgsl, buffers, maxGlobalId);
+}
+fn build{N}(ret: N[]) {
+  // Array form to allow multiple side-effects to be computed in the same shader
+  // We do this by simply merging all of the statements and buffers into a single instance of `N`
+  // and then pass that up into the normal build function
+  let statements = ret
+    .reduce(Dict{string, string}(), fn (o: Dict{string, string}, r: N) = o.concat(r.statements));
+  let buffers = ret.reduce(Set{GBuffer}(), fn (o: Set{GBuffer}, r: N) = o.union(r.buffers));
+  return build({N}("", statements, buffers));
 }
 
 fn gPrimitiveConvert{I, O}(i: I) {
@@ -3913,6 +3942,14 @@ fn magnitude(v: gf32) = gMagnitude(v);
 fn magnitude(v: gvec2f) = gMagnitude(v);
 fn magnitude(v: gvec3f) = gMagnitude(v);
 fn magnitude(v: gvec4f) = gMagnitude(v);
+
+fn gNormalize{I}(v: I) {
+  let varName = 'normalize('.concat(v.varName).concat(')');
+  return {I}(varName, v.statements, v.buffers);
+}
+fn normalize(v: gvec2f) = gNormalize(v);
+fn normalize(v: gvec3f) = gNormalize(v);
+fn normalize(v: gvec4f) = gNormalize(v);
 
 fn gRound{I}(v: I) {
   let varName = 'round('.concat(v.varName).concat(')');
