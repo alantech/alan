@@ -1183,6 +1183,8 @@ pub struct AlanWindowContext {
     window: Option<std::sync::Arc<Window>>,
     start: Option<std::time::Instant>,
     buffer_width: Option<u32>,
+    mouse_x: Option<u32>,
+    mouse_y: Option<u32>,
 }
 
 impl AlanWindowContext {
@@ -1208,6 +1210,26 @@ impl AlanWindowContext {
                 .to_le_bytes(),
         )
     }
+
+    pub fn mouse_x(&mut self) -> u32 {
+        if self.mouse_x.is_none() {
+            self.mouse_x = Some(0);
+            self.mouse_y = Some(0);
+            return 0;
+        } else {
+            self.mouse_x.unwrap()
+        }
+    }
+
+    pub fn mouse_y(&mut self) -> u32 {
+        if self.mouse_y.is_none() {
+            self.mouse_x = Some(0);
+            self.mouse_y = Some(0);
+            return 0;
+        } else {
+            self.mouse_y.unwrap()
+        }
+    }
 }
 
 pub struct AlanWindowFrame {
@@ -1229,8 +1251,8 @@ where
     queue: Option<wgpu::Queue>,
     context_buffer: Option<GBuffer>,
     buffer: Option<GBuffer>,
-    context_fn: Option<C>,
-    gpgpu_shader_fn: Option<R>,
+    context_fn: C,
+    gpgpu_shader_fn: R,
     gpgpu_shaders: Option<Vec<GPGPU>>,
     inited: bool,
 }
@@ -1323,7 +1345,7 @@ where
             let mut size = self.context.window.as_ref().unwrap().inner_size();
             size.width = size.width.max(1);
             size.height = size.height.max(1);
-            self.gpgpu_shaders = Some(self.gpgpu_shader_fn.as_ref().unwrap()(&AlanWindowFrame {
+            self.gpgpu_shaders = Some((self.gpgpu_shader_fn)(&AlanWindowFrame {
                 context: self.context_buffer.as_ref().unwrap().clone(),
                 framebuffer: self.buffer.as_ref().unwrap().clone(),
             }));
@@ -1353,7 +1375,6 @@ where
             WindowEvent::CloseRequested => {
                 // Cleanup the app now that we're caching things
                 self.gpgpu_shaders = None;
-                self.gpgpu_shader_fn = None;
                 self.context.buffer_width = None;
                 if let Some(b) = &self.buffer {
                     b.destroy();
@@ -1421,10 +1442,10 @@ where
                 if event_loop.exiting() {
                     return;
                 }
+                let frame_start = std::time::Instant::now();
                 if !self.inited {
                     self.window_gpu_init();
                 }
-                let frame_start = std::time::Instant::now();
                 let mut size = self.context.window.as_ref().unwrap().inner_size();
                 size.width = size.width.max(1);
                 size.height = size.height.max(1);
@@ -1444,7 +1465,7 @@ where
                 let frame = surface.get_current_texture().unwrap();
                 let mut encoder =
                     device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-                let context_array = self.context_fn.as_ref().unwrap()(&self.context);
+                let context_array = (self.context_fn)(&self.context);
                 let context_slice = &context_array[..];
                 let context_ptr = context_slice.as_ptr();
                 let context_u8_len = context_array.len() * 4;
@@ -1568,6 +1589,15 @@ where
                     .set_title(&format!("Render time: {:.3}", render_time.as_secs_f64()));
                 self.context.window.as_ref().unwrap().request_redraw();
             }
+            WindowEvent::CursorMoved { position, .. } => {
+                if !self.context.mouse_x.is_none() {
+                    let mut size = self.context.window.as_ref().unwrap().inner_size();
+                    size.width = size.width.max(1);
+                    size.height = size.height.max(1);
+                    self.context.mouse_x = Some((position.x * (size.width as f64)) as u32);
+                    self.context.mouse_y = Some((position.y * (size.height as f64)) as u32);
+                }
+            }
             _ => {} // Ignore all other events
         }
     }
@@ -1586,6 +1616,8 @@ where
             window: None,
             start: None,
             buffer_width: None,
+            mouse_x: None,
+            mouse_y: None,
         },
         instance: None,
         surface: None,
@@ -1594,8 +1626,8 @@ where
         queue: None,
         context_buffer: None,
         buffer: None,
-        context_fn: Some(context_fn),
-        gpgpu_shader_fn: Some(gpgpu_shader_fn),
+        context_fn,
+        gpgpu_shader_fn,
         gpgpu_shaders: None,
         inited: false,
     };
