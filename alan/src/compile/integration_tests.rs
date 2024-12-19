@@ -715,12 +715,12 @@ test_gpgpu!(gpu_normalize => r#"
     export fn{Js} main {
       let b = GBuffer([3.0.f32, 4.0.f32]);
       let id = gFor(1);
-      let out = GBuffer{f32}(1);
+      let out = GBuffer{f32}(2);
       // Hack to get this to work in JS, because the generic is not passed through there
       {"((b) => { b.ValKind = alan_std.F32; })" :: GBuffer}(out);
       let normal = gvec2f(b[0].asF32, b[1].asF32).normalize;
       [out[id].store(normal.x.asI32), out[id + 1].store(normal.y.asI32)].build.run;
-      out.read{f32}.print;
+      out.read{f32}.map(fn (v: f32) = v.string(1)).join(', ').print;
     }
     export fn{Rs} main {
       let b = GBuffer([3.0.f32, 4.0.f32]);
@@ -728,9 +728,9 @@ test_gpgpu!(gpu_normalize => r#"
       let out = GBuffer{f32}(2);
       let normal = gvec2f(b[0].asF32, b[1].asF32).normalize;
       [out[id].store(normal.x.asI32), out[id + 1].store(normal.y.asI32)].build.run;
-      out.read{f32}.print;
+      out.read{f32}.map(fn (v: f32) = v.string(1)).join(', ').print;
     }"#;
-    stdout "[0.6, 0.8]\n";
+    stdout "0.6, 0.8\n";
 );
 
 // TODO: Fix u64 numeric constants to get u64 bitwise tests in the new test suite
