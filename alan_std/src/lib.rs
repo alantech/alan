@@ -1591,11 +1591,8 @@ where
             }
             WindowEvent::CursorMoved { position, .. } => {
                 if !self.context.mouse_x.is_none() {
-                    let mut size = self.context.window.as_ref().unwrap().inner_size();
-                    size.width = size.width.max(1);
-                    size.height = size.height.max(1);
-                    self.context.mouse_x = Some((position.x * (size.width as f64)) as u32);
-                    self.context.mouse_y = Some((position.y * (size.height as f64)) as u32);
+                    self.context.mouse_x = Some(position.x as u32);
+                    self.context.mouse_y = Some(position.y as u32);
                 }
             }
             _ => {} // Ignore all other events
