@@ -27,7 +27,10 @@ pub fn ctype_to_rtype(
                                     let res = ctype_to_rtype(t, true, deps)?;
                                     let s = res.0;
                                     deps = res.1;
-                                    out.push(s);
+                                    out.push(match &t {
+                                        CType::Mut(_) => format!("mut {}", s),
+                                        _ => s,
+                                    });
                                 }
                                 out.join(", &")
                             },
@@ -35,7 +38,10 @@ pub fn ctype_to_rtype(
                                 let res = ctype_to_rtype(otherwise, true, deps)?;
                                 let s = res.0;
                                 deps = res.1;
-                                s
+                                match &otherwise {
+                                    CType::Mut(_) => format!("mut {}", s),
+                                    _ => s,
+                                }
                             }
                         }, {
                             let res = ctype_to_rtype(o, true, deps)?;

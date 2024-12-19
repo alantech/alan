@@ -116,7 +116,7 @@ type Rs = Env{"ALAN_OUTPUT_LANG"} == "rs";
 type Js = Env{"ALAN_OUTPUT_LANG"} == "js";
 
 // Importing the Root Scope backing implementation and supporting 3rd party libraries
-type{Rs} RootBacking = Rust{"alan_std" @ "https://github.com/alantech/alan.git"};
+type{Rs} RootBacking = Rust{"alan_std" @ "https://github.com/alantech/alan.git#mouse-position-support"};
 type{Js} RootBacking = Node{"alan_std" @ "https://github.com/alantech/alan.git"};
 
 // Defining derived types
@@ -1646,8 +1646,8 @@ fn{Rs} GBuffer{T}(bu: BufferUsages, size: i64) = {"alan_std::create_empty_buffer
 fn{Js} GBuffer{T}(bu: BufferUsages, size: i64) = {"alan_std.createEmptyBuffer" <- RootBacking :: (BufferUsages, i32) -> GBuffer}(bu, size.i32);
 fn GBuffer{T}(vals: T[]) = GBuffer{T}(storageBuffer(), vals);
 fn GBuffer{T}(size: i64) = GBuffer{T}(storageBuffer(), size);
-fn{Rs} len "alan_std::bufferlen" <- RootBacking :: GBuffer -> i64;
-fn{Js} len "alan_std.bufferlen" <- RootBacking :: GBuffer -> i64;
+fn{Rs} cpulen "alan_std::bufferlen" <- RootBacking :: GBuffer -> i64;
+fn{Js} cpulen "alan_std.bufferlen" <- RootBacking :: GBuffer -> i64;
 fn{Rs} id "alan_std::buffer_id" <- RootBacking :: GBuffer -> string;
 fn{Js} id "alan_std.bufferid" <- RootBacking :: GBuffer -> string;
 fn{Rs} GPGPU "alan_std::GPGPU::new" <- RootBacking :: (Own{string}, Own{Array{Array{GBuffer}}}, Deref{i64[3]}) -> GPGPU;
@@ -1670,7 +1670,7 @@ fn GPGPU(src: string, buf: GBuffer) -> GPGPU {
   // and the Z limit becomes the division + 1, while the remainder is executed division and
   // remainder on the A constant, division + 1, and this remainder becomes the X limit (plus 1).
   // Including this big explanation in case I've made an off-by-one error here ;)
-  let l = buf.len;
+  let l = buf.cpulen;
   let zDiv = l / 4_294_836_225;
   let z = zDiv + 1;
   let zRem = l % 4_294_836_225;
@@ -1822,6 +1822,12 @@ fn gbool(gi: gi32) = gPrimitiveConvert{gi32, gbool}(gi);
 fn gbool(gf: gf32) = gPrimitiveConvert{gf32, gbool}(gf);
 fn gbool(gb: gbool) = gb;
 fn gbool{T}(b: T) = gbool(b.bool);
+
+fn len(gb: GBuffer) = gu32(
+  'arrayLength(&'.concat(gb.id).concat(')'),
+  Dict{string, string}(),
+  Set(gb)
+);
 
 // Vector types and constructors
 type gvec2u = WgpuType{"vec2u"};
@@ -4363,6 +4369,38 @@ fn pow(a: gvec4f, b: gvec4f) = gpow(a, b);
 fn pow{T}(a: gvec4f, b: T) = pow(a, b.gvec4f);
 fn pow{T}(a: T, b: gvec4f) = pow(a.gvec4f, b);
 
+fn gmin{I}(a: I, b: I) {
+  let varName = 'min('.concat(a.varName).concat(', ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return {I}(varName, statements, buffers);
+}
+fn min(a: gf32, b: gf32) = gmin(a, b);
+fn min{A}(a: A, b: gf32) = gmin(a.gf32, b);
+fn min{B}(a: gf32, b: B) = gmin(a, b.gf32);
+fn min(a: gu32, b: gu32) = gmin(a, b);
+fn min{A}(a: A, b: gu32) = gmin(a.gu32, b);
+fn min{B}(a: gu32, b: B) = gmin(a, b.gu32);
+fn min(a: gi32, b: gi32) = gmin(a, b);
+fn min{A}(a: A, b: gi32) = gmin(a.gi32, b);
+fn min{B}(a: gi32, b: B) = gmin(a, b.gi32);
+
+fn gmax{I}(a: I, b: I) {
+  let varName = 'max('.concat(a.varName).concat(', ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return {I}(varName, statements, buffers);
+}
+fn max(a: gf32, b: gf32) = gmax(a, b);
+fn max{A}(a: A, b: gf32) = gmax(a.gf32, b);
+fn max{B}(a: gf32, b: B) = gmax(a, b.gf32);
+fn max(a: gu32, b: gu32) = gmax(a, b);
+fn max{A}(a: A, b: gu32) = gmax(a.gu32, b);
+fn max{B}(a: gu32, b: B) = gmax(a, b.gu32);
+fn max(a: gi32, b: gi32) = gmax(a, b);
+fn max{A}(a: A, b: gi32) = gmax(a.gi32, b);
+fn max{B}(a: gi32, b: B) = gmax(a, b.gi32);
+
 fn gsqrt{I}(v: I) {
   let varName = 'sqrt('.concat(v.varName).concat(')');
   return {I}(varName, v.statements, v.buffers);
@@ -4907,7 +4945,12 @@ fn and{T}(a: T, b: gu32) = gand(a.gu32, b);
 fn and(a: gi32, b: gi32) = gand(a, b);
 fn and{T}(a: gi32, b: T) = gand(a, b.gi32);
 fn and{T}(a: T, b: gi32) = gand(a.gi32, b);
-fn and(a: gbool, b: gbool) = gand(a, b);
+fn and(a: gbool, b: gbool) {
+  let varName = '('.concat(a.varName).concat(' && ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return gbool(varName, statements, buffers);
+}
 fn and{T}(a: gbool, b: T) = gand(a, b.gbool);
 fn and{T}(a: T, b: gbool) = gand(a.gbool, b);
 fn and(a: gvec2u, b: gvec2u) = gand(a, b);
@@ -5257,33 +5300,33 @@ fn map{G, G2}(gb: GBuffer, f: G -> G2) {
   return out;
 }*/
 fn map(gb: GBuffer, f: gu32 -> gu32) {
-  let idx = gFor(gb.len);
+  let idx = gFor(gb.cpulen);
   let val = gb[idx].asU32;
-  let out = GBuffer{u32}(gb.len);
+  let out = GBuffer{u32}(gb.cpulen);
   let compute = out[idx].store(f(val).asI32);
   compute.build.run;
   return out;
 }
 fn map(gb: GBuffer, f: gi32 -> gi32) {
-  let idx = gFor(gb.len);
+  let idx = gFor(gb.cpulen);
   let val = gb[idx];
-  let out = GBuffer{i32}(gb.len);
+  let out = GBuffer{i32}(gb.cpulen);
   let compute = out[idx].store(f(val));
   compute.build.run;
   return out;
 }
 fn map(gb: GBuffer, f: gf32 -> gf32) {
-  let idx = gFor(gb.len);
+  let idx = gFor(gb.cpulen);
   let val = gb[idx].asF32;
-  let out = GBuffer{f32}(gb.len);
+  let out = GBuffer{f32}(gb.cpulen);
   let compute = out[idx].store(f(val).asI32);
   compute.build.run;
   return out;
 }
 fn{Js} map(gb: GBuffer, f: gf32 -> gf32) { // TODO: Get rid of this jank
-  let idx = gFor(gb.len);
+  let idx = gFor(gb.cpulen);
   let val = gb[idx].asF32;
-  let out = GBuffer{f32}(gb.len); // The JS binding currently ignores this
+  let out = GBuffer{f32}(gb.cpulen); // The JS binding currently ignores this
   {"((b) => { b.ValKind = alan_std.F32; })" :: GBuffer}(out); // Trick to get it to work for now
   let compute = out[idx].store(f(val).asI32);
   compute.build.run;
@@ -5292,9 +5335,9 @@ fn{Js} map(gb: GBuffer, f: gf32 -> gf32) { // TODO: Get rid of this jank
 // This one technically only works for i32/u32/f32 by chance. Once the issue above is fixed, this
 // one can be fixed, too.
 fn map{G, G2}(gb: GBuffer, f: (G, gu32) -> G2) {
-  let idx = gFor(gb.len);
+  let idx = gFor(gb.cpulen);
   let val = gb[idx];
-  let out = GBuffer{i32}(gb.len);
+  let out = GBuffer{i32}(gb.cpulen);
   let compute = out[idx].store(f(val, idx));
   compute.build.run;
   return out;
@@ -5304,15 +5347,18 @@ fn map{G, G2}(gb: GBuffer, f: (G, gu32) -> G2) {
 type{Rs} Window = Binds{"alan_std::AlanWindowContext" <- RootBacking};
 type{Rs} Frame = Binds{"alan_std::AlanWindowFrame" <- RootBacking};
 
-fn{Rs} window "alan_std::run_window" <- RootBacking :: ((Window) -> u32[], (Frame) -> GPGPU[]) -> ()!;
+fn{Rs} window "alan_std::run_window" <- RootBacking :: (Mut{(Mut{Window}) -> u32[]}, (Frame) -> GPGPU[]) -> ()!;
 fn{Rs} width Method{"width"} :: Window -> u32;
 fn{Rs} height Method{"height"} :: Window -> u32;
 fn{Rs} bufferWidth Method{"buffer_width"} :: Window -> u32;
+fn{Rs} mouseX Method{"mouse_x"} :: Mut{Window} -> u32;
+fn{Rs} mouseY Method{"mouse_y"} :: Mut{Window} -> u32;
+fn{Rs} cursorVisible Method{"cursor_visible"} :: Mut{Window} -> ();
+fn{Rs} cursorInvisible Method{"cursor_invisible"} :: Mut{Window} -> ();
 fn{Rs} runtime Method{"runtime"} :: Window -> u32;
 fn{Rs} context Property{"context.clone()"} :: Frame -> GBuffer;
 fn{Rs} framebuffer Property{"framebuffer.clone()"} :: Frame -> GBuffer;
-fn{Rs} width Frame -> i64 = -1;
-fn{Rs} height Frame -> i64 = -2;
+fn{Rs} pixel Frame = gFor(-1, -2); // Magic numbers for the binding
 
 /// Process exit-related bindings
 fn{Rs} ExitCode "std::process::ExitCode::from" :: Own{u8} -> ExitCode;
