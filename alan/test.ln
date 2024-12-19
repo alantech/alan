@@ -939,7 +939,10 @@ export fn{Test} main {
       let youGottaThinkFourthDimensionally = [4.0, 4.0, 4.0, 4.0];
       let gr8Scott = youGottaThinkFourthDimensionally.magnitude;
       test.assert(eq, gr8Scott, 8.0);
-    });
+    })
+    .it('normalize', fn (test: Mut{Testing}) = test
+      .assert(eq, [1.0, 0.0, 0.0].normalize.map(fn (v: f64) = string(v)).join(', '), '1, 0, 0')
+      .assert(eq, [3.0, 4.0].normalize.map(fn (v: f64) = string(v)).join(', '), '0.6, 0.8'));
 
   test.describe("Buffers")
     .it("join", fn (test: Mut{Testing}) {
@@ -1013,7 +1016,10 @@ export fn{Test} main {
       let youGottaThinkFourthDimensionally = {f64[4]}(4.0, 4.0, 4.0, 4.0);
       let gr8Scott = youGottaThinkFourthDimensionally.magnitude;
       test.assert(eq, gr8Scott, 8.0);
-    });
+    })
+    .it('normalize', fn (test: Mut{Testing}) = test
+      .assert(eq, {f64[3]}(1.0, 0.0, 0.0).normalize.map(fn (v: f64) = string(v)).join(', '), '1, 0, 0')
+      .assert(eq, {f64[2]}(3.0, 4.0).normalize.map(fn (v: f64) = string(v)).join(', '), '0.6, 0.8'));
 
   test.describe("Conditionals")
     .it("if function")
