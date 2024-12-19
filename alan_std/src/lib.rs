@@ -1239,7 +1239,7 @@ pub struct AlanWindowFrame {
 
 pub struct AlanWindow<C, R>
 where
-    C: Fn(&AlanWindowContext) -> Vec<u32>,
+    C: Fn(&mut AlanWindowContext) -> Vec<u32>,
     R: Fn(&AlanWindowFrame) -> Vec<GPGPU>,
 {
     config: Option<WindowAttributes>,
@@ -1259,7 +1259,7 @@ where
 
 impl<C, R> AlanWindow<C, R>
 where
-    C: Fn(&AlanWindowContext) -> Vec<u32>,
+    C: Fn(&mut AlanWindowContext) -> Vec<u32>,
     R: Fn(&AlanWindowFrame) -> Vec<GPGPU>,
 {
     fn window_gpu_init(&mut self) {
@@ -1356,7 +1356,7 @@ where
 
 impl<C, R> ApplicationHandler for AlanWindow<C, R>
 where
-    C: Fn(&AlanWindowContext) -> Vec<u32>,
+    C: Fn(&mut AlanWindowContext) -> Vec<u32>,
     R: Fn(&AlanWindowFrame) -> Vec<GPGPU>,
 {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
@@ -1605,7 +1605,7 @@ where
 
 pub fn run_window<C, R>(context_fn: C, gpgpu_shader_fn: R) -> Result<(), AlanError>
 where
-    C: Fn(&AlanWindowContext) -> Vec<u32>,
+    C: Fn(&mut AlanWindowContext) -> Vec<u32>,
     R: Fn(&AlanWindowFrame) -> Vec<GPGPU>,
 {
     let event_loop = EventLoop::new().unwrap();
