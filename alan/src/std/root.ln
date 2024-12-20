@@ -558,6 +558,7 @@ fn{Js} gte "((a, b) => new alan_std.Bool(a.val >= b.val))" <- RootBacking :: (f3
 fn min (a: f32, b: f32) = if(a <= b, a, b);
 fn max (a: f32, b: f32) = if(a >= b, a, b);
 fn clamp(v: f32, l: f32, h: f32) = if(v <= l, l, if(v >= h, h, v));
+fn saturate(v: f32) = clamp(v, 0.0.f32, 1.0.f32);
 fn{Rs} floor Method{"floor"} :: f32 -> f32;
 fn{Js} floor "((a) => new alan_std.F32(Math.floor(a.val)))" <- RootBacking :: f32 -> f32;
 fn{Rs} ceil Method{"ceil"} :: f32 -> f32;
@@ -643,6 +644,7 @@ fn{Js} gte "((a, b) => new alan_std.F64(a.val >= b.val))" <- RootBacking :: (f64
 fn min (a: f64, b: f64) = if(a <= b, a, b);
 fn max (a: f64, b: f64) = if(a >= b, a, b);
 fn clamp(v: f64, l: f64, h: f64) = if(v <= l, l, if(v >= h, h, v));
+fn saturate(v: f64) = clamp(v, 0.0, 1.0);
 fn{Rs} floor Method{"floor"} :: f64 -> f64;
 fn{Js} floor "((a) => new alan_std.F64(Math.floor(a.val)))" <- RootBacking :: f64 -> f64;
 fn{Rs} ceil Method{"ceil"} :: f64 -> f64;
@@ -4523,6 +4525,15 @@ fn clamp(v: gvec4f, l: gvec4f, h: gvec4f) = gclamp{gvec4f}(v, l, h);
 fn clamp{T}(v: gvec4f, l: T, h: T) = gclamp{gvec4f}(v, l.gvec4f, h.gvec4f);
 fn clamp{T}(v: gvec4f, l: gvec4f, h: T) = gclamp{gvec4f}(v, l, h.gvec4f);
 fn clamp{T}(v: gvec4f, l: T, h: gvec4f) = gclamp{gvec4f}(v, l.gvec4f, h);
+
+fn gsaturate{I}(v: I) {
+  let varName = 'saturate('.concat(v.varName).concat(')');
+  return {I}(varName, v.statements, v.buffers);
+}
+fn saturate(v: gf32) = gsaturate(v);
+fn saturate(v: gvec2f) = gsaturate(v);
+fn saturate(v: gvec3f) = gsaturate(v);
+fn saturate(v: gvec4f) = gsaturate(v);
 
 fn gexp{I}(v: I) {
   let varName = 'exp('.concat(v.varName).concat(')');
