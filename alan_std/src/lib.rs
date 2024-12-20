@@ -1483,6 +1483,11 @@ where
                     wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::RENDER_ATTACHMENT;
                 config.present_mode = wgpu::PresentMode::Fifo;
                 config.desired_maximum_frame_latency = 3;
+                config.alpha_mode = if self.context.transparent {
+                    wgpu::CompositeAlphaMode::PostMultiplied
+                } else {
+                    wgpu::CompositeAlphaMode::Auto
+                };
                 surface.configure(device, &config);
                 let frame = surface.get_current_texture().unwrap();
                 let mut encoder =
