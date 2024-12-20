@@ -1186,30 +1186,33 @@ pub struct AlanWindowContext {
     mouse_x: Option<u32>,
     mouse_y: Option<u32>,
     cursor_visible: bool,
+    transparent: bool,
 }
 
 impl AlanWindowContext {
     pub fn width(&self) -> u32 {
-        self.window.as_ref().unwrap().inner_size().width.max(1)
+        match self.window.as_ref() {
+            Some(win) => win.inner_size().width.max(1),
+            None => 0,
+        }
     }
 
     pub fn height(&self) -> u32 {
-        self.window.as_ref().unwrap().inner_size().height.max(1)
+        match self.window.as_ref() {
+            Some(win) => win.inner_size().height.max(1),
+            None => 0,
+        }
     }
 
     pub fn buffer_width(&self) -> u32 {
-        self.buffer_width.unwrap() / 4
+        self.buffer_width.unwrap_or(0) / 4
     }
 
     pub fn runtime(&self) -> u32 {
-        u32::from_le_bytes(
-            self.start
-                .as_ref()
-                .unwrap()
-                .elapsed()
-                .as_secs_f32()
-                .to_le_bytes(),
-        )
+        match self.start.as_ref() {
+            Some(time) => u32::from_le_bytes(time.elapsed().as_secs_f32().to_le_bytes()),
+            None => 0,
+        }
     }
 
     pub fn mouse_x(&mut self) -> u32 {
@@ -1239,6 +1242,14 @@ impl AlanWindowContext {
     pub fn cursor_invisible(&mut self) {
         self.cursor_visible = false;
     }
+
+    pub fn transparent(&mut self) {
+        self.transparent = true;
+    }
+
+    pub fn opaque(&mut self) {
+        self.transparent = true;
+    }
 }
 
 pub struct AlanWindowFrame {
@@ -1251,7 +1262,7 @@ where
     C: FnMut(&mut AlanWindowContext) -> Vec<u32>,
     R: Fn(&AlanWindowFrame) -> Vec<GPGPU>,
 {
-    config: Option<WindowAttributes>,
+    config: WindowAttributes,
     context: AlanWindowContext,
     instance: Option<wgpu::Instance>,
     surface: Option<wgpu::Surface<'static>>,
@@ -1373,9 +1384,7 @@ where
             return;
         }
         self.context.window = Some(std::sync::Arc::new(
-            event_loop
-                .create_window(self.config.clone().unwrap_or(Window::default_attributes()))
-                .unwrap(),
+            event_loop.create_window(self.config.clone()).unwrap(),
         ));
     }
 
@@ -1456,7 +1465,9 @@ where
                     self.window_gpu_init();
                 }
                 let window = self.context.window.as_ref().unwrap();
+                // TODO: These shouldn't be set every frame
                 window.set_cursor_visible(self.context.cursor_visible);
+                window.set_transparent(self.context.transparent);
                 let mut size = window.inner_size();
                 size.width = size.width.max(1);
                 size.height = size.height.max(1);
@@ -1472,6 +1483,11 @@ where
                     wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::RENDER_ATTACHMENT;
                 config.present_mode = wgpu::PresentMode::Fifo;
                 config.desired_maximum_frame_latency = 3;
+                config.alpha_mode = if self.context.transparent {
+                    wgpu::CompositeAlphaMode::PreMultiplied
+                } else {
+                    wgpu::CompositeAlphaMode::Auto
+                };
                 surface.configure(device, &config);
                 let frame = surface.get_current_texture().unwrap();
                 let mut encoder =
@@ -1611,23 +1627,30 @@ where
     }
 }
 
-pub fn run_window<C, R>(context_fn: C, gpgpu_shader_fn: R) -> Result<(), AlanError>
+pub fn run_window<C, R>(mut context_fn: C, gpgpu_shader_fn: R) -> Result<(), AlanError>
 where
     C: FnMut(&mut AlanWindowContext) -> Vec<u32>,
     R: Fn(&AlanWindowFrame) -> Vec<GPGPU>,
 {
+    let mut context = AlanWindowContext {
+        window: None,
+        start: None,
+        buffer_width: None,
+        mouse_x: None,
+        mouse_y: None,
+        cursor_visible: true,
+        transparent: false,
+    };
+    // Potentially mutate the context by calling the context function, but ignore the context
+    // vector it creates
+    context_fn(&mut context);
+    println!("is transparent: {}", context.transparent);
+    let config = Window::default_attributes().with_transparent(context.transparent);
     let event_loop = EventLoop::new().unwrap();
     event_loop.set_control_flow(ControlFlow::Poll); // TODO: This should also be configurable
     let mut app = AlanWindow {
-        config: None,
-        context: AlanWindowContext {
-            window: None,
-            start: None,
-            buffer_width: None,
-            mouse_x: None,
-            mouse_y: None,
-            cursor_visible: true,
-        },
+        config,
+        context,
         instance: None,
         surface: None,
         adapter: None,

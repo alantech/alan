@@ -5355,6 +5355,8 @@ fn{Rs} mouseX Method{"mouse_x"} :: Mut{Window} -> u32;
 fn{Rs} mouseY Method{"mouse_y"} :: Mut{Window} -> u32;
 fn{Rs} cursorVisible Method{"cursor_visible"} :: Mut{Window} -> ();
 fn{Rs} cursorInvisible Method{"cursor_invisible"} :: Mut{Window} -> ();
+fn{Rs} transparent Method{"transparent"} :: Mut{Window} -> ();
+fn{Rs} opaque Method{"opaque"} :: Mut{Window} -> ();
 fn{Rs} runtime Method{"runtime"} :: Window -> u32;
 fn{Rs} context Property{"context.clone()"} :: Frame -> GBuffer;
 fn{Rs} framebuffer Property{"framebuffer.clone()"} :: Frame -> GBuffer;
