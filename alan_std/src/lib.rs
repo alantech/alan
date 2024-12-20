@@ -1216,7 +1216,7 @@ impl AlanWindowContext {
         if self.mouse_x.is_none() {
             self.mouse_x = Some(0);
             self.mouse_y = Some(0);
-            return 0;
+            0
         } else {
             self.mouse_x.unwrap()
         }
@@ -1226,7 +1226,7 @@ impl AlanWindowContext {
         if self.mouse_y.is_none() {
             self.mouse_x = Some(0);
             self.mouse_y = Some(0);
-            return 0;
+            0
         } else {
             self.mouse_y.unwrap()
         }
@@ -1601,7 +1601,7 @@ where
                 self.context.window.as_ref().unwrap().request_redraw();
             }
             WindowEvent::CursorMoved { position, .. } => {
-                if !self.context.mouse_x.is_none() {
+                if self.context.mouse_x.is_some() {
                     self.context.mouse_x = Some(position.x as u32);
                     self.context.mouse_y = Some(position.y as u32);
                 }
