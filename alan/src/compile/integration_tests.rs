@@ -741,6 +741,28 @@ test_gpgpu!(gpu_saturate => r#"
     stdout "[0, 0, 0.5, 1, 1]\n";
 );
 
+test_gpgpu!(gpu_dot => r#"
+    export fn{Js} main {
+      let b = GBuffer([3.0.f32, 4.0.f32]);
+      let id = gFor(1);
+      let out = GBuffer{f32}(1);
+      // Hack to get this to work in JS, because the generic is not passed through there
+      {"((b) => { b.ValKind = alan_std.F32; })" :: GBuffer}(out);
+      let vec = gvec2f(b[0].asF32, b[1].asF32);
+      out[id].store((vec *. vec).asI32).build.run; // TODO: Get rid of this weird bitcast
+      out.read{f32}.map(fn (v: f32) = v.string(1)).join(', ').print;
+    }
+    export fn{Rs} main {
+      let b = GBuffer([3.0.f32, 4.0.f32]);
+      let id = gFor(1);
+      let out = GBuffer{f32}(1);
+      let vec = gvec2f(b[0].asF32, b[1].asF32);
+      out[id].store((vec *. vec).asI32).build.run; // TODO: Get rid of this weird bitcast
+      out.read{f32}.map(fn (v: f32) = v.string(1)).join(', ').print;
+    }"#;
+    stdout "25.0\n";
+);
+
 // TODO: Fix u64 numeric constants to get u64 bitwise tests in the new test suite
 test!(u64_bitwise => r#"
     prefix u64 as ~ precedence 10

@@ -189,6 +189,7 @@ infix sub as - precedence 5;
 prefix neg as - precedence 8;
 infix mul as * precedence 6;
 infix cross as >< precedence 6;
+infix dot as *. precedence 6;
 infix div as / precedence 6;
 infix mod as % precedence 6;
 // export infix template as % precedence 4;
@@ -1369,6 +1370,9 @@ fn{Rs} cross "alan_std::cross_f64" <- RootBacking :: (Buffer{f64, 3}, Buffer{f64
 fn{Js} cross{T} "alan_std.cross" <- RootBacking :: (Buffer{T, 3}, Buffer{T, 3}) -> Buffer{T, 3};
 fn{Js} cross(a: Buffer{f32, 3}, b: Buffer{f32, 3}) = cross{f32}(a, b);
 fn{Js} cross(a: Buffer{f64, 3}, b: Buffer{f64, 3}) = cross{f64}(a, b);
+fn dot{I}(a: Buffer{I, 2}, b: Buffer{I, 2}) = a.0 * b.0 + a.1 * b.1;
+fn dot{I}(a: Buffer{I, 3}, b: Buffer{I, 3}) = a.0 * b.0 + a.1 * b.1 + a.2 * b.2;
+fn dot{I}(a: Buffer{I, 4}, b: Buffer{I, 4}) = a.0 * b.0 + a.1 * b.1 + a.2 * b.2 + a.3 * b.3;
 fn{Rs} swap{T, S} "alan_std::swapbuffer" <- RootBacking :: (Mut{Buffer{T, S}}, i64, i64) -> void!;
 fn{Js} swap{T, S} "alan_std.swap" <- RootBacking :: (Buffer{T, S}, i64, i64) -> void!;
 fn{Rs} sort{T, S} "alan_std::sortbuffer" <- RootBacking :: (Mut{Buffer{T, S}}, (T, T) -> i8) -> void;
@@ -3941,6 +3945,22 @@ fn cross(a: gvec3f, b: gvec3f) {
   let buffers = a.buffers.union(b.buffers);
   return gvec3f(varName, statements, buffers);
 }
+
+fn gdot{I, O}(a: I, b: I) {
+  let varName = 'dot('.concat(a.varName).concat(', ').concat(b.varName).concat(')');
+  let statements = a.statements.concat(b.statements);
+  let buffers = a.buffers.union(b.buffers);
+  return {O}(varName, statements, buffers);
+}
+fn dot(a: gvec2f, b: gvec2f) = gdot{gvec2f, gf32}(a, b);
+fn dot(a: gvec3f, b: gvec3f) = gdot{gvec3f, gf32}(a, b);
+fn dot(a: gvec4f, b: gvec4f) = gdot{gvec4f, gf32}(a, b);
+fn dot(a: gvec2u, b: gvec2u) = gdot{gvec2u, gu32}(a, b);
+fn dot(a: gvec3u, b: gvec3u) = gdot{gvec3u, gu32}(a, b);
+fn dot(a: gvec4u, b: gvec4u) = gdot{gvec4u, gu32}(a, b);
+fn dot(a: gvec2i, b: gvec2i) = gdot{gvec2i, gi32}(a, b);
+fn dot(a: gvec3i, b: gvec3i) = gdot{gvec3i, gi32}(a, b);
+fn dot(a: gvec4i, b: gvec4i) = gdot{gvec4i, gi32}(a, b);
 
 fn gMagnitude{I}(v: I) {
   let varName = 'length('.concat(v.varName).concat(')');
