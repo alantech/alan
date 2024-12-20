@@ -1191,26 +1191,28 @@ pub struct AlanWindowContext {
 
 impl AlanWindowContext {
     pub fn width(&self) -> u32 {
-        self.window.as_ref().unwrap().inner_size().width.max(1)
+        match self.window.as_ref() {
+            Some(win) => win.inner_size().width.max(1),
+            None => 0,
+        }
     }
 
     pub fn height(&self) -> u32 {
-        self.window.as_ref().unwrap().inner_size().height.max(1)
+        match self.window.as_ref() {
+            Some(win) => win.inner_size().height.max(1),
+            None => 0,
+        }
     }
 
     pub fn buffer_width(&self) -> u32 {
-        self.buffer_width.unwrap() / 4
+        self.buffer_width.unwrap_or(0) / 4
     }
 
     pub fn runtime(&self) -> u32 {
-        u32::from_le_bytes(
-            self.start
-                .as_ref()
-                .unwrap()
-                .elapsed()
-                .as_secs_f32()
-                .to_le_bytes(),
-        )
+        match self.start.as_ref() {
+            Some(time) => u32::from_le_bytes(time.elapsed().as_secs_f32().to_le_bytes()),
+            None => 0,
+        }
     }
 
     pub fn mouse_x(&mut self) -> u32 {
@@ -1260,7 +1262,7 @@ where
     C: FnMut(&mut AlanWindowContext) -> Vec<u32>,
     R: Fn(&AlanWindowFrame) -> Vec<GPGPU>,
 {
-    config: Option<WindowAttributes>,
+    config: WindowAttributes,
     context: AlanWindowContext,
     instance: Option<wgpu::Instance>,
     surface: Option<wgpu::Surface<'static>>,
@@ -1382,9 +1384,7 @@ where
             return;
         }
         self.context.window = Some(std::sync::Arc::new(
-            event_loop
-                .create_window(self.config.clone().unwrap_or(Window::default_attributes()))
-                .unwrap(),
+            event_loop.create_window(self.config.clone()).unwrap(),
         ));
     }
 
@@ -1622,24 +1622,29 @@ where
     }
 }
 
-pub fn run_window<C, R>(context_fn: C, gpgpu_shader_fn: R) -> Result<(), AlanError>
+pub fn run_window<C, R>(mut context_fn: C, gpgpu_shader_fn: R) -> Result<(), AlanError>
 where
     C: FnMut(&mut AlanWindowContext) -> Vec<u32>,
     R: Fn(&AlanWindowFrame) -> Vec<GPGPU>,
 {
+    let mut context = AlanWindowContext {
+        window: None,
+        start: None,
+        buffer_width: None,
+        mouse_x: None,
+        mouse_y: None,
+        cursor_visible: true,
+        transparent: false,
+    };
+    // Potentially mutate the context by calling the context function, but ignore the context
+    // vector it creates
+    context_fn(&mut context);
+    let config = Window::default_attributes().with_transparent(context.transparent);
     let event_loop = EventLoop::new().unwrap();
     event_loop.set_control_flow(ControlFlow::Poll); // TODO: This should also be configurable
     let mut app = AlanWindow {
-        config: None,
-        context: AlanWindowContext {
-            window: None,
-            start: None,
-            buffer_width: None,
-            mouse_x: None,
-            mouse_y: None,
-            cursor_visible: true,
-            transparent: false,
-        },
+        config,
+        context,
         instance: None,
         surface: None,
         adapter: None,
