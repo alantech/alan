@@ -116,7 +116,7 @@ type Rs = Env{"ALAN_OUTPUT_LANG"} == "rs";
 type Js = Env{"ALAN_OUTPUT_LANG"} == "js";
 
 // Importing the Root Scope backing implementation and supporting 3rd party libraries
-type{Rs} RootBacking = Rust{"alan_std" @ "https://github.com/alantech/alan.git"};
+type{Rs} RootBacking = Rust{"alan_std" @ "https://github.com/alantech/alan.git#transparent"};
 type{Js} RootBacking = Node{"alan_std" @ "https://github.com/alantech/alan.git"};
 
 // Defining derived types
@@ -5355,6 +5355,8 @@ fn{Rs} mouseX Method{"mouse_x"} :: Mut{Window} -> u32;
 fn{Rs} mouseY Method{"mouse_y"} :: Mut{Window} -> u32;
 fn{Rs} cursorVisible Method{"cursor_visible"} :: Mut{Window} -> ();
 fn{Rs} cursorInvisible Method{"cursor_invisible"} :: Mut{Window} -> ();
+fn{Rs} transparent Method{"transparent"} :: Mut{Window} -> ();
+fn{Js} opaque Method{"opaque"} :: Mut{Window} -> ();
 fn{Rs} runtime Method{"runtime"} :: Window -> u32;
 fn{Rs} context Property{"context.clone()"} :: Frame -> GBuffer;
 fn{Rs} framebuffer Property{"framebuffer.clone()"} :: Frame -> GBuffer;
