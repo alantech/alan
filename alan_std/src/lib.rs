@@ -1186,6 +1186,7 @@ pub struct AlanWindowContext {
     mouse_x: Option<u32>,
     mouse_y: Option<u32>,
     cursor_visible: bool,
+    transparent: bool,
 }
 
 impl AlanWindowContext {
@@ -1238,6 +1239,14 @@ impl AlanWindowContext {
 
     pub fn cursor_invisible(&mut self) {
         self.cursor_visible = false;
+    }
+
+    pub fn transparent(&mut self) {
+        self.transparent = true;
+    }
+
+    pub fn opaque(&mut self) {
+        self.transparent = true;
     }
 }
 
@@ -1456,7 +1465,9 @@ where
                     self.window_gpu_init();
                 }
                 let window = self.context.window.as_ref().unwrap();
+                // TODO: These shouldn't be set every frame
                 window.set_cursor_visible(self.context.cursor_visible);
+                window.set_transparent(self.context.transparent);
                 let mut size = window.inner_size();
                 size.width = size.width.max(1);
                 size.height = size.height.max(1);
@@ -1627,6 +1638,7 @@ where
             mouse_x: None,
             mouse_y: None,
             cursor_visible: true,
+            transparent: false,
         },
         instance: None,
         surface: None,
