@@ -1639,6 +1639,7 @@ where
     // Potentially mutate the context by calling the context function, but ignore the context
     // vector it creates
     context_fn(&mut context);
+    println!("is transparent: {}", context.transparent);
     let config = Window::default_attributes().with_transparent(context.transparent);
     let event_loop = EventLoop::new().unwrap();
     event_loop.set_control_flow(ControlFlow::Poll); // TODO: This should also be configurable
