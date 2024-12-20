@@ -1484,7 +1484,7 @@ where
                 config.present_mode = wgpu::PresentMode::Fifo;
                 config.desired_maximum_frame_latency = 3;
                 config.alpha_mode = if self.context.transparent {
-                    wgpu::CompositeAlphaMode::PostMultiplied
+                    wgpu::CompositeAlphaMode::PreMultiplied
                 } else {
                     wgpu::CompositeAlphaMode::Auto
                 };
