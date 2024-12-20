@@ -72,7 +72,10 @@ pub fn from_microstatement(
             let arg_names = function
                 .args()
                 .into_iter()
-                .map(|(n, _, _)| n)
+                .map(|(n, k, _)| match k {
+                    ArgKind::Mut => format!("mut {}", n),
+                    _ => n,
+                })
                 .collect::<Vec<String>>();
             let mut inner_statements = Vec::new();
             for ms in &function.microstatements {
