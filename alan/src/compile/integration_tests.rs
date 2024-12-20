@@ -733,6 +733,14 @@ test_gpgpu!(gpu_normalize => r#"
     stdout "0.6, 0.8\n";
 );
 
+test_gpgpu!(gpu_saturate => r#"
+    export fn main {
+        let b = GBuffer([(-0.5).f32, 0.0.f32, 0.5.f32, 1.0.f32, 1.5.f32]);
+        b.map(fn (val: gf32) = val.saturate).read{f32}.print;
+    }"#;
+    stdout "[0, 0, 0.5, 1, 1]\n";
+);
+
 // TODO: Fix u64 numeric constants to get u64 bitwise tests in the new test suite
 test!(u64_bitwise => r#"
     prefix u64 as ~ precedence 10

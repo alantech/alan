@@ -436,7 +436,11 @@ export fn{Test} main {
       .assert(eq, (-2.75).f32.round, (-3).f32))
     .it('magnitude', fn (test: Mut{Testing}) = test
       .assert(eq, 1.5.f32.magnitude, 1.5.f32)
-      .assert(eq, (-1.5).f32.magnitude, 1.5.f32));
+      .assert(eq, (-1.5).f32.magnitude, 1.5.f32))
+    .it('saturate', fn (test: Mut{Testing}) = test
+      .assert(eq, (-0.5.f32).saturate, 0.0.f32)
+      .assert(eq, 0.5.f32.saturate, 0.5.f32)
+      .assert(eq, 1.5.f32.saturate, 1.0.f32));
 
   test.describe("Basic math tests f64")
     .it("add")
@@ -474,7 +478,11 @@ export fn{Test} main {
       .assert(eq, -2.75.round, -3.0))
     .it('magnitude', fn (test: Mut{Testing}) = test
       .assert(eq, 1.5.magnitude, 1.5)
-      .assert(eq, -1.5.magnitude, 1.5));
+      .assert(eq, -1.5.magnitude, 1.5))
+    .it('saturate', fn (test: Mut{Testing}) = test
+      .assert(eq, (-0.5).saturate, 0.0)
+      .assert(eq, 0.5.saturate, 0.5)
+      .assert(eq, 1.5.saturate, 1.0));
 
   test.describe("Basic math tests")
     .it("grouping")
