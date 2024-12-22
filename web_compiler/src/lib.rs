@@ -11,9 +11,7 @@ pub fn compile(src: &str) -> String {
         return format!("{:?}", e);
     }
     match lntojs("program.ln".to_string()) {
-        Err(e) => {
-            return format!("{:?}", e);
-        }
+        Err(e) => format!("{:?}", e),
         Ok((js, _)) => js,
     }
 }
