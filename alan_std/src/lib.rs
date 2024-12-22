@@ -1627,7 +1627,11 @@ where
     }
 }
 
-pub fn run_window<C, R>(mut context_fn: C, gpgpu_shader_fn: R) -> Result<(), AlanError>
+pub fn run_window<C, R>(
+    mut initial_context_fn: impl FnMut(&mut AlanWindowContext) -> (),
+    context_fn: C,
+    gpgpu_shader_fn: R,
+) -> Result<(), AlanError>
 where
     C: FnMut(&mut AlanWindowContext) -> Vec<u32>,
     R: Fn(&AlanWindowFrame) -> Vec<GPGPU>,
@@ -1641,10 +1645,7 @@ where
         cursor_visible: true,
         transparent: false,
     };
-    // Potentially mutate the context by calling the context function, but ignore the context
-    // vector it creates
-    context_fn(&mut context);
-    println!("is transparent: {}", context.transparent);
+    initial_context_fn(&mut context);
     let config = Window::default_attributes().with_transparent(context.transparent);
     let event_loop = EventLoop::new().unwrap();
     event_loop.set_control_flow(ControlFlow::Poll); // TODO: This should also be configurable
