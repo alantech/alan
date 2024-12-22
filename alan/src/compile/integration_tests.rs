@@ -17,7 +17,7 @@ macro_rules! test {
         mod $rule {
             #[test]
             fn $rule() -> Result<(), Box<dyn std::error::Error>> {
-                crate::program::Program::set_target_lang_rs();
+                alan_compiler::program::Program::set_target_lang_rs();
                 let filename = format!("{}.ln", stringify!($rule));
                 match std::fs::write(&filename, $code) {
                     Ok(_) => { /* Do nothing */ }
@@ -25,9 +25,9 @@ macro_rules! test {
                         return Err(format!("Unable to write {} to disk. {:?}", filename, e).into());
                     }
                 };
-                let mut program = crate::program::Program::get_program();
+                let mut program = alan_compiler::program::Program::get_program();
                 program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
-                crate::program::Program::return_program(program);
+                alan_compiler::program::Program::return_program(program);
                 match crate::compile::build(filename.to_string()) {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
@@ -49,10 +49,10 @@ macro_rules! test {
                     Ok(a) => Ok(a),
                     Err(e) => Err(format!("Could not remove the test binary {:?}", e)),
                 }?;
-                crate::program::Program::set_target_lang_js();
-                let mut program = crate::program::Program::get_program();
+                alan_compiler::program::Program::set_target_lang_js();
+                let mut program = alan_compiler::program::Program::get_program();
                 program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
-                crate::program::Program::return_program(program);
+                alan_compiler::program::Program::return_program(program);
                 match crate::compile::web(filename.to_string()) {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
@@ -84,16 +84,16 @@ macro_rules! test {
         mod $rule {
             #[test]
             fn $rule() -> Result<(), Box<dyn std::error::Error>> {
-                crate::program::Program::set_target_lang_rs();
+                alan_compiler::program::Program::set_target_lang_rs();
                 $( match std::fs::write($filename, $code) {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
                         return Err(format!("Unable to write {} to disk. {:?}", $filename, e).into());
                     }
                 })+
-                let mut program = crate::program::Program::get_program();
+                let mut program = alan_compiler::program::Program::get_program();
                 program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
-                crate::program::Program::return_program(program);
+                alan_compiler::program::Program::return_program(program);
                 match crate::compile::build(format!("{}.ln", $entryfile)) {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
@@ -115,10 +115,10 @@ macro_rules! test {
                     Ok(a) => Ok(a),
                     Err(e) => Err(format!("Could not remove the test binary {:?}", e)),
                 }?;
-                crate::program::Program::set_target_lang_js();
-                let mut program = crate::program::Program::get_program();
+                alan_compiler::program::Program::set_target_lang_js();
+                let mut program = alan_compiler::program::Program::get_program();
                 program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
-                crate::program::Program::return_program(program);
+                alan_compiler::program::Program::return_program(program);
                 match crate::compile::web(format!("{}.ln", $entryfile)) {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
@@ -152,7 +152,7 @@ macro_rules! test_gpgpu {
         mod $rule {
             #[test]
             fn $rule() -> Result<(), Box<dyn std::error::Error>> {
-                crate::program::Program::set_target_lang_rs();
+                alan_compiler::program::Program::set_target_lang_rs();
                 let filename = format!("{}.ln", stringify!($rule));
                 match std::fs::write(&filename, $code) {
                     Ok(_) => { /* Do nothing */ }
@@ -160,9 +160,9 @@ macro_rules! test_gpgpu {
                         return Err(format!("Unable to write {} to disk. {:?}", filename, e).into());
                     }
                 };
-                let mut program = crate::program::Program::get_program();
+                let mut program = alan_compiler::program::Program::get_program();
                 program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
-                crate::program::Program::return_program(program);
+                alan_compiler::program::Program::return_program(program);
                 match crate::compile::build(filename.to_string()) {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
@@ -191,10 +191,10 @@ macro_rules! test_gpgpu {
                 // to just MacOS to test this on.
                 // if cfg!(windows) || cfg!(macos) {
                 if cfg!(target_os = "macos") {
-                    crate::program::Program::set_target_lang_js();
-                    let mut program = crate::program::Program::get_program();
+                    alan_compiler::program::Program::set_target_lang_js();
+                    let mut program = alan_compiler::program::Program::get_program();
                     program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
-                    crate::program::Program::return_program(program);
+                    alan_compiler::program::Program::return_program(program);
                     match crate::compile::web(filename.to_string()) {
                         Ok(_) => { /* Do nothing */ }
                         Err(e) => {
@@ -274,9 +274,9 @@ macro_rules! test_ignore {
                         return Err(format!("Unable to write {} to disk. {:?}", filename, e).into());
                     }
                 };
-                let mut program = crate::program::Program::get_program();
+                let mut program = alan_compiler::program::Program::get_program();
                 program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
-                crate::program::Program::return_program(program);
+                alan_compiler::program::Program::return_program(program);
                 match crate::compile::build(filename.to_string()) {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {

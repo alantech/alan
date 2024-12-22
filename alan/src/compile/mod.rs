@@ -8,9 +8,9 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use dirs::config_dir;
 use fs2::FileExt;
 
-use crate::lntojs::lntojs;
-use crate::lntors::lntors;
-use crate::program::Program;
+use alan_compiler::lntojs::lntojs;
+use alan_compiler::lntors::lntors;
+use alan_compiler::program::Program;
 
 mod integration_tests;
 

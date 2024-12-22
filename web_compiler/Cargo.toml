@@ -1,0 +1,17 @@
+[package]
+name = "web_compiler"
+description = "A limited version of the Alan Compiler to run inside of the browser"
+license = "MIT"
+homepage = "https://alan-lang.org"
+documentation = "https://docs.alan-lang.org"
+repository = "https://github.com/alantech/alan"
+version = "0.2.0"
+authors = ["David Ellis <isv.damocles@gmail.com>"]
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+alan_compiler = { path = "../alan_compiler" }
+wasm-bindgen = "0.2.99"
