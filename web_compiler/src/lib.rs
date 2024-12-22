@@ -7,12 +7,9 @@ use alan_compiler::program::Scope;
 #[wasm_bindgen]
 pub fn compile(src: &str) -> String {
     Program::set_target_lang_js();
-    match Scope::from_src("program.ln", src.to_string()) {
-        Err(e) => {
-            return format!("{:?}", e);
-        }
-        Ok(_) => {}
-    };
+    if let Err(e) = Scope::from_src("program.ln", src.to_string()) {
+        return format!("{:?}", e);
+    }
     match lntojs("program.ln".to_string()) {
         Err(e) => {
             return format!("{:?}", e);
