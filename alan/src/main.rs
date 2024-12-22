@@ -1,11 +1,7 @@
 use crate::compile::{bundle, compile, test, to_js, to_rs};
 use clap::{Parser, Subcommand};
 
-mod compile;
-mod lntojs;
-mod lntors;
-mod parse;
-mod program;
+pub mod compile;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, propagate_version = true)]

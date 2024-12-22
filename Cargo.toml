@@ -1,4 +1,4 @@
 [workspace]
 
-members = [ "alan", "alan_std" ]
+members = [ "alan", "alan_compiler", "alan_std", "web_compiler" ]
 resolver = "2"
