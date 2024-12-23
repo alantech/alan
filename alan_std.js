@@ -972,6 +972,63 @@ export async function replaceBuffer(b, v) {
 }
 
 /// Window-related types and functions
+
+export function contextWidth(context) {
+  return new U32(context.canvas.width);
+}
+
+export function contextHeight(context) {
+  return new U32(context.canvas.height);
+}
+
+export function contextBufferWidth(context) {
+  return new U32(context.bufferWidth);
+}
+
+export function contextMouseX(context) {
+  if (typeof(context.mouseX) === "undefined") {
+    context.mouseX = new U32(0);
+    context.mouseY = new U32(0);
+  }
+  return context.mouseX;
+}
+
+export function contextMouseY(context) {
+  if (typeof(context.mouseY) === "undefined") {
+    context.mouseX = new U32(0);
+    context.mouseY = new U32(0);
+  }
+  return context.mouseY;
+}
+
+export function contextCursorVisible(context) {
+  context.cursorVisible = true;
+}
+
+export function contextCursorInvisible(context) {
+  context.cursorVisible = false;
+}
+
+export function contextTransparent(context) {
+  context.transparent = true;
+}
+
+export function contextOpaque(context) {
+  context.transparent = false;
+}
+
+export function contextRuntime(context) {
+  return f32AsU32(new F32((Performance.now() - context.start) / 1000.0));
+}
+
+export function frameContext(frame) {
+  return frame.context;
+}
+
+export function frameFramebuffer(frame) {
+  return frame.framebuffer;
+}
+
 export async function runWindow(initialContextFn, contextFn, gpgpuShaderFn) {
   let context = {
     canvas: undefined,
