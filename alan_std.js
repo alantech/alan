@@ -970,3 +970,173 @@ export async function replaceBuffer(b, v) {
   g.queue.submit([encoder.finish()]);
   tempBuffer.destroy();
 }
+
+/// Window-related types and functions
+export async function runWindow(initialContextFn, contextFn, gpgpuShaderFn) {
+  let context = {
+    canvas: undefined,
+    start: undefined,
+    bufferWidth: undefined,
+    mouseX: undefined,
+    mouseY: undefined,
+    cursorVisible: true,
+    transparent: false,
+  };
+  await initialContextFn(context);
+  context.start = Performance.now();
+  // If the `initialContextFn` doesn't attach a canvas, we make one to take up the whole window
+  if (!context.canvas) {
+    let canvas = document.createElement('canvas');
+    canvas.setAttribute('id', 'AlanWindow');
+    document.body.appendChild(canvas);
+    canvas.style['z-index'] = 9001;
+    canvas.style['position'] = 'absolute';
+    canvas.style['left'] = '0px';
+    canvas.style['top'] = '0px';
+    canvas.style['width'] = '100%';
+    canvas.style['height'] = '100%';
+    if (!context.cursorVisible) {
+      canvas.style['cursor'] = 'none';
+    }
+    context.canvas = canvas;
+  }
+  context.canvas.addEventListener("mousemove", (event) => {
+    if (typeof(context.mouseX) !== "undefined" || typeof(context.mouseY) !== "undefined") {
+      context.mouseX = new U32(event.offsetX);
+      context.mouseY = new U32(event.offsetY);
+    }
+  });
+  let surface = context.canvas.getContext('webgpu');
+  let adapter = await navigator.gpu.requestAdapter();
+  let device = await adapter.requestDevice();
+  let queue = device.queue;
+  surface.configure({
+    device,
+    format: 'bgra8unorm',
+    alphaMode: context.transparent ? 'premultiplied' : 'opaque',
+    usage: GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT,
+    viewFormats: ['bgra8unorm'],
+  });
+  let contextBuffer = await createEmptyBuffer(storageBufferType(), 4, U32);
+  let width = Math.max(1, context.canvas.width);
+  let height = Math.max(1, context.canvas.height);
+  context.bufferWidth = (4 * width) % 256 === 0 ? 4 * width : 4 * width + (256 - ((4 * width) % 256));
+  let bufferHeight = height;
+  let bufferSize = context.bufferWidth * bufferHeight;
+  let buffer = await createEmptyBuffer(storageBufferType(), bufferSize / 4, U32);
+  let gpgpuShaders = await gpgpuShaderFn({ context: contextBuffer, framebuffer: buffer });
+  let redraw = async function() {
+    // First resize things if necessary
+    if (width !== context.canvas.width || height !== context.canvas.height) {
+      width = context.canvas.width;
+      height = context.canvas.height;
+      context.bufferWidth = (4 * width) % 256 === 0 ? 4 * width : 4 * width + (256 - ((4 * width) % 256));
+      bufferHeight = height;
+      bufferSize = context.bufferWidth * bufferHeight;
+      let oldBufferId = buffer.label;
+      let newBuffer = await createEmptyBuffer(storageBufferType(), bufferSize / 4, U32);
+      for (let shader of gpgpuShaders) {
+        for (let group of shader.buffers) {
+          let idx = undefined;
+          for (let i = 0; i < group.length; i++) {
+            let buffer = group[i];
+            if (buffer.label == oldBufferId) {
+              idx = i;
+              break;
+            }
+          }
+          if (typeof(idx) !== 'undefined') {
+            group[idx] = newBuffer;
+          }
+        }
+      }
+      buffer.destroy();
+      buffer = newBuffer;
+    }
+    // Now, actually start drawing
+    let oldContextBufferId = contextBuffer.label;
+    let frame = surface.getCurrentTexture();
+    let encoder = device.createCommandEncoder();
+    let contextArray = await contextFn(context);
+    let newContextBuffer = await createBufferInit(storageBufferType(), contextArray);
+    for (let gg of gpgpuShaders) {
+      if (typeof(gg.module) === "undefined") {
+        gg.module = device.createShaderModule({
+          code: gg.source,
+        });
+      }
+      if (typeof(gg.computePipeline) === "undefined") {
+        gg.computePipeline = device.createComputePipeline({
+          compute: {
+            module: gg.module,
+            entryPoint: gg.entryPoint,
+          },
+          layout: 'auto',
+        });
+      }
+      let bindGroups = [];
+      let cpass = encoder.beginComputePass();
+      cpass.setPipeline(gg.computePipeline);
+      for (let i = 0; i < gg.buffers.length; i++) {
+        let bindGroupLayout = gg.computePipeline.getBindGroupLayout(i);
+        let bindGroupBuffers = gg.buffers[i];
+        for (let j = 0; j < bindGroupBuffers.length; j++) {
+          if (bindGroupBuffers[j].label === oldContextBufferId) {
+            bindGroupBuffers[j] = newContextBuffer;
+          }
+        }
+        let bindGroupEntries = [];
+        for (let j = 0; j < bindGroupBuffers.length; j++) {
+          bindGroupEntries.push({
+            binding: j,
+            resource: { buffer: bindGroupBuffers[j] }
+          });
+        }
+        let bindGroup = device.createBindGroup({
+          layout: bindGroupLayout,
+          entries: bindGroupEntries,
+        });
+        bindGroups.push(bindGroup)
+      }
+      for (let i = 0; i < gg.buffers.length; i++) {
+        cpass.setBindGroup(i, bindGroups[i]);
+      }
+      let x = 0;
+      let y = 0;
+      let z = 1;
+      switch (gg.workgroupSizes[0]) {
+      case -1:
+        x = width;
+        break;
+      case -2:
+        x = height;
+        break;
+      default:
+        x = gg.workgroupSizes[0];
+      }
+      switch (gg.workgroupSizes[1]) {
+      case -1:
+        y = width;
+        break;
+      case -2:
+        y = height;
+        break;
+      default:
+        y = gg.workgroupSizes[0];
+      }
+      cpass.dispatchWorkgroups(x, y, z);
+      cpass.end();
+    }
+    contextBuffer.destroy();
+    contextBuffer = newContextBuffer;
+    encoder.copyBufferToTexture({
+      buffer,
+      bytesPerRow: context.bufferWidth,
+    }, {
+      texture: frame,
+    }, [frame.width, frame.height, 1]);
+    queue.submit([encoder.finish()]);
+    requestAnimationFrame(redraw);
+  }
+  requestAnimationFrame(redraw);
+}
