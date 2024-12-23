@@ -1031,7 +1031,7 @@ export function frameFramebuffer(frame) {
 
 export async function runWindow(initialContextFn, contextFn, gpgpuShaderFn) {
   // None of this can run before `document.body` exists, so let's wait for that
-  await new Promise((r) => document.addEventListener("DOMContextLoaded", () => r()));
+  await new Promise((r) => document.addEventListener("DOMContentLoaded", () => r()));
   let context = {
     canvas: undefined,
     start: undefined,
