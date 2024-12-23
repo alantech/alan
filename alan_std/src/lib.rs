@@ -1628,7 +1628,7 @@ where
 }
 
 pub fn run_window<C, R>(
-    mut initial_context_fn: impl FnMut(&mut AlanWindowContext) -> (),
+    mut initial_context_fn: impl FnMut(&mut AlanWindowContext),
     context_fn: C,
     gpgpu_shader_fn: R,
 ) -> Result<(), AlanError>
