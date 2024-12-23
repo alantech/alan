@@ -1162,8 +1162,7 @@ export async function runWindow(initialContextFn, contextFn, gpgpuShaderFn) {
       }
       let x = 0;
       let y = 0;
-      let z = 1;
-      switch (gg.workgroupSizes[0]) {
+      switch (gg.workgroupSizes[0].val) {
       case -1:
         x = width;
         break;
@@ -1171,9 +1170,9 @@ export async function runWindow(initialContextFn, contextFn, gpgpuShaderFn) {
         x = height;
         break;
       default:
-        x = gg.workgroupSizes[0];
+        x = gg.workgroupSizes[0].val;
       }
-      switch (gg.workgroupSizes[1]) {
+      switch (gg.workgroupSizes[1].val) {
       case -1:
         y = width;
         break;
@@ -1181,8 +1180,9 @@ export async function runWindow(initialContextFn, contextFn, gpgpuShaderFn) {
         y = height;
         break;
       default:
-        y = gg.workgroupSizes[0];
+        y = gg.workgroupSizes[1].val;
       }
+      let z = gg.workgroupSizes[2].val;
       cpass.dispatchWorkgroups(x, y, z);
       cpass.end();
     }
