@@ -1018,7 +1018,7 @@ export function contextOpaque(context) {
 }
 
 export function contextRuntime(context) {
-  return f32AsU32(new F32((Performance.now() - context.start) / 1000.0));
+  return f32AsU32(new F32((performance.now() - context.start) / 1000.0));
 }
 
 export function frameContext(frame) {
@@ -1040,7 +1040,7 @@ export async function runWindow(initialContextFn, contextFn, gpgpuShaderFn) {
     transparent: false,
   };
   await initialContextFn(context);
-  context.start = Performance.now();
+  context.start = performance.now();
   // If the `initialContextFn` doesn't attach a canvas, we make one to take up the whole window
   if (!context.canvas) {
     let canvas = document.createElement('canvas');
