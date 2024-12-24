@@ -1231,4 +1231,5 @@ export async function runWindow(initialContextFn, contextFn, gpgpuShaderFn) {
     requestAnimationFrame(redraw);
   }
   requestAnimationFrame(redraw);
+  await new Promise((r) => {}); // Block this path forever to match Rust behavior
 }
