@@ -970,3 +970,266 @@ export async function replaceBuffer(b, v) {
   g.queue.submit([encoder.finish()]);
   tempBuffer.destroy();
 }
+
+/// Window-related types and functions
+
+export function contextWidth(context) {
+  return new U32(context.canvas.width);
+}
+
+export function contextHeight(context) {
+  return new U32(context.canvas.height);
+}
+
+export function contextBufferWidth(context) {
+  return new U32(context.bufferWidth / 4);
+}
+
+export function contextMouseX(context) {
+  if (typeof(context.mouseX) === "undefined") {
+    context.mouseX = new U32(0);
+    context.mouseY = new U32(0);
+  }
+  return context.mouseX;
+}
+
+export function contextMouseY(context) {
+  if (typeof(context.mouseY) === "undefined") {
+    context.mouseX = new U32(0);
+    context.mouseY = new U32(0);
+  }
+  return context.mouseY;
+}
+
+export function contextCursorVisible(context) {
+  context.cursorVisible = true;
+}
+
+export function contextCursorInvisible(context) {
+  context.cursorVisible = false;
+}
+
+export function contextTransparent(context) {
+  context.transparent = true;
+}
+
+export function contextOpaque(context) {
+  context.transparent = false;
+}
+
+export function contextRuntime(context) {
+  return f32AsU32(new F32((performance.now() - context.start) / 1000.0));
+}
+
+export function frameContext(frame) {
+  return frame.context;
+}
+
+export function frameFramebuffer(frame) {
+  return frame.framebuffer;
+}
+
+export async function runWindow(initialContextFn, contextFn, gpgpuShaderFn) {
+  // None of this can run before `document.body` exists, so let's wait for that
+  await new Promise((r) => document.addEventListener("DOMContentLoaded", () => r()));
+  let context = {
+    canvas: undefined,
+    start: undefined,
+    bufferWidth: undefined,
+    mouseX: undefined,
+    mouseY: undefined,
+    cursorVisible: true,
+    transparent: false,
+  };
+  await initialContextFn(context);
+  context.start = performance.now();
+  // If the `initialContextFn` doesn't attach a canvas, we make one to take up the whole window
+  if (!context.canvas) {
+    let canvas = document.createElement('canvas');
+    canvas.setAttribute('id', 'AlanWindow');
+    document.body.appendChild(canvas);
+    canvas.style['z-index'] = 9001;
+    canvas.style['position'] = 'absolute';
+    canvas.style['left'] = '0px';
+    canvas.style['top'] = '0px';
+    canvas.style['width'] = '100%';
+    canvas.style['height'] = '100%';
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    document.body.addEventListener("resize", () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    });
+    if (!context.cursorVisible) {
+      canvas.style['cursor'] = 'none';
+    }
+    context.canvas = canvas;
+  }
+  context.canvas.addEventListener("mousemove", (event) => {
+    if (typeof(context.mouseX) !== "undefined" || typeof(context.mouseY) !== "undefined") {
+      context.mouseX = new U32(event.offsetX);
+      context.mouseY = new U32(event.offsetY);
+    }
+  });
+  let surface = context.canvas.getContext('webgpu');
+  let adapter = await navigator.gpu.requestAdapter();
+  let device = await adapter.requestDevice();
+  let queue = device.queue;
+  surface.configure({
+    device,
+    format: 'bgra8unorm',
+    alphaMode: context.transparent ? 'premultiplied' : 'opaque',
+    usage: GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT,
+    viewFormats: ['bgra8unorm'],
+  });
+  let contextBuffer = await device.createBuffer({
+    size: 16,
+    usage: storageBufferType(),
+    label: `buffer_${uuidv4().replaceAll('-', '_')}`,
+  });
+  contextBuffer.ValKind = U32;
+  let width = Math.max(1, context.canvas.width);
+  let height = Math.max(1, context.canvas.height);
+  context.bufferWidth = (4 * width) % 256 === 0 ? 4 * width : 4 * width + (256 - ((4 * width) % 256));
+  let bufferHeight = height;
+  let bufferSize = context.bufferWidth * bufferHeight;
+  let buffer = await device.createBuffer({
+    size: bufferSize,
+    usage: storageBufferType(),
+    label: `buffer_${uuidv4().replaceAll('-', '_')}`,
+  });
+  buffer.ValKind = U32;
+  let gpgpuShaders = await gpgpuShaderFn({ context: contextBuffer, framebuffer: buffer });
+  let redraw = async function() {
+    // First resize things if necessary
+    if (width !== context.canvas.width || height !== context.canvas.height) {
+      width = context.canvas.width;
+      height = context.canvas.height;
+      context.bufferWidth = (4 * width) % 256 === 0 ? 4 * width : 4 * width + (256 - ((4 * width) % 256));
+      bufferHeight = height;
+      bufferSize = context.bufferWidth * bufferHeight;
+      let oldBufferId = buffer.label;
+      let newBuffer = await device.createBuffer({
+        size: bufferSize,
+        usage: storageBufferType(),
+        label: `buffer_${uuidv4().replaceAll('-', '_')}`,
+      });
+      newBuffer.ValKind = U32;
+      for (let shader of gpgpuShaders) {
+        for (let group of shader.buffers) {
+          let idx = undefined;
+          for (let i = 0; i < group.length; i++) {
+            let buffer = group[i];
+            if (buffer.label == oldBufferId) {
+              idx = i;
+              break;
+            }
+          }
+          if (typeof(idx) !== 'undefined') {
+            group[idx] = newBuffer;
+          }
+        }
+      }
+      buffer.destroy();
+      buffer = newBuffer;
+    }
+    // Now, actually start drawing
+    let oldContextBufferId = contextBuffer.label;
+    let frame = surface.getCurrentTexture();
+    let encoder = device.createCommandEncoder();
+    let contextArray = await contextFn(context);
+    let newContextBuffer = await device.createBuffer({
+      mappedAtCreation: true,
+      size: contextArray.length * 4,
+      usage: storageBufferType(),
+      label: `buffer_${uuidv4().replaceAll('-', '_')}`,
+    });
+    let ab = newContextBuffer.getMappedRange();
+    let v = new Uint32Array(ab);
+    for (let i = 0; i < contextArray.length; i++) {
+      v[i] = contextArray[i].valueOf();
+    }
+    newContextBuffer.unmap();
+    newContextBuffer.ValType = U32;
+    for (let gg of gpgpuShaders) {
+      if (typeof(gg.module) === "undefined") {
+        gg.module = device.createShaderModule({
+          code: gg.source,
+        });
+      }
+      if (typeof(gg.computePipeline) === "undefined") {
+        gg.computePipeline = device.createComputePipeline({
+          compute: {
+            module: gg.module,
+            entryPoint: gg.entryPoint,
+          },
+          layout: 'auto',
+        });
+      }
+      let bindGroups = [];
+      let cpass = encoder.beginComputePass();
+      cpass.setPipeline(gg.computePipeline);
+      for (let i = 0; i < gg.buffers.length; i++) {
+        let bindGroupLayout = gg.computePipeline.getBindGroupLayout(i);
+        let bindGroupBuffers = gg.buffers[i];
+        for (let j = 0; j < bindGroupBuffers.length; j++) {
+          if (bindGroupBuffers[j].label === oldContextBufferId) {
+            bindGroupBuffers[j] = newContextBuffer;
+          }
+        }
+        let bindGroupEntries = [];
+        for (let j = 0; j < bindGroupBuffers.length; j++) {
+          bindGroupEntries.push({
+            binding: j,
+            resource: { buffer: bindGroupBuffers[j] }
+          });
+        }
+        let bindGroup = device.createBindGroup({
+          layout: bindGroupLayout,
+          entries: bindGroupEntries,
+        });
+        bindGroups.push(bindGroup)
+      }
+      for (let i = 0; i < gg.buffers.length; i++) {
+        cpass.setBindGroup(i, bindGroups[i]);
+      }
+      let x = 0;
+      let y = 0;
+      switch (gg.workgroupSizes[0].val) {
+      case -1:
+        x = width;
+        break;
+      case -2:
+        x = height;
+        break;
+      default:
+        x = gg.workgroupSizes[0].val;
+      }
+      switch (gg.workgroupSizes[1].val) {
+      case -1:
+        y = width;
+        break;
+      case -2:
+        y = height;
+        break;
+      default:
+        y = gg.workgroupSizes[1].val;
+      }
+      let z = gg.workgroupSizes[2].val;
+      cpass.dispatchWorkgroups(x, y, z);
+      cpass.end();
+    }
+    contextBuffer.destroy();
+    contextBuffer = newContextBuffer;
+    encoder.copyBufferToTexture({
+      buffer,
+      bytesPerRow: context.bufferWidth,
+    }, {
+      texture: frame,
+    }, [width, height, 1]);
+    queue.submit([encoder.finish()]);
+    requestAnimationFrame(redraw);
+  }
+  requestAnimationFrame(redraw);
+  await new Promise((r) => {}); // Block this path forever to match Rust behavior
+}

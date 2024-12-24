@@ -117,7 +117,7 @@ type Js = Env{"ALAN_OUTPUT_LANG"} == "js";
 
 // Importing the Root Scope backing implementation and supporting 3rd party libraries
 type{Rs} RootBacking = Rust{"alan_std" @ "https://github.com/alantech/alan.git"};
-type{Js} RootBacking = Node{"alan_std" @ "https://github.com/alantech/alan.git"};
+type{Js} RootBacking = Node{"alan_std" @ "https://github.com/alantech/alan.git#js-window"};
 
 // Defining derived types
 type void = ();
@@ -5376,22 +5376,37 @@ fn map{G, G2}(gb: GBuffer, f: (G, gu32) -> G2) {
 
 /// Window-related bindings
 type{Rs} Window = Binds{"alan_std::AlanWindowContext" <- RootBacking};
+type{Js} Window = Binds{"AlanWindowContext"};
 type{Rs} Frame = Binds{"alan_std::AlanWindowFrame" <- RootBacking};
+type{Js} Frame = Binds{"AlanWindowFrame"};
 
 fn{Rs} window "alan_std::run_window" <- RootBacking :: (Mut{(Mut{Window}) -> ()}, Mut{(Mut{Window}) -> u32[]}, (Frame) -> GPGPU[]) -> ()!;
+fn{Js} window "alan_std.runWindow" <- RootBacking :: (Window -> (), Window -> u32[], Frame -> GPGPU[]) -> ()!;
 fn{Rs} width Method{"width"} :: Window -> u32;
+fn{Js} width "alan_std.contextWidth" <- RootBacking :: Window -> u32;
 fn{Rs} height Method{"height"} :: Window -> u32;
+fn{Js} height "alan_std.contextHeight" <- RootBacking :: Window -> u32;
 fn{Rs} bufferWidth Method{"buffer_width"} :: Window -> u32;
+fn{Js} bufferWidth "alan_std.contextBufferWidth" <- RootBacking :: Window -> u32;
 fn{Rs} mouseX Method{"mouse_x"} :: Mut{Window} -> u32;
+fn{Js} mouseX "alan_std.contextMouseX" <- RootBacking :: Window -> u32;
 fn{Rs} mouseY Method{"mouse_y"} :: Mut{Window} -> u32;
+fn{Js} mouseY "alan_std.contextMouseY" <- RootBacking :: Window -> u32;
 fn{Rs} cursorVisible Method{"cursor_visible"} :: Mut{Window} -> ();
+fn{Js} cursorVisible "alan_std.contextCursorVisible" <- RootBacking :: Window -> ();
 fn{Rs} cursorInvisible Method{"cursor_invisible"} :: Mut{Window} -> ();
+fn{Js} cursorInvisible "alan_std.contextCursorInvisible" <- RootBacking :: Window -> ();
 fn{Rs} transparent Method{"transparent"} :: Mut{Window} -> ();
+fn{Js} transparent "alan_std.contextTransparent" <- RootBacking :: Window -> ();
 fn{Rs} opaque Method{"opaque"} :: Mut{Window} -> ();
+fn{Js} opaque "alan_std.contextOpaque" <- RootBacking :: Window -> ();
 fn{Rs} runtime Method{"runtime"} :: Window -> u32;
+fn{Js} runtime "alan_std.contextRuntime" <- RootBacking :: Window -> u32;
 fn{Rs} context Property{"context.clone()"} :: Frame -> GBuffer;
+fn{Js} context "alan_std.frameContext" <- RootBacking :: Frame -> GBuffer;
 fn{Rs} framebuffer Property{"framebuffer.clone()"} :: Frame -> GBuffer;
-fn{Rs} pixel Frame = gFor(-1, -2); // Magic numbers for the binding
+fn{Js} framebuffer "alan_std.frameFramebuffer" <- RootBacking :: Frame -> GBuffer;
+fn pixel Frame = gFor(-1, -2); // Magic numbers for the binding
 
 /// Process exit-related bindings
 fn{Rs} ExitCode "std::process::ExitCode::from" :: Own{u8} -> ExitCode;
