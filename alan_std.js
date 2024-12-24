@@ -1223,7 +1223,7 @@ export async function runWindow(initialContextFn, contextFn, gpgpuShaderFn) {
     contextBuffer = newContextBuffer;
     encoder.copyBufferToTexture({
       buffer,
-      bytesPerRow: context.bufferWidth,
+      bytesPerRow: context.bufferWidth / 4,
     }, {
       texture: frame,
     }, [frame.width, frame.height, 1]);
