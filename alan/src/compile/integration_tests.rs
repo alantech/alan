@@ -766,7 +766,7 @@ test_gpgpu!(gpu_dot => r#"
 test_gpgpu!(gpu_inverse_sqrt => r#"
     export fn main {
       let b = GBuffer([4.0.f32, 25.0.f32]);
-      b.map(fn (val: gf32) = val.inverseSqrt).read{f32}.print;
+      b.map(fn (val: gf32) = val.inverseSqrt).read{f32}.map(fn (v: f32) = v.string(1)).print;
     }"#;
     stdout "[0.5, 0.2]\n";
 );
