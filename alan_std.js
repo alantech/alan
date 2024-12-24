@@ -1076,13 +1076,23 @@ export async function runWindow(initialContextFn, contextFn, gpgpuShaderFn) {
     usage: GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT,
     viewFormats: ['bgra8unorm'],
   });
-  let contextBuffer = await createEmptyBuffer(storageBufferType(), 4, U32);
+  let contextBuffer = await device.createBuffer({
+    size: 16,
+    usage: storageBufferType(),
+    label: `buffer_${uuidv4().replaceAll('-', '_')}`,
+  });
+  contextBuffer.ValKind = U32;
   let width = Math.max(1, context.canvas.width);
   let height = Math.max(1, context.canvas.height);
   context.bufferWidth = (4 * width) % 256 === 0 ? 4 * width : 4 * width + (256 - ((4 * width) % 256));
   let bufferHeight = height;
   let bufferSize = context.bufferWidth * bufferHeight;
-  let buffer = await createEmptyBuffer(storageBufferType(), bufferSize / 4, U32);
+  let buffer = await device.createBuffer({
+    size: bufferSize,
+    usage: storageBufferType(),
+    label: `buffer_${uuidv4().replaceAll('-', '_')}`,
+  });
+  buffer.ValKind = U32;
   let gpgpuShaders = await gpgpuShaderFn({ context: contextBuffer, framebuffer: buffer });
   let redraw = async function() {
     // First resize things if necessary
@@ -1093,7 +1103,12 @@ export async function runWindow(initialContextFn, contextFn, gpgpuShaderFn) {
       bufferHeight = height;
       bufferSize = context.bufferWidth * bufferHeight;
       let oldBufferId = buffer.label;
-      let newBuffer = await createEmptyBuffer(storageBufferType(), bufferSize / 4, U32);
+      let newBuffer = await device.createBuffer({
+        size: bufferSize,
+        usage: storageBufferType(),
+        label: `buffer_${uuidv4().replaceAll('-', '_')}`,
+      });
+      newBuffer.ValKind = U32;
       for (let shader of gpgpuShaders) {
         for (let group of shader.buffers) {
           let idx = undefined;
@@ -1117,7 +1132,19 @@ export async function runWindow(initialContextFn, contextFn, gpgpuShaderFn) {
     let frame = surface.getCurrentTexture();
     let encoder = device.createCommandEncoder();
     let contextArray = await contextFn(context);
-    let newContextBuffer = await createBufferInit(storageBufferType(), contextArray);
+    let newContextBuffer = await createBuffer({
+      mappedAtCreation: true,
+      size: contextArray.length * 4,
+      usage: storageBufferType(),
+      label: `buffer_${uuidv4().replaceAll('-', '_')}`,
+    });
+    let ab = newContextBuffer.getMappedRange();
+    let v = new Uint32Array(ab);
+    for (let i = 0; i < contextArray.length; i++) {
+      v[i] = contextArray[i].valueOf();
+    }
+    newContextBuffer.unmap();
+    newContextBuffer.ValType = U32;
     for (let gg of gpgpuShaders) {
       if (typeof(gg.module) === "undefined") {
         gg.module = device.createShaderModule({
