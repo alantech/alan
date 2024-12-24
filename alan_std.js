@@ -1054,6 +1054,12 @@ export async function runWindow(initialContextFn, contextFn, gpgpuShaderFn) {
     canvas.style['top'] = '0px';
     canvas.style['width'] = '100%';
     canvas.style['height'] = '100%';
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    document.body.addEventListener("resize", () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    });
     if (!context.cursorVisible) {
       canvas.style['cursor'] = 'none';
     }
