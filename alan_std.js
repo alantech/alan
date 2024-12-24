@@ -1132,7 +1132,7 @@ export async function runWindow(initialContextFn, contextFn, gpgpuShaderFn) {
     let frame = surface.getCurrentTexture();
     let encoder = device.createCommandEncoder();
     let contextArray = await contextFn(context);
-    let newContextBuffer = await createBuffer({
+    let newContextBuffer = await device.createBuffer({
       mappedAtCreation: true,
       size: contextArray.length * 4,
       usage: storageBufferType(),
