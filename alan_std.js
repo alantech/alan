@@ -1226,7 +1226,7 @@ export async function runWindow(initialContextFn, contextFn, gpgpuShaderFn) {
       bytesPerRow: context.bufferWidth,
     }, {
       texture: frame,
-    }, [frame.width, frame.height, 1]);
+    }, [width, height, 1]);
     queue.submit([encoder.finish()]);
     requestAnimationFrame(redraw);
   }
