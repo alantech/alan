@@ -982,7 +982,7 @@ export function contextHeight(context) {
 }
 
 export function contextBufferWidth(context) {
-  return new U32(context.bufferWidth);
+  return new U32(context.bufferWidth / 4);
 }
 
 export function contextMouseX(context) {
