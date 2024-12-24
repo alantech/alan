@@ -763,6 +763,14 @@ test_gpgpu!(gpu_dot => r#"
     stdout "25.0\n";
 );
 
+test_gpgpu!(gpu_inverse_sqrt => r#"
+    export fn main {
+      let b = GBuffer([4.0.f32, 25.0.f32]);
+      b.map(fn (val: gf32) = val.inverseSqrt).read{f32}.map(fn (v: f32) = v.string(1)).print;
+    }"#;
+    stdout "[0.5, 0.2]\n";
+);
+
 // TODO: Fix u64 numeric constants to get u64 bitwise tests in the new test suite
 test!(u64_bitwise => r#"
     prefix u64 as ~ precedence 10

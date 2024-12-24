@@ -450,7 +450,8 @@ export fn{Test} main {
       .assert(eq, (-0.5.f32).saturate, 0.0.f32)
       .assert(eq, 0.5.f32.saturate, 0.5.f32)
       .assert(eq, 1.5.f32.saturate, 1.0.f32))
-    .it('dot').assert(eq, {f32[2]}(3.f32, 4.f32) *. {f32[2]}(3.f32, 4.f32), 25.f32);
+    .it('dot').assert(eq, {f32[2]}(3.f32, 4.f32) *. {f32[2]}(3.f32, 4.f32), 25.f32)
+    .it('inverseSqrt').assert(eq, 4.f32.inverseSqrt, 0.5.f32);
 
   test.describe("Basic math tests f64")
     .it("add")
@@ -493,7 +494,8 @@ export fn{Test} main {
       .assert(eq, (-0.5).saturate, 0.0)
       .assert(eq, 0.5.saturate, 0.5)
       .assert(eq, 1.5.saturate, 1.0))
-    .it('dot').assert(eq, {f64[2]}(3.0, 4.0) *. {f64[2]}(3.0, 4.0), 25.0);
+    .it('dot').assert(eq, {f64[2]}(3.0, 4.0) *. {f64[2]}(3.0, 4.0), 25.0)
+    .it('inverseSqrt').assert(eq, 25.0.inverseSqrt, 0.2);
 
   test.describe("Basic math tests")
     .it("grouping")
@@ -961,7 +963,8 @@ export fn{Test} main {
     })
     .it('normalize', fn (test: Mut{Testing}) = test
       .assert(eq, [1.0, 0.0, 0.0].normalize.map(fn (v: f64) = string(v)).join(', '), '1, 0, 0')
-      .assert(eq, [3.0, 4.0].normalize.map(fn (v: f64) = string(v)).join(', '), '0.6, 0.8'));
+      .assert(eq, [3.0, 4.0].normalize.map(fn (v: f64) = string(v)).join(', '), '0.6, 0.8'))
+    .it('inverseSqrt').assert(eq, [4.0, 25.0].inverseSqrt.map(fn (v: f64) = string(v)).join(', '), '0.5, 0.2');
 
   test.describe("Buffers")
     .it("join", fn (test: Mut{Testing}) {
@@ -1038,7 +1041,8 @@ export fn{Test} main {
     })
     .it('normalize', fn (test: Mut{Testing}) = test
       .assert(eq, {f64[3]}(1.0, 0.0, 0.0).normalize.map(fn (v: f64) = string(v)).join(', '), '1, 0, 0')
-      .assert(eq, {f64[2]}(3.0, 4.0).normalize.map(fn (v: f64) = string(v)).join(', '), '0.6, 0.8'));
+      .assert(eq, {f64[2]}(3.0, 4.0).normalize.map(fn (v: f64) = string(v)).join(', '), '0.6, 0.8'))
+    .it('inverseSqrt').assert(eq, {f64[2]}(4.0, 25.0).inverseSqrt.map(fn (v: f64) = string(v)).join(', '), '0.5, 0.2');
 
   test.describe("Conditionals")
     .it("if function")

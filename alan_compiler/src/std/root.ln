@@ -613,6 +613,8 @@ fn acoth(x: f32) = ln((x + 1.0.f32) / (x - 1.0.f32)) / 2.0.f32;
 fn{Rs} round Method{"round_ties_even"} :: Deref{f32} -> f32;
 fn{Js} round Method{"roundTiesEven"} :: f32 -> f32;
 fn magnitude f32 = arg0.abs;
+fn{Rs} inverseSqrt (v: f32) = {Method{"recip"} :: f32 -> f32}(sqrt(v));
+fn{Js} inverseSqrt (v: f32) = 1.0.f32 / sqrt(v);
 
 fn{Rs} add Infix{"+"} :: (f64, f64) -> f64;
 fn{Js} add "((a, b) => new alan_std.F64(a.val + b.val))" <- RootBacking :: (f64, f64) -> f64;
@@ -699,6 +701,8 @@ fn acoth(x: f64) = ln((x + 1.0) / (x - 1.0)) / 2.0;
 fn{Rs} round Method{"round_ties_even"} :: Deref{f64} -> f64;
 fn{Js} round Method{"roundTiesEven"} :: f64 -> f64;
 fn magnitude f64 = arg0.abs;
+fn{Rs} inverseSqrt (v: f64) = {Method{"recip"} :: f64 -> f64}(sqrt(v));
+fn{Js} inverseSqrt (v: f64) = 1.0 / sqrt(v);
 
 /// Unsigned Integer-related functions and function bindings
 fn{Rs} add Method{"wrapping_add"} :: (u8, Deref{u8}) -> u8;
@@ -1329,6 +1333,8 @@ fn normalize (arr: f64[]) {
   let arr1 = arr.clone; // TODO: Needed for Rust codegen, but should not
   return if(mag == 0.0, fn = arr1.clone, fn = arr.map(fn (v: f64) = v / mag));
 }
+fn inverseSqrt(arr: f32[]) = arr.map(inverseSqrt);
+fn inverseSqrt(arr: f64[]) = arr.map(inverseSqrt);
 
 /// Buffer related bindings
 fn{Rs} get{T, S} "alan_std::getbuffer" <- RootBacking :: (T[S], i64) -> T?;
@@ -1390,6 +1396,8 @@ fn normalize{S} (arr: f64[S]) {
   let arr1 = arr.clone; // TODO: Needed for Rust codegen, but should not
   return if(mag == 0.0, fn = arr1.clone, fn = arr.map(fn (v: f64) = v / mag));
 }
+fn inverseSqrt{S}(buf: f32[S]) = buf.map(inverseSqrt);
+fn inverseSqrt{S}(buf: f64[S]) = buf.map(inverseSqrt);
 
 /// Dictionary-related bindings
 fn{Rs} Dict{K, V} "alan_std::OrderedHashMap::new" <- RootBacking :: () -> Dict{K, V};
@@ -3970,6 +3978,15 @@ fn magnitude(v: gf32) = gMagnitude(v);
 fn magnitude(v: gvec2f) = gMagnitude(v);
 fn magnitude(v: gvec3f) = gMagnitude(v);
 fn magnitude(v: gvec4f) = gMagnitude(v);
+
+fn gInverseSqrt{I}(v: I) {
+  let varName = 'inverseSqrt('.concat(v.varName).concat(')');
+  return {I}(varName, v.statements, v.buffers);
+}
+fn inverseSqrt(v: gf32) = gInverseSqrt(v);
+fn inverseSqrt(v: gvec2f) = gInverseSqrt(v);
+fn inverseSqrt(v: gvec3f) = gInverseSqrt(v);
+fn inverseSqrt(v: gvec4f) = gInverseSqrt(v);
 
 fn gNormalize{I}(v: I) {
   let varName = 'normalize('.concat(v.varName).concat(')');
