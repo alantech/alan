@@ -788,6 +788,26 @@ test_gpgpu!(gpu_inverse_sqrt => r#"
     stdout "[0.5, 0.2]\n";
 );
 
+test_gpgpu!(gpu_fma => r#"
+    export fn{Js} main {
+      let b = GBuffer([2.0.f32, 3.0.f32, 4.0.f32]);
+      let id = gFor(1);
+      let out = GBuffer{f32}(1);
+      // Hack to get this to work in JS, because the generic is not passed through there
+      {"((b) => { b.ValKind = alan_std.F32; })" :: GBuffer}(out);
+      out[id].store(fma(b[0].asF32, b[1].asF32, b[2].asF32).asI32).build.run;
+      (out.read{f32}[0]!!).string(1).print;
+    }
+    export fn{Rs} main {
+      let b = GBuffer([2.0.f32, 3.0.f32, 4.0.f32]);
+      let id = gFor(1);
+      let out = GBuffer{f32}(1);
+      out[id].store(fma(b[0].asF32, b[1].asF32, b[2].asF32).asI32).build.run;
+      (out.read{f32}[0]!!).string(1).print;
+    }"#;
+    stdout "10.0\n";
+);
+
 // TODO: Fix u64 numeric constants to get u64 bitwise tests in the new test suite
 test!(u64_bitwise => r#"
     prefix u64 as ~ precedence 10

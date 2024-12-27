@@ -1127,7 +1127,14 @@ pub fn from_microstatement(
                                 let enum_name = match &*enum_type {
                                     CType::Field(n, _) => Ok(n.clone()),
                                     CType::Type(n, _) => Ok(n.clone()),
-                                    _ => Err(format!("Cannot generate an constructor function for {} type as the input type has no name?", function.name)),
+                                    CType::Array(_) => {
+                                        // TODO: Handle this better
+                                        return Ok(("".to_string(), out, deps));
+                                    }
+                                    _ => {
+                                        println!("function {:?}", function);
+                                        Err(format!("Cannot generate an constructor function for {} type as the input type has no name?", function.name))
+                                    }
                                 }?;
                                 for t in ts {
                                     let inner_type = t.clone().degroup();

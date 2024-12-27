@@ -98,7 +98,13 @@ pub fn ctype_to_rtype(
                                 deps = res.1;
                                 out.push(s);
                             }
-                            enum_type_strs.push(format!("({}", out.join(", ")));
+                            enum_type_strs.push(format!("({})", out.join(", ")));
+                        }
+                        CType::Array(t) => {
+                            let res = ctype_to_rtype(t, in_function_type, deps)?;
+                            let s = res.0;
+                            deps = res.1;
+                            enum_type_strs.push(format!("Vec<{}>", s));
                         }
                         otherwise => {
                             return Err(format!("TODO: What is this? {:?}", otherwise).into());
