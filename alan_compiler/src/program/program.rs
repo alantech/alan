@@ -34,8 +34,12 @@ Program {
     scopes_by_file: OrderedHashMap::new(),
     env: {
         let mut env = OrderedHashMap::new();
-        for (k, v) in std::env::vars() {
-            env.insert(k.to_string(), v.to_string());
+        if !cfg!(target_family="wasm") {
+            for (k, v) in std::env::vars() {
+                env.insert(k.to_string(), v.to_string());
+            }
+        } else {
+            env.insert("ALAN_TARGET".to_string(), "release".to_string());
         }
         env.insert("ALAN_OUTPUT_LANG".to_string(), "js".to_string());
         env

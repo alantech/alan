@@ -1,0 +1,32 @@
+<!doctype html>
+
+<html>
+  <head>
+    <title>WASM compiler test</title>
+    <script type="importmap">
+      {
+        "imports": {
+          "web_compiler": "./web_compiler/pkg/web_compiler.js"
+        }
+      }
+    </script>
+    <script type="module">
+      import { default as init, compile } from "web_compiler";
+      let t1 = performance.now();
+      document.addEventListener("DOMContentLoaded", async (evt) => {
+        let t2 = performance.now();
+        console.log(`DOM loaded in ${t2 - t1}ms`);
+        await init();
+        let t3 = performance.now();
+        console.log(`WASM initialized in ${t3 - t2}ms`);
+        let ln = "export fn main = 'Hello, World!'.print;";
+        let js = compile(ln);
+        let t4 = performance.now();
+        console.log(`Alan compilation took ${t4 - t3}ms`);
+        console.log({ ln, js });
+        document.body.innerHTML = `<h1>Alan</h1><pre><code>${ln}</code></pre><h1>JS</h1><pre><code>${js}</code><pre>`;
+      });
+    </script>
+  </head>
+  <body></body>
+</html>
