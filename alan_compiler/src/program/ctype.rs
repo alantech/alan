@@ -365,8 +365,7 @@ impl CType {
         let mut ctype_stack = vec![self];
         let close_brace = CType::Infer("}".to_string(), "}".to_string()); // Hack for this speedup
         let comma = CType::Infer(", ".to_string(), ", ".to_string()); // Similar hack
-        while !ctype_stack.is_empty() {
-            let element = ctype_stack.pop().unwrap();
+        while let Some(element) = ctype_stack.pop() {
             match element {
                 CType::Void => str_parts.push("void"),
                 CType::Infer(s, _) => str_parts.push(s),
