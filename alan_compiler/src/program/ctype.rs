@@ -365,17 +365,17 @@ impl CType {
         let mut ctype_stack = vec![self];
         let close_brace = CType::Infer("}".to_string(), "}".to_string()); // Hack for this speedup
         let comma = CType::Infer(", ".to_string(), ", ".to_string()); // Similar hack
-        while ctype_stack.len() > 0 {
+        while !ctype_stack.is_empty() {
             let element = ctype_stack.pop().unwrap();
             match element {
                 CType::Void => str_parts.push("void"),
-                CType::Infer(s, _) => str_parts.push(&s),
-                CType::Type(_, t) => ctype_stack.push(&t),
+                CType::Infer(s, _) => str_parts.push(s),
+                CType::Type(_, t) => ctype_stack.push(t),
                 CType::Generic(n, gs, _) => {
-                    str_parts.push(&n);
+                    str_parts.push(n);
                     str_parts.push("{");
                     for g in gs {
-                        str_parts.push(&g);
+                        str_parts.push(g);
                         str_parts.push(", ");
                     }
                     str_parts.pop();
@@ -385,7 +385,7 @@ impl CType {
                     str_parts.push("Binds{");
                     ctype_stack.push(&close_brace);
                     for (i, t) in ts.iter().rev().enumerate() {
-                        ctype_stack.push(&t);
+                        ctype_stack.push(t);
                         if i != 0 {
                             ctype_stack.push(&comma);
                         }
@@ -393,7 +393,7 @@ impl CType {
                     ctype_stack.push(n);
                 }
                 CType::IntrinsicGeneric(s, u) => {
-                    str_parts.push(&s);
+                    str_parts.push(s);
                     str_parts.push("{");
                     for i in 0..(*u as u32) {
                         // TODO: This is dumb
@@ -451,90 +451,90 @@ impl CType {
                     true => str_parts.push("true"),
                     false => str_parts.push("false"),
                 },
-                CType::TString(s) => str_parts.push(&s),
-                CType::Group(t) => ctype_stack.push(&t),
+                CType::TString(s) => str_parts.push(s),
+                CType::Group(t) => ctype_stack.push(t),
                 CType::Function(i, o) => {
                     str_parts.push("Function{");
                     ctype_stack.push(&close_brace);
-                    ctype_stack.push(&o);
+                    ctype_stack.push(o);
                     ctype_stack.push(&comma);
-                    ctype_stack.push(&i);
+                    ctype_stack.push(i);
                 }
                 CType::Call(n, f) => {
                     str_parts.push("Call{");
                     ctype_stack.push(&close_brace);
-                    ctype_stack.push(&f);
+                    ctype_stack.push(f);
                     ctype_stack.push(&comma);
-                    ctype_stack.push(&n);
+                    ctype_stack.push(n);
                 }
                 CType::Infix(o) => {
                     str_parts.push("Infix{");
                     ctype_stack.push(&close_brace);
-                    ctype_stack.push(&o);
+                    ctype_stack.push(o);
                 }
                 CType::Prefix(o) => {
                     str_parts.push("Prefix{");
                     ctype_stack.push(&close_brace);
-                    ctype_stack.push(&o);
+                    ctype_stack.push(o);
                 }
                 CType::Method(f) => {
                     str_parts.push("Method{");
                     ctype_stack.push(&close_brace);
-                    ctype_stack.push(&f);
+                    ctype_stack.push(f);
                 }
                 CType::Property(p) => {
                     str_parts.push("Property{");
                     ctype_stack.push(&close_brace);
-                    ctype_stack.push(&p);
+                    ctype_stack.push(p);
                 }
                 CType::Cast(t) => {
                     str_parts.push("Cast{");
                     ctype_stack.push(&close_brace);
-                    ctype_stack.push(&t);
+                    ctype_stack.push(t);
                 }
                 CType::Own(t) => {
                     str_parts.push("Own{");
                     ctype_stack.push(&close_brace);
-                    ctype_stack.push(&t);
+                    ctype_stack.push(t);
                 }
                 CType::Deref(t) => {
                     str_parts.push("Deref{");
                     ctype_stack.push(&close_brace);
-                    ctype_stack.push(&t);
+                    ctype_stack.push(t);
                 }
                 CType::Mut(t) => {
                     str_parts.push("Mut{");
                     ctype_stack.push(&close_brace);
-                    ctype_stack.push(&t);
+                    ctype_stack.push(t);
                 }
                 CType::Dependency(n, v) => {
                     str_parts.push("Dependency{");
                     ctype_stack.push(&close_brace);
-                    ctype_stack.push(&v);
+                    ctype_stack.push(v);
                     ctype_stack.push(&comma);
-                    ctype_stack.push(&n);
+                    ctype_stack.push(n);
                 }
                 CType::Rust(d) => {
                     str_parts.push("Rust{");
                     ctype_stack.push(&close_brace);
-                    ctype_stack.push(&d);
+                    ctype_stack.push(d);
                 }
                 CType::Node(d) => {
                     str_parts.push("Node{");
                     ctype_stack.push(&close_brace);
-                    ctype_stack.push(&d);
+                    ctype_stack.push(d);
                 }
                 CType::From(d) => {
                     str_parts.push("From{");
                     ctype_stack.push(&close_brace);
-                    ctype_stack.push(&d);
+                    ctype_stack.push(d);
                 }
                 CType::Import(n, d) => {
                     str_parts.push("Import{");
                     ctype_stack.push(&close_brace);
-                    ctype_stack.push(&d);
+                    ctype_stack.push(d);
                     ctype_stack.push(&comma);
-                    ctype_stack.push(&n);
+                    ctype_stack.push(n);
                 }
                 CType::Tuple(ts) => {
                     str_parts.push("Tuple{");
@@ -543,15 +543,15 @@ impl CType {
                         if i != 0 {
                             ctype_stack.push(&comma);
                         }
-                        ctype_stack.push(&t);
+                        ctype_stack.push(t);
                     }
                 }
                 CType::Field(l, t) => {
                     str_parts.push("Field{");
-                    str_parts.push(&l);
+                    str_parts.push(l);
                     str_parts.push(", ");
                     ctype_stack.push(&close_brace);
-                    ctype_stack.push(&t);
+                    ctype_stack.push(t);
                 }
                 CType::Either(ts) => {
                     str_parts.push("Either{");
@@ -560,15 +560,15 @@ impl CType {
                         if i != 0 {
                             ctype_stack.push(&comma);
                         }
-                        ctype_stack.push(&t);
+                        ctype_stack.push(t);
                     }
                 }
                 CType::Prop(t, p) => {
                     str_parts.push("Prop{");
                     ctype_stack.push(&close_brace);
-                    ctype_stack.push(&p);
+                    ctype_stack.push(p);
                     ctype_stack.push(&comma);
-                    ctype_stack.push(&t);
+                    ctype_stack.push(t);
                 }
                 CType::AnyOf(ts) => {
                     str_parts.push("AnyOf{");
@@ -577,24 +577,24 @@ impl CType {
                         if i != 0 {
                             ctype_stack.push(&comma);
                         }
-                        ctype_stack.push(&t);
+                        ctype_stack.push(t);
                     }
                 }
                 CType::Buffer(t, s) => {
                     str_parts.push("Buffer{");
                     ctype_stack.push(&close_brace);
-                    ctype_stack.push(&s);
+                    ctype_stack.push(s);
                     ctype_stack.push(&comma);
-                    ctype_stack.push(&t);
+                    ctype_stack.push(t);
                 }
                 CType::Array(t) => {
                     str_parts.push("Array{");
                     ctype_stack.push(&close_brace);
-                    ctype_stack.push(&t);
+                    ctype_stack.push(t);
                 }
                 CType::Fail(m) => {
                     str_parts.push("Fail{");
-                    str_parts.push(&m);
+                    str_parts.push(m);
                     str_parts.push("}");
                 }
                 CType::Add(ts) => {
@@ -604,7 +604,7 @@ impl CType {
                         if i != 0 {
                             ctype_stack.push(&comma);
                         }
-                        ctype_stack.push(&t);
+                        ctype_stack.push(t);
                     }
                 }
                 CType::Sub(ts) => {
@@ -614,7 +614,7 @@ impl CType {
                         if i != 0 {
                             ctype_stack.push(&comma);
                         }
-                        ctype_stack.push(&t);
+                        ctype_stack.push(t);
                     }
                 }
                 CType::Mul(ts) => {
@@ -624,7 +624,7 @@ impl CType {
                         if i != 0 {
                             ctype_stack.push(&comma);
                         }
-                        ctype_stack.push(&t);
+                        ctype_stack.push(t);
                     }
                 }
                 CType::Div(ts) => {
@@ -634,7 +634,7 @@ impl CType {
                         if i != 0 {
                             ctype_stack.push(&comma);
                         }
-                        ctype_stack.push(&t);
+                        ctype_stack.push(t);
                     }
                 }
                 CType::Mod(ts) => {
@@ -644,7 +644,7 @@ impl CType {
                         if i != 0 {
                             ctype_stack.push(&comma);
                         }
-                        ctype_stack.push(&t);
+                        ctype_stack.push(t);
                     }
                 }
                 CType::Pow(ts) => {
@@ -654,7 +654,7 @@ impl CType {
                         if i != 0 {
                             ctype_stack.push(&comma);
                         }
-                        ctype_stack.push(&t);
+                        ctype_stack.push(t);
                     }
                 }
                 CType::Min(ts) => {
@@ -664,7 +664,7 @@ impl CType {
                         if i != 0 {
                             ctype_stack.push(&comma);
                         }
-                        ctype_stack.push(&t);
+                        ctype_stack.push(t);
                     }
                 }
                 CType::Max(ts) => {
@@ -674,35 +674,35 @@ impl CType {
                         if i != 0 {
                             ctype_stack.push(&comma);
                         }
-                        ctype_stack.push(&t);
+                        ctype_stack.push(t);
                     }
                 }
                 CType::Neg(t) => {
                     str_parts.push("Neg{");
                     ctype_stack.push(&close_brace);
-                    ctype_stack.push(&t);
+                    ctype_stack.push(t);
                 }
                 CType::Len(t) => {
                     str_parts.push("Len{");
                     ctype_stack.push(&close_brace);
-                    ctype_stack.push(&t);
+                    ctype_stack.push(t);
                 }
                 CType::Size(t) => {
                     str_parts.push("Size{");
                     ctype_stack.push(&close_brace);
-                    ctype_stack.push(&t);
+                    ctype_stack.push(t);
                 }
                 CType::FileStr(t) => {
                     str_parts.push("FileStr{");
                     ctype_stack.push(&close_brace);
-                    ctype_stack.push(&t);
+                    ctype_stack.push(t);
                 }
                 CType::Concat(a, b) => {
                     str_parts.push("Concat{");
                     ctype_stack.push(&close_brace);
-                    ctype_stack.push(&b);
+                    ctype_stack.push(b);
                     ctype_stack.push(&comma);
-                    ctype_stack.push(&a);
+                    ctype_stack.push(a);
                 }
                 CType::Env(ts) => {
                     str_parts.push("Env{");
@@ -711,13 +711,13 @@ impl CType {
                         if i != 0 {
                             ctype_stack.push(&comma);
                         }
-                        ctype_stack.push(&t);
+                        ctype_stack.push(t);
                     }
                 }
                 CType::EnvExists(t) => {
                     str_parts.push("EnvExists{");
                     ctype_stack.push(&close_brace);
-                    ctype_stack.push(&t);
+                    ctype_stack.push(t);
                 }
                 CType::TIf(t, ts) => {
                     str_parts.push("If{");
@@ -726,10 +726,10 @@ impl CType {
                         if i != 0 {
                             ctype_stack.push(&comma);
                         }
-                        ctype_stack.push(&t);
+                        ctype_stack.push(t);
                     }
                     ctype_stack.push(&comma);
-                    ctype_stack.push(&t);
+                    ctype_stack.push(t);
                 }
                 CType::And(ts) => {
                     str_parts.push("And{");
@@ -738,7 +738,7 @@ impl CType {
                         if i != 0 {
                             ctype_stack.push(&comma);
                         }
-                        ctype_stack.push(&t);
+                        ctype_stack.push(t);
                     }
                 }
                 CType::Or(ts) => {
@@ -748,7 +748,7 @@ impl CType {
                         if i != 0 {
                             ctype_stack.push(&comma);
                         }
-                        ctype_stack.push(&t);
+                        ctype_stack.push(t);
                     }
                 }
                 CType::Xor(ts) => {
@@ -758,13 +758,13 @@ impl CType {
                         if i != 0 {
                             ctype_stack.push(&comma);
                         }
-                        ctype_stack.push(&t);
+                        ctype_stack.push(t);
                     }
                 }
                 CType::Not(t) => {
                     str_parts.push("Not{");
                     ctype_stack.push(&close_brace);
-                    ctype_stack.push(&t);
+                    ctype_stack.push(t);
                 }
                 CType::Nand(ts) => {
                     str_parts.push("Nand{");
@@ -773,7 +773,7 @@ impl CType {
                         if i != 0 {
                             ctype_stack.push(&comma);
                         }
-                        ctype_stack.push(&t);
+                        ctype_stack.push(t);
                     }
                 }
                 CType::Nor(ts) => {
@@ -783,7 +783,7 @@ impl CType {
                         if i != 0 {
                             ctype_stack.push(&comma);
                         }
-                        ctype_stack.push(&t);
+                        ctype_stack.push(t);
                     }
                 }
                 CType::Xnor(ts) => {
@@ -793,7 +793,7 @@ impl CType {
                         if i != 0 {
                             ctype_stack.push(&comma);
                         }
-                        ctype_stack.push(&t);
+                        ctype_stack.push(t);
                     }
                 }
                 CType::TEq(ts) => {
@@ -803,7 +803,7 @@ impl CType {
                         if i != 0 {
                             ctype_stack.push(&comma);
                         }
-                        ctype_stack.push(&t);
+                        ctype_stack.push(t);
                     }
                 }
                 CType::Neq(ts) => {
@@ -813,7 +813,7 @@ impl CType {
                         if i != 0 {
                             ctype_stack.push(&comma);
                         }
-                        ctype_stack.push(&t);
+                        ctype_stack.push(t);
                     }
                 }
                 CType::Lt(ts) => {
@@ -823,7 +823,7 @@ impl CType {
                         if i != 0 {
                             ctype_stack.push(&comma);
                         }
-                        ctype_stack.push(&t);
+                        ctype_stack.push(t);
                     }
                 }
                 CType::Lte(ts) => {
@@ -833,7 +833,7 @@ impl CType {
                         if i != 0 {
                             ctype_stack.push(&comma);
                         }
-                        ctype_stack.push(&t);
+                        ctype_stack.push(t);
                     }
                 }
                 CType::Gt(ts) => {
@@ -843,7 +843,7 @@ impl CType {
                         if i != 0 {
                             ctype_stack.push(&comma);
                         }
-                        ctype_stack.push(&t);
+                        ctype_stack.push(t);
                     }
                 }
                 CType::Gte(ts) => {
@@ -853,7 +853,7 @@ impl CType {
                         if i != 0 {
                             ctype_stack.push(&comma);
                         }
-                        ctype_stack.push(&t);
+                        ctype_stack.push(t);
                     }
                 }
             }
