@@ -360,269 +360,504 @@ impl CType {
         }
     }
     pub fn to_functional_string(&self) -> String {
-        match self {
-            CType::Void => "void".to_string(),
-            CType::Infer(s, _) => s.clone(), // TODO: What to do here?
-            CType::Type(_, t) => t.to_functional_string(),
-            CType::Generic(n, gs, _) => format!("{}{{{}}}", n, gs.join(", ")),
-            CType::Binds(n, ts) => format!(
-                "Binds{{{}{}{}}}",
-                n.to_functional_string(),
-                if ts.is_empty() { "" } else { ", " },
-                ts.iter()
-                    .map(|t| t.to_functional_string())
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            ),
-            CType::IntrinsicGeneric(s, u) => format!("{}{{{}}}", s, {
-                let mut out = Vec::new();
-                for i in 0..(*u as u32) {
-                    let a = 'a' as u32;
-                    let c = char::from_u32(a + i).unwrap();
-                    out.push(c.to_string());
+        let mut unavoidable_strings = Vec::new();
+        let mut str_parts = Vec::new();
+        let mut ctype_stack = vec![self];
+        let close_brace = CType::Infer("}".to_string(), "}".to_string()); // Hack for this speedup
+        let comma = CType::Infer(", ".to_string(), ", ".to_string()); // Similar hack
+        while let Some(element) = ctype_stack.pop() {
+            match element {
+                CType::Void => str_parts.push("void"),
+                CType::Infer(s, _) => str_parts.push(s),
+                CType::Type(_, t) => ctype_stack.push(t),
+                CType::Generic(n, gs, _) => {
+                    str_parts.push(n);
+                    str_parts.push("{");
+                    for g in gs {
+                        str_parts.push(g);
+                        str_parts.push(", ");
+                    }
+                    str_parts.pop();
+                    str_parts.push("}");
                 }
-                out.join(", ")
-            }),
-            CType::Int(i) => format!("{}", i),
-            CType::Float(f) => format!("{}", f),
-            CType::Bool(b) => match b {
-                true => "true".to_string(),
-                false => "false".to_string(),
-            },
-            CType::TString(s) => s.clone(),
-            CType::Group(t) => t.to_functional_string(),
-            CType::Function(i, o) => format!(
-                "Function{{{}, {}}}",
-                i.to_functional_string(),
-                o.to_functional_string()
-            ),
-            CType::Call(n, f) => format!(
-                "Call{{{}, {}}}",
-                n.to_functional_string(),
-                f.to_functional_string()
-            ),
-            CType::Infix(o) => format!("Infix{{{}}}", o.to_functional_string()),
-            CType::Prefix(o) => format!("Prefix{{{}}}", o.to_functional_string()),
-            CType::Method(f) => format!("Method{{{}}}", f.to_functional_string()),
-            CType::Property(p) => format!("Property{{{}}}", p.to_functional_string()),
-            CType::Cast(t) => format!("Cast{{{}}}", t.to_functional_string()),
-            CType::Own(t) => format!("Own{{{}}}", t.to_functional_string()),
-            CType::Deref(t) => format!("Deref{{{}}}", t.to_functional_string()),
-            CType::Mut(t) => format!("Mut{{{}}}", t.to_functional_string()),
-            CType::Dependency(n, v) => format!(
-                "Dependency{{{}, {}}}",
-                n.to_functional_string(),
-                v.to_functional_string()
-            ),
-            CType::Rust(d) => format!("Rust{{{}}}", d.to_functional_string()),
-            CType::Node(d) => format!("Node{{{}}}", d.to_functional_string()),
-            CType::From(d) => format!("From{{{}}}", d.to_functional_string()),
-            CType::Import(n, d) => format!(
-                "Import{{{}, {}}}",
-                n.to_functional_string(),
-                d.to_functional_string(),
-            ),
-            CType::Tuple(ts) => format!(
-                "Tuple{{{}}}",
-                ts.iter()
-                    .map(|t| t.to_functional_string())
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            ),
-            CType::Field(l, t) => format!("Field{{{}, {}}}", l, t.to_functional_string()),
-            CType::Either(ts) => format!(
-                "Either{{{}}}",
-                ts.iter()
-                    .map(|t| t.to_functional_string())
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            ),
-            CType::Prop(t, p) => format!(
-                "Prop{{{}, {}}}",
-                t.to_functional_string(),
-                p.to_functional_string()
-            ),
-            CType::AnyOf(ts) => format!(
-                "AnyOf{{{}}}",
-                ts.iter()
-                    .map(|t| t.to_functional_string())
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            ),
-            CType::Buffer(t, s) => format!(
-                "Buffer{{{}, {}}}",
-                t.to_functional_string(),
-                s.to_functional_string()
-            ),
-            CType::Array(t) => format!("Array{{{}}}", t.to_functional_string()),
-            CType::Fail(m) => format!("Fail{{{}}}", m),
-            CType::Add(ts) => format!(
-                "Add{{{}}}",
-                ts.iter()
-                    .map(|t| t.to_functional_string())
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            ),
-            CType::Sub(ts) => format!(
-                "Sub{{{}}}",
-                ts.iter()
-                    .map(|t| t.to_functional_string())
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            ),
-            CType::Mul(ts) => format!(
-                "Mul{{{}}}",
-                ts.iter()
-                    .map(|t| t.to_functional_string())
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            ),
-            CType::Div(ts) => format!(
-                "Div{{{}}}",
-                ts.iter()
-                    .map(|t| t.to_functional_string())
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            ),
-            CType::Mod(ts) => format!(
-                "Mod{{{}}}",
-                ts.iter()
-                    .map(|t| t.to_functional_string())
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            ),
-            CType::Pow(ts) => format!(
-                "Pow{{{}}}",
-                ts.iter()
-                    .map(|t| t.to_functional_string())
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            ),
-            CType::Min(ts) => format!(
-                "Min{{{}}}",
-                ts.iter()
-                    .map(|t| t.to_functional_string())
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            ),
-            CType::Max(ts) => format!(
-                "Max{{{}}}",
-                ts.iter()
-                    .map(|t| t.to_functional_string())
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            ),
-            CType::Neg(t) => format!("Neg{{{}}}", t.to_functional_string()),
-            CType::Len(t) => format!("Len{{{}}}", t.to_functional_string()),
-            CType::Size(t) => format!("Size{{{}}}", t.to_functional_string()),
-            CType::FileStr(t) => format!("FileStr{{{}}}", t.to_functional_string()),
-            CType::Concat(a, b) => format!(
-                "Concat{{{}, {}}}",
-                a.to_functional_string(),
-                b.to_functional_string()
-            ),
-            CType::Env(ts) => format!(
-                "Env{{{}}}",
-                ts.iter()
-                    .map(|t| t.to_functional_string())
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            ),
-            CType::EnvExists(t) => format!("EnvExists{{{}}}", t.to_functional_string()),
-            CType::TIf(t, ts) => format!(
-                "If{{{}, {}}}",
-                t.to_functional_string(),
-                ts.iter()
-                    .map(|t| t.to_functional_string())
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            ),
-            CType::And(ts) => format!(
-                "And{{{}}}",
-                ts.iter()
-                    .map(|t| t.to_functional_string())
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            ),
-            CType::Or(ts) => format!(
-                "Or{{{}}}",
-                ts.iter()
-                    .map(|t| t.to_functional_string())
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            ),
-            CType::Xor(ts) => format!(
-                "Xor{{{}}}",
-                ts.iter()
-                    .map(|t| t.to_functional_string())
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            ),
-            CType::Not(t) => format!("Not{{{}}}", t.to_functional_string()),
-            CType::Nand(ts) => format!(
-                "Nand{{{}}}",
-                ts.iter()
-                    .map(|t| t.to_functional_string())
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            ),
-            CType::Nor(ts) => format!(
-                "Nor{{{}}}",
-                ts.iter()
-                    .map(|t| t.to_functional_string())
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            ),
-            CType::Xnor(ts) => format!(
-                "Xnor{{{}}}",
-                ts.iter()
-                    .map(|t| t.to_functional_string())
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            ),
-            CType::TEq(ts) => format!(
-                "Eq{{{}}}",
-                ts.iter()
-                    .map(|t| t.to_functional_string())
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            ),
-            CType::Neq(ts) => format!(
-                "Neq{{{}}}",
-                ts.iter()
-                    .map(|t| t.to_functional_string())
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            ),
-            CType::Lt(ts) => format!(
-                "Lt{{{}}}",
-                ts.iter()
-                    .map(|t| t.to_functional_string())
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            ),
-            CType::Lte(ts) => format!(
-                "Lte{{{}}}",
-                ts.iter()
-                    .map(|t| t.to_functional_string())
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            ),
-            CType::Gt(ts) => format!(
-                "Gt{{{}}}",
-                ts.iter()
-                    .map(|t| t.to_functional_string())
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            ),
-            CType::Gte(ts) => format!(
-                "Gte{{{}}}",
-                ts.iter()
-                    .map(|t| t.to_functional_string())
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            ),
+                CType::Binds(n, ts) => {
+                    str_parts.push("Binds{");
+                    ctype_stack.push(&close_brace);
+                    for (i, t) in ts.iter().rev().enumerate() {
+                        ctype_stack.push(t);
+                        if i != 0 {
+                            ctype_stack.push(&comma);
+                        }
+                    }
+                    ctype_stack.push(n);
+                }
+                CType::IntrinsicGeneric(s, u) => {
+                    str_parts.push(s);
+                    str_parts.push("{");
+                    for i in 0..(*u as u32) {
+                        // TODO: This is dumb
+                        str_parts.push(match i {
+                            0 => "a",
+                            1 => "b",
+                            2 => "c",
+                            3 => "d",
+                            4 => "e",
+                            5 => "f",
+                            6 => "g",
+                            7 => "h",
+                            8 => "i",
+                            9 => "j",
+                            10 => "k",
+                            11 => "l",
+                            12 => "m",
+                            13 => "n",
+                            14 => "o",
+                            15 => "p",
+                            16 => "q",
+                            17 => "r",
+                            18 => "s",
+                            19 => "t",
+                            20 => "u",
+                            21 => "v",
+                            22 => "w",
+                            23 => "x",
+                            24 => "y",
+                            25 => "z",
+                            _ => "_",
+                        });
+                        str_parts.push(", ");
+                    }
+                    str_parts.pop();
+                    str_parts.push("}");
+                }
+                CType::Int(i) => {
+                    let l = unavoidable_strings.len();
+                    unavoidable_strings.push(format!("{}", i));
+                    let p = unavoidable_strings.as_ptr();
+                    unsafe {
+                        str_parts.push(p.add(l).as_ref().unwrap());
+                    }
+                }
+                CType::Float(f) => {
+                    let l = unavoidable_strings.len();
+                    unavoidable_strings.push(format!("{}", f));
+                    let p = unavoidable_strings.as_ptr();
+                    unsafe {
+                        str_parts.push(p.add(l).as_ref().unwrap());
+                    }
+                }
+                CType::Bool(b) => match b {
+                    true => str_parts.push("true"),
+                    false => str_parts.push("false"),
+                },
+                CType::TString(s) => str_parts.push(s),
+                CType::Group(t) => ctype_stack.push(t),
+                CType::Function(i, o) => {
+                    str_parts.push("Function{");
+                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(o);
+                    ctype_stack.push(&comma);
+                    ctype_stack.push(i);
+                }
+                CType::Call(n, f) => {
+                    str_parts.push("Call{");
+                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(f);
+                    ctype_stack.push(&comma);
+                    ctype_stack.push(n);
+                }
+                CType::Infix(o) => {
+                    str_parts.push("Infix{");
+                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(o);
+                }
+                CType::Prefix(o) => {
+                    str_parts.push("Prefix{");
+                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(o);
+                }
+                CType::Method(f) => {
+                    str_parts.push("Method{");
+                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(f);
+                }
+                CType::Property(p) => {
+                    str_parts.push("Property{");
+                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(p);
+                }
+                CType::Cast(t) => {
+                    str_parts.push("Cast{");
+                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(t);
+                }
+                CType::Own(t) => {
+                    str_parts.push("Own{");
+                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(t);
+                }
+                CType::Deref(t) => {
+                    str_parts.push("Deref{");
+                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(t);
+                }
+                CType::Mut(t) => {
+                    str_parts.push("Mut{");
+                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(t);
+                }
+                CType::Dependency(n, v) => {
+                    str_parts.push("Dependency{");
+                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(v);
+                    ctype_stack.push(&comma);
+                    ctype_stack.push(n);
+                }
+                CType::Rust(d) => {
+                    str_parts.push("Rust{");
+                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(d);
+                }
+                CType::Node(d) => {
+                    str_parts.push("Node{");
+                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(d);
+                }
+                CType::From(d) => {
+                    str_parts.push("From{");
+                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(d);
+                }
+                CType::Import(n, d) => {
+                    str_parts.push("Import{");
+                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(d);
+                    ctype_stack.push(&comma);
+                    ctype_stack.push(n);
+                }
+                CType::Tuple(ts) => {
+                    str_parts.push("Tuple{");
+                    ctype_stack.push(&close_brace);
+                    for (i, t) in ts.iter().rev().enumerate() {
+                        if i != 0 {
+                            ctype_stack.push(&comma);
+                        }
+                        ctype_stack.push(t);
+                    }
+                }
+                CType::Field(l, t) => {
+                    str_parts.push("Field{");
+                    str_parts.push(l);
+                    str_parts.push(", ");
+                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(t);
+                }
+                CType::Either(ts) => {
+                    str_parts.push("Either{");
+                    ctype_stack.push(&close_brace);
+                    for (i, t) in ts.iter().rev().enumerate() {
+                        if i != 0 {
+                            ctype_stack.push(&comma);
+                        }
+                        ctype_stack.push(t);
+                    }
+                }
+                CType::Prop(t, p) => {
+                    str_parts.push("Prop{");
+                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(p);
+                    ctype_stack.push(&comma);
+                    ctype_stack.push(t);
+                }
+                CType::AnyOf(ts) => {
+                    str_parts.push("AnyOf{");
+                    ctype_stack.push(&close_brace);
+                    for (i, t) in ts.iter().rev().enumerate() {
+                        if i != 0 {
+                            ctype_stack.push(&comma);
+                        }
+                        ctype_stack.push(t);
+                    }
+                }
+                CType::Buffer(t, s) => {
+                    str_parts.push("Buffer{");
+                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(s);
+                    ctype_stack.push(&comma);
+                    ctype_stack.push(t);
+                }
+                CType::Array(t) => {
+                    str_parts.push("Array{");
+                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(t);
+                }
+                CType::Fail(m) => {
+                    str_parts.push("Fail{");
+                    str_parts.push(m);
+                    str_parts.push("}");
+                }
+                CType::Add(ts) => {
+                    str_parts.push("Add{");
+                    ctype_stack.push(&close_brace);
+                    for (i, t) in ts.iter().rev().enumerate() {
+                        if i != 0 {
+                            ctype_stack.push(&comma);
+                        }
+                        ctype_stack.push(t);
+                    }
+                }
+                CType::Sub(ts) => {
+                    str_parts.push("Sub{");
+                    ctype_stack.push(&close_brace);
+                    for (i, t) in ts.iter().rev().enumerate() {
+                        if i != 0 {
+                            ctype_stack.push(&comma);
+                        }
+                        ctype_stack.push(t);
+                    }
+                }
+                CType::Mul(ts) => {
+                    str_parts.push("Mul{");
+                    ctype_stack.push(&close_brace);
+                    for (i, t) in ts.iter().rev().enumerate() {
+                        if i != 0 {
+                            ctype_stack.push(&comma);
+                        }
+                        ctype_stack.push(t);
+                    }
+                }
+                CType::Div(ts) => {
+                    str_parts.push("Div{");
+                    ctype_stack.push(&close_brace);
+                    for (i, t) in ts.iter().rev().enumerate() {
+                        if i != 0 {
+                            ctype_stack.push(&comma);
+                        }
+                        ctype_stack.push(t);
+                    }
+                }
+                CType::Mod(ts) => {
+                    str_parts.push("Mod{");
+                    ctype_stack.push(&close_brace);
+                    for (i, t) in ts.iter().rev().enumerate() {
+                        if i != 0 {
+                            ctype_stack.push(&comma);
+                        }
+                        ctype_stack.push(t);
+                    }
+                }
+                CType::Pow(ts) => {
+                    str_parts.push("Pow{");
+                    ctype_stack.push(&close_brace);
+                    for (i, t) in ts.iter().rev().enumerate() {
+                        if i != 0 {
+                            ctype_stack.push(&comma);
+                        }
+                        ctype_stack.push(t);
+                    }
+                }
+                CType::Min(ts) => {
+                    str_parts.push("Min{");
+                    ctype_stack.push(&close_brace);
+                    for (i, t) in ts.iter().rev().enumerate() {
+                        if i != 0 {
+                            ctype_stack.push(&comma);
+                        }
+                        ctype_stack.push(t);
+                    }
+                }
+                CType::Max(ts) => {
+                    str_parts.push("Max{");
+                    ctype_stack.push(&close_brace);
+                    for (i, t) in ts.iter().rev().enumerate() {
+                        if i != 0 {
+                            ctype_stack.push(&comma);
+                        }
+                        ctype_stack.push(t);
+                    }
+                }
+                CType::Neg(t) => {
+                    str_parts.push("Neg{");
+                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(t);
+                }
+                CType::Len(t) => {
+                    str_parts.push("Len{");
+                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(t);
+                }
+                CType::Size(t) => {
+                    str_parts.push("Size{");
+                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(t);
+                }
+                CType::FileStr(t) => {
+                    str_parts.push("FileStr{");
+                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(t);
+                }
+                CType::Concat(a, b) => {
+                    str_parts.push("Concat{");
+                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(b);
+                    ctype_stack.push(&comma);
+                    ctype_stack.push(a);
+                }
+                CType::Env(ts) => {
+                    str_parts.push("Env{");
+                    ctype_stack.push(&close_brace);
+                    for (i, t) in ts.iter().rev().enumerate() {
+                        if i != 0 {
+                            ctype_stack.push(&comma);
+                        }
+                        ctype_stack.push(t);
+                    }
+                }
+                CType::EnvExists(t) => {
+                    str_parts.push("EnvExists{");
+                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(t);
+                }
+                CType::TIf(t, ts) => {
+                    str_parts.push("If{");
+                    ctype_stack.push(&close_brace);
+                    for (i, t) in ts.iter().rev().enumerate() {
+                        if i != 0 {
+                            ctype_stack.push(&comma);
+                        }
+                        ctype_stack.push(t);
+                    }
+                    ctype_stack.push(&comma);
+                    ctype_stack.push(t);
+                }
+                CType::And(ts) => {
+                    str_parts.push("And{");
+                    ctype_stack.push(&close_brace);
+                    for (i, t) in ts.iter().rev().enumerate() {
+                        if i != 0 {
+                            ctype_stack.push(&comma);
+                        }
+                        ctype_stack.push(t);
+                    }
+                }
+                CType::Or(ts) => {
+                    str_parts.push("Or{");
+                    ctype_stack.push(&close_brace);
+                    for (i, t) in ts.iter().rev().enumerate() {
+                        if i != 0 {
+                            ctype_stack.push(&comma);
+                        }
+                        ctype_stack.push(t);
+                    }
+                }
+                CType::Xor(ts) => {
+                    str_parts.push("Xor{");
+                    ctype_stack.push(&close_brace);
+                    for (i, t) in ts.iter().rev().enumerate() {
+                        if i != 0 {
+                            ctype_stack.push(&comma);
+                        }
+                        ctype_stack.push(t);
+                    }
+                }
+                CType::Not(t) => {
+                    str_parts.push("Not{");
+                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(t);
+                }
+                CType::Nand(ts) => {
+                    str_parts.push("Nand{");
+                    ctype_stack.push(&close_brace);
+                    for (i, t) in ts.iter().rev().enumerate() {
+                        if i != 0 {
+                            ctype_stack.push(&comma);
+                        }
+                        ctype_stack.push(t);
+                    }
+                }
+                CType::Nor(ts) => {
+                    str_parts.push("Nor{");
+                    ctype_stack.push(&close_brace);
+                    for (i, t) in ts.iter().rev().enumerate() {
+                        if i != 0 {
+                            ctype_stack.push(&comma);
+                        }
+                        ctype_stack.push(t);
+                    }
+                }
+                CType::Xnor(ts) => {
+                    str_parts.push("Xnor{");
+                    ctype_stack.push(&close_brace);
+                    for (i, t) in ts.iter().rev().enumerate() {
+                        if i != 0 {
+                            ctype_stack.push(&comma);
+                        }
+                        ctype_stack.push(t);
+                    }
+                }
+                CType::TEq(ts) => {
+                    str_parts.push("Eq{");
+                    ctype_stack.push(&close_brace);
+                    for (i, t) in ts.iter().rev().enumerate() {
+                        if i != 0 {
+                            ctype_stack.push(&comma);
+                        }
+                        ctype_stack.push(t);
+                    }
+                }
+                CType::Neq(ts) => {
+                    str_parts.push("Neq{");
+                    ctype_stack.push(&close_brace);
+                    for (i, t) in ts.iter().rev().enumerate() {
+                        if i != 0 {
+                            ctype_stack.push(&comma);
+                        }
+                        ctype_stack.push(t);
+                    }
+                }
+                CType::Lt(ts) => {
+                    str_parts.push("Lt{");
+                    ctype_stack.push(&close_brace);
+                    for (i, t) in ts.iter().rev().enumerate() {
+                        if i != 0 {
+                            ctype_stack.push(&comma);
+                        }
+                        ctype_stack.push(t);
+                    }
+                }
+                CType::Lte(ts) => {
+                    str_parts.push("Lte{");
+                    ctype_stack.push(&close_brace);
+                    for (i, t) in ts.iter().rev().enumerate() {
+                        if i != 0 {
+                            ctype_stack.push(&comma);
+                        }
+                        ctype_stack.push(t);
+                    }
+                }
+                CType::Gt(ts) => {
+                    str_parts.push("Gt{");
+                    ctype_stack.push(&close_brace);
+                    for (i, t) in ts.iter().rev().enumerate() {
+                        if i != 0 {
+                            ctype_stack.push(&comma);
+                        }
+                        ctype_stack.push(t);
+                    }
+                }
+                CType::Gte(ts) => {
+                    str_parts.push("Gte{");
+                    ctype_stack.push(&close_brace);
+                    for (i, t) in ts.iter().rev().enumerate() {
+                        if i != 0 {
+                            ctype_stack.push(&comma);
+                        }
+                        ctype_stack.push(t);
+                    }
+                }
+            }
         }
+        str_parts.join("")
     }
     pub fn to_callable_string(&self) -> String {
         // TODO: Be more efficient with this later
