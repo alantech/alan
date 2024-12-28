@@ -1,4 +1,5 @@
 use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 
 use super::function::{type_to_args, type_to_rettype};
 use super::ArgKind;
@@ -1742,7 +1743,7 @@ impl CType {
         }
     }
 
-    pub fn to_functions(&self, name: String, scope: &Scope) -> (CType, Vec<Function>) {
+    pub fn to_functions(&self, name: String, scope: &Scope) -> (CType, Vec<Arc<Function>>) {
         let t = CType::Type(name.clone(), Box::new(self.clone()));
         let constructor_fn_name = t.to_callable_string();
         let mut fs = Vec::new();
@@ -1777,7 +1778,7 @@ impl CType {
                         )
                 }) && matches!(&**n, CType::TString(_))
                 {
-                    fs.push(Function {
+                    fs.push(Arc::new(Function {
                         name: constructor_fn_name.clone(),
                         typen,
                         microstatements: Vec::new(),
@@ -1786,7 +1787,7 @@ impl CType {
                             _ => unreachable!(),
                         }),
                         origin_scope_path: scope.path.clone(),
-                    });
+                    }));
                 } else {
                     let mut microstatements = Vec::new();
                     let mut trimmed_args = false;
@@ -2147,18 +2148,18 @@ impl CType {
                             Box::new(rettype),
                         );
                     }
-                    fs.push(Function {
+                    fs.push(Arc::new(Function {
                         name: constructor_fn_name.clone(),
                         typen,
                         microstatements,
                         kind,
                         origin_scope_path: scope.path.clone(),
-                    });
+                    }));
                 }
             }
             CType::Type(n, _) => {
                 // This is just an alias
-                fs.push(Function {
+                fs.push(Arc::new(Function {
                     name: constructor_fn_name.clone(),
                     typen: CType::Function(
                         Box::new(CType::Field(n.clone(), Box::new(self.clone()))),
@@ -2167,7 +2168,7 @@ impl CType {
                     microstatements: Vec::new(),
                     kind: FnKind::Derived,
                     origin_scope_path: scope.path.clone(),
-                });
+                }));
             }
             CType::Tuple(ts) => {
                 // The constructor function needs to grab the types from all
@@ -2192,7 +2193,7 @@ impl CType {
                                     // it to the args array to construct it. The accessor function
                                     // will return this value as a string.
                                     let string = scope.resolve_type("string").unwrap().clone();
-                                    fs.push(Function {
+                                    fs.push(Arc::new(Function {
                                         name: n.clone(),
                                         typen: CType::Function(
                                             Box::new(t.clone()),
@@ -2207,14 +2208,14 @@ impl CType {
                                         }],
                                         kind: FnKind::Static,
                                         origin_scope_path: scope.path.clone(),
-                                    });
+                                    }));
                                 }
                                 CType::Int(i) => {
                                     // Create an accessor function for this value, but do not add
                                     // it to the args array to construct it. The accessor function
                                     // will return this value as an i64.
                                     let int64 = scope.resolve_type("i64").unwrap().clone();
-                                    fs.push(Function {
+                                    fs.push(Arc::new(Function {
                                         name: n.clone(),
                                         typen: CType::Function(
                                             Box::new(t.clone()),
@@ -2226,14 +2227,14 @@ impl CType {
                                         }],
                                         kind: FnKind::Static,
                                         origin_scope_path: scope.path.clone(),
-                                    });
+                                    }));
                                 }
                                 CType::Float(f) => {
                                     // Create an accessor function for this value, but do not add
                                     // it to the args array to construct it. The accessor function
                                     // will return this value as an f64.
                                     let float64 = scope.resolve_type("f64").unwrap().clone();
-                                    fs.push(Function {
+                                    fs.push(Arc::new(Function {
                                         name: n.clone(),
                                         typen: CType::Function(
                                             Box::new(t.clone()),
@@ -2245,14 +2246,14 @@ impl CType {
                                         }],
                                         kind: FnKind::Static,
                                         origin_scope_path: scope.path.clone(),
-                                    });
+                                    }));
                                 }
                                 CType::Bool(b) => {
                                     // Create an accessor function for this value, but do not add
                                     // it to the args array to construct it. The accessor function
                                     // will return this value as a bool.
                                     let booln = scope.resolve_type("bool").unwrap().clone();
-                                    fs.push(Function {
+                                    fs.push(Arc::new(Function {
                                         name: n.clone(),
                                         typen: CType::Function(
                                             Box::new(t.clone()),
@@ -2267,7 +2268,7 @@ impl CType {
                                         }],
                                         kind: FnKind::Static,
                                         origin_scope_path: scope.path.clone(),
-                                    });
+                                    }));
                                 }
                                 _ => { /* Do nothing */ }
                             }
@@ -2293,17 +2294,17 @@ impl CType {
                     match ti {
                         CType::Field(n, f) => {
                             // Create an accessor function
-                            fs.push(Function {
+                            fs.push(Arc::new(Function {
                                 name: n.clone(),
                                 typen: CType::Function(Box::new(t.clone()), Box::new(*f.clone())),
                                 microstatements: Vec::new(),
                                 kind: FnKind::Derived,
                                 origin_scope_path: scope.path.clone(),
-                            });
+                            }));
                         }
                         otherwise => {
                             // Create an `<N>` function accepting the tuple by field number
-                            fs.push(Function {
+                            fs.push(Arc::new(Function {
                                 name: format!("{}", i),
                                 typen: CType::Function(
                                     Box::new(t.clone()),
@@ -2312,12 +2313,12 @@ impl CType {
                                 microstatements: Vec::new(),
                                 kind: FnKind::Derived,
                                 origin_scope_path: scope.path.clone(),
-                            });
+                            }));
                         }
                     }
                 }
                 // Define the constructor function
-                fs.push(Function {
+                fs.push(Arc::new(Function {
                     name: constructor_fn_name.clone(),
                     typen: CType::Function(
                         Box::new(CType::Tuple(actual_ts.clone())),
@@ -2326,7 +2327,7 @@ impl CType {
                     microstatements: Vec::new(),
                     kind: FnKind::Derived,
                     origin_scope_path: scope.path.clone(),
-                });
+                }));
             }
             CType::Field(n, f) => {
                 // This is a "baby tuple" of just one value. So we follow the Tuple logic, but
@@ -2337,7 +2338,7 @@ impl CType {
                         // it to the args array to construct it. The accessor function
                         // will return this value as a string.
                         let string = scope.resolve_type("string").unwrap().clone();
-                        fs.push(Function {
+                        fs.push(Arc::new(Function {
                             name: n.clone(),
                             typen: CType::Function(Box::new(t.clone()), Box::new(string.clone())),
                             microstatements: vec![Microstatement::Value {
@@ -2346,14 +2347,14 @@ impl CType {
                             }],
                             kind: FnKind::Static,
                             origin_scope_path: scope.path.clone(),
-                        });
+                        }));
                     }
                     CType::Int(i) => {
                         // Create an accessor function for this value, but do not add
                         // it to the args array to construct it. The accessor function
                         // will return this value as an i64.
                         let int64 = scope.resolve_type("i64").unwrap().clone();
-                        fs.push(Function {
+                        fs.push(Arc::new(Function {
                             name: n.clone(),
                             typen: CType::Function(Box::new(t.clone()), Box::new(int64.clone())),
                             microstatements: vec![Microstatement::Value {
@@ -2362,14 +2363,14 @@ impl CType {
                             }],
                             kind: FnKind::Static,
                             origin_scope_path: scope.path.clone(),
-                        });
+                        }));
                     }
                     CType::Float(f) => {
                         // Create an accessor function for this value, but do not add
                         // it to the args array to construct it. The accessor function
                         // will return this value as an f64.
                         let float64 = scope.resolve_type("f64").unwrap().clone();
-                        fs.push(Function {
+                        fs.push(Arc::new(Function {
                             name: n.clone(),
                             typen: CType::Function(Box::new(t.clone()), Box::new(float64.clone())),
                             microstatements: vec![Microstatement::Value {
@@ -2378,14 +2379,14 @@ impl CType {
                             }],
                             kind: FnKind::Static,
                             origin_scope_path: scope.path.clone(),
-                        });
+                        }));
                     }
                     CType::Bool(b) => {
                         // Create an accessor function for this value, but do not add
                         // it to the args array to construct it. The accessor function
                         // will return this value as a bool.
                         let booln = scope.resolve_type("bool").unwrap().clone();
-                        fs.push(Function {
+                        fs.push(Arc::new(Function {
                             name: n.clone(),
                             typen: CType::Function(Box::new(t.clone()), Box::new(booln.clone())),
                             microstatements: vec![Microstatement::Value {
@@ -2397,41 +2398,41 @@ impl CType {
                             }],
                             kind: FnKind::Static,
                             origin_scope_path: scope.path.clone(),
-                        });
+                        }));
                     }
                     _ => {
-                        fs.push(Function {
+                        fs.push(Arc::new(Function {
                             name: n.clone(),
                             typen: CType::Function(Box::new(t.clone()), Box::new(*f.clone())),
                             microstatements: Vec::new(),
                             kind: FnKind::Derived,
                             origin_scope_path: scope.path.clone(),
-                        });
+                        }));
                     }
                 }
                 // Define the constructor function
-                fs.push(Function {
+                fs.push(Arc::new(Function {
                     name: constructor_fn_name.clone(),
                     typen: CType::Function(Box::new(*f.clone()), Box::new(t.clone())),
                     microstatements: Vec::new(),
                     kind: FnKind::Derived,
                     origin_scope_path: scope.path.clone(),
-                });
+                }));
             }
             CType::Either(ts) => {
                 // There are an equal number of constructor functions and accessor
                 // functions, one for each inner type of the sum type.
                 for e in ts {
                     // Create a constructor fn
-                    fs.push(Function {
+                    fs.push(Arc::new(Function {
                         name: constructor_fn_name.clone(),
                         typen: CType::Function(Box::new(e.clone()), Box::new(t.clone())),
                         microstatements: Vec::new(),
                         kind: FnKind::Derived,
                         origin_scope_path: scope.path.clone(),
-                    });
+                    }));
                     // Create a store fn to re-assign-and-auto-wrap a value
-                    fs.push(Function {
+                    fs.push(Arc::new(Function {
                         name: "store".to_string(),
                         typen: CType::Function(
                             Box::new(CType::Tuple(vec![t.clone(), e.clone()])),
@@ -2440,21 +2441,21 @@ impl CType {
                         microstatements: Vec::new(),
                         kind: FnKind::Derived,
                         origin_scope_path: scope.path.clone(),
-                    });
+                    }));
                     if let CType::Void = &e {
                         // Have a zero-arg constructor function produce the void type, if possible.
-                        fs.push(Function {
+                        fs.push(Arc::new(Function {
                             name: constructor_fn_name.clone(),
                             typen: CType::Function(Box::new(CType::Void), Box::new(t.clone())),
                             microstatements: Vec::new(),
                             kind: FnKind::Derived,
                             origin_scope_path: scope.path.clone(),
-                        });
+                        }));
                     }
                     // Create the accessor function, the name of the function will
                     // depend on the kind of type this is
                     match e {
-                        CType::Field(n, i) => fs.push(Function {
+                        CType::Field(n, i) => fs.push(Arc::new(Function {
                             name: n.clone(),
                             typen: CType::Function(
                                 Box::new(t.clone()),
@@ -2463,8 +2464,8 @@ impl CType {
                             microstatements: Vec::new(),
                             kind: FnKind::Derived,
                             origin_scope_path: scope.path.clone(),
-                        }),
-                        CType::Type(n, _) => fs.push(Function {
+                        })),
+                        CType::Type(n, _) => fs.push(Arc::new(Function {
                             name: n.clone(),
                             typen: CType::Function(
                                 Box::new(t.clone()),
@@ -2473,7 +2474,7 @@ impl CType {
                             microstatements: Vec::new(),
                             kind: FnKind::Derived,
                             origin_scope_path: scope.path.clone(),
-                        }),
+                        })),
                         _ => {} // We can't make names for other types
                     }
                 }
@@ -2484,19 +2485,19 @@ impl CType {
                 // that takes a distinct value for each possible value in the
                 // buffer. If the buffer size is just one element, we only
                 // implement one of these
-                fs.push(Function {
+                fs.push(Arc::new(Function {
                     name: constructor_fn_name.clone(),
                     typen: CType::Function(Box::new(*b.clone()), Box::new(t.clone())),
                     microstatements: Vec::new(),
                     kind: FnKind::Derived,
                     origin_scope_path: scope.path.clone(),
-                });
+                }));
                 let size = match **s {
                     CType::Int(s) => s as usize,
                     _ => 0, // TODO: Make this function fallible, instead?
                 };
                 if size > 1 {
-                    fs.push(Function {
+                    fs.push(Arc::new(Function {
                         name: constructor_fn_name.clone(),
                         typen: CType::Function(
                             Box::new(CType::Tuple({
@@ -2511,17 +2512,17 @@ impl CType {
                         microstatements: Vec::new(),
                         kind: FnKind::Derived,
                         origin_scope_path: scope.path.clone(),
-                    });
+                    }));
                 }
                 // Also include accessor functions for each
                 for i in 0..size {
-                    fs.push(Function {
+                    fs.push(Arc::new(Function {
                         name: format!("{}", i),
                         typen: CType::Function(Box::new(t.clone()), b.clone()),
                         microstatements: Vec::new(),
                         kind: FnKind::Derived,
                         origin_scope_path: scope.path.clone(),
-                    })
+                    }))
                 }
             }
             CType::Array(a) => {
@@ -2532,18 +2533,18 @@ impl CType {
                 // arg for all input arguments. We also need to create `get` and
                 // `set` functions for this type (TODO: This is probably true for
                 // other types, too.
-                fs.push(Function {
+                fs.push(Arc::new(Function {
                     name: constructor_fn_name.clone(),
                     typen: CType::Function(Box::new(*a.clone()), Box::new(t.clone())),
                     microstatements: Vec::new(),
                     kind: FnKind::DerivedVariadic,
                     origin_scope_path: scope.path.clone(),
-                });
+                }));
             }
             CType::Int(i) => {
                 // TODO: Support construction of other integer types
                 let int64 = scope.resolve_type("i64").unwrap().clone();
-                fs.push(Function {
+                fs.push(Arc::new(Function {
                     name: constructor_fn_name.clone(),
                     typen: CType::Function(Box::new(CType::Void), Box::new(int64.clone())),
                     microstatements: vec![Microstatement::Return {
@@ -2554,12 +2555,12 @@ impl CType {
                     }],
                     kind: FnKind::Normal,
                     origin_scope_path: scope.path.clone(),
-                });
+                }));
             }
             CType::Float(f) => {
                 // TODO: Support construction of other float types
                 let float64 = scope.resolve_type("f64").unwrap().clone();
-                fs.push(Function {
+                fs.push(Arc::new(Function {
                     name: constructor_fn_name.clone(),
                     typen: CType::Function(Box::new(CType::Void), Box::new(float64.clone())),
                     microstatements: vec![Microstatement::Return {
@@ -2570,7 +2571,7 @@ impl CType {
                     }],
                     kind: FnKind::Normal,
                     origin_scope_path: scope.path.clone(),
-                });
+                }));
             }
             CType::Bool(b) => {
                 // A special exception exists for a few booleans that are created *before* the bool
@@ -2579,7 +2580,7 @@ impl CType {
                 match scope.resolve_type("bool") {
                     Some(boolt) => {
                         let booln = boolt.clone();
-                        fs.push(Function {
+                        fs.push(Arc::new(Function {
                             name: constructor_fn_name.clone(),
                             typen: CType::Function(Box::new(CType::Void), Box::new(booln.clone())),
                             microstatements: vec![Microstatement::Return {
@@ -2593,14 +2594,14 @@ impl CType {
                             }],
                             kind: FnKind::Normal,
                             origin_scope_path: scope.path.clone(),
-                        });
+                        }));
                     }
                     None => {}
                 }
             }
             CType::TString(s) => {
                 let string = scope.resolve_type("string").unwrap().clone();
-                fs.push(Function {
+                fs.push(Arc::new(Function {
                     name: constructor_fn_name.clone(),
                     typen: CType::Function(Box::new(CType::Void), Box::new(string.clone())),
                     microstatements: vec![Microstatement::Return {
@@ -2611,7 +2612,7 @@ impl CType {
                     }],
                     kind: FnKind::Normal,
                     origin_scope_path: scope.path.clone(),
-                });
+                }));
             }
             _ => {} // Don't do anything for other types
         }
@@ -2760,7 +2761,7 @@ impl CType {
             let mut name_fn_pairs = HashMap::new();
             for f in fs {
                 if name_fn_pairs.contains_key(&f.name) {
-                    let v: &mut Vec<Function> = name_fn_pairs.get_mut(&f.name).unwrap();
+                    let v: &mut Vec<Arc<Function>> = name_fn_pairs.get_mut(&f.name).unwrap();
                     v.push(f.clone());
                 } else {
                     name_fn_pairs.insert(f.name.clone(), vec![f.clone()]);
@@ -2802,7 +2803,7 @@ impl CType {
                     );
                 }
                 if name_fn_pairs.contains_key(&f.name) {
-                    let v: &mut Vec<Function> = name_fn_pairs.get_mut(&f.name).unwrap();
+                    let v: &mut Vec<Arc<Function>> = name_fn_pairs.get_mut(&f.name).unwrap();
                     v.push(f.clone());
                 } else {
                     name_fn_pairs.insert(f.name.clone(), vec![f.clone()]);

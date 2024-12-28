@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use super::ctype::{withtypeoperatorslist_to_ctype, CType};
 use super::function::{type_to_args, type_to_rettype};
 use super::scope::merge;
@@ -26,11 +28,11 @@ pub enum Microstatement {
         typen: CType,
     },
     FnCall {
-        function: Function,
+        function: Arc<Function>,
         args: Vec<Microstatement>,
     },
     Closure {
-        function: Function,
+        function: Arc<Function>,
     },
     VarCall {
         name: String,
@@ -635,7 +637,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                     }
                     _ => unreachable!(),
                 }
-                let function = Function {
+                let function = Arc::new(Function {
                     name: match &f.optname {
                         Some(name) => name.clone(),
                         None => "closure".to_string(),
@@ -644,7 +646,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                     microstatements: ms,
                     kind,
                     origin_scope_path: scope.path.clone(),
-                };
+                });
                 prior_value = Some(Microstatement::Closure { function });
             }
             BaseChunk::ArrayAccessor(a) => {

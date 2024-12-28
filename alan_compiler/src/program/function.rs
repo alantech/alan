@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use super::ctype::{withtypeoperatorslist_to_ctype, CType};
 use super::microstatement::{statement_to_microstatements, Microstatement};
 use super::scope::merge;
@@ -292,13 +294,13 @@ impl Function {
                     // TODO: Why can't I box this up into a function?
                     merge!(scope, temp_scope);
                     let degrouped_input = input_type.degroup();
-                    let function = Function {
+                    let function = Arc::new(Function {
                         name,
                         typen: CType::Function(Box::new(degrouped_input), Box::new(rettype)),
                         microstatements: Vec::new(),
                         kind,
                         origin_scope_path: scope.path.clone(),
-                    };
+                    });
                     if is_export {
                         scope
                             .exports
@@ -550,13 +552,13 @@ impl Function {
             }
             _ => unreachable!(),
         }
-        let function = Function {
+        let function = Arc::new(Function {
             name,
             typen,
             microstatements,
             kind,
             origin_scope_path: scope.path.clone(),
-        };
+        });
         if is_export {
             scope
                 .exports
@@ -577,7 +579,7 @@ impl Function {
         mut scope: Scope<'a>,
         generic_function: &Function,
         generic_types: Vec<CType>,
-    ) -> Result<(Scope<'a>, Function), Box<dyn std::error::Error>> {
+    ) -> Result<(Scope<'a>, Arc<Function>), Box<dyn std::error::Error>> {
         match &generic_function.kind {
             FnKind::Normal
             | FnKind::External(_)
@@ -674,14 +676,14 @@ impl Function {
                         .collect::<Vec<String>>()
                         .join("_")
                 ); // Really bad
-                let f = Function {
+                let f = Arc::new(Function {
                     name,
                     // TODO: Can I eliminate this indirection?
                     typen: args_and_rettype_to_type(args, rettype),
                     microstatements,
                     kind,
                     origin_scope_path: scope.path.clone(),
-                };
+                });
                 if scope.functions.contains_key(&f.name) {
                     let func_vec = scope.functions.get_mut(&f.name).unwrap();
                     func_vec.insert(0, f.clone());
@@ -782,14 +784,14 @@ impl Function {
                         .collect::<Vec<String>>()
                         .join("_")
                 ); // Really bad
-                let f = Function {
+                let f = Arc::new(Function {
                     name,
                     // TODO: Can I eliminate this indirection?
                     typen: args_and_rettype_to_type(args, rettype),
                     microstatements,
                     kind,
                     origin_scope_path: scope.path.clone(),
-                };
+                });
                 if scope.functions.contains_key(&f.name) {
                     let func_vec = scope.functions.get_mut(&f.name).unwrap();
                     func_vec.insert(0, f.clone());
