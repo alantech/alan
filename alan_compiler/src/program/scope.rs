@@ -1,4 +1,4 @@
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 
 use ordered_hash_map::OrderedHashMap;
 
@@ -19,7 +19,7 @@ pub struct Scope<'a> {
     pub parent: Option<&'a Scope<'a>>,
     pub types: OrderedHashMap<String, CType>,
     pub consts: OrderedHashMap<String, Const>,
-    pub functions: OrderedHashMap<String, Vec<Function>>,
+    pub functions: OrderedHashMap<String, Vec<Arc<Function>>>,
     pub operatormappings: OrderedHashMap<String, OperatorMapping>,
     pub typeoperatormappings: OrderedHashMap<String, TypeOperatorMapping>,
     pub exports: OrderedHashMap<String, Export>,
@@ -182,7 +182,7 @@ impl<'a> Scope<'a> {
         &mut self,
         mut types: OrderedHashMap<String, CType>,
         mut consts: OrderedHashMap<String, Const>,
-        mut functions: OrderedHashMap<String, Vec<Function>>,
+        mut functions: OrderedHashMap<String, Vec<Arc<Function>>>,
         mut operatormappings: OrderedHashMap<String, OperatorMapping>,
         mut typeoperatormappings: OrderedHashMap<String, TypeOperatorMapping>,
         mut exports: OrderedHashMap<String, Export>,
@@ -343,7 +343,7 @@ impl<'a> Scope<'a> {
         &'a self,
         function: &String,
         fn_type: &CType,
-    ) -> Option<&Function> {
+    ) -> Option<Arc<Function>> {
         // Iterates through every function with the same name visible from the provided scope and
         // returns the one that matches the provided function type, if any
         let fn_type_str = fn_type.degroup().to_strict_string(false);
@@ -353,7 +353,7 @@ impl<'a> Scope<'a> {
                 if let Some(funcs) = s.functions.get(function) {
                     for f in funcs {
                         if f.typen.to_strict_string(false) == fn_type_str {
-                            return Some(f);
+                            return Some(f.clone());
                         }
                     }
                 }
@@ -371,7 +371,7 @@ impl<'a> Scope<'a> {
         function: &String,
         generic_types: &[CType],
         args: &[CType],
-    ) -> Option<(Scope<'a>, Function)> {
+    ) -> Option<(Scope<'a>, Arc<Function>)> {
         // Tries to find the specified function within the portion of the program accessible from
         // the current scope (so first checking the current scope, then all imports, then the root
         // scope). It checks against the args array to find a match. TODO: Go beyond exact matching
@@ -474,7 +474,7 @@ impl<'a> Scope<'a> {
             for arg in args {
                 match arg {
                     CType::Generic(n, _, t) if matches!(&**t, CType::Function(..)) => {
-                        if let Some(func) = self.resolve_function_by_type(n, t).cloned() {
+                        if let Some(func) = self.resolve_function_by_type(n, t) {
                             match Function::from_generic_function(
                                 self,
                                 &func,
@@ -505,7 +505,7 @@ impl<'a> Scope<'a> {
         self,
         function: &String,
         args: &[CType],
-    ) -> Option<(Scope<'a>, Function)> {
+    ) -> Option<(Scope<'a>, Arc<Function>)> {
         // We should prefer the "normal" function, if it matches, use it, otherwise try to go with
         // a generic function, if possible.
         // TODO: This boolean *shouldn't* be necessary, but I can't convince the borrow checker
@@ -625,7 +625,7 @@ impl<'a> Scope<'a> {
         &'a self,
         function: &String,
         args: &[CType],
-    ) -> Option<Function> {
+    ) -> Option<Arc<Function>> {
         // Tries to find the specified function within the portion of the program accessible from
         // the current scope (so first checking the current scope, then all imports, then the root
         // scope). It checks against the args array to find a match. TODO: Go beyond exact matching

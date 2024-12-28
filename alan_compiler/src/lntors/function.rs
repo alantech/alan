@@ -168,9 +168,9 @@ pub fn from_microstatement(
                         if parent_fn.origin_scope_path != scope.path {
                             let program = Program::get_program();
                             let out = match program.scope_by_file(&parent_fn.origin_scope_path) {
-                                Ok(original_scope) => original_scope
-                                    .resolve_function_by_type(representation, typen)
-                                    .cloned(),
+                                Ok(original_scope) => {
+                                    original_scope.resolve_function_by_type(representation, typen)
+                                }
                                 Err(_) => None,
                             };
                             Program::return_program(program);
@@ -179,7 +179,7 @@ pub fn from_microstatement(
                             None
                         }
                     }
-                    f => f.cloned(), // TODO: Can I avoid this?
+                    f => f,
                 };
                 match &f {
                     None => {
