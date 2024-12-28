@@ -116,9 +116,10 @@ impl CType {
         self.to_strict_string(true)
     }
     pub fn to_strict_string(&self, strict: bool) -> String {
-        let mut unavoidable_strings = Vec::new();
-        let mut str_parts = Vec::new();
-        let mut ctype_stack = vec![self];
+        let mut unavoidable_strings = Vec::with_capacity(64);
+        let mut str_parts = Vec::with_capacity(1024);
+        let mut ctype_stack = Vec::with_capacity(64);
+        ctype_stack.push(self);
         // Hacky re-use of CType::Infer to insert constant strings into the ctype stack
         let close_brace =
             CLOSE_BRACE.get_or_init(|| CType::Infer("}".to_string(), "}".to_string()));
@@ -614,9 +615,10 @@ impl CType {
         str_parts.join("")
     }
     pub fn to_functional_string(&self) -> String {
-        let mut unavoidable_strings = Vec::new();
-        let mut str_parts = Vec::new();
-        let mut ctype_stack = vec![self];
+        let mut unavoidable_strings = Vec::with_capacity(64);
+        let mut str_parts = Vec::with_capacity(1024);
+        let mut ctype_stack = Vec::with_capacity(64);
+        ctype_stack.push(self);
         let close_brace =
             CLOSE_BRACE.get_or_init(|| CType::Infer("}".to_string(), "}".to_string()));
         let comma = COMMA.get_or_init(|| CType::Infer(", ".to_string(), ", ".to_string()));
