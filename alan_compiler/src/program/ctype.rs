@@ -174,11 +174,11 @@ impl CType {
                 }
                 CType::Binds(n, ts) => {
                     str_parts.push("Binds{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     for (i, t) in ts.iter().rev().enumerate() {
                         ctype_stack.push(t);
                         if i != 0 {
-                            ctype_stack.push(&comma);
+                            ctype_stack.push(comma);
                         }
                     }
                     ctype_stack.push(n);
@@ -222,50 +222,50 @@ impl CType {
                 CType::Group(t) => match strict {
                     true => {
                         str_parts.push("(");
-                        ctype_stack.push(&close_paren);
+                        ctype_stack.push(close_paren);
                         ctype_stack.push(t);
                     }
                     false => ctype_stack.push(t),
                 },
                 CType::Function(i, o) => {
                     ctype_stack.push(o);
-                    ctype_stack.push(&fnarrow);
+                    ctype_stack.push(fnarrow);
                     ctype_stack.push(i);
                 }
                 CType::Call(n, f) => {
                     ctype_stack.push(f);
-                    ctype_stack.push(&fncall);
+                    ctype_stack.push(fncall);
                     ctype_stack.push(n);
                 }
                 CType::Infix(o) => {
                     str_parts.push("Infix{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     ctype_stack.push(o);
                 }
                 CType::Prefix(o) => {
                     str_parts.push("Prefix{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     ctype_stack.push(o);
                 }
                 CType::Method(f) => {
                     str_parts.push("Method{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     ctype_stack.push(f);
                 }
                 CType::Property(p) => {
                     str_parts.push("Property{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     ctype_stack.push(p);
                 }
                 CType::Cast(t) => {
                     str_parts.push("Cast{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     ctype_stack.push(t);
                 }
                 CType::Own(t) => match strict {
                     true => {
                         str_parts.push("Own{");
-                        ctype_stack.push(&close_brace);
+                        ctype_stack.push(close_brace);
                         ctype_stack.push(t);
                     }
                     false => ctype_stack.push(t),
@@ -273,7 +273,7 @@ impl CType {
                 CType::Deref(t) => match strict {
                     true => {
                         str_parts.push("Deref{");
-                        ctype_stack.push(&close_brace);
+                        ctype_stack.push(close_brace);
                         ctype_stack.push(t);
                     }
                     false => ctype_stack.push(t),
@@ -281,7 +281,7 @@ impl CType {
                 CType::Mut(t) => match strict {
                     true => {
                         str_parts.push("Mut{");
-                        ctype_stack.push(&close_brace);
+                        ctype_stack.push(close_brace);
                         ctype_stack.push(t);
                     }
                     false => ctype_stack.push(t),
@@ -289,31 +289,31 @@ impl CType {
                 CType::Dependency(n, v) => match strict {
                     true => {
                         str_parts.push("Dependency{");
-                        ctype_stack.push(&close_brace);
+                        ctype_stack.push(close_brace);
                         ctype_stack.push(v);
-                        ctype_stack.push(&comma);
+                        ctype_stack.push(comma);
                         ctype_stack.push(n);
                     }
                     false => {
                         ctype_stack.push(v);
-                        ctype_stack.push(&depat);
+                        ctype_stack.push(depat);
                         ctype_stack.push(n);
                     }
                 },
                 CType::Rust(d) => {
                     str_parts.push("Rust{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     ctype_stack.push(d);
                 }
                 CType::Node(d) => {
                     str_parts.push("Node{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     ctype_stack.push(d);
                 }
                 CType::From(d) => match strict {
                     true => {
                         str_parts.push("From{");
-                        ctype_stack.push(&close_brace);
+                        ctype_stack.push(close_brace);
                         ctype_stack.push(d);
                     }
                     false => {
@@ -324,21 +324,21 @@ impl CType {
                 CType::Import(n, d) => match strict {
                     true => {
                         str_parts.push("Import{");
-                        ctype_stack.push(&close_brace);
+                        ctype_stack.push(close_brace);
                         ctype_stack.push(d);
-                        ctype_stack.push(&comma);
+                        ctype_stack.push(comma);
                         ctype_stack.push(n);
                     }
                     false => {
                         ctype_stack.push(d);
-                        ctype_stack.push(&imarrow);
+                        ctype_stack.push(imarrow);
                         ctype_stack.push(n);
                     }
                 },
                 CType::Tuple(ts) => {
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&comma);
+                            ctype_stack.push(comma);
                         }
                         ctype_stack.push(t);
                     }
@@ -354,33 +354,33 @@ impl CType {
                 CType::Either(ts) => {
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&or);
+                            ctype_stack.push(or);
                         }
                         ctype_stack.push(t);
                     }
                 }
                 CType::Prop(t, p) => {
                     ctype_stack.push(p);
-                    ctype_stack.push(&dot);
+                    ctype_stack.push(dot);
                     ctype_stack.push(t);
                 }
                 CType::AnyOf(ts) => {
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&and);
+                            ctype_stack.push(and);
                         }
                         ctype_stack.push(t);
                     }
                 }
                 CType::Buffer(t, s) => {
-                    ctype_stack.push(&close_bracket);
+                    ctype_stack.push(close_bracket);
                     ctype_stack.push(s);
-                    ctype_stack.push(&open_bracket);
+                    ctype_stack.push(open_bracket);
                     ctype_stack.push(t);
                 }
                 CType::Array(t) => {
-                    ctype_stack.push(&close_bracket);
-                    ctype_stack.push(&open_bracket);
+                    ctype_stack.push(close_bracket);
+                    ctype_stack.push(open_bracket);
                     ctype_stack.push(t);
                 }
                 CType::Fail(m) => {
@@ -391,7 +391,7 @@ impl CType {
                 CType::Add(ts) => {
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&add);
+                            ctype_stack.push(add);
                         }
                         ctype_stack.push(t);
                     }
@@ -399,7 +399,7 @@ impl CType {
                 CType::Sub(ts) => {
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&sub);
+                            ctype_stack.push(sub);
                         }
                         ctype_stack.push(t);
                     }
@@ -407,7 +407,7 @@ impl CType {
                 CType::Mul(ts) => {
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&mul);
+                            ctype_stack.push(mul);
                         }
                         ctype_stack.push(t);
                     }
@@ -415,7 +415,7 @@ impl CType {
                 CType::Div(ts) => {
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&div);
+                            ctype_stack.push(div);
                         }
                         ctype_stack.push(t);
                     }
@@ -423,7 +423,7 @@ impl CType {
                 CType::Mod(ts) => {
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&tmod);
+                            ctype_stack.push(tmod);
                         }
                         ctype_stack.push(t);
                     }
@@ -431,27 +431,27 @@ impl CType {
                 CType::Pow(ts) => {
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&pow);
+                            ctype_stack.push(pow);
                         }
                         ctype_stack.push(t);
                     }
                 }
                 CType::Min(ts) => {
                     str_parts.push("Min{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&comma);
+                            ctype_stack.push(comma);
                         }
                         ctype_stack.push(t);
                     }
                 }
                 CType::Max(ts) => {
                     str_parts.push("Max{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&comma);
+                            ctype_stack.push(comma);
                         }
                         ctype_stack.push(t);
                     }
@@ -462,57 +462,57 @@ impl CType {
                 }
                 CType::Len(t) => {
                     str_parts.push("Len{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     ctype_stack.push(t);
                 }
                 CType::Size(t) => {
                     str_parts.push("Size{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     ctype_stack.push(t);
                 }
                 CType::FileStr(t) => {
                     str_parts.push("FileStr{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     ctype_stack.push(t);
                 }
                 CType::Concat(a, b) => {
                     str_parts.push("Concat{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     ctype_stack.push(b);
-                    ctype_stack.push(&comma);
+                    ctype_stack.push(comma);
                     ctype_stack.push(a);
                 }
                 CType::Env(ts) => {
                     str_parts.push("Env{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&comma);
+                            ctype_stack.push(comma);
                         }
                         ctype_stack.push(t);
                     }
                 }
                 CType::EnvExists(t) => {
                     str_parts.push("EnvExists{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     ctype_stack.push(t);
                 }
                 CType::TIf(t, ts) => {
                     str_parts.push("If{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&comma);
+                            ctype_stack.push(comma);
                         }
                         ctype_stack.push(t);
                     }
-                    ctype_stack.push(&comma);
+                    ctype_stack.push(comma);
                     ctype_stack.push(t);
                 }
                 CType::And(ts) => {
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&band);
+                            ctype_stack.push(band);
                         }
                         ctype_stack.push(t);
                     }
@@ -520,7 +520,7 @@ impl CType {
                 CType::Or(ts) => {
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&bor);
+                            ctype_stack.push(bor);
                         }
                         ctype_stack.push(t);
                     }
@@ -528,7 +528,7 @@ impl CType {
                 CType::Xor(ts) => {
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&xor);
+                            ctype_stack.push(xor);
                         }
                         ctype_stack.push(t);
                     }
@@ -540,7 +540,7 @@ impl CType {
                 CType::Nand(ts) => {
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&nand);
+                            ctype_stack.push(nand);
                         }
                         ctype_stack.push(t);
                     }
@@ -548,7 +548,7 @@ impl CType {
                 CType::Nor(ts) => {
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&nor);
+                            ctype_stack.push(nor);
                         }
                         ctype_stack.push(t);
                     }
@@ -556,7 +556,7 @@ impl CType {
                 CType::Xnor(ts) => {
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&xnor);
+                            ctype_stack.push(xnor);
                         }
                         ctype_stack.push(t);
                     }
@@ -564,7 +564,7 @@ impl CType {
                 CType::TEq(ts) => {
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&eq);
+                            ctype_stack.push(eq);
                         }
                         ctype_stack.push(t);
                     }
@@ -572,7 +572,7 @@ impl CType {
                 CType::Neq(ts) => {
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&neq);
+                            ctype_stack.push(neq);
                         }
                         ctype_stack.push(t);
                     }
@@ -580,7 +580,7 @@ impl CType {
                 CType::Lt(ts) => {
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&lt);
+                            ctype_stack.push(lt);
                         }
                         ctype_stack.push(t);
                     }
@@ -588,7 +588,7 @@ impl CType {
                 CType::Lte(ts) => {
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&lte);
+                            ctype_stack.push(lte);
                         }
                         ctype_stack.push(t);
                     }
@@ -596,7 +596,7 @@ impl CType {
                 CType::Gt(ts) => {
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&gt);
+                            ctype_stack.push(gt);
                         }
                         ctype_stack.push(t);
                     }
@@ -604,7 +604,7 @@ impl CType {
                 CType::Gte(ts) => {
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&gte);
+                            ctype_stack.push(gte);
                         }
                         ctype_stack.push(t);
                     }
@@ -637,11 +637,11 @@ impl CType {
                 }
                 CType::Binds(n, ts) => {
                     str_parts.push("Binds{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     for (i, t) in ts.iter().rev().enumerate() {
                         ctype_stack.push(t);
                         if i != 0 {
-                            ctype_stack.push(&comma);
+                            ctype_stack.push(comma);
                         }
                     }
                     ctype_stack.push(n);
@@ -709,93 +709,93 @@ impl CType {
                 CType::Group(t) => ctype_stack.push(t),
                 CType::Function(i, o) => {
                     str_parts.push("Function{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     ctype_stack.push(o);
-                    ctype_stack.push(&comma);
+                    ctype_stack.push(comma);
                     ctype_stack.push(i);
                 }
                 CType::Call(n, f) => {
                     str_parts.push("Call{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     ctype_stack.push(f);
-                    ctype_stack.push(&comma);
+                    ctype_stack.push(comma);
                     ctype_stack.push(n);
                 }
                 CType::Infix(o) => {
                     str_parts.push("Infix{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     ctype_stack.push(o);
                 }
                 CType::Prefix(o) => {
                     str_parts.push("Prefix{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     ctype_stack.push(o);
                 }
                 CType::Method(f) => {
                     str_parts.push("Method{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     ctype_stack.push(f);
                 }
                 CType::Property(p) => {
                     str_parts.push("Property{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     ctype_stack.push(p);
                 }
                 CType::Cast(t) => {
                     str_parts.push("Cast{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     ctype_stack.push(t);
                 }
                 CType::Own(t) => {
                     str_parts.push("Own{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     ctype_stack.push(t);
                 }
                 CType::Deref(t) => {
                     str_parts.push("Deref{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     ctype_stack.push(t);
                 }
                 CType::Mut(t) => {
                     str_parts.push("Mut{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     ctype_stack.push(t);
                 }
                 CType::Dependency(n, v) => {
                     str_parts.push("Dependency{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     ctype_stack.push(v);
-                    ctype_stack.push(&comma);
+                    ctype_stack.push(comma);
                     ctype_stack.push(n);
                 }
                 CType::Rust(d) => {
                     str_parts.push("Rust{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     ctype_stack.push(d);
                 }
                 CType::Node(d) => {
                     str_parts.push("Node{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     ctype_stack.push(d);
                 }
                 CType::From(d) => {
                     str_parts.push("From{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     ctype_stack.push(d);
                 }
                 CType::Import(n, d) => {
                     str_parts.push("Import{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     ctype_stack.push(d);
-                    ctype_stack.push(&comma);
+                    ctype_stack.push(comma);
                     ctype_stack.push(n);
                 }
                 CType::Tuple(ts) => {
                     str_parts.push("Tuple{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&comma);
+                            ctype_stack.push(comma);
                         }
                         ctype_stack.push(t);
                     }
@@ -804,46 +804,46 @@ impl CType {
                     str_parts.push("Field{");
                     str_parts.push(l);
                     str_parts.push(", ");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     ctype_stack.push(t);
                 }
                 CType::Either(ts) => {
                     str_parts.push("Either{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&comma);
+                            ctype_stack.push(comma);
                         }
                         ctype_stack.push(t);
                     }
                 }
                 CType::Prop(t, p) => {
                     str_parts.push("Prop{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     ctype_stack.push(p);
-                    ctype_stack.push(&comma);
+                    ctype_stack.push(comma);
                     ctype_stack.push(t);
                 }
                 CType::AnyOf(ts) => {
                     str_parts.push("AnyOf{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&comma);
+                            ctype_stack.push(comma);
                         }
                         ctype_stack.push(t);
                     }
                 }
                 CType::Buffer(t, s) => {
                     str_parts.push("Buffer{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     ctype_stack.push(s);
-                    ctype_stack.push(&comma);
+                    ctype_stack.push(comma);
                     ctype_stack.push(t);
                 }
                 CType::Array(t) => {
                     str_parts.push("Array{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     ctype_stack.push(t);
                 }
                 CType::Fail(m) => {
@@ -853,259 +853,259 @@ impl CType {
                 }
                 CType::Add(ts) => {
                     str_parts.push("Add{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&comma);
+                            ctype_stack.push(comma);
                         }
                         ctype_stack.push(t);
                     }
                 }
                 CType::Sub(ts) => {
                     str_parts.push("Sub{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&comma);
+                            ctype_stack.push(comma);
                         }
                         ctype_stack.push(t);
                     }
                 }
                 CType::Mul(ts) => {
                     str_parts.push("Mul{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&comma);
+                            ctype_stack.push(comma);
                         }
                         ctype_stack.push(t);
                     }
                 }
                 CType::Div(ts) => {
                     str_parts.push("Div{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&comma);
+                            ctype_stack.push(comma);
                         }
                         ctype_stack.push(t);
                     }
                 }
                 CType::Mod(ts) => {
                     str_parts.push("Mod{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&comma);
+                            ctype_stack.push(comma);
                         }
                         ctype_stack.push(t);
                     }
                 }
                 CType::Pow(ts) => {
                     str_parts.push("Pow{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&comma);
+                            ctype_stack.push(comma);
                         }
                         ctype_stack.push(t);
                     }
                 }
                 CType::Min(ts) => {
                     str_parts.push("Min{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&comma);
+                            ctype_stack.push(comma);
                         }
                         ctype_stack.push(t);
                     }
                 }
                 CType::Max(ts) => {
                     str_parts.push("Max{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&comma);
+                            ctype_stack.push(comma);
                         }
                         ctype_stack.push(t);
                     }
                 }
                 CType::Neg(t) => {
                     str_parts.push("Neg{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     ctype_stack.push(t);
                 }
                 CType::Len(t) => {
                     str_parts.push("Len{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     ctype_stack.push(t);
                 }
                 CType::Size(t) => {
                     str_parts.push("Size{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     ctype_stack.push(t);
                 }
                 CType::FileStr(t) => {
                     str_parts.push("FileStr{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     ctype_stack.push(t);
                 }
                 CType::Concat(a, b) => {
                     str_parts.push("Concat{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     ctype_stack.push(b);
-                    ctype_stack.push(&comma);
+                    ctype_stack.push(comma);
                     ctype_stack.push(a);
                 }
                 CType::Env(ts) => {
                     str_parts.push("Env{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&comma);
+                            ctype_stack.push(comma);
                         }
                         ctype_stack.push(t);
                     }
                 }
                 CType::EnvExists(t) => {
                     str_parts.push("EnvExists{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     ctype_stack.push(t);
                 }
                 CType::TIf(t, ts) => {
                     str_parts.push("If{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&comma);
+                            ctype_stack.push(comma);
                         }
                         ctype_stack.push(t);
                     }
-                    ctype_stack.push(&comma);
+                    ctype_stack.push(comma);
                     ctype_stack.push(t);
                 }
                 CType::And(ts) => {
                     str_parts.push("And{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&comma);
+                            ctype_stack.push(comma);
                         }
                         ctype_stack.push(t);
                     }
                 }
                 CType::Or(ts) => {
                     str_parts.push("Or{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&comma);
+                            ctype_stack.push(comma);
                         }
                         ctype_stack.push(t);
                     }
                 }
                 CType::Xor(ts) => {
                     str_parts.push("Xor{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&comma);
+                            ctype_stack.push(comma);
                         }
                         ctype_stack.push(t);
                     }
                 }
                 CType::Not(t) => {
                     str_parts.push("Not{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     ctype_stack.push(t);
                 }
                 CType::Nand(ts) => {
                     str_parts.push("Nand{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&comma);
+                            ctype_stack.push(comma);
                         }
                         ctype_stack.push(t);
                     }
                 }
                 CType::Nor(ts) => {
                     str_parts.push("Nor{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&comma);
+                            ctype_stack.push(comma);
                         }
                         ctype_stack.push(t);
                     }
                 }
                 CType::Xnor(ts) => {
                     str_parts.push("Xnor{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&comma);
+                            ctype_stack.push(comma);
                         }
                         ctype_stack.push(t);
                     }
                 }
                 CType::TEq(ts) => {
                     str_parts.push("Eq{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&comma);
+                            ctype_stack.push(comma);
                         }
                         ctype_stack.push(t);
                     }
                 }
                 CType::Neq(ts) => {
                     str_parts.push("Neq{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&comma);
+                            ctype_stack.push(comma);
                         }
                         ctype_stack.push(t);
                     }
                 }
                 CType::Lt(ts) => {
                     str_parts.push("Lt{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&comma);
+                            ctype_stack.push(comma);
                         }
                         ctype_stack.push(t);
                     }
                 }
                 CType::Lte(ts) => {
                     str_parts.push("Lte{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&comma);
+                            ctype_stack.push(comma);
                         }
                         ctype_stack.push(t);
                     }
                 }
                 CType::Gt(ts) => {
                     str_parts.push("Gt{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&comma);
+                            ctype_stack.push(comma);
                         }
                         ctype_stack.push(t);
                     }
                 }
                 CType::Gte(ts) => {
                     str_parts.push("Gte{");
-                    ctype_stack.push(&close_brace);
+                    ctype_stack.push(close_brace);
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
-                            ctype_stack.push(&comma);
+                            ctype_stack.push(comma);
                         }
                         ctype_stack.push(t);
                     }
