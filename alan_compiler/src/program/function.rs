@@ -12,119 +12,122 @@ use crate::parse;
 #[derive(Clone, Debug)]
 pub struct Function {
     pub name: String,
-    pub typen: CType,
+    pub typen: Arc<CType>,
     pub microstatements: Vec<Microstatement>,
     pub kind: FnKind,
     pub origin_scope_path: String,
 }
 
-pub fn type_to_args(t: &CType) -> Vec<(String, ArgKind, CType)> {
-    match t {
+pub fn type_to_args(t: Arc<CType>) -> Vec<(String, ArgKind, Arc<CType>)> {
+    match &*t {
         CType::Function(i, _) => {
             let mut args = Vec::new();
             match &**i {
                 CType::Tuple(ts) => {
                     for (i, t) in ts.iter().enumerate() {
-                        args.push(match t {
+                        args.push(match &**t {
                             CType::Field(argname, t) => match &**t {
-                                CType::Own(t) => (argname.clone(), ArgKind::Own, *t.clone()),
-                                CType::Deref(t) => (argname.clone(), ArgKind::Deref, *t.clone()),
-                                CType::Mut(t) => (argname.clone(), ArgKind::Mut, *t.clone()),
-                                otherwise => (argname.clone(), ArgKind::Ref, otherwise.clone()),
+                                CType::Own(t) => (argname.clone(), ArgKind::Own, t.clone()),
+                                CType::Deref(t) => (argname.clone(), ArgKind::Deref, t.clone()),
+                                CType::Mut(t) => (argname.clone(), ArgKind::Mut, t.clone()),
+                                _otherwise => (argname.clone(), ArgKind::Ref, t.clone()),
                             },
-                            CType::Own(t) => (format!("arg{}", i), ArgKind::Own, *t.clone()),
-                            CType::Deref(t) => (format!("arg{}", i), ArgKind::Deref, *t.clone()),
-                            CType::Mut(t) => (format!("arg{}", i), ArgKind::Mut, *t.clone()),
-                            otherwise => (format!("arg{}", i), ArgKind::Ref, otherwise.clone()),
+                            CType::Own(t) => (format!("arg{}", i), ArgKind::Own, t.clone()),
+                            CType::Deref(t) => (format!("arg{}", i), ArgKind::Deref, t.clone()),
+                            CType::Mut(t) => (format!("arg{}", i), ArgKind::Mut, t.clone()),
+                            _otherwise => (format!("arg{}", i), ArgKind::Ref, t.clone()),
                         });
                     }
                 }
                 CType::Field(argname, t) => match &**t {
-                    CType::Own(t) => args.push((argname.clone(), ArgKind::Own, *t.clone())),
-                    CType::Deref(t) => args.push((argname.clone(), ArgKind::Deref, *t.clone())),
-                    CType::Mut(t) => args.push((argname.clone(), ArgKind::Mut, *t.clone())),
-                    otherwise => args.push((argname.clone(), ArgKind::Ref, otherwise.clone())),
+                    CType::Own(t) => args.push((argname.clone(), ArgKind::Own, t.clone())),
+                    CType::Deref(t) => args.push((argname.clone(), ArgKind::Deref, t.clone())),
+                    CType::Mut(t) => args.push((argname.clone(), ArgKind::Mut, t.clone())),
+                    _otherwise => args.push((argname.clone(), ArgKind::Ref, t.clone())),
                 },
                 CType::Void => { /* Do nothing */ }
-                CType::Own(t) => args.push(("arg0".to_string(), ArgKind::Own, *t.clone())),
-                CType::Deref(t) => args.push(("arg0".to_string(), ArgKind::Deref, *t.clone())),
-                CType::Mut(t) => args.push(("arg0".to_string(), ArgKind::Mut, *t.clone())),
-                otherwise => args.push(("arg0".to_string(), ArgKind::Ref, otherwise.clone())),
+                CType::Own(t) => args.push(("arg0".to_string(), ArgKind::Own, t.clone())),
+                CType::Deref(t) => args.push(("arg0".to_string(), ArgKind::Deref, t.clone())),
+                CType::Mut(t) => args.push(("arg0".to_string(), ArgKind::Mut, t.clone())),
+                _otherwise => args.push(("arg0".to_string(), ArgKind::Ref, i.clone())),
             }
             args
         }
         CType::Tuple(ts) => {
             let mut args = Vec::new();
             for (i, t) in ts.iter().enumerate() {
-                args.push(match t {
+                args.push(match &**t {
                     CType::Field(argname, t) => match &**t {
-                        CType::Own(t) => (argname.clone(), ArgKind::Own, *t.clone()),
-                        CType::Deref(t) => (argname.clone(), ArgKind::Deref, *t.clone()),
-                        CType::Mut(t) => (argname.clone(), ArgKind::Mut, *t.clone()),
-                        otherwise => (argname.clone(), ArgKind::Ref, otherwise.clone()),
+                        CType::Own(t) => (argname.clone(), ArgKind::Own, t.clone()),
+                        CType::Deref(t) => (argname.clone(), ArgKind::Deref, t.clone()),
+                        CType::Mut(t) => (argname.clone(), ArgKind::Mut, t.clone()),
+                        _otherwise => (argname.clone(), ArgKind::Ref, t.clone()),
                     },
-                    CType::Own(t) => (format!("arg{}", i), ArgKind::Own, *t.clone()),
-                    CType::Deref(t) => (format!("arg{}", i), ArgKind::Deref, *t.clone()),
-                    CType::Mut(t) => (format!("arg{}", i), ArgKind::Mut, *t.clone()),
-                    otherwise => (format!("arg{}", i), ArgKind::Ref, otherwise.clone()),
+                    CType::Own(t) => (format!("arg{}", i), ArgKind::Own, t.clone()),
+                    CType::Deref(t) => (format!("arg{}", i), ArgKind::Deref, t.clone()),
+                    CType::Mut(t) => (format!("arg{}", i), ArgKind::Mut, t.clone()),
+                    _otherwise => (format!("arg{}", i), ArgKind::Ref, t.clone()),
                 });
             }
             args
         }
         CType::Field(argname, t) => match &**t {
-            CType::Own(t) => vec![(argname.clone(), ArgKind::Own, *t.clone())],
-            CType::Deref(t) => vec![(argname.clone(), ArgKind::Deref, *t.clone())],
-            CType::Mut(t) => vec![(argname.clone(), ArgKind::Mut, *t.clone())],
-            otherwise => vec![(argname.clone(), ArgKind::Ref, otherwise.clone())],
+            CType::Own(t) => vec![(argname.clone(), ArgKind::Own, t.clone())],
+            CType::Deref(t) => vec![(argname.clone(), ArgKind::Deref, t.clone())],
+            CType::Mut(t) => vec![(argname.clone(), ArgKind::Mut, t.clone())],
+            _otherwise => vec![(argname.clone(), ArgKind::Ref, t.clone())],
         },
         CType::Void => Vec::new(),
-        CType::Own(t) => vec![("arg0".to_string(), ArgKind::Own, *t.clone())],
-        CType::Deref(t) => vec![("arg0".to_string(), ArgKind::Deref, *t.clone())],
-        CType::Mut(t) => vec![("arg0".to_string(), ArgKind::Mut, *t.clone())],
-        otherwise => vec![("arg0".to_string(), ArgKind::Ref, otherwise.clone())],
+        CType::Own(t) => vec![("arg0".to_string(), ArgKind::Own, t.clone())],
+        CType::Deref(t) => vec![("arg0".to_string(), ArgKind::Deref, t.clone())],
+        CType::Mut(t) => vec![("arg0".to_string(), ArgKind::Mut, t.clone())],
+        _ => vec![("arg0".to_string(), ArgKind::Ref, t.clone())],
     }
 }
 
-pub fn type_to_rettype(t: &CType) -> CType {
-    match t {
-        CType::Function(_, o) => *o.clone(),
-        _ => CType::Void,
+pub fn type_to_rettype(t: Arc<CType>) -> Arc<CType> {
+    match &*t {
+        CType::Function(_, o) => o.clone(),
+        _ => Arc::new(CType::Void),
     }
 }
 
-pub fn args_and_rettype_to_type(args: Vec<(String, ArgKind, CType)>, rettype: CType) -> CType {
-    CType::Function(
-        Box::new(if args.is_empty() {
+pub fn args_and_rettype_to_type(
+    args: Vec<(String, ArgKind, Arc<CType>)>,
+    rettype: Arc<CType>,
+) -> Arc<CType> {
+    Arc::new(CType::Function(
+        Arc::new(if args.is_empty() {
             CType::Void
         } else {
             CType::Tuple(
                 args.into_iter()
                     .map(|(n, k, t)| {
-                        CType::Field(
+                        Arc::new(CType::Field(
                             n,
-                            Box::new(match k {
-                                ArgKind::Mut => CType::Mut(Box::new(t)),
+                            match k {
+                                ArgKind::Mut => Arc::new(CType::Mut(t)),
                                 ArgKind::Ref => t,
                                 ArgKind::Own | ArgKind::Deref => CType::fail(
                                     "Somehow got an Own or Deref for a normal Alan function",
                                 ),
-                            }),
-                        )
+                            },
+                        ))
                     })
-                    .collect::<Vec<CType>>(),
+                    .collect::<Vec<Arc<CType>>>(),
             )
         }),
-        Box::new(rettype),
-    )
+        rettype,
+    ))
 }
 
 impl Function {
-    pub fn args(&self) -> Vec<(String, ArgKind, CType)> {
-        type_to_args(&self.typen)
+    pub fn args(&self) -> Vec<(String, ArgKind, Arc<CType>)> {
+        type_to_args(self.typen.clone())
     }
 
-    pub fn rettype(&self) -> CType {
-        type_to_rettype(&self.typen)
+    pub fn rettype(&self) -> Arc<CType> {
+        type_to_rettype(self.typen.clone())
     }
 
     pub fn from_ast<'a>(
@@ -155,12 +158,12 @@ impl Function {
             // we don't get a boolean at all or we get multiple inner values in the generic call,
             // we bail out immediately because of a syntax error.
             let generic_call = withtypeoperatorslist_to_ctype(&generics.typecalllist, &scope)?;
-            match generic_call {
+            match &*generic_call {
                 CType::Bool(b) => match b {
                     false => return Ok(scope),
                     true => { /* Do nothing */ }
                 },
-                CType::Type(_, c) => match *c {
+                CType::Type(_, c) => match &**c {
                     CType::Bool(b) => match b {
                         false => return Ok(scope),
                         true => { /* Do nothing */ }
@@ -205,10 +208,10 @@ impl Function {
                                 // TODO: This should be an interface type, instead
                                 generics.push((
                                     t1.to_string().trim().to_string(),
-                                    CType::Infer(
+                                    Arc::new(CType::Infer(
                                         t1.to_string().trim().to_string(),
                                         t3.to_string().trim().to_string(),
-                                    ),
+                                    )),
                                 ));
                                 i += 4;
                             }
@@ -218,10 +221,10 @@ impl Function {
                                 // TODO: This should be an interface type, instead
                                 generics.push((
                                     t1.to_string().trim().to_string(),
-                                    CType::Infer(
+                                    Arc::new(CType::Infer(
                                         t1.to_string().trim().to_string(),
                                         t3.to_string().trim().to_string(),
-                                    ),
+                                    )),
                                 ));
                                 i += 3; // This should exit the loop
                             }
@@ -229,10 +232,10 @@ impl Function {
                                 // TODO: This should be an interface type, instead
                                 generics.push((
                                     t1.to_string().trim().to_string(),
-                                    CType::Infer(
+                                    Arc::new(CType::Infer(
                                         t1.to_string().trim().to_string(),
                                         "Any".to_string(),
-                                    ),
+                                    )),
                                 ));
                                 i += 2;
                             }
@@ -240,10 +243,10 @@ impl Function {
                                 // TODO: This should be an interface type, instead
                                 generics.push((
                                     t1.to_string().trim().to_string(),
-                                    CType::Infer(
+                                    Arc::new(CType::Infer(
                                         t1.to_string().trim().to_string(),
                                         "Any".to_string(),
-                                    ),
+                                    )),
                                 ));
                                 i += 1;
                             }
@@ -258,28 +261,28 @@ impl Function {
                     for g in &generics {
                         temp_scope = CType::from_ctype(temp_scope, g.0.clone(), g.1.clone());
                     }
-                    let ctype = withtypeoperatorslist_to_ctype(fntype, &temp_scope)?;
+                    let ctype = Arc::new(withtypeoperatorslist_to_ctype(fntype, &temp_scope)?);
                     // If the `ctype` is a Function type, we have both the input and output defined.
                     // If the `ctype` is a From type, we re-eval it as an `Import` type with the
                     // function name declaring what's being imported. If it's an `Import` type we
                     // grab the specified function to import. If it's any other type, we presume
                     // it's only the input type defined
-                    let (kind, input_type, rettype) = match ctype {
+                    let (kind, input_type, rettype) = match &**ctype {
                         CType::From(_) => CType::fail("TODO: Support importing a function from an Alan dependency."),
                         CType::Import(..) => CType::fail("TODO: Support importing a function from an Alan dependency."),
-                        CType::Call(n, f) => match &*n {
+                        CType::Call(n, f) => match &**n {
                             CType::TString(s) => {
-                                match &*f {
-                                    CType::Function(i, o) => (FnKind::BoundGeneric(generics, s.clone()), *i.clone(), *o.clone()),
-                                    otherwise => (FnKind::BoundGeneric(generics, s.clone()), otherwise.clone(), CType::Infer("unknown".to_string(), "unknown".to_string())),
+                                match &**f {
+                                    CType::Function(i, o) => (FnKind::BoundGeneric(generics, s.clone()), i.clone(), o.clone()),
+                                    _otherwise => (FnKind::BoundGeneric(generics, s.clone()), f.clone(), Arc::new(CType::Infer("unknown".to_string(), "unknown".to_string()))),
                                 }
                             }
                             CType::Import(n, d) => {
                                 match &**n {
                                     CType::TString(s) => {
-                                        match &*f {
-                                            CType::Function(i, o) => (FnKind::ExternalGeneric(generics, s.clone(), *d.clone()), *i.clone(), *o.clone()),
-                                            otherwise => (FnKind::ExternalGeneric(generics, s.clone(), *d.clone()), otherwise.clone(), CType::Infer("unknown".to_string(), "unknown".to_string())),
+                                        match &**f {
+                                            CType::Function(i, o) => (FnKind::ExternalGeneric(generics, s.clone(), d.clone()), i.clone(), o.clone()),
+                                            _otherwise => (FnKind::ExternalGeneric(generics, s.clone(), d.clone()), n.clone(), Arc::new(CType::Infer("unknown".to_string(), "unknown".to_string()))),
                                         }
                                     }
                                     _ => CType::fail("TODO: Support more than bare function imports for generic function binding"),
@@ -296,7 +299,7 @@ impl Function {
                     let degrouped_input = input_type.degroup();
                     let function = Arc::new(Function {
                         name,
-                        typen: CType::Function(Box::new(degrouped_input), Box::new(rettype)),
+                        typen: Arc::new(CType::Function(degrouped_input, rettype)),
                         microstatements: Vec::new(),
                         kind,
                         origin_scope_path: scope.path.clone(),
@@ -318,9 +321,11 @@ impl Function {
                     let ctype = withtypeoperatorslist_to_ctype(fntype, &scope)?;
                     // Converts a From type into an Import type so we can pull the correct function
                     // from the specified dependency.
-                    let ctype = match ctype {
-                        CType::From(t) => CType::import(CType::TString(name.clone()), *t),
-                        t => t,
+                    let ctype = match &*ctype {
+                        CType::From(t) => {
+                            CType::import(Arc::new(CType::TString(name.clone())), t.clone())
+                        }
+                        _ => ctype,
                     };
                     if is_export {
                         scope.exports.insert(name.clone(), Export::Function);
@@ -375,10 +380,10 @@ impl Function {
                             // TODO: This should be an interface type, instead
                             generics.push((
                                 t1.to_string().trim().to_string(),
-                                CType::Infer(
+                                Arc::new(CType::Infer(
                                     t1.to_string().trim().to_string(),
                                     t3.to_string().trim().to_string(),
-                                ),
+                                )),
                             ));
                             i += 4;
                         }
@@ -386,10 +391,10 @@ impl Function {
                             // TODO: This should be an interface type, instead
                             generics.push((
                                 t1.to_string().trim().to_string(),
-                                CType::Infer(
+                                Arc::new(CType::Infer(
                                     t1.to_string().trim().to_string(),
                                     t3.to_string().trim().to_string(),
-                                ),
+                                )),
                             ));
                             i += 3; // This should exit the loop
                         }
@@ -397,7 +402,10 @@ impl Function {
                             // TODO: This should be an interface type, instead
                             generics.push((
                                 t1.to_string().trim().to_string(),
-                                CType::Infer(t1.to_string().trim().to_string(), "Any".to_string()),
+                                Arc::new(CType::Infer(
+                                    t1.to_string().trim().to_string(),
+                                    "Any".to_string(),
+                                )),
                             ));
                             i += 2;
                         }
@@ -405,7 +413,10 @@ impl Function {
                             // TODO: This should be an interface type, instead
                             generics.push((
                                 t1.to_string().trim().to_string(),
-                                CType::Infer(t1.to_string().trim().to_string(), "Any".to_string()),
+                                Arc::new(CType::Infer(
+                                    t1.to_string().trim().to_string(),
+                                    "Any".to_string(),
+                                )),
                             ));
                             i += 1;
                         }
@@ -420,14 +431,14 @@ impl Function {
             _ => FnKind::Normal,
         };
         let mut typen = match &function_ast.opttype {
-            None => Ok::<CType, Box<dyn std::error::Error>>(CType::Function(
-                Box::new(CType::Void),
-                Box::new(CType::Infer("unknown".to_string(), "unknown".to_string())),
-            )),
-            Some(typeassignable) if typeassignable.is_empty() => Ok(CType::Function(
-                Box::new(CType::Void),
-                Box::new(CType::Infer("unknown".to_string(), "unknown".to_string())),
-            )),
+            None => Ok::<Arc<CType>, Box<dyn std::error::Error>>(Arc::new(CType::Function(
+                Arc::new(CType::Void),
+                Arc::new(CType::Infer("unknown".to_string(), "unknown".to_string())),
+            ))),
+            Some(typeassignable) if typeassignable.is_empty() => Ok(Arc::new(CType::Function(
+                Arc::new(CType::Void),
+                Arc::new(CType::Infer("unknown".to_string(), "unknown".to_string())),
+            ))),
             Some(typeassignable) => match &kind {
                 FnKind::Generic(gs, _) | FnKind::BoundGeneric(gs, _) => {
                     let mut temp_scope = scope.child();
@@ -438,45 +449,39 @@ impl Function {
                     let ctype = withtypeoperatorslist_to_ctype(typeassignable, &temp_scope)?;
                     // If the `ctype` is a Function type, we have both the input and output defined. If
                     // it's any other type, we presume it's only the input type defined
-                    let (input_type, output_type) = match ctype {
-                        CType::Function(i, o) => (*i.clone(), *o.clone()),
-                        otherwise => (
-                            otherwise.clone(),
-                            CType::Infer("unknown".to_string(), "unknown".to_string()),
+                    let (input_type, output_type) = match &*ctype {
+                        CType::Function(i, o) => (i.clone(), o.clone()),
+                        _otherwise => (
+                            ctype,
+                            Arc::new(CType::Infer("unknown".to_string(), "unknown".to_string())),
                         ),
                     };
                     // In case there were any created functions (eg constructor or accessor
                     // functions) in that path, we need to merge the child's functions back up
                     merge!(scope, temp_scope);
                     let degrouped_input = input_type.degroup();
-                    Ok(CType::Function(
-                        Box::new(degrouped_input),
-                        Box::new(output_type),
-                    ))
+                    Ok(Arc::new(CType::Function(degrouped_input, output_type)))
                 }
                 _ => {
                     let ctype = withtypeoperatorslist_to_ctype(typeassignable, &scope)?;
                     // If the `ctype` is a Function type, we have both the input and output defined. If
                     // it's any other type, we presume it's only the input type defined
 
-                    let (input_type, output_type) = match ctype {
-                        CType::Function(i, o) => (*i.clone(), *o.clone()),
-                        otherwise => (
-                            otherwise.clone(),
-                            CType::Infer("unknown".to_string(), "unknown".to_string()),
+                    let (input_type, output_type) = match &*ctype {
+                        CType::Function(i, o) => (i.clone(), o.clone()),
+                        _otherwise => (
+                            ctype,
+                            Arc::new(CType::Infer("unknown".to_string(), "unknown".to_string())),
                         ),
                     };
                     let degrouped_input = input_type.degroup();
-                    Ok(CType::Function(
-                        Box::new(degrouped_input),
-                        Box::new(output_type),
-                    ))
+                    Ok(Arc::new(CType::Function(degrouped_input, output_type)))
                 }
             },
         }?;
         let microstatements = {
             let mut ms = Vec::new();
-            for (name, kind, typen) in type_to_args(&typen) {
+            for (name, kind, typen) in type_to_args(typen.clone()) {
                 ms.push(Microstatement::Arg { name, kind, typen });
             }
             // We can't generate the rest of the microstatements while the generic function is
@@ -499,18 +504,18 @@ impl Function {
             if let Microstatement::Arg { .. } = ms {
                 // Don't do anything in this path, this is probably a derived function
             } else {
-                let current_rettype = type_to_rettype(&typen);
+                let current_rettype = type_to_rettype(typen.clone());
                 let actual_rettype = match ms {
                     Microstatement::Return { value: Some(v) } => v.get_type(),
-                    _ => CType::Void,
+                    _ => Arc::new(CType::Void),
                 };
-                if let CType::Infer(..) = current_rettype {
+                if let CType::Infer(..) = &*current_rettype {
                     // We're definitely replacing with the inferred type
-                    let input_type = match &typen {
-                        CType::Function(i, _) => *i.clone(),
-                        _ => CType::Void,
+                    let input_type = match &*typen {
+                        CType::Function(i, _) => i.clone(),
+                        _ => Arc::new(CType::Void),
                     };
-                    typen = CType::Function(Box::new(input_type), Box::new(actual_rettype));
+                    typen = Arc::new(CType::Function(input_type, actual_rettype));
                 } else if current_rettype.to_strict_string(false)
                     != actual_rettype.to_strict_string(false)
                 {
@@ -529,7 +534,7 @@ impl Function {
         // should probably centralize creating these type names and constructor functions
         // for us rather than this hackiness. Only adding the hackery to the output_type
         // because that's all I need, and the input type would be much more convoluted.
-        match &typen {
+        match &*typen {
             CType::Function(i, o) => {
                 match &**o {
                     CType::Void => { /* Do nothing */ }
@@ -545,7 +550,7 @@ impl Function {
                         let name = otherwise.to_callable_string();
                         // Don't recreate the exact same thing. It only causes pain
                         if scope.resolve_type(&name).is_none() {
-                            scope = CType::from_ctype(scope, name, otherwise.clone());
+                            scope = CType::from_ctype(scope, name, o.clone());
                         }
                     }
                 }
@@ -578,7 +583,7 @@ impl Function {
     pub fn from_generic_function<'a>(
         mut scope: Scope<'a>,
         generic_function: &Function,
-        generic_types: Vec<CType>,
+        generic_types: Vec<Arc<CType>>,
     ) -> Result<(Scope<'a>, Arc<Function>), Box<dyn std::error::Error>> {
         match &generic_function.kind {
             FnKind::Normal
@@ -613,12 +618,12 @@ impl Function {
                         (name.clone(), kind.clone(), {
                             let mut a = argtype.clone();
                             for ((_, o), n) in gen_args.iter().zip(generic_types.iter()) {
-                                a = a.swap_subtype(o, n);
+                                a = a.swap_subtype(o.clone(), n.clone());
                             }
                             a
                         })
                     })
-                    .collect::<Vec<(String, ArgKind, CType)>>();
+                    .collect::<Vec<(String, ArgKind, Arc<CType>)>>();
                 // Make sure all argument types exist within the generic function call scope
                 for (_, _, arg) in &args {
                     scope = CType::from_ctype(scope, arg.to_callable_string(), arg.clone());
@@ -626,7 +631,7 @@ impl Function {
                 let mut rettype = {
                     let mut a = generic_function.rettype().clone();
                     for ((_, o), n) in gen_args.iter().zip(generic_types.iter()) {
-                        a = a.swap_subtype(o, n);
+                        a = a.swap_subtype(o.clone(), n.clone());
                     }
                     a
                 };
@@ -649,9 +654,9 @@ impl Function {
                     } else {
                         let actual_rettype = match ms {
                             Microstatement::Return { value: Some(v) } => v.get_type(),
-                            _ => CType::Void,
+                            _ => Arc::new(CType::Void),
                         };
-                        if let CType::Infer(..) = &rettype {
+                        if let CType::Infer(..) = &*rettype {
                             rettype = actual_rettype;
                         } else if rettype.to_strict_string(false)
                             != actual_rettype.to_strict_string(false)
@@ -706,12 +711,12 @@ impl Function {
                         (name.clone(), kind.clone(), {
                             let mut a = argtype.clone();
                             for ((_, o), n) in gen_args.iter().zip(generic_types.iter()) {
-                                a = a.swap_subtype(o, n);
+                                a = a.swap_subtype(o.clone(), n.clone());
                             }
                             a
                         })
                     })
-                    .collect::<Vec<(String, ArgKind, CType)>>();
+                    .collect::<Vec<(String, ArgKind, Arc<CType>)>>();
                 // Make sure all argument types exist within the generic function call scope
                 for (_, _, arg) in &args {
                     scope = CType::from_ctype(scope, arg.to_callable_string(), arg.clone());
@@ -719,7 +724,7 @@ impl Function {
                 let mut rettype = {
                     let mut a = generic_function.rettype().clone();
                     for ((_, o), n) in gen_args.iter().zip(generic_types.iter()) {
-                        a = a.swap_subtype(o, n);
+                        a = a.swap_subtype(o.clone(), n.clone());
                     }
                     a
                 };
@@ -757,9 +762,9 @@ impl Function {
                     } else {
                         let actual_rettype = match ms {
                             Microstatement::Return { value: Some(v) } => v.get_type(),
-                            _ => CType::Void,
+                            _ => Arc::new(CType::Void),
                         };
-                        if let CType::Infer(..) = &rettype {
+                        if let CType::Infer(..) = &*rettype {
                             rettype = actual_rettype;
                         } else if rettype.to_strict_string(false)
                             != actual_rettype.to_strict_string(false)

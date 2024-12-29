@@ -27,7 +27,7 @@ pub fn ctype_to_rtype(
                                     let res = ctype_to_rtype(t, true, deps)?;
                                     let s = res.0;
                                     deps = res.1;
-                                    out.push(match &t {
+                                    out.push(match &**t {
                                         CType::Mut(_) => format!("mut {}", s),
                                         _ => s,
                                     });
@@ -68,7 +68,7 @@ pub fn ctype_to_rtype(
             CType::Either(ts) => {
                 let mut enum_type_strs = Vec::new();
                 for t in ts {
-                    match t {
+                    match &**t {
                         CType::Field(k, v) => {
                             let res = ctype_to_rtype(v, in_function_type, deps)?;
                             let s = res.0;
@@ -113,7 +113,7 @@ pub fn ctype_to_rtype(
             CType::Tuple(ts) => {
                 let mut out = Vec::new();
                 for t in ts {
-                    match t {
+                    match &**t {
                         CType::Field(_, t2) => {
                             if !matches!(&**t2, CType::Int(_) | CType::Float(_) | CType::Bool(_) | CType::TString(_)) {
                                 let res = ctype_to_rtype(t, in_function_type, deps)?;
@@ -329,7 +329,7 @@ pub fn ctype_to_rtype(
         CType::Tuple(ts) => {
             let mut out = Vec::new();
             for t in ts {
-                match t {
+                match &**t {
                     CType::Field(_, t2) => {
                         if !matches!(&**t2, CType::Int(_) | CType::Float(_) | CType::Bool(_) | CType::TString(_)) {
                             let res = ctype_to_rtype(t, in_function_type, deps)?;
@@ -363,7 +363,7 @@ pub fn ctype_to_rtype(
             // to `Result<T, AlanError>`
             if ts.len() == 2 {
                 let alan_error = "alan_std::AlanError".to_string();
-                match &ts[1] {
+                match &*ts[1] {
                     CType::Void => {
                         let res = ctype_to_rtype(&ts[0], in_function_type, deps)?;
                         let s = res.0;
