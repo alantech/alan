@@ -261,15 +261,19 @@ impl Function {
                     for g in &generics {
                         temp_scope = CType::from_ctype(temp_scope, g.0.clone(), g.1.clone());
                     }
-                    let ctype = Arc::new(withtypeoperatorslist_to_ctype(fntype, &temp_scope)?);
+                    let ctype = withtypeoperatorslist_to_ctype(fntype, &temp_scope)?;
                     // If the `ctype` is a Function type, we have both the input and output defined.
                     // If the `ctype` is a From type, we re-eval it as an `Import` type with the
                     // function name declaring what's being imported. If it's an `Import` type we
                     // grab the specified function to import. If it's any other type, we presume
                     // it's only the input type defined
-                    let (kind, input_type, rettype) = match &**ctype {
-                        CType::From(_) => CType::fail("TODO: Support importing a function from an Alan dependency."),
-                        CType::Import(..) => CType::fail("TODO: Support importing a function from an Alan dependency."),
+                    let (kind, input_type, rettype) = match &*ctype {
+                        CType::From(_) => CType::fail(
+                            "TODO: Support importing a function from an Alan dependency.",
+                        ),
+                        CType::Import(..) => CType::fail(
+                            "TODO: Support importing a function from an Alan dependency.",
+                        ),
                         CType::Call(n, f) => match &**n {
                             CType::TString(s) => {
                                 match &**f {
@@ -282,15 +286,18 @@ impl Function {
                                     CType::TString(s) => {
                                         match &**f {
                                             CType::Function(i, o) => (FnKind::ExternalGeneric(generics, s.clone(), d.clone()), i.clone(), o.clone()),
-                                            _otherwise => (FnKind::ExternalGeneric(generics, s.clone(), d.clone()), n.clone(), Arc::new(CType::Infer("unknown".to_string(), "unknown".to_string()))),
+                                            _otherwise => (FnKind::ExternalGeneric(generics, s.clone(), d.clone()), f.clone(), Arc::new(CType::Infer("unknown".to_string(), "unknown".to_string()))),
                                         }
                                     }
                                     _ => CType::fail("TODO: Support more than bare function imports for generic function binding"),
                                 }
                             }
                             _ => CType::fail("TODO: Support more than bare function calls for generic function binding"),
-                        },
-                        otherwise => CType::fail(&format!("A declaration-only function must be a binding Call{{N, F}}: {:?}", otherwise)),
+                        }
+                        otherwise => CType::fail(&format!(
+                            "A declaration-only function must be a binding Call{{N, F}}: {:?}",
+                            otherwise
+                        )),
                     };
                     // In case there were any created functions (eg constructor or accessor
                     // functions) in that path, we need to merge the child's functions back up
