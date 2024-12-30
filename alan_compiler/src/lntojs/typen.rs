@@ -17,7 +17,7 @@ pub fn ctype_to_jtype(
         CType::Type(n, t) => match &**t {
             CType::Either(ts) => {
                 for t in ts {
-                    match t {
+                    match &**t {
                         CType::Field(_, v) => {
                             let res = ctype_to_jtype(v, deps)?;
                             deps = res.1;
@@ -51,7 +51,7 @@ pub fn ctype_to_jtype(
             CType::Tuple(ts) => {
                 let mut out = Vec::new();
                 for (i, t) in ts.iter().enumerate() {
-                    match t {
+                    match &**t {
                         CType::Field(n, t2) => {
                             if !matches!(
                                 &**t2,

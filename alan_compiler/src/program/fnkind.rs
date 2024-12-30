@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::parse;
 
 use super::CType;
@@ -6,12 +8,12 @@ use super::CType;
 pub enum FnKind {
     Normal,
     Bind(String),
-    Generic(Vec<(String, CType)>, Vec<parse::Statement>),
-    BoundGeneric(Vec<(String, CType)>, String),
+    Generic(Vec<(String, Arc<CType>)>, Vec<parse::Statement>),
+    BoundGeneric(Vec<(String, Arc<CType>)>, String),
     Derived,
     DerivedVariadic,
     Static,
-    External(CType),
-    ExternalBind(String, CType),
-    ExternalGeneric(Vec<(String, CType)>, String, CType),
+    External(Arc<CType>),
+    ExternalBind(String, Arc<CType>),
+    ExternalGeneric(Vec<(String, Arc<CType>)>, String, Arc<CType>),
 }

@@ -17,7 +17,7 @@ use crate::parse;
 pub struct Scope<'a> {
     pub path: String,
     pub parent: Option<&'a Scope<'a>>,
-    pub types: OrderedHashMap<String, CType>,
+    pub types: OrderedHashMap<String, Arc<CType>>,
     pub consts: OrderedHashMap<String, Const>,
     pub functions: OrderedHashMap<String, Vec<Arc<Function>>>,
     pub operatormappings: OrderedHashMap<String, OperatorMapping>,
@@ -180,7 +180,7 @@ impl<'a> Scope<'a> {
     #[allow(clippy::too_many_arguments)]
     pub fn merge(
         &mut self,
-        mut types: OrderedHashMap<String, CType>,
+        mut types: OrderedHashMap<String, Arc<CType>>,
         mut consts: OrderedHashMap<String, Const>,
         mut functions: OrderedHashMap<String, Vec<Arc<Function>>>,
         mut operatormappings: OrderedHashMap<String, OperatorMapping>,
@@ -215,7 +215,7 @@ impl<'a> Scope<'a> {
     pub fn resolve_typeoperator(
         &'a self,
         typeoperatorname: &String,
-    ) -> Option<&TypeOperatorMapping> {
+    ) -> Option<&'a TypeOperatorMapping> {
         // Tries to find the specified operator within the portion of the program accessible from the
         // current scope (so first checking the current scope, then all imports, then the root
         // scope) Returns a reference to the type and the scope it came from.
@@ -229,7 +229,7 @@ impl<'a> Scope<'a> {
         }
     }
 
-    pub fn resolve_const(&'a self, constname: &String) -> Option<&Const> {
+    pub fn resolve_const(&'a self, constname: &String) -> Option<&'a Const> {
         match self.consts.get(constname) {
             Some(c) => Some(c),
             None => match &self.parent {
@@ -239,7 +239,7 @@ impl<'a> Scope<'a> {
         }
     }
 
-    pub fn resolve_type(&'a self, typename: &str) -> Option<&CType> {
+    pub fn resolve_type(&'a self, typename: &str) -> Option<Arc<CType>> {
         // Tries to find the specified type within the portion of the program accessible from the
         // current scope (so first checking the current scope, then all imports, then the root
         // scope) Returns a reference to the type and the scope it came from.
@@ -252,7 +252,7 @@ impl<'a> Scope<'a> {
         // an interface, we may need to provide all possible realized types for all types that
         // match the interface?
         match self.types.get(typename) {
-            Some(t) => Some(t),
+            Some(t) => Some(t.clone()),
             None => match &self.parent {
                 None => None,
                 Some(p) => p.resolve_type(typename),
@@ -260,7 +260,7 @@ impl<'a> Scope<'a> {
         }
     }
 
-    pub fn resolve_operator(&'a self, operatorname: &String) -> Option<&OperatorMapping> {
+    pub fn resolve_operator(&'a self, operatorname: &String) -> Option<&'a OperatorMapping> {
         // Tries to find the specified operator within the portion of the program accessible from the
         // current scope (so first checking the current scope, then all imports, then the root
         // scope) Returns a reference to the type and the scope it came from.
@@ -274,7 +274,7 @@ impl<'a> Scope<'a> {
         }
     }
 
-    pub fn resolve_function_types(&'a self, function: &String) -> CType {
+    pub fn resolve_function_types(&'a self, function: &String) -> Arc<CType> {
         // Gets every function visible from the specified scope with the same name and returns the
         // possible types in an array. TODO: Have the Function just have this type on the structure
         // so it doesn't need to be recreated each time.
@@ -315,34 +315,31 @@ impl<'a> Scope<'a> {
                     .args()
                     .iter()
                     .map(|(_, _, arg)| arg.clone())
-                    .collect::<Vec<CType>>();
-                let output = f.rettype().clone();
+                    .collect::<Vec<Arc<CType>>>();
+                let output = f.rettype();
                 match generics {
-                    None => CType::Function(Box::new(CType::Tuple(input)), Box::new(output)),
-                    Some(gs) => CType::Generic(
+                    None => Arc::new(CType::Function(Arc::new(CType::Tuple(input)), output)),
+                    Some(gs) => Arc::new(CType::Generic(
                         f.name.clone(),
                         gs,
-                        Box::new(CType::Function(
-                            Box::new(CType::Tuple(input)),
-                            Box::new(output),
-                        )),
-                    ),
+                        Arc::new(CType::Function(Arc::new(CType::Tuple(input)), output)),
+                    )),
                 }
             })
-            .collect::<Vec<CType>>();
+            .collect::<Vec<Arc<CType>>>();
         if out_types.is_empty() {
-            CType::Void
+            Arc::new(CType::Void)
         } else if out_types.len() == 1 {
             out_types.into_iter().nth(0).unwrap()
         } else {
-            CType::AnyOf(out_types)
+            Arc::new(CType::AnyOf(out_types))
         }
     }
 
     pub fn resolve_function_by_type(
         &'a self,
         function: &String,
-        fn_type: &CType,
+        fn_type: Arc<CType>,
     ) -> Option<Arc<Function>> {
         // Iterates through every function with the same name visible from the provided scope and
         // returns the one that matches the provided function type, if any
@@ -369,8 +366,8 @@ impl<'a> Scope<'a> {
     pub fn resolve_generic_function(
         mut self,
         function: &String,
-        generic_types: &[CType],
-        args: &[CType],
+        generic_types: &[Arc<CType>],
+        args: &[Arc<CType>],
     ) -> Option<(Scope<'a>, Arc<Function>)> {
         // Tries to find the specified function within the portion of the program accessible from
         // the current scope (so first checking the current scope, then all imports, then the root
@@ -439,12 +436,12 @@ impl<'a> Scope<'a> {
                             (name.clone(), kind.clone(), {
                                 let mut a = argtype.clone();
                                 for ((_, o), n) in gen_args.iter().zip(generic_types.iter()) {
-                                    a = a.swap_subtype(o, n);
+                                    a = a.swap_subtype(o.clone(), n.clone());
                                 }
                                 a
                             })
                         })
-                        .collect::<Vec<(String, ArgKind, CType)>>();
+                        .collect::<Vec<(String, ArgKind, Arc<CType>)>>();
                     possible_args_vec.push(args);
                 }
             }
@@ -472,9 +469,9 @@ impl<'a> Scope<'a> {
             // *also* need to resolve that as well.
             let generic_f = generic_fs.get(i).unwrap();
             for arg in args {
-                match arg {
+                match &**arg {
                     CType::Generic(n, _, t) if matches!(&**t, CType::Function(..)) => {
-                        if let Some(func) = self.resolve_function_by_type(n, t) {
+                        if let Some(func) = self.resolve_function_by_type(n, t.clone()) {
                             match Function::from_generic_function(
                                 self,
                                 &func,
@@ -504,7 +501,7 @@ impl<'a> Scope<'a> {
     pub fn resolve_function(
         self,
         function: &String,
-        args: &[CType],
+        args: &[Arc<CType>],
     ) -> Option<(Scope<'a>, Arc<Function>)> {
         // We should prefer the "normal" function, if it matches, use it, otherwise try to go with
         // a generic function, if possible.
@@ -525,8 +522,8 @@ impl<'a> Scope<'a> {
     pub fn resolve_function_generic_args(
         &'a self,
         function: &String,
-        args: &[CType],
-    ) -> Option<Vec<CType>> {
+        args: &[Arc<CType>],
+    ) -> Option<Vec<Arc<CType>>> {
         let mut scope_to_check: Option<&Scope> = Some(self);
         let mut fs = Vec::new();
         while scope_to_check.is_some() {
@@ -624,7 +621,7 @@ impl<'a> Scope<'a> {
     pub fn resolve_normal_function(
         &'a self,
         function: &String,
-        args: &[CType],
+        args: &[Arc<CType>],
     ) -> Option<Arc<Function>> {
         // Tries to find the specified function within the portion of the program accessible from
         // the current scope (so first checking the current scope, then all imports, then the root

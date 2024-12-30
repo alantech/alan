@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use nom::combinator::all_consuming;
 use ordered_hash_map::OrderedHashMap;
 
@@ -73,7 +75,7 @@ pub fn from_microstatement(
         Microstatement::Value {
             typen,
             representation,
-        } => match &typen {
+        } => match &**typen {
             CType::Type(n, _) if n == "string" => {
                 if representation.starts_with("\"") {
                     Ok((
@@ -159,7 +161,7 @@ pub fn from_microstatement(
                 )),
             },
             CType::Function(..) => {
-                let f = scope.resolve_function_by_type(representation, typen);
+                let f = scope.resolve_function_by_type(representation, typen.clone());
                 let f = match f {
                     None => {
                         // If the current scope isn't the original scope for the parent function, maybe the
@@ -167,9 +169,8 @@ pub fn from_microstatement(
                         if parent_fn.origin_scope_path != scope.path {
                             let program = Program::get_program();
                             let out = match program.scope_by_file(&parent_fn.origin_scope_path) {
-                                Ok(original_scope) => {
-                                    original_scope.resolve_function_by_type(representation, typen)
-                                }
+                                Ok(original_scope) => original_scope
+                                    .resolve_function_by_type(representation, typen.clone()),
                                 Err(_) => None,
                             };
                             Program::return_program(program);
@@ -185,7 +186,7 @@ pub fn from_microstatement(
                         let args = parent_fn.args();
                         for (name, _, typen) in args {
                             if &name == representation {
-                                if let CType::Function(_, _) = typen {
+                                if let CType::Function(_, _) = &*typen {
                                     // TODO: Do we need better matching? The upper stage should
                                     // have taken care of this
                                     return Ok((representation.clone(), out, deps));
@@ -214,7 +215,7 @@ pub fn from_microstatement(
                             out = o;
                             deps = d;
                             if let FnKind::External(d) = &fun.kind {
-                                match &*d {
+                                match &**d {
                                         CType::Type(_, t) => match &**t {
                                             CType::Node(d) => match &**d {
                                                 CType::Dependency(n, v) => {
@@ -258,7 +259,7 @@ pub fn from_microstatement(
                             if let FnKind::ExternalGeneric(_, _, d) | FnKind::ExternalBind(_, d) =
                                 &fun.kind
                             {
-                                match &*d {
+                                match &**d {
                                         CType::Type(_, t) => match &**t {
                                             CType::Node(d) => match &**d {
                                                 CType::Dependency(n, v) => {
@@ -366,7 +367,7 @@ pub fn from_microstatement(
                         }
                     }
                     if let FnKind::External(d) = &function.kind {
-                        match &*d {
+                        match &**d {
                             CType::Type(_, t) => match &**t {
                                 CType::Node(d) => match &**d {
                                     CType::Dependency(n, v) => {
@@ -420,7 +421,7 @@ pub fn from_microstatement(
                         }
                     }
                     if let FnKind::ExternalBind(_, d) = &function.kind {
-                        match &*d {
+                        match &**d {
                             CType::Type(_, t) => match &**t {
                                 CType::Node(d) => match &**d {
                                     CType::Dependency(n, v) => {
@@ -468,7 +469,7 @@ pub fn from_microstatement(
                         Microstatement::Value {
                             representation,
                             typen,
-                        } => match &typen {
+                        } => match &**typen {
                             CType::Binds(n, _) => match &**n {
                                 CType::TString(_) => Ok((representation.clone(), out, deps)),
                                 CType::Import(n, d) => {
@@ -585,20 +586,20 @@ pub fn from_microstatement(
                     //    question. (This conflicts with (1) so it's checked first.)
                     if function.args().len() == 1 {
                         // This is a wacky unwrapping logic...
-                        let mut input_type = &function.args()[0].2;
-                        while matches!(input_type, CType::Type(..) | CType::Group(_)) {
-                            input_type = match input_type {
-                                CType::Type(_, t) => t,
-                                CType::Group(t) => t,
-                                t => t,
+                        let mut input_type = function.args()[0].2.clone();
+                        while matches!(&*input_type, CType::Type(..) | CType::Group(_)) {
+                            input_type = match &*input_type {
+                                CType::Type(_, t) => t.clone(),
+                                CType::Group(t) => t.clone(),
+                                _ => input_type,
                             };
                         }
-                        match input_type {
+                        match &*input_type {
                             CType::Tuple(ts) => {
                                 // Short-circuit for direct `<N>` function calls (which can only be
                                 // generated by the internals of the compiler)
                                 if let Ok(i) = function.name.parse::<i64>() {
-                                    if let CType::Field(n, _) = &ts[i as usize] {
+                                    if let CType::Field(n, _) = &*ts[i as usize] {
                                         return Ok((format!("{}.{}", argstrs[0], n), out, deps));
                                     } else {
                                         return Ok((format!("{}.arg{}", argstrs[0], i), out, deps));
@@ -606,7 +607,7 @@ pub fn from_microstatement(
                                 }
                                 let mut accessor_field = None;
                                 for (i, t) in ts.iter().enumerate() {
-                                    match t {
+                                    match &**t {
                                         CType::Field(n, _) => {
                                             if n == &function.name {
                                                 accessor_field = Some(n.clone());
@@ -644,7 +645,7 @@ pub fn from_microstatement(
                                 // The kinds of types allowed here are `Type`, `Bound`, and
                                 // `ResolvedBoundGeneric`, and `Field`. Other types don't have
                                 // a string name we can match against the function name
-                                let accessor_field = ts.iter().find(|t| match t {
+                                let accessor_field = ts.iter().find(|t| match &***t {
                                     CType::Field(n, _) => *n == function.name,
                                     CType::Type(n, _) => *n == function.name,
                                     _ => false,
@@ -655,9 +656,9 @@ pub fn from_microstatement(
                                     // Special-casing for Option and Result mapping. TODO:
                                     // Make this more centralized
                                     if ts.len() == 2 {
-                                        if let CType::Void = &ts[1] {
+                                        if let CType::Void = &*ts[1] {
                                             return Ok((argstrs[0].clone(), out, deps));
-                                        } else if let CType::Type(name, _) = &ts[1] {
+                                        } else if let CType::Type(name, _) = &*ts[1] {
                                             if name == "Error" {
                                                 if function.name == "Error" {
                                                     return Ok((
@@ -749,44 +750,45 @@ pub fn from_microstatement(
                             _ => {}
                         }
                     } else if function.args().is_empty() {
-                        let inner_ret_type = match &function.rettype().degroup() {
-                            CType::Field(_, t) => *t.clone(),
-                            CType::Type(_, t) => *t.clone(),
-                            t => t.clone(),
+                        let inner_ret_type = function.rettype().degroup();
+                        let inner_ret_type = match &*inner_ret_type {
+                            CType::Field(_, t) => t.clone(),
+                            CType::Type(_, t) => t.clone(),
+                            _ => inner_ret_type,
                         };
-                        if let CType::Either(_) = inner_ret_type {
+                        if let CType::Either(_) = &*inner_ret_type {
                             return Ok(("null".to_string(), out, deps));
                         }
                     }
-                    let ret_type = &function.rettype().degroup();
+                    let ret_type = function.rettype().degroup();
                     let ret_name = ret_type.to_callable_string();
                     if function.name == "store" {
-                        let inner_ret_type = match ret_type {
-                            CType::Field(_, t) => *t.clone(),
-                            CType::Type(_, t) => *t.clone(),
-                            t => t.clone(),
+                        let inner_ret_type = match &*ret_type {
+                            CType::Field(_, t) => t.clone(),
+                            CType::Type(_, t) => t.clone(),
+                            _ => ret_type,
                         };
-                        match inner_ret_type {
+                        match &*inner_ret_type {
                             CType::Either(ts) => {
                                 if argstrs.len() != 2 {
                                     return Err(format!("Invalid arguments {} provided for Either re-assignment function, must be two arguments", argstrs.join(", ")).into());
                                 }
-                                let enum_type = &function.args()[1].2.degroup();
-                                let enum_name = match enum_type {
+                                let enum_type = function.args()[1].2.clone().degroup();
+                                let enum_name = match &*enum_type {
                                     CType::Field(n, _) => Ok(n.clone()),
                                     CType::Type(n, _) => Ok(n.clone()),
                                     CType::Array(_) => Ok(enum_type.to_callable_string()),
                                     otherwise => Err(format!("Cannot generate an constructor function for {} type as the input type has no name? {:?}", ret_name, otherwise)),
                                 }?;
-                                for t in &ts {
-                                    let inner_type = t.degroup();
-                                    match &inner_type {
+                                for t in ts {
+                                    let inner_type = t.clone().degroup();
+                                    match &*inner_type {
                                         CType::Field(n, _) if *n == enum_name => {
                                             // Special-casing for Option and Result mapping. TODO:
                                             // Make this more centralized
                                             if ts.len() == 2 {
-                                                if let CType::Void = &ts[1] {
-                                                    if let CType::Void = t {
+                                                if let CType::Void = &*ts[1] {
+                                                    if let CType::Void = &**t {
                                                         return Ok((
                                                             format!("{} = null", argstrs[0]),
                                                             out,
@@ -802,7 +804,7 @@ pub fn from_microstatement(
                                                             deps,
                                                         ));
                                                     }
-                                                } else if let CType::Type(name, _) = &ts[1] {
+                                                } else if let CType::Type(name, _) = &*ts[1] {
                                                     if name == "Error" {
                                                         let (_, d) =
                                                             typen::ctype_to_jtype(&ts[0], deps)?;
@@ -810,7 +812,7 @@ pub fn from_microstatement(
                                                         let (_, d) =
                                                             typen::ctype_to_jtype(&ts[1], deps)?;
                                                         deps = d;
-                                                        if let CType::Binds(..) = t {
+                                                        if let CType::Binds(..) = &**t {
                                                             return Ok((
                                                                 format!(
                                                                     "{} = {}",
@@ -842,8 +844,8 @@ pub fn from_microstatement(
                                             // Special-casing for Option and Result mapping. TODO:
                                             // Make this more centralized
                                             if ts.len() == 2 {
-                                                if let CType::Void = &ts[1] {
-                                                    if let CType::Void = t {
+                                                if let CType::Void = &*ts[1] {
+                                                    if let CType::Void = &**t {
                                                         return Ok((
                                                             format!("{} = null", argstrs[0],),
                                                             out,
@@ -859,7 +861,7 @@ pub fn from_microstatement(
                                                             deps,
                                                         ));
                                                     }
-                                                } else if let CType::Type(name, _) = &ts[1] {
+                                                } else if let CType::Type(name, _) = &*ts[1] {
                                                     if name == "Error" {
                                                         let (_, d) =
                                                             typen::ctype_to_jtype(&ts[0], deps)?;
@@ -867,7 +869,7 @@ pub fn from_microstatement(
                                                         let (_, d) =
                                                             typen::ctype_to_jtype(&ts[1], deps)?;
                                                         deps = d;
-                                                        if let CType::Binds(..) = t {
+                                                        if let CType::Binds(..) = &**t {
                                                             return Ok((
                                                                 format!(
                                                                     "{} = {}",
@@ -904,15 +906,15 @@ pub fn from_microstatement(
                         }
                     } else if function.name == ret_name {
                         let mut inner_ret_type = ret_type.clone();
-                        while matches!(inner_ret_type, CType::Type(..)) {
-                            inner_ret_type = match inner_ret_type {
-                                CType::Type(_, t) => *t,
-                                t => t,
+                        while matches!(&*inner_ret_type, CType::Type(..)) {
+                            inner_ret_type = match &*inner_ret_type {
+                                CType::Type(_, t) => t.clone(),
+                                _ => inner_ret_type,
                             };
                         }
-                        match inner_ret_type {
+                        match &*inner_ret_type {
                             CType::Buffer(_, s) => {
-                                let size = match *s {
+                                let size = match **s {
                                     CType::Int(s) => Ok(s as usize),
                                     _ => Err("Somehow received a buffer with a non-integer size"
                                         .to_string()),
@@ -937,23 +939,23 @@ pub fn from_microstatement(
                                     return Err(format!("Invalid arguments {} provided for Either constructor function, must be zero or one argument", argstrs.join(", ")).into());
                                 }
                                 let enum_type = match &function.args().first() {
-                                    Some(t) => t.2.degroup(),
-                                    None => CType::Void,
+                                    Some(t) => t.2.clone().degroup(),
+                                    None => Arc::new(CType::Void),
                                 };
-                                let enum_name = match &enum_type {
+                                let enum_name = match &*enum_type {
                                     CType::Field(n, _) => Ok(n.clone()),
                                     CType::Type(n, _) => Ok(n.clone()),
                                     CType::Array(_) => Ok(enum_type.to_callable_string()),
                                     otherwise => Err(format!("Cannot generate an constructor function for {} type as the input type has no name?, {:?}", function.name, otherwise)),
                                 }?;
-                                for t in &ts {
-                                    let mut inner_type = t.degroup();
-                                    if let CType::Tuple(ts) = &inner_type {
+                                for t in ts {
+                                    let mut inner_type = t.clone().degroup();
+                                    if let CType::Tuple(ts) = &*inner_type {
                                         if ts.len() == 1 {
                                             inner_type = ts[0].clone();
                                         }
                                     }
-                                    match &inner_type {
+                                    match &*inner_type {
                                         CType::Array(_) => {
                                             return Ok((argstrs[0].clone(), out, deps));
                                         }
@@ -961,13 +963,13 @@ pub fn from_microstatement(
                                             // Special-casing for Option and Result mapping. TODO:
                                             // Make this more centralized
                                             if ts.len() == 2 {
-                                                if let CType::Void = &ts[1] {
-                                                    if let CType::Void = t {
+                                                if let CType::Void = &*ts[1] {
+                                                    if let CType::Void = &**t {
                                                         return Ok(("null".to_string(), out, deps));
                                                     } else {
                                                         return Ok((argstrs[0].clone(), out, deps));
                                                     }
-                                                } else if let CType::Type(name, _) = &ts[1] {
+                                                } else if let CType::Type(name, _) = &*ts[1] {
                                                     if name == "Error" {
                                                         let (_, d) =
                                                             typen::ctype_to_jtype(&ts[0], deps)?;
@@ -975,7 +977,7 @@ pub fn from_microstatement(
                                                         let (_, d) =
                                                             typen::ctype_to_jtype(&ts[1], deps)?;
                                                         deps = d;
-                                                        if let CType::Binds(..) = t {
+                                                        if let CType::Binds(..) = &**t {
                                                             return Ok((
                                                                 argstrs[0].clone(),
                                                                 out,
@@ -1000,13 +1002,13 @@ pub fn from_microstatement(
                                             // Special-casing for Option and Result mapping. TODO:
                                             // Make this more centralized
                                             if ts.len() == 2 {
-                                                if let CType::Void = &ts[1] {
-                                                    if let CType::Void = t {
+                                                if let CType::Void = &*ts[1] {
+                                                    if let CType::Void = &**t {
                                                         return Ok(("null".to_string(), out, deps));
                                                     } else {
                                                         return Ok((argstrs[0].clone(), out, deps));
                                                     }
-                                                } else if let CType::Type(name, _) = &ts[1] {
+                                                } else if let CType::Type(name, _) = &*ts[1] {
                                                     if name == "Error" {
                                                         let (_, d) =
                                                             typen::ctype_to_jtype(&ts[0], deps)?;
@@ -1014,7 +1016,7 @@ pub fn from_microstatement(
                                                         let (_, d) =
                                                             typen::ctype_to_jtype(&ts[1], deps)?;
                                                         deps = d;
-                                                        if let CType::Binds(..) = t {
+                                                        if let CType::Binds(..) = &**t {
                                                             return Ok((
                                                                 argstrs[0].clone(),
                                                                 out,
@@ -1036,13 +1038,13 @@ pub fn from_microstatement(
                                             // Special-casing for Option and Result mapping. TODO:
                                             // Make this more centralized
                                             if ts.len() == 2 {
-                                                if let CType::Void = &ts[1] {
-                                                    if let CType::Void = t {
+                                                if let CType::Void = &*ts[1] {
+                                                    if let CType::Void = &**t {
                                                         return Ok(("null".to_string(), out, deps));
                                                     } else {
                                                         return Ok((argstrs[0].clone(), out, deps));
                                                     }
-                                                } else if let CType::Type(name, _) = &ts[1] {
+                                                } else if let CType::Type(name, _) = &*ts[1] {
                                                     if name == "Error" {
                                                         let (_, d) =
                                                             typen::ctype_to_jtype(&ts[0], deps)?;
@@ -1050,7 +1052,7 @@ pub fn from_microstatement(
                                                         let (_, d) =
                                                             typen::ctype_to_jtype(&ts[1], deps)?;
                                                         deps = d;
-                                                        if let CType::Binds(..) = t {
+                                                        if let CType::Binds(..) = &**t {
                                                             return Ok((
                                                                 argstrs[0].clone(),
                                                                 out,
@@ -1073,8 +1075,8 @@ pub fn from_microstatement(
                                                 // Special-casing for Option and Result mapping. TODO:
                                                 // Make this more centralized
                                                 if ts.len() == 2 {
-                                                    if let CType::Void = &ts[1] {
-                                                        if let CType::Void = t {
+                                                    if let CType::Void = &*ts[1] {
+                                                        if let CType::Void = &**t {
                                                             return Ok((
                                                                 "null".to_string(),
                                                                 out,
@@ -1087,7 +1089,7 @@ pub fn from_microstatement(
                                                                 deps,
                                                             ));
                                                         }
-                                                    } else if let CType::Type(name, _) = &ts[1] {
+                                                    } else if let CType::Type(name, _) = &*ts[1] {
                                                         if name == "Error" {
                                                             let (_, d) = typen::ctype_to_jtype(
                                                                 &ts[0], deps,
@@ -1097,7 +1099,7 @@ pub fn from_microstatement(
                                                                 &ts[1], deps,
                                                             )?;
                                                             deps = d;
-                                                            if let CType::Binds(..) = t {
+                                                            if let CType::Binds(..) = &**t {
                                                                 return Ok((
                                                                     argstrs[0].clone(),
                                                                     out,
@@ -1154,8 +1156,8 @@ pub fn from_microstatement(
                                                     // Special-casing for Option and Result mapping. TODO:
                                                     // Make this more centralized
                                                     if ts.len() == 2 {
-                                                        if let CType::Void = &ts[1] {
-                                                            if let CType::Void = t {
+                                                        if let CType::Void = &*ts[1] {
+                                                            if let CType::Void = &**t {
                                                                 return Ok((
                                                                     "null".to_string(),
                                                                     out,
@@ -1168,7 +1170,7 @@ pub fn from_microstatement(
                                                                     deps,
                                                                 ));
                                                             }
-                                                        } else if let CType::Type(name, _) = &ts[1]
+                                                        } else if let CType::Type(name, _) = &*ts[1]
                                                         {
                                                             if name == "Error" {
                                                                 let (_, d) = typen::ctype_to_jtype(
@@ -1179,7 +1181,7 @@ pub fn from_microstatement(
                                                                     &ts[1], deps,
                                                                 )?;
                                                                 deps = d;
-                                                                if let CType::Binds(..) = t {
+                                                                if let CType::Binds(..) = &**t {
                                                                     return Ok((
                                                                         argstrs[0].clone(),
                                                                         out,
@@ -1211,7 +1213,7 @@ pub fn from_microstatement(
                                 // done at a higher layer
                                 let filtered_ts = ts
                                     .iter()
-                                    .filter(|t| match t {
+                                    .filter(|t| match &***t {
                                         CType::Field(_, t) => !matches!(
                                             &**t,
                                             CType::Int(_)
@@ -1225,13 +1227,13 @@ pub fn from_microstatement(
                                         | CType::TString(_) => false,
                                         _ => true,
                                     })
-                                    .collect::<Vec<&CType>>();
+                                    .collect::<Vec<&Arc<CType>>>();
                                 if argstrs.len() == filtered_ts.len() {
                                     if argstrs.len() == 1 {
                                         return Ok((
                                             format!(
                                                 "{{ {}: {} }}",
-                                                match filtered_ts[0] {
+                                                match &**filtered_ts[0] {
                                                     CType::Field(n, _) => &n,
                                                     _ => "arg0",
                                                 },
@@ -1250,7 +1252,7 @@ pub fn from_microstatement(
                                                     .enumerate()
                                                     .map(|(i, (a, t))| format!(
                                                         "  {}: {}",
-                                                        match t {
+                                                        match &***t {
                                                             CType::Field(n, _) => n.clone(),
                                                             _ => format!("arg{}", i),
                                                         },
@@ -1341,7 +1343,7 @@ pub fn generate(
         deps = d;
         arg_strs.push(l.clone());
     }
-    match &function.rettype().degroup() {
+    match &*function.rettype().degroup() {
         CType::Void => { /* Do nothing */ }
         CType::Type(n, _) if n == "void" => { /* Do nothing */ }
         otherwise => {

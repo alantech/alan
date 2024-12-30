@@ -24,12 +24,12 @@ impl Const {
             // we don't get a boolean at all or we get multiple inner values in the generic call,
             // we bail out immediately because of a syntax error.
             let generic_call = withtypeoperatorslist_to_ctype(&generics.typecalllist, &scope)?;
-            match generic_call {
+            match &*generic_call {
                 CType::Bool(b) => match b {
                     false => return Ok(scope),
                     true => { /* Do nothing */ }
                 },
-                CType::Type(_, c) => match *c {
+                CType::Type(_, c) => match &**c {
                     CType::Bool(b) => match b {
                         false => return Ok(scope),
                         true => { /* Do nothing */ }

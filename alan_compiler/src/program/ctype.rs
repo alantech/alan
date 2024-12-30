@@ -16,67 +16,67 @@ use crate::parse;
 pub enum CType {
     Void,
     Infer(String, String), // TODO: Switch to an Interface here once they exist
-    Type(String, Box<CType>),
-    Generic(String, Vec<String>, Box<CType>),
-    Binds(Box<CType>, Vec<CType>),
+    Type(String, Arc<CType>),
+    Generic(String, Vec<String>, Arc<CType>),
+    Binds(Arc<CType>, Vec<Arc<CType>>),
     IntrinsicGeneric(String, usize),
     Int(i128),
     Float(f64),
     Bool(bool),
     TString(String),
-    Group(Box<CType>),
-    Function(Box<CType>, Box<CType>),
-    Call(Box<CType>, Box<CType>),
-    Infix(Box<CType>),
-    Prefix(Box<CType>),
-    Method(Box<CType>),
-    Property(Box<CType>),
-    Cast(Box<CType>),
-    Own(Box<CType>),
-    Deref(Box<CType>),
-    Mut(Box<CType>),
-    Dependency(Box<CType>, Box<CType>),
-    Rust(Box<CType>),
-    Node(Box<CType>),
-    From(Box<CType>),
-    Import(Box<CType>, Box<CType>),
-    Tuple(Vec<CType>),
-    Field(String, Box<CType>),
-    Either(Vec<CType>),
-    Prop(Box<CType>, Box<CType>),
-    AnyOf(Vec<CType>),
-    Buffer(Box<CType>, Box<CType>),
-    Array(Box<CType>),
+    Group(Arc<CType>),
+    Function(Arc<CType>, Arc<CType>),
+    Call(Arc<CType>, Arc<CType>),
+    Infix(Arc<CType>),
+    Prefix(Arc<CType>),
+    Method(Arc<CType>),
+    Property(Arc<CType>),
+    Cast(Arc<CType>),
+    Own(Arc<CType>),
+    Deref(Arc<CType>),
+    Mut(Arc<CType>),
+    Dependency(Arc<CType>, Arc<CType>),
+    Rust(Arc<CType>),
+    Node(Arc<CType>),
+    From(Arc<CType>),
+    Import(Arc<CType>, Arc<CType>),
+    Tuple(Vec<Arc<CType>>),
+    Field(String, Arc<CType>),
+    Either(Vec<Arc<CType>>),
+    Prop(Arc<CType>, Arc<CType>),
+    AnyOf(Vec<Arc<CType>>),
+    Buffer(Arc<CType>, Arc<CType>),
+    Array(Arc<CType>),
     Fail(String),
-    Add(Vec<CType>),
-    Sub(Vec<CType>),
-    Mul(Vec<CType>),
-    Div(Vec<CType>),
-    Mod(Vec<CType>),
-    Pow(Vec<CType>),
-    Min(Vec<CType>),
-    Max(Vec<CType>),
-    Neg(Box<CType>),
-    Len(Box<CType>),
-    Size(Box<CType>),
-    FileStr(Box<CType>),
-    Concat(Box<CType>, Box<CType>),
-    Env(Vec<CType>),
-    EnvExists(Box<CType>),
-    TIf(Box<CType>, Vec<CType>),
-    And(Vec<CType>),
-    Or(Vec<CType>),
-    Xor(Vec<CType>),
-    Not(Box<CType>),
-    Nand(Vec<CType>),
-    Nor(Vec<CType>),
-    Xnor(Vec<CType>),
-    TEq(Vec<CType>),
-    Neq(Vec<CType>),
-    Lt(Vec<CType>),
-    Lte(Vec<CType>),
-    Gt(Vec<CType>),
-    Gte(Vec<CType>),
+    Add(Vec<Arc<CType>>),
+    Sub(Vec<Arc<CType>>),
+    Mul(Vec<Arc<CType>>),
+    Div(Vec<Arc<CType>>),
+    Mod(Vec<Arc<CType>>),
+    Pow(Vec<Arc<CType>>),
+    Min(Vec<Arc<CType>>),
+    Max(Vec<Arc<CType>>),
+    Neg(Arc<CType>),
+    Len(Arc<CType>),
+    Size(Arc<CType>),
+    FileStr(Arc<CType>),
+    Concat(Arc<CType>, Arc<CType>),
+    Env(Vec<Arc<CType>>),
+    EnvExists(Arc<CType>),
+    TIf(Arc<CType>, Vec<Arc<CType>>),
+    And(Vec<Arc<CType>>),
+    Or(Vec<Arc<CType>>),
+    Xor(Vec<Arc<CType>>),
+    Not(Arc<CType>),
+    Nand(Vec<Arc<CType>>),
+    Nor(Vec<Arc<CType>>),
+    Xnor(Vec<Arc<CType>>),
+    TEq(Vec<Arc<CType>>),
+    Neq(Vec<Arc<CType>>),
+    Lt(Vec<Arc<CType>>),
+    Lte(Vec<Arc<CType>>),
+    Gt(Vec<Arc<CType>>),
+    Gte(Vec<Arc<CType>>),
 }
 
 static CLOSE_BRACE: OnceLock<CType> = OnceLock::new();
@@ -1141,93 +1141,187 @@ impl CType {
         })
         .collect::<String>()
     }
-    pub fn degroup(&self) -> CType {
-        match self {
-            CType::Void => CType::Void,
-            CType::Infer(s, i) => CType::Infer(s.clone(), i.clone()),
-            CType::Type(n, t) => CType::Type(n.clone(), Box::new((*t).degroup())),
-            CType::Generic(n, gs, wtos) => CType::Generic(n.clone(), gs.clone(), wtos.clone()),
-            CType::Binds(n, ts) => CType::Binds(
-                Box::new(n.degroup()),
-                ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>(),
-            ),
-            CType::IntrinsicGeneric(n, s) => CType::IntrinsicGeneric(n.clone(), *s),
-            CType::Int(i) => CType::Int(*i),
-            CType::Float(f) => CType::Float(*f),
-            CType::Bool(b) => CType::Bool(*b),
-            CType::TString(s) => CType::TString(s.clone()),
-            CType::Group(t) => t.degroup(),
+    pub fn degroup(self: Arc<CType>) -> Arc<CType> {
+        match &*self {
+            CType::Void => self,
+            CType::Infer(..) => self,
+            CType::Type(n, t) => Arc::new(CType::Type(n.clone(), t.clone().degroup())),
+            CType::Generic(..) => self,
+            CType::Binds(n, ts) => Arc::new(CType::Binds(
+                n.clone().degroup(),
+                ts.iter()
+                    .map(|t| t.clone().degroup())
+                    .collect::<Vec<Arc<CType>>>(),
+            )),
+            CType::IntrinsicGeneric(..) => self,
+            CType::Int(_) => self,
+            CType::Float(_) => self,
+            CType::Bool(_) => self,
+            CType::TString(_) => self,
+            CType::Group(t) => t.clone().degroup(),
             CType::Function(i, o) => {
-                CType::Function(Box::new((*i).degroup()), Box::new((*o).degroup()))
+                Arc::new(CType::Function(i.clone().degroup(), o.clone().degroup()))
             }
-            CType::Call(n, f) => CType::Call(Box::new((*n).degroup()), Box::new((*f).degroup())),
-            CType::Infix(o) => CType::Infix(Box::new((*o).degroup())),
-            CType::Prefix(o) => CType::Prefix(Box::new((*o).degroup())),
-            CType::Method(f) => CType::Method(Box::new((*f).degroup())),
-            CType::Property(p) => CType::Property(Box::new((*p).degroup())),
-            CType::Cast(t) => CType::Cast(Box::new((*t).degroup())),
-            CType::Own(t) => CType::Own(Box::new((*t).degroup())),
-            CType::Deref(t) => CType::Deref(Box::new((*t).degroup())),
-            CType::Mut(t) => CType::Mut(Box::new((*t).degroup())),
+            CType::Call(n, f) => Arc::new(CType::Call(n.clone().degroup(), f.clone().degroup())),
+            CType::Infix(o) => Arc::new(CType::Infix(o.clone().degroup())),
+            CType::Prefix(o) => Arc::new(CType::Prefix(o.clone().degroup())),
+            CType::Method(f) => Arc::new(CType::Method(f.clone().degroup())),
+            CType::Property(p) => Arc::new(CType::Property(p.clone().degroup())),
+            CType::Cast(t) => Arc::new(CType::Cast(t.clone().degroup())),
+            CType::Own(t) => Arc::new(CType::Own(t.clone().degroup())),
+            CType::Deref(t) => Arc::new(CType::Deref(t.clone().degroup())),
+            CType::Mut(t) => Arc::new(CType::Mut(t.clone().degroup())),
             CType::Dependency(n, v) => {
-                CType::Dependency(Box::new((*n).degroup()), Box::new((*v).degroup()))
+                Arc::new(CType::Dependency(n.clone().degroup(), v.clone().degroup()))
             }
-            CType::Rust(d) => CType::Rust(Box::new((*d).degroup())),
-            CType::Node(d) => CType::Node(Box::new((*d).degroup())),
-            CType::From(d) => CType::From(Box::new((*d).degroup())),
+            CType::Rust(d) => Arc::new(CType::Rust(d.clone().degroup())),
+            CType::Node(d) => Arc::new(CType::Node(d.clone().degroup())),
+            CType::From(d) => Arc::new(CType::From(d.clone().degroup())),
             CType::Import(n, d) => {
-                CType::Import(Box::new((*n).degroup()), Box::new((*d).degroup()))
+                Arc::new(CType::Import(n.clone().degroup(), d.clone().degroup()))
             }
-            CType::Tuple(ts) => {
-                CType::Tuple(ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>())
-            }
-            CType::Field(l, t) => CType::Field(l.clone(), Box::new((*t).degroup())),
-            CType::Either(ts) => {
-                CType::Either(ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>())
-            }
-            CType::Prop(t, p) => CType::Prop(Box::new(t.degroup()), Box::new(p.degroup())),
-            CType::AnyOf(ts) => {
-                CType::AnyOf(ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>())
-            }
+            CType::Tuple(ts) => Arc::new(CType::Tuple(
+                ts.iter()
+                    .map(|t| t.clone().degroup())
+                    .collect::<Vec<Arc<CType>>>(),
+            )),
+            CType::Field(l, t) => Arc::new(CType::Field(l.clone(), t.clone().degroup())),
+            CType::Either(ts) => Arc::new(CType::Either(
+                ts.iter()
+                    .map(|t| t.clone().degroup())
+                    .collect::<Vec<Arc<CType>>>(),
+            )),
+            CType::Prop(t, p) => Arc::new(CType::Prop(t.clone().degroup(), p.clone().degroup())),
+            CType::AnyOf(ts) => Arc::new(CType::AnyOf(
+                ts.iter()
+                    .map(|t| t.clone().degroup())
+                    .collect::<Vec<Arc<CType>>>(),
+            )),
             CType::Buffer(t, s) => {
-                CType::Buffer(Box::new((*t).degroup()), Box::new((*s).degroup()))
+                Arc::new(CType::Buffer(t.clone().degroup(), s.clone().degroup()))
             }
-            CType::Array(t) => CType::Array(Box::new((*t).degroup())),
-            CType::Fail(m) => CType::Fail(m.clone()),
-            CType::Add(ts) => CType::Add(ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>()),
-            CType::Sub(ts) => CType::Sub(ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>()),
-            CType::Mul(ts) => CType::Mul(ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>()),
-            CType::Div(ts) => CType::Div(ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>()),
-            CType::Mod(ts) => CType::Mod(ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>()),
-            CType::Pow(ts) => CType::Pow(ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>()),
-            CType::Min(ts) => CType::Min(ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>()),
-            CType::Max(ts) => CType::Max(ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>()),
-            CType::Neg(t) => CType::Neg(Box::new((*t).degroup())),
-            CType::Len(t) => CType::Len(Box::new((*t).degroup())),
-            CType::Size(t) => CType::Size(Box::new((*t).degroup())),
-            CType::FileStr(t) => CType::FileStr(Box::new((*t).degroup())),
+            CType::Array(t) => Arc::new(CType::Array(t.clone().degroup())),
+            CType::Fail(_) => self,
+            CType::Add(ts) => Arc::new(CType::Add(
+                ts.iter()
+                    .map(|t| t.clone().degroup())
+                    .collect::<Vec<Arc<CType>>>(),
+            )),
+            CType::Sub(ts) => Arc::new(CType::Sub(
+                ts.iter()
+                    .map(|t| t.clone().degroup())
+                    .collect::<Vec<Arc<CType>>>(),
+            )),
+            CType::Mul(ts) => Arc::new(CType::Mul(
+                ts.iter()
+                    .map(|t| t.clone().degroup())
+                    .collect::<Vec<Arc<CType>>>(),
+            )),
+            CType::Div(ts) => Arc::new(CType::Div(
+                ts.iter()
+                    .map(|t| t.clone().degroup())
+                    .collect::<Vec<Arc<CType>>>(),
+            )),
+            CType::Mod(ts) => Arc::new(CType::Mod(
+                ts.iter()
+                    .map(|t| t.clone().degroup())
+                    .collect::<Vec<Arc<CType>>>(),
+            )),
+            CType::Pow(ts) => Arc::new(CType::Pow(
+                ts.iter()
+                    .map(|t| t.clone().degroup())
+                    .collect::<Vec<Arc<CType>>>(),
+            )),
+            CType::Min(ts) => Arc::new(CType::Min(
+                ts.iter()
+                    .map(|t| t.clone().degroup())
+                    .collect::<Vec<Arc<CType>>>(),
+            )),
+            CType::Max(ts) => Arc::new(CType::Max(
+                ts.iter()
+                    .map(|t| t.clone().degroup())
+                    .collect::<Vec<Arc<CType>>>(),
+            )),
+            CType::Neg(t) => Arc::new(CType::Neg(t.clone().degroup())),
+            CType::Len(t) => Arc::new(CType::Len(t.clone().degroup())),
+            CType::Size(t) => Arc::new(CType::Size(t.clone().degroup())),
+            CType::FileStr(t) => Arc::new(CType::FileStr(t.clone().degroup())),
             CType::Concat(a, b) => {
-                CType::Concat(Box::new((*a).degroup()), Box::new((*b).degroup()))
+                Arc::new(CType::Concat(a.clone().degroup(), b.clone().degroup()))
             }
-            CType::Env(ts) => CType::Env(ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>()),
-            CType::EnvExists(t) => CType::EnvExists(Box::new((*t).degroup())),
-            CType::TIf(t, ts) => CType::TIf(
-                Box::new((*t).degroup()),
-                ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>(),
-            ),
-            CType::And(ts) => CType::And(ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>()),
-            CType::Or(ts) => CType::Or(ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>()),
-            CType::Xor(ts) => CType::Xor(ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>()),
-            CType::Not(t) => CType::Not(Box::new((*t).degroup())),
-            CType::Nand(ts) => CType::Nand(ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>()),
-            CType::Nor(ts) => CType::Nor(ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>()),
-            CType::Xnor(ts) => CType::Xnor(ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>()),
-            CType::TEq(ts) => CType::TEq(ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>()),
-            CType::Neq(ts) => CType::Neq(ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>()),
-            CType::Lt(ts) => CType::Lt(ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>()),
-            CType::Lte(ts) => CType::Lte(ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>()),
-            CType::Gt(ts) => CType::Gt(ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>()),
-            CType::Gte(ts) => CType::Gte(ts.iter().map(|t| t.degroup()).collect::<Vec<CType>>()),
+            CType::Env(ts) => Arc::new(CType::Env(
+                ts.iter()
+                    .map(|t| t.clone().degroup())
+                    .collect::<Vec<Arc<CType>>>(),
+            )),
+            CType::EnvExists(t) => Arc::new(CType::EnvExists(t.clone().degroup())),
+            CType::TIf(t, ts) => Arc::new(CType::TIf(
+                t.clone().degroup(),
+                ts.iter()
+                    .map(|t| t.clone().degroup())
+                    .collect::<Vec<Arc<CType>>>(),
+            )),
+            CType::And(ts) => Arc::new(CType::And(
+                ts.iter()
+                    .map(|t| t.clone().degroup())
+                    .collect::<Vec<Arc<CType>>>(),
+            )),
+            CType::Or(ts) => Arc::new(CType::Or(
+                ts.iter()
+                    .map(|t| t.clone().degroup())
+                    .collect::<Vec<Arc<CType>>>(),
+            )),
+            CType::Xor(ts) => Arc::new(CType::Xor(
+                ts.iter()
+                    .map(|t| t.clone().degroup())
+                    .collect::<Vec<Arc<CType>>>(),
+            )),
+            CType::Not(t) => Arc::new(CType::Not(t.clone().degroup())),
+            CType::Nand(ts) => Arc::new(CType::Nand(
+                ts.iter()
+                    .map(|t| t.clone().degroup())
+                    .collect::<Vec<Arc<CType>>>(),
+            )),
+            CType::Nor(ts) => Arc::new(CType::Nor(
+                ts.iter()
+                    .map(|t| t.clone().degroup())
+                    .collect::<Vec<Arc<CType>>>(),
+            )),
+            CType::Xnor(ts) => Arc::new(CType::Xnor(
+                ts.iter()
+                    .map(|t| t.clone().degroup())
+                    .collect::<Vec<Arc<CType>>>(),
+            )),
+            CType::TEq(ts) => Arc::new(CType::TEq(
+                ts.iter()
+                    .map(|t| t.clone().degroup())
+                    .collect::<Vec<Arc<CType>>>(),
+            )),
+            CType::Neq(ts) => Arc::new(CType::Neq(
+                ts.iter()
+                    .map(|t| t.clone().degroup())
+                    .collect::<Vec<Arc<CType>>>(),
+            )),
+            CType::Lt(ts) => Arc::new(CType::Lt(
+                ts.iter()
+                    .map(|t| t.clone().degroup())
+                    .collect::<Vec<Arc<CType>>>(),
+            )),
+            CType::Lte(ts) => Arc::new(CType::Lte(
+                ts.iter()
+                    .map(|t| t.clone().degroup())
+                    .collect::<Vec<Arc<CType>>>(),
+            )),
+            CType::Gt(ts) => Arc::new(CType::Gt(
+                ts.iter()
+                    .map(|t| t.clone().degroup())
+                    .collect::<Vec<Arc<CType>>>(),
+            )),
+            CType::Gte(ts) => Arc::new(CType::Gte(
+                ts.iter()
+                    .map(|t| t.clone().degroup())
+                    .collect::<Vec<Arc<CType>>>(),
+            )),
         }
     }
     // Given a list of generic type names, a list of argument types provided, and the original type
@@ -1511,8 +1605,8 @@ impl CType {
                                 CType::AnyOf(t2s) => {
                                     for t1 in ts {
                                         for t2 in t2s {
-                                            if t1.degroup().to_callable_string()
-                                                == t2.degroup().to_callable_string()
+                                            if t1.clone().degroup().to_callable_string()
+                                                == t2.clone().degroup().to_callable_string()
                                             {
                                                 matches.push(t1.clone());
                                             }
@@ -1521,8 +1615,10 @@ impl CType {
                                 }
                                 otherwise => {
                                     for t1 in ts {
-                                        if t1.degroup().to_callable_string()
-                                            == otherwise.degroup().to_callable_string()
+                                        if t1.clone().degroup().to_callable_string()
+                                            == Arc::new(otherwise.clone())
+                                                .degroup()
+                                                .to_callable_string()
                                         {
                                             matches.push(t1.clone());
                                         }
@@ -1532,8 +1628,10 @@ impl CType {
                             if matches.is_empty() {
                                 // Do nothing
                             } else if matches.len() == 1 {
-                                generic_types
-                                    .insert(g.clone(), matches.into_iter().nth(0).unwrap());
+                                generic_types.insert(
+                                    g.clone(),
+                                    (*matches.into_iter().nth(0).unwrap()).clone(),
+                                );
                             } else {
                                 generic_types.insert(g.clone(), CType::AnyOf(matches));
                             }
@@ -1985,16 +2083,16 @@ impl CType {
                             match other_type {
                                 CType::AnyOf(ts) => {
                                     for t1 in ts {
-                                        if t1.degroup().to_callable_string()
-                                            == a.degroup().to_callable_string()
+                                        if t1.clone().degroup().to_callable_string()
+                                            == Arc::new(a.clone()).degroup().to_callable_string()
                                         {
                                             matched = true;
                                         }
                                     }
                                 }
                                 otherwise => {
-                                    if otherwise.degroup().to_callable_string()
-                                        == a.degroup().to_callable_string()
+                                    if Arc::new(otherwise.clone()).degroup().to_callable_string()
+                                        == Arc::new(a.clone()).degroup().to_callable_string()
                                     {
                                         matched = true;
                                     }
@@ -2069,14 +2167,17 @@ impl CType {
                                             }
                                             if !preexists {
                                                 let mut nts = ots.clone();
-                                                nts.push(nt.clone());
+                                                nts.push(Arc::new(nt.clone()));
                                                 combined_types.insert(k.clone(), CType::AnyOf(nts));
                                             }
                                         }
                                         (ot, nt) => {
                                             combined_types.insert(
                                                 k.clone(),
-                                                CType::AnyOf(vec![ot.clone(), nt.clone()]),
+                                                CType::AnyOf(vec![
+                                                    Arc::new(ot.clone()),
+                                                    Arc::new(nt.clone()),
+                                                ]),
                                             );
                                         }
                                     },
@@ -2176,10 +2277,10 @@ impl CType {
     }
     pub fn infer_generics(
         scope: &Scope,
-        generics: &[(String, CType)],
-        fn_args: &[(String, ArgKind, CType)],
-        call_args: &[CType],
-    ) -> Result<Vec<CType>, Box<dyn std::error::Error>> {
+        generics: &[(String, Arc<CType>)],
+        fn_args: &[(String, ArgKind, Arc<CType>)],
+        call_args: &[Arc<CType>],
+    ) -> Result<Vec<Arc<CType>>, Box<dyn std::error::Error>> {
         let mut temp_scope = scope.child();
         for (generic_name, generic_type) in generics {
             temp_scope
@@ -2189,19 +2290,20 @@ impl CType {
         let input_types = fn_args
             .iter()
             .map(|(_, _, t)| t.clone())
-            .collect::<Vec<CType>>();
+            .collect::<Vec<Arc<CType>>>();
         let mut generic_types: HashMap<String, CType> = HashMap::new();
         CType::infer_generics_inner_loop(
             &mut generic_types,
             call_args
                 .iter()
-                .zip(input_types.iter())
+                .map(|t| &**t)
+                .zip(input_types.iter().map(|t| &**t))
                 .collect::<Vec<(&CType, &CType)>>(),
         )?;
         let mut output_types = Vec::new();
         for (generic_name, _) in generics {
             output_types.push(match generic_types.get(generic_name) {
-                Some(t) => Ok(t.clone()),
+                Some(t) => Ok(Arc::new(t.clone())),
                 None => Err(format!("No inferred type found for {}", generic_name)),
             }?);
         }
@@ -2235,11 +2337,15 @@ impl CType {
         }
     }
 
-    pub fn to_functions(&self, name: String, scope: &Scope) -> (CType, Vec<Arc<Function>>) {
-        let t = CType::Type(name.clone(), Box::new(self.clone()));
+    pub fn to_functions(
+        self: Arc<CType>,
+        name: String,
+        scope: &Scope,
+    ) -> (CType, Vec<Arc<Function>>) {
+        let t = CType::Type(name.clone(), self.clone());
         let constructor_fn_name = t.to_callable_string();
         let mut fs = Vec::new();
-        match self {
+        match &*self {
             CType::Import(n, d) => match &**d {
                 CType::TString(dep_name) => {
                     let program = Program::get_program();
@@ -2258,14 +2364,14 @@ impl CType {
                 _ => CType::fail("TODO: Support imports beyond local directories"),
             },
             CType::Call(n, f) => {
-                let mut typen = f.degroup();
-                let args = type_to_args(&typen);
-                let rettype = type_to_rettype(&typen);
+                let mut typen = f.clone().degroup();
+                let args = type_to_args(typen.clone());
+                let rettype = type_to_rettype(typen.clone());
                 // Short-circuit for "normal" function binding with "normal" arguments only
                 if args.iter().all(|(_, k, t)| {
                     matches!(k, ArgKind::Ref)
                         && !matches!(
-                            t,
+                            &**t,
                             CType::Int(_) | CType::Float(_) | CType::Bool(_) | CType::TString(_)
                         )
                 }) && matches!(&**n, CType::TString(_))
@@ -2301,7 +2407,7 @@ impl CType {
                     }
                     let call_name = match &**n {
                         CType::Import(n, d) => {
-                            kind = FnKind::External((&**d).clone());
+                            kind = FnKind::External(d.clone());
                             &**n
                         }
                         otherwise => otherwise,
@@ -2316,7 +2422,7 @@ impl CType {
                                         s,
                                         args.iter()
                                             .map(|(name, _, typen)| {
-                                                match &typen {
+                                                match &**typen {
                                                     CType::Int(i) => {
                                                         trimmed_args = true;
                                                         format!("{}", i)
@@ -2355,7 +2461,7 @@ impl CType {
                                         typen: rettype.clone(),
                                         representation: format!(
                                             "({} {} {})",
-                                            match &args[0].2 {
+                                            match &*args[0].2 {
                                                 CType::Int(i) => {
                                                     trimmed_args = true;
                                                     format!("{}", i)
@@ -2378,7 +2484,7 @@ impl CType {
                                                 _ => args[0].0.clone(),
                                             },
                                             s,
-                                            match &args[1].2 {
+                                            match &*args[1].2 {
                                                 CType::Int(i) => {
                                                     trimmed_args = true;
                                                     format!("{}", i)
@@ -2420,7 +2526,7 @@ impl CType {
                                         representation: format!(
                                             "({} {})",
                                             s,
-                                            match &args[0].2 {
+                                            match &*args[0].2 {
                                                 CType::Int(i) => {
                                                     trimmed_args = true;
                                                     format!("{}", i)
@@ -2460,7 +2566,7 @@ impl CType {
                                         typen: rettype.clone(),
                                         representation: format!(
                                             "{}.{}({})",
-                                            match &arg_car.2 {
+                                            match &*arg_car.2 {
                                                 CType::Int(i) => {
                                                     trimmed_args = true;
                                                     format!("{}", i)
@@ -2485,7 +2591,7 @@ impl CType {
                                             s,
                                             arg_cdr
                                                 .into_iter()
-                                                .map(|a| match &a.2 {
+                                                .map(|a| match &*a.2 {
                                                     CType::Int(i) => {
                                                         trimmed_args = true;
                                                         format!("{}", i)
@@ -2529,7 +2635,7 @@ impl CType {
                                             typen: rettype.clone(),
                                             representation: format!(
                                                 "{}.{}",
-                                                match &arg_car.2 {
+                                                match &*arg_car.2 {
                                                     CType::Int(i) => {
                                                         trimmed_args = true;
                                                         format!("{}", i)
@@ -2574,7 +2680,7 @@ impl CType {
                                         typen: rettype.clone(),
                                         representation: format!(
                                             "({} as {})",
-                                            match &args[0].2 {
+                                            match &*args[0].2 {
                                                 CType::Int(i) => {
                                                     trimmed_args = true;
                                                     format!("{}", i)
@@ -2612,12 +2718,12 @@ impl CType {
                         )),
                     }
                     if trimmed_args {
-                        typen = CType::Function(
-                            Box::new(CType::Tuple(
+                        typen = Arc::new(CType::Function(
+                            Arc::new(CType::Tuple(
                                 args.into_iter()
                                     .filter(|(_, _, typen)| {
                                         !matches!(
-                                            &typen,
+                                            &**typen,
                                             CType::Int(_)
                                                 | CType::Float(_)
                                                 | CType::Bool(_)
@@ -2625,20 +2731,20 @@ impl CType {
                                         )
                                     })
                                     .map(|(n, k, t)| {
-                                        CType::Field(
+                                        Arc::new(CType::Field(
                                             n,
-                                            Box::new(match k {
-                                                ArgKind::Own => CType::Own(Box::new(t)),
-                                                ArgKind::Deref => CType::Deref(Box::new(t)),
-                                                ArgKind::Mut => CType::Mut(Box::new(t)),
+                                            match k {
+                                                ArgKind::Own => Arc::new(CType::Own(t)),
+                                                ArgKind::Deref => Arc::new(CType::Deref(t)),
+                                                ArgKind::Mut => Arc::new(CType::Mut(t)),
                                                 ArgKind::Ref => t,
-                                            }),
-                                        )
+                                            },
+                                        ))
                                     })
-                                    .collect::<Vec<CType>>(),
+                                    .collect::<Vec<Arc<CType>>>(),
                             )),
-                            Box::new(rettype),
-                        );
+                            rettype,
+                        ));
                     }
                     fs.push(Arc::new(Function {
                         name: constructor_fn_name.clone(),
@@ -2653,10 +2759,10 @@ impl CType {
                 // This is just an alias
                 fs.push(Arc::new(Function {
                     name: constructor_fn_name.clone(),
-                    typen: CType::Function(
-                        Box::new(CType::Field(n.clone(), Box::new(self.clone()))),
-                        Box::new(t.clone()),
-                    ),
+                    typen: Arc::new(CType::Function(
+                        Arc::new(CType::Field(n.clone(), self.clone())),
+                        Arc::new(t.clone()),
+                    )),
                     microstatements: Vec::new(),
                     kind: FnKind::Derived,
                     origin_scope_path: scope.path.clone(),
@@ -2669,7 +2775,7 @@ impl CType {
                 // function for it to simulate structs better.
                 // Create accessor functions for static tag values in the tuple, if any exist
                 let mut actual_ts = Vec::new();
-                for ti in ts.iter().filter(|t1| match t1 {
+                for ti in ts.iter().filter(|t1| match &***t1 {
                     CType::Field(_, t2) => matches!(
                         &**t2,
                         CType::TString(_) | CType::Int(_) | CType::Float(_) | CType::Bool(_)
@@ -2677,7 +2783,7 @@ impl CType {
                     CType::TString(_) | CType::Int(_) | CType::Float(_) | CType::Bool(_) => true,
                     _ => false,
                 }) {
-                    match ti {
+                    match &**ti {
                         CType::Field(n, f) => {
                             match &**f {
                                 CType::TString(s) => {
@@ -2687,10 +2793,10 @@ impl CType {
                                     let string = scope.resolve_type("string").unwrap().clone();
                                     fs.push(Arc::new(Function {
                                         name: n.clone(),
-                                        typen: CType::Function(
-                                            Box::new(t.clone()),
-                                            Box::new(string.clone()),
-                                        ),
+                                        typen: Arc::new(CType::Function(
+                                            Arc::new(t.clone()),
+                                            string.clone(),
+                                        )),
                                         microstatements: vec![Microstatement::Value {
                                             typen: string,
                                             representation: format!(
@@ -2709,10 +2815,10 @@ impl CType {
                                     let int64 = scope.resolve_type("i64").unwrap().clone();
                                     fs.push(Arc::new(Function {
                                         name: n.clone(),
-                                        typen: CType::Function(
-                                            Box::new(t.clone()),
-                                            Box::new(int64.clone()),
-                                        ),
+                                        typen: Arc::new(CType::Function(
+                                            Arc::new(t.clone()),
+                                            int64.clone(),
+                                        )),
                                         microstatements: vec![Microstatement::Value {
                                             typen: int64,
                                             representation: format!("{}", i),
@@ -2728,10 +2834,10 @@ impl CType {
                                     let float64 = scope.resolve_type("f64").unwrap().clone();
                                     fs.push(Arc::new(Function {
                                         name: n.clone(),
-                                        typen: CType::Function(
-                                            Box::new(t.clone()),
-                                            Box::new(float64.clone()),
-                                        ),
+                                        typen: Arc::new(CType::Function(
+                                            Arc::new(t.clone()),
+                                            float64.clone(),
+                                        )),
                                         microstatements: vec![Microstatement::Value {
                                             typen: float64,
                                             representation: format!("{}", f),
@@ -2747,10 +2853,10 @@ impl CType {
                                     let booln = scope.resolve_type("bool").unwrap().clone();
                                     fs.push(Arc::new(Function {
                                         name: n.clone(),
-                                        typen: CType::Function(
-                                            Box::new(t.clone()),
-                                            Box::new(booln.clone()),
-                                        ),
+                                        typen: Arc::new(CType::Function(
+                                            Arc::new(t.clone()),
+                                            booln.clone(),
+                                        )),
                                         microstatements: vec![Microstatement::Value {
                                             typen: booln,
                                             representation: match b {
@@ -2770,7 +2876,7 @@ impl CType {
                 }
                 for (i, ti) in ts
                     .iter()
-                    .filter(|t1| match t1 {
+                    .filter(|t1| match &***t1 {
                         CType::Field(_, t2) => !matches!(
                             &**t2,
                             CType::TString(_) | CType::Int(_) | CType::Float(_) | CType::Bool(_)
@@ -2783,25 +2889,22 @@ impl CType {
                     .enumerate()
                 {
                     actual_ts.push(ti.clone());
-                    match ti {
+                    match &**ti {
                         CType::Field(n, f) => {
                             // Create an accessor function
                             fs.push(Arc::new(Function {
                                 name: n.clone(),
-                                typen: CType::Function(Box::new(t.clone()), Box::new(*f.clone())),
+                                typen: Arc::new(CType::Function(Arc::new(t.clone()), f.clone())),
                                 microstatements: Vec::new(),
                                 kind: FnKind::Derived,
                                 origin_scope_path: scope.path.clone(),
                             }));
                         }
-                        otherwise => {
+                        _otherwise => {
                             // Create an `<N>` function accepting the tuple by field number
                             fs.push(Arc::new(Function {
                                 name: format!("{}", i),
-                                typen: CType::Function(
-                                    Box::new(t.clone()),
-                                    Box::new(otherwise.clone()),
-                                ),
+                                typen: Arc::new(CType::Function(Arc::new(t.clone()), ti.clone())),
                                 microstatements: Vec::new(),
                                 kind: FnKind::Derived,
                                 origin_scope_path: scope.path.clone(),
@@ -2812,10 +2915,10 @@ impl CType {
                 // Define the constructor function
                 fs.push(Arc::new(Function {
                     name: constructor_fn_name.clone(),
-                    typen: CType::Function(
-                        Box::new(CType::Tuple(actual_ts.clone())),
-                        Box::new(t.clone()),
-                    ),
+                    typen: Arc::new(CType::Function(
+                        Arc::new(CType::Tuple(actual_ts.clone())),
+                        Arc::new(t.clone()),
+                    )),
                     microstatements: Vec::new(),
                     kind: FnKind::Derived,
                     origin_scope_path: scope.path.clone(),
@@ -2832,7 +2935,7 @@ impl CType {
                         let string = scope.resolve_type("string").unwrap().clone();
                         fs.push(Arc::new(Function {
                             name: n.clone(),
-                            typen: CType::Function(Box::new(t.clone()), Box::new(string.clone())),
+                            typen: Arc::new(CType::Function(Arc::new(t.clone()), string.clone())),
                             microstatements: vec![Microstatement::Value {
                                 typen: string,
                                 representation: s.clone(),
@@ -2848,7 +2951,7 @@ impl CType {
                         let int64 = scope.resolve_type("i64").unwrap().clone();
                         fs.push(Arc::new(Function {
                             name: n.clone(),
-                            typen: CType::Function(Box::new(t.clone()), Box::new(int64.clone())),
+                            typen: Arc::new(CType::Function(Arc::new(t.clone()), int64.clone())),
                             microstatements: vec![Microstatement::Value {
                                 typen: int64,
                                 representation: format!("{}", i),
@@ -2864,7 +2967,7 @@ impl CType {
                         let float64 = scope.resolve_type("f64").unwrap().clone();
                         fs.push(Arc::new(Function {
                             name: n.clone(),
-                            typen: CType::Function(Box::new(t.clone()), Box::new(float64.clone())),
+                            typen: Arc::new(CType::Function(Arc::new(t.clone()), float64.clone())),
                             microstatements: vec![Microstatement::Value {
                                 typen: float64,
                                 representation: format!("{}", f),
@@ -2880,7 +2983,7 @@ impl CType {
                         let booln = scope.resolve_type("bool").unwrap().clone();
                         fs.push(Arc::new(Function {
                             name: n.clone(),
-                            typen: CType::Function(Box::new(t.clone()), Box::new(booln.clone())),
+                            typen: Arc::new(CType::Function(Arc::new(t.clone()), booln.clone())),
                             microstatements: vec![Microstatement::Value {
                                 typen: booln,
                                 representation: match b {
@@ -2895,7 +2998,7 @@ impl CType {
                     _ => {
                         fs.push(Arc::new(Function {
                             name: n.clone(),
-                            typen: CType::Function(Box::new(t.clone()), Box::new(*f.clone())),
+                            typen: Arc::new(CType::Function(Arc::new(t.clone()), f.clone())),
                             microstatements: Vec::new(),
                             kind: FnKind::Derived,
                             origin_scope_path: scope.path.clone(),
@@ -2905,7 +3008,7 @@ impl CType {
                 // Define the constructor function
                 fs.push(Arc::new(Function {
                     name: constructor_fn_name.clone(),
-                    typen: CType::Function(Box::new(*f.clone()), Box::new(t.clone())),
+                    typen: Arc::new(CType::Function(f.clone(), Arc::new(t.clone()))),
                     microstatements: Vec::new(),
                     kind: FnKind::Derived,
                     origin_scope_path: scope.path.clone(),
@@ -2918,7 +3021,7 @@ impl CType {
                     // Create a constructor fn
                     fs.push(Arc::new(Function {
                         name: constructor_fn_name.clone(),
-                        typen: CType::Function(Box::new(e.clone()), Box::new(t.clone())),
+                        typen: Arc::new(CType::Function(e.clone(), Arc::new(t.clone()))),
                         microstatements: Vec::new(),
                         kind: FnKind::Derived,
                         origin_scope_path: scope.path.clone(),
@@ -2926,19 +3029,22 @@ impl CType {
                     // Create a store fn to re-assign-and-auto-wrap a value
                     fs.push(Arc::new(Function {
                         name: "store".to_string(),
-                        typen: CType::Function(
-                            Box::new(CType::Tuple(vec![t.clone(), e.clone()])),
-                            Box::new(t.clone()),
-                        ),
+                        typen: Arc::new(CType::Function(
+                            Arc::new(CType::Tuple(vec![Arc::new(t.clone()), e.clone()])),
+                            Arc::new(t.clone()),
+                        )),
                         microstatements: Vec::new(),
                         kind: FnKind::Derived,
                         origin_scope_path: scope.path.clone(),
                     }));
-                    if let CType::Void = &e {
+                    if let CType::Void = &**e {
                         // Have a zero-arg constructor function produce the void type, if possible.
                         fs.push(Arc::new(Function {
                             name: constructor_fn_name.clone(),
-                            typen: CType::Function(Box::new(CType::Void), Box::new(t.clone())),
+                            typen: Arc::new(CType::Function(
+                                Arc::new(CType::Void),
+                                Arc::new(t.clone()),
+                            )),
                             microstatements: Vec::new(),
                             kind: FnKind::Derived,
                             origin_scope_path: scope.path.clone(),
@@ -2946,23 +3052,23 @@ impl CType {
                     }
                     // Create the accessor function, the name of the function will
                     // depend on the kind of type this is
-                    match e {
+                    match &**e {
                         CType::Field(n, i) => fs.push(Arc::new(Function {
                             name: n.clone(),
-                            typen: CType::Function(
-                                Box::new(t.clone()),
-                                Box::new(CType::Either(vec![*i.clone(), CType::Void])),
-                            ),
+                            typen: Arc::new(CType::Function(
+                                Arc::new(t.clone()),
+                                Arc::new(CType::Either(vec![i.clone(), Arc::new(CType::Void)])),
+                            )),
                             microstatements: Vec::new(),
                             kind: FnKind::Derived,
                             origin_scope_path: scope.path.clone(),
                         })),
                         CType::Type(n, _) => fs.push(Arc::new(Function {
                             name: n.clone(),
-                            typen: CType::Function(
-                                Box::new(t.clone()),
-                                Box::new(CType::Either(vec![e.clone(), CType::Void])),
-                            ),
+                            typen: Arc::new(CType::Function(
+                                Arc::new(t.clone()),
+                                Arc::new(CType::Either(vec![e.clone(), Arc::new(CType::Void)])),
+                            )),
                             microstatements: Vec::new(),
                             kind: FnKind::Derived,
                             origin_scope_path: scope.path.clone(),
@@ -2979,7 +3085,7 @@ impl CType {
                 // implement one of these
                 fs.push(Arc::new(Function {
                     name: constructor_fn_name.clone(),
-                    typen: CType::Function(Box::new(*b.clone()), Box::new(t.clone())),
+                    typen: Arc::new(CType::Function(b.clone(), Arc::new(t.clone()))),
                     microstatements: Vec::new(),
                     kind: FnKind::Derived,
                     origin_scope_path: scope.path.clone(),
@@ -2991,16 +3097,16 @@ impl CType {
                 if size > 1 {
                     fs.push(Arc::new(Function {
                         name: constructor_fn_name.clone(),
-                        typen: CType::Function(
-                            Box::new(CType::Tuple({
+                        typen: Arc::new(CType::Function(
+                            Arc::new(CType::Tuple({
                                 let mut v = Vec::new();
                                 for _ in 0..size {
-                                    v.push(*b.clone());
+                                    v.push(b.clone());
                                 }
                                 v
                             })),
-                            Box::new(t.clone()),
-                        ),
+                            Arc::new(t.clone()),
+                        )),
                         microstatements: Vec::new(),
                         kind: FnKind::Derived,
                         origin_scope_path: scope.path.clone(),
@@ -3010,7 +3116,7 @@ impl CType {
                 for i in 0..size {
                     fs.push(Arc::new(Function {
                         name: format!("{}", i),
-                        typen: CType::Function(Box::new(t.clone()), b.clone()),
+                        typen: Arc::new(CType::Function(Arc::new(t.clone()), b.clone())),
                         microstatements: Vec::new(),
                         kind: FnKind::Derived,
                         origin_scope_path: scope.path.clone(),
@@ -3027,7 +3133,7 @@ impl CType {
                 // other types, too.
                 fs.push(Arc::new(Function {
                     name: constructor_fn_name.clone(),
-                    typen: CType::Function(Box::new(*a.clone()), Box::new(t.clone())),
+                    typen: Arc::new(CType::Function(a.clone(), Arc::new(t.clone()))),
                     microstatements: Vec::new(),
                     kind: FnKind::DerivedVariadic,
                     origin_scope_path: scope.path.clone(),
@@ -3038,7 +3144,7 @@ impl CType {
                 let int64 = scope.resolve_type("i64").unwrap().clone();
                 fs.push(Arc::new(Function {
                     name: constructor_fn_name.clone(),
-                    typen: CType::Function(Box::new(CType::Void), Box::new(int64.clone())),
+                    typen: Arc::new(CType::Function(Arc::new(CType::Void), int64.clone())),
                     microstatements: vec![Microstatement::Return {
                         value: Some(Box::new(Microstatement::Value {
                             typen: int64,
@@ -3054,7 +3160,7 @@ impl CType {
                 let float64 = scope.resolve_type("f64").unwrap().clone();
                 fs.push(Arc::new(Function {
                     name: constructor_fn_name.clone(),
-                    typen: CType::Function(Box::new(CType::Void), Box::new(float64.clone())),
+                    typen: Arc::new(CType::Function(Arc::new(CType::Void), float64.clone())),
                     microstatements: vec![Microstatement::Return {
                         value: Some(Box::new(Microstatement::Value {
                             typen: float64,
@@ -3074,7 +3180,7 @@ impl CType {
                         let booln = boolt.clone();
                         fs.push(Arc::new(Function {
                             name: constructor_fn_name.clone(),
-                            typen: CType::Function(Box::new(CType::Void), Box::new(booln.clone())),
+                            typen: Arc::new(CType::Function(Arc::new(CType::Void), booln.clone())),
                             microstatements: vec![Microstatement::Return {
                                 value: Some(Box::new(Microstatement::Value {
                                     typen: booln,
@@ -3095,7 +3201,7 @@ impl CType {
                 let string = scope.resolve_type("string").unwrap().clone();
                 fs.push(Arc::new(Function {
                     name: constructor_fn_name.clone(),
-                    typen: CType::Function(Box::new(CType::Void), Box::new(string.clone())),
+                    typen: Arc::new(CType::Function(Arc::new(CType::Void), string.clone())),
                     microstatements: vec![Microstatement::Return {
                         value: Some(Box::new(Microstatement::Value {
                             typen: string,
@@ -3123,12 +3229,12 @@ impl CType {
             // we don't get a boolean at all or we get multiple inner values in the generic call,
             // we bail out immediately because of a syntax error.
             let generic_call = withtypeoperatorslist_to_ctype(&generics.typecalllist, &scope)?;
-            match generic_call {
+            match &*generic_call {
                 CType::Bool(b) => match b {
                     false => return Ok((scope, CType::Fail(format!("{} is not supposed to be compiled because the conditional compilation generic value is false", name)))),
                     true => { /* Do nothing */ }
                 },
-                CType::Type(n, c) => match *c {
+                CType::Type(n, c) => match &**c {
                     CType::Bool(b) => match b {
                         false => return Ok((scope, CType::Fail(format!("{} is not supposed to be compiled because {} is false", name, n)))),
                         true => { /* Do nothing */ }
@@ -3166,24 +3272,26 @@ impl CType {
                 let mut inner_type =
                     withtypeoperatorslist_to_ctype(&type_ast.typedef.typeassignables, &scope)?;
                 // Unwrap a Group type, if any exists, we don't want it here.
-                while matches!(&inner_type, CType::Group(_)) {
-                    inner_type = match inner_type {
-                        CType::Group(t) => *t,
-                        t => t,
+                while matches!(&*inner_type, CType::Group(_)) {
+                    inner_type = match &*inner_type {
+                        CType::Group(t) => t.clone(),
+                        _t => inner_type,
                     };
                 }
                 // Let's just avoid the "bare field" type definition and auto-wrap into a tuple
-                if let CType::Field(..) = &inner_type {
-                    inner_type = CType::Tuple(vec![inner_type]);
+                if let CType::Field(..) = &*inner_type {
+                    inner_type = Arc::new(CType::Tuple(vec![inner_type]));
                 }
                 // Magic hackery to convert a `From` type into an `Import` type if it's the top-level type
-                inner_type = match inner_type {
-                    CType::From(t) => CType::import(CType::TString(name.clone()), *t),
-                    t => t,
+                inner_type = match &*inner_type {
+                    CType::From(t) => {
+                        CType::import(Arc::new(CType::TString(name.clone())), t.clone())
+                    }
+                    _t => inner_type,
                 };
                 // If we've got an `Import` type, we need to grab the actual type definition from
                 // the other file and pull it in here.
-                if let CType::Import(name, dep) = &inner_type {
+                if let CType::Import(name, dep) = &*inner_type {
                     match &**dep {
                         CType::TString(dep_name) => {
                             let program = Program::get_program();
@@ -3194,9 +3302,9 @@ impl CType {
                                         None => {
                                             CType::fail(&format!("{} not found in {}", n, dep_name))
                                         }
-                                        Some(t) => match t {
-                                            CType::Type(_, t) => (**t).clone(),
-                                            t => t.clone(),
+                                        Some(t) => match &**t {
+                                            CType::Type(_, t) => t.clone(),
+                                            _t => t.clone(),
                                         },
                                     }
                                 }
@@ -3223,16 +3331,14 @@ impl CType {
                     .collect::<Vec<String>>();
                 let mut temp_scope = scope.child();
                 for arg in &args {
-                    temp_scope
-                        .types
-                        .insert(arg.clone(), CType::Infer(arg.clone(), "Any".to_string()));
+                    temp_scope.types.insert(
+                        arg.clone(),
+                        Arc::new(CType::Infer(arg.clone(), "Any".to_string())),
+                    );
                 }
                 let generic_call =
                     withtypeoperatorslist_to_ctype(&type_ast.typedef.typeassignables, &temp_scope)?;
-                (
-                    CType::Generic(name.clone(), args, Box::new(generic_call)),
-                    Vec::new(),
-                )
+                (CType::Generic(name.clone(), args, generic_call), Vec::new())
             }
         };
         if is_export {
@@ -3247,8 +3353,9 @@ impl CType {
                 }
             }
         }
-        scope.types.insert(name.clone(), t.clone());
-        scope.types.insert(t.to_callable_string(), t.clone());
+        let insert_t = Arc::new(t.clone());
+        scope.types.insert(name.clone(), insert_t.clone());
+        scope.types.insert(t.to_callable_string(), insert_t.clone());
         if !fs.is_empty() {
             let mut name_fn_pairs = HashMap::new();
             for f in fs {
@@ -3271,9 +3378,9 @@ impl CType {
         Ok((scope, t))
     }
 
-    pub fn from_ctype(mut scope: Scope, name: String, ctype: CType) -> Scope {
+    pub fn from_ctype(mut scope: Scope, name: String, ctype: Arc<CType>) -> Scope {
         scope.exports.insert(name.clone(), Export::Type);
-        let (_, fs) = ctype.to_functions(name.clone(), &scope);
+        let (_, fs) = ctype.clone().to_functions(name.clone(), &scope);
         scope.types.insert(name, ctype.clone());
         scope.types.insert(ctype.to_callable_string(), ctype);
         if !fs.is_empty() {
@@ -3282,17 +3389,14 @@ impl CType {
                 // We need to similarly load all of the return types from the functions created by
                 // this from_ctype call if they don't already exist
                 let mut contains_rettype = false;
+                let retstr = f.rettype().to_functional_string();
                 for t in scope.types.values() {
-                    if f.rettype().to_callable_string() == t.to_callable_string() {
+                    if retstr == t.to_functional_string() {
                         contains_rettype = true;
                     }
                 }
                 if !contains_rettype {
-                    scope = CType::from_ctype(
-                        scope,
-                        f.rettype().to_callable_string(),
-                        f.rettype().clone(),
-                    );
+                    scope = CType::from_ctype(scope, retstr, f.rettype().clone());
                 }
                 if name_fn_pairs.contains_key(&f.name) {
                     let v: &mut Vec<Arc<Function>> = name_fn_pairs.get_mut(&f.name).unwrap();
@@ -3317,17 +3421,21 @@ impl CType {
         CType::from_ctype(
             scope,
             name.to_string(),
-            CType::IntrinsicGeneric(name.to_string(), arglen),
+            Arc::new(CType::IntrinsicGeneric(name.to_string(), arglen)),
         )
     }
-    pub fn swap_subtype(&self, old_type: &CType, new_type: &CType) -> CType {
+    pub fn swap_subtype(
+        self: Arc<CType>,
+        old_type: Arc<CType>,
+        new_type: Arc<CType>,
+    ) -> Arc<CType> {
         // Implemented recursively to be easier to follow. It would be nice to avoid all of the
         // cloning if the old type is not anywhere in the CType tree, but that would be a lot
         // harder to detect ahead of time.
         if self == old_type {
-            return new_type.clone();
+            return new_type;
         }
-        match self {
+        match &*self {
             CType::Void
             | CType::Infer(..)
             | CType::Generic(..)
@@ -3337,145 +3445,156 @@ impl CType {
             | CType::Bool(_)
             | CType::TString(_)
             | CType::Fail(_) => self.clone(),
-            CType::Type(name, ct) => {
-                CType::Type(name.clone(), Box::new(ct.swap_subtype(old_type, new_type)))
-            }
-            CType::Binds(name, gen_type_resolved) => CType::Binds(
-                Box::new(name.swap_subtype(old_type, new_type)),
+            CType::Type(name, ct) => Arc::new(CType::Type(
+                name.clone(),
+                ct.clone().swap_subtype(old_type, new_type),
+            )),
+            CType::Binds(name, gen_type_resolved) => Arc::new(CType::Binds(
+                name.clone()
+                    .swap_subtype(old_type.clone(), new_type.clone()),
                 gen_type_resolved
                     .iter()
-                    .map(|gtr| gtr.swap_subtype(old_type, new_type))
-                    .collect::<Vec<CType>>(),
-            ),
-            CType::Group(g) => g.swap_subtype(old_type, new_type),
-            CType::Function(i, o) => CType::Function(
-                Box::new(i.swap_subtype(old_type, new_type)),
-                Box::new(o.swap_subtype(old_type, new_type)),
-            ),
-            CType::Call(n, f) => CType::Call(
-                Box::new(n.swap_subtype(old_type, new_type)),
-                Box::new(f.swap_subtype(old_type, new_type)),
-            ),
-            CType::Infix(o) => CType::Infix(Box::new(o.swap_subtype(old_type, new_type))),
-            CType::Prefix(o) => CType::Prefix(Box::new(o.swap_subtype(old_type, new_type))),
-            CType::Method(f) => CType::Method(Box::new(f.swap_subtype(old_type, new_type))),
-            CType::Property(p) => CType::Property(Box::new(p.swap_subtype(old_type, new_type))),
-            CType::Cast(t) => CType::Cast(Box::new(t.swap_subtype(old_type, new_type))),
-            CType::Own(t) => CType::Own(Box::new(t.swap_subtype(old_type, new_type))),
-            CType::Deref(t) => CType::Deref(Box::new(t.swap_subtype(old_type, new_type))),
-            CType::Mut(t) => CType::Mut(Box::new(t.swap_subtype(old_type, new_type))),
-            CType::Dependency(n, v) => CType::Dependency(
-                Box::new(n.swap_subtype(old_type, new_type)),
-                Box::new(v.swap_subtype(old_type, new_type)),
-            ),
-            CType::Rust(d) => CType::Rust(Box::new(d.swap_subtype(old_type, new_type))),
-            CType::Node(d) => CType::Node(Box::new(d.swap_subtype(old_type, new_type))),
-            CType::From(d) => CType::From(Box::new(d.swap_subtype(old_type, new_type))),
-            CType::Import(n, d) => CType::Import(
-                Box::new(n.swap_subtype(old_type, new_type)),
-                Box::new(d.swap_subtype(old_type, new_type)),
-            ),
-            CType::Tuple(ts) => CType::Tuple(
-                ts.iter()
-                    .map(|t| t.swap_subtype(old_type, new_type))
-                    .collect::<Vec<CType>>(),
-            ),
-            CType::Field(name, t) => {
-                CType::Field(name.clone(), Box::new(t.swap_subtype(old_type, new_type)))
+                    .map(|gtr| gtr.clone().swap_subtype(old_type.clone(), new_type.clone()))
+                    .collect::<Vec<Arc<CType>>>(),
+            )),
+            CType::Group(g) => g.clone().swap_subtype(old_type, new_type),
+            CType::Function(i, o) => Arc::new(CType::Function(
+                i.clone().swap_subtype(old_type.clone(), new_type.clone()),
+                o.clone().swap_subtype(old_type, new_type),
+            )),
+            CType::Call(n, f) => Arc::new(CType::Call(
+                n.clone().swap_subtype(old_type.clone(), new_type.clone()),
+                f.clone().swap_subtype(old_type, new_type),
+            )),
+            CType::Infix(o) => Arc::new(CType::Infix(o.clone().swap_subtype(old_type, new_type))),
+            CType::Prefix(o) => Arc::new(CType::Prefix(o.clone().swap_subtype(old_type, new_type))),
+            CType::Method(f) => Arc::new(CType::Method(f.clone().swap_subtype(old_type, new_type))),
+            CType::Property(p) => {
+                Arc::new(CType::Property(p.clone().swap_subtype(old_type, new_type)))
             }
-            CType::Either(ts) => CType::Either(
+            CType::Cast(t) => Arc::new(CType::Cast(t.clone().swap_subtype(old_type, new_type))),
+            CType::Own(t) => Arc::new(CType::Own(t.clone().swap_subtype(old_type, new_type))),
+            CType::Deref(t) => Arc::new(CType::Deref(t.clone().swap_subtype(old_type, new_type))),
+            CType::Mut(t) => Arc::new(CType::Mut(t.clone().swap_subtype(old_type, new_type))),
+            CType::Dependency(n, v) => Arc::new(CType::Dependency(
+                n.clone().swap_subtype(old_type.clone(), new_type.clone()),
+                v.clone().swap_subtype(old_type, new_type),
+            )),
+            CType::Rust(d) => Arc::new(CType::Rust(d.clone().swap_subtype(old_type, new_type))),
+            CType::Node(d) => Arc::new(CType::Node(d.clone().swap_subtype(old_type, new_type))),
+            CType::From(d) => Arc::new(CType::From(d.clone().swap_subtype(old_type, new_type))),
+            CType::Import(n, d) => Arc::new(CType::Import(
+                n.clone().swap_subtype(old_type.clone(), new_type.clone()),
+                d.clone().swap_subtype(old_type, new_type),
+            )),
+            CType::Tuple(ts) => Arc::new(CType::Tuple(
                 ts.iter()
-                    .map(|t| t.swap_subtype(old_type, new_type))
-                    .collect::<Vec<CType>>(),
-            ),
-            CType::Prop(t, p) => CType::Prop(
-                Box::new(t.swap_subtype(old_type, new_type)),
-                Box::new(p.swap_subtype(old_type, new_type)),
-            ),
-            CType::AnyOf(ts) => CType::AnyOf(
+                    .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
+                    .collect::<Vec<Arc<CType>>>(),
+            )),
+            CType::Field(name, t) => Arc::new(CType::Field(
+                name.clone(),
+                t.clone().swap_subtype(old_type, new_type),
+            )),
+            CType::Either(ts) => Arc::new(CType::Either(
                 ts.iter()
-                    .map(|t| t.swap_subtype(old_type, new_type))
-                    .collect::<Vec<CType>>(),
-            ),
-            CType::Buffer(t, size) => CType::Buffer(
-                Box::new(t.swap_subtype(old_type, new_type)),
-                Box::new(size.swap_subtype(old_type, new_type)),
-            ),
-            CType::Array(t) => CType::Array(Box::new(t.swap_subtype(old_type, new_type))),
+                    .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
+                    .collect::<Vec<Arc<CType>>>(),
+            )),
+            CType::Prop(t, p) => Arc::new(CType::Prop(
+                t.clone().swap_subtype(old_type.clone(), new_type.clone()),
+                p.clone().swap_subtype(old_type, new_type),
+            )),
+            CType::AnyOf(ts) => Arc::new(CType::AnyOf(
+                ts.iter()
+                    .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
+                    .collect::<Vec<Arc<CType>>>(),
+            )),
+            CType::Buffer(t, size) => Arc::new(CType::Buffer(
+                t.clone().swap_subtype(old_type.clone(), new_type.clone()),
+                size.clone().swap_subtype(old_type, new_type),
+            )),
+            CType::Array(t) => Arc::new(CType::Array(t.clone().swap_subtype(old_type, new_type))),
             // For these when we swap, we check to see if we can "condense" them down into simpler
             // types (eg `Add{N, 1}` swapping `N` for `3` should just yield `4`)
             CType::Add(ts) => ts
                 .iter()
-                .map(|t| t.swap_subtype(old_type, new_type))
-                .reduce(|a, b| CType::add(&a, &b))
+                .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
+                .reduce(|a, b| CType::add(a, b))
                 .unwrap(),
             CType::Sub(ts) => ts
                 .iter()
-                .map(|t| t.swap_subtype(old_type, new_type))
-                .reduce(|a, b| CType::sub(&a, &b))
+                .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
+                .reduce(|a, b| CType::sub(a, b))
                 .unwrap(),
             CType::Mul(ts) => ts
                 .iter()
-                .map(|t| t.swap_subtype(old_type, new_type))
-                .reduce(|a, b| CType::mul(&a, &b))
+                .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
+                .reduce(|a, b| CType::mul(a, b))
                 .unwrap(),
             CType::Div(ts) => ts
                 .iter()
-                .map(|t| t.swap_subtype(old_type, new_type))
-                .reduce(|a, b| CType::div(&a, &b))
+                .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
+                .reduce(|a, b| CType::div(a, b))
                 .unwrap(),
             CType::Mod(ts) => ts
                 .iter()
-                .map(|t| t.swap_subtype(old_type, new_type))
-                .reduce(|a, b| CType::cmod(&a, &b))
+                .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
+                .reduce(|a, b| CType::cmod(a, b))
                 .unwrap(),
             CType::Pow(ts) => ts
                 .iter()
-                .map(|t| t.swap_subtype(old_type, new_type))
-                .reduce(|a, b| CType::pow(&a, &b))
+                .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
+                .reduce(|a, b| CType::pow(a, b))
                 .unwrap(),
             CType::Min(ts) => ts
                 .iter()
-                .map(|t| t.swap_subtype(old_type, new_type))
-                .reduce(|a, b| CType::min(&a, &b))
+                .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
+                .reduce(|a, b| CType::min(a, b))
                 .unwrap(),
             CType::Max(ts) => ts
                 .iter()
-                .map(|t| t.swap_subtype(old_type, new_type))
-                .reduce(|a, b| CType::max(&a, &b))
+                .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
+                .reduce(|a, b| CType::max(a, b))
                 .unwrap(),
-            CType::Neg(t) => CType::neg(&t.swap_subtype(old_type, new_type)),
-            CType::Len(t) => CType::len(&t.swap_subtype(old_type, new_type)),
-            CType::Size(t) => CType::size(&t.swap_subtype(old_type, new_type)),
-            CType::FileStr(t) => CType::filestr(&t.swap_subtype(old_type, new_type)),
+            CType::Neg(t) => CType::neg(t.clone().swap_subtype(old_type, new_type)),
+            CType::Len(t) => CType::len(t.clone().swap_subtype(old_type, new_type)),
+            CType::Size(t) => CType::size(t.clone().swap_subtype(old_type, new_type)),
+            CType::FileStr(t) => CType::filestr(t.clone().swap_subtype(old_type, new_type)),
             CType::Concat(a, b) => CType::concat(
-                &a.swap_subtype(old_type, new_type),
-                &b.swap_subtype(old_type, new_type),
+                a.clone().swap_subtype(old_type.clone(), new_type.clone()),
+                b.clone().swap_subtype(old_type, new_type),
             ),
             CType::Env(ts) => {
                 if ts.len() == 1 {
-                    CType::env(&ts[0].swap_subtype(old_type, new_type))
+                    CType::env(ts[0].clone().swap_subtype(old_type, new_type))
                 } else if ts.len() == 2 {
                     CType::envdefault(
-                        &ts[0].swap_subtype(old_type, new_type),
-                        &ts[1].swap_subtype(old_type, new_type),
+                        ts[0]
+                            .clone()
+                            .swap_subtype(old_type.clone(), new_type.clone()),
+                        ts[1]
+                            .clone()
+                            .swap_subtype(old_type.clone(), new_type.clone()),
                     )
                 } else {
                     CType::fail("Somehow gave Env{..} an incorrect number of args and caught during generic resolution")
                 }
             }
-            CType::EnvExists(t) => CType::envexists(&t.swap_subtype(old_type, new_type)),
+            CType::EnvExists(t) => CType::envexists(t.clone().swap_subtype(old_type, new_type)),
             CType::TIf(t, ts) => {
                 if ts.len() == 1 {
                     CType::tupleif(
-                        &t.swap_subtype(old_type, new_type),
-                        &ts[0].swap_subtype(old_type, new_type),
+                        t.clone().swap_subtype(old_type.clone(), new_type.clone()),
+                        ts[0].clone().swap_subtype(old_type, new_type),
                     )
                 } else if ts.len() == 2 {
                     CType::cif(
-                        &t.swap_subtype(old_type, new_type),
-                        &ts[0].swap_subtype(old_type, new_type),
-                        &ts[1].swap_subtype(old_type, new_type),
+                        t.clone().swap_subtype(old_type.clone(), new_type.clone()),
+                        ts[0]
+                            .clone()
+                            .swap_subtype(old_type.clone(), new_type.clone()),
+                        ts[1].clone().swap_subtype(old_type, new_type),
                     )
                 } else {
                     CType::fail("Somehow gave If{..} an incorrect number of args and caught during generic resolution")
@@ -3483,71 +3602,71 @@ impl CType {
             }
             CType::And(ts) => ts
                 .iter()
-                .map(|t| t.swap_subtype(old_type, new_type))
-                .reduce(|a, b| CType::and(&a, &b))
+                .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
+                .reduce(|a, b| CType::and(a, b))
                 .unwrap(),
             CType::Or(ts) => ts
                 .iter()
-                .map(|t| t.swap_subtype(old_type, new_type))
-                .reduce(|a, b| CType::or(&a, &b))
+                .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
+                .reduce(|a, b| CType::or(a, b))
                 .unwrap(),
             CType::Xor(ts) => ts
                 .iter()
-                .map(|t| t.swap_subtype(old_type, new_type))
-                .reduce(|a, b| CType::xor(&a, &b))
+                .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
+                .reduce(|a, b| CType::xor(a, b))
                 .unwrap(),
-            CType::Not(t) => CType::not(&t.swap_subtype(old_type, new_type)),
+            CType::Not(t) => CType::not(t.clone().swap_subtype(old_type, new_type)),
             CType::Nand(ts) => ts
                 .iter()
-                .map(|t| t.swap_subtype(old_type, new_type))
-                .reduce(|a, b| CType::nand(&a, &b))
+                .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
+                .reduce(|a, b| CType::nand(a, b))
                 .unwrap(),
             CType::Nor(ts) => ts
                 .iter()
-                .map(|t| t.swap_subtype(old_type, new_type))
-                .reduce(|a, b| CType::nor(&a, &b))
+                .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
+                .reduce(|a, b| CType::nor(a, b))
                 .unwrap(),
             CType::Xnor(ts) => ts
                 .iter()
-                .map(|t| t.swap_subtype(old_type, new_type))
-                .reduce(|a, b| CType::xnor(&a, &b))
+                .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
+                .reduce(|a, b| CType::xnor(a, b))
                 .unwrap(),
             CType::TEq(ts) => ts
                 .iter()
-                .map(|t| t.swap_subtype(old_type, new_type))
-                .reduce(|a, b| CType::eq(&a, &b))
+                .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
+                .reduce(|a, b| CType::eq(a, b))
                 .unwrap(),
             CType::Neq(ts) => ts
                 .iter()
-                .map(|t| t.swap_subtype(old_type, new_type))
-                .reduce(|a, b| CType::neq(&a, &b))
+                .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
+                .reduce(|a, b| CType::neq(a, b))
                 .unwrap(),
             CType::Lt(ts) => ts
                 .iter()
-                .map(|t| t.swap_subtype(old_type, new_type))
-                .reduce(|a, b| CType::lt(&a, &b))
+                .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
+                .reduce(|a, b| CType::lt(a, b))
                 .unwrap(),
             CType::Lte(ts) => ts
                 .iter()
-                .map(|t| t.swap_subtype(old_type, new_type))
-                .reduce(|a, b| CType::lte(&a, &b))
+                .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
+                .reduce(|a, b| CType::lte(a, b))
                 .unwrap(),
             CType::Gt(ts) => ts
                 .iter()
-                .map(|t| t.swap_subtype(old_type, new_type))
-                .reduce(|a, b| CType::gt(&a, &b))
+                .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
+                .reduce(|a, b| CType::gt(a, b))
                 .unwrap(),
             CType::Gte(ts) => ts
                 .iter()
-                .map(|t| t.swap_subtype(old_type, new_type))
-                .reduce(|a, b| CType::gte(&a, &b))
+                .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
+                .reduce(|a, b| CType::gte(a, b))
                 .unwrap(),
         }
     }
-    pub fn binds(args: Vec<CType>) -> CType {
+    pub fn binds(args: Vec<Arc<CType>>) -> Arc<CType> {
         let base_type = args[0].clone();
         if matches!(
-            base_type,
+            &*base_type,
             CType::TString(_) | CType::Import(..) | CType::From(_)
         ) {
             let mut out_vec = Vec::new();
@@ -3555,22 +3674,22 @@ impl CType {
             for i in 1..args.len() {
                 out_vec.push(args[i].clone());
             }
-            CType::Binds(Box::new(base_type), out_vec)
+            Arc::new(CType::Binds(base_type, out_vec))
         } else {
             CType::fail(
                 "Binds{T, ...} must be given a string or an import for the base type to bind",
             );
         }
     }
-    pub fn import(name: CType, dep: CType) -> CType {
-        if let CType::Infer(..) = &name {
-            CType::Import(Box::new(name), Box::new(dep))
-        } else if let CType::Infer(..) = &dep {
-            CType::Import(Box::new(name), Box::new(dep))
-        } else if !matches!(name, CType::TString(_)) {
+    pub fn import(name: Arc<CType>, dep: Arc<CType>) -> Arc<CType> {
+        if let CType::Infer(..) = &*name {
+            Arc::new(CType::Import(name, dep))
+        } else if let CType::Infer(..) = &*dep {
+            Arc::new(CType::Import(name, dep))
+        } else if !matches!(&*name, CType::TString(_)) {
             CType::fail("The Import{N, D} N parameter must be a string")
         } else {
-            match &dep {
+            match &*dep {
                 CType::TString(s) => {
                     // Load the dependency
                     if let Err(e) = Program::load(s.clone()) {
@@ -3586,14 +3705,14 @@ impl CType {
                                 // operator mappings don't have a syntax to express this. TODO:
                                 // Figure out how to tackle this syntactically, and then update
                                 // this logic.
-                                if let CType::TString(n) = &name {
+                                if let CType::TString(n) = &*name {
                                     let found = dep_scope.types.contains_key(n)
                                         || dep_scope.functions.contains_key(n);
                                     if !found {
                                         CType::fail(&format!("{} not found in {}", n, s))
                                     } else {
                                         // We're good
-                                        CType::Import(Box::new(name), Box::new(dep))
+                                        Arc::new(CType::Import(name, dep))
                                     }
                                 } else {
                                     CType::fail("The Import{N, D} N parameter must be a string")
@@ -3605,9 +3724,9 @@ impl CType {
                     }
                 }
                 CType::Dependency(..) => CType::fail("TODO: Alan package import support"),
-                CType::Node(_) | CType::Rust(_) => CType::Import(Box::new(name), Box::new(dep)),
+                CType::Node(_) | CType::Rust(_) => Arc::new(CType::Import(name, dep)),
                 CType::Type(_, t) if matches!(**t, CType::Node(_) | CType::Rust(_)) => {
-                    CType::Import(Box::new(name), Box::new(dep))
+                    Arc::new(CType::Import(name, dep))
                 }
                 otherwise => CType::fail(&format!(
                     "Invalid import defined {:?} <- {:?}",
@@ -3618,55 +3737,55 @@ impl CType {
     }
     // Special implementation for the tuple and either types since they *are* CTypes, but if one of
     // the provided input types *is* the same kind of CType, it should produce a merged version.
-    pub fn tuple(args: Vec<CType>) -> CType {
+    pub fn tuple(args: Vec<Arc<CType>>) -> Arc<CType> {
         let mut out_vec = Vec::new();
         for arg in args {
-            match arg {
+            match &*arg {
                 CType::Tuple(ts) => {
                     for t in ts {
                         out_vec.push(t.clone());
                     }
                 }
-                other => out_vec.push(other),
+                _other => out_vec.push(arg),
             }
         }
-        CType::Tuple(out_vec)
+        Arc::new(CType::Tuple(out_vec))
     }
-    pub fn either(args: Vec<CType>) -> CType {
+    pub fn either(args: Vec<Arc<CType>>) -> Arc<CType> {
         let mut out_vec = Vec::new();
         for arg in args {
-            match arg {
+            match &*arg {
                 CType::Either(ts) => {
                     for t in ts {
                         out_vec.push(t.clone());
                     }
                 }
-                other => out_vec.push(other),
+                _other => out_vec.push(arg),
             }
         }
-        CType::Either(out_vec)
+        Arc::new(CType::Either(out_vec))
     }
-    pub fn prop(t: CType, p: CType) -> CType {
+    pub fn prop(t: Arc<CType>, p: Arc<CType>) -> Arc<CType> {
         // Checking the p property type first if it's to be inferred because short-circuiting on
         // that will simplify follow-up logic
-        if let CType::Infer(..) = &p {
-            return CType::Prop(Box::new(t), Box::new(p));
+        if let CType::Infer(..) = &*p {
+            return Arc::new(CType::Prop(t, p));
         }
-        match t.clone() {
-            CType::Infer(..) => CType::Prop(Box::new(t), Box::new(p)),
-            CType::Type(_, t) => CType::prop(*t, p),
-            CType::Group(t) => CType::prop(*t, p),
-            CType::Field(n, f) => match p {
+        match &*t {
+            CType::Infer(..) => Arc::new(CType::Prop(t, p)),
+            CType::Type(_, t) => CType::prop(t.clone(), p),
+            CType::Group(t) => CType::prop(t.clone(), p),
+            CType::Field(n, f) => match &*p {
                 CType::TString(s) => {
                     if n == s {
-                        *f.clone()
+                        f.clone()
                     } else {
                         CType::fail(&format!("Property {} not found on type {:?}", s, &t))
                     }
                 }
                 CType::Int(i) => match i {
-                    0 => CType::TString(n.to_string()),
-                    1 => *f.clone(),
+                    0 => Arc::new(CType::TString(n.to_string())),
+                    1 => f.clone(),
                     _ => CType::fail("Only 0 or 1 are valid integer accesses on a field"),
                 },
                 otherwise => CType::fail(&format!(
@@ -3674,20 +3793,20 @@ impl CType {
                     otherwise,
                 )),
             },
-            CType::Tuple(ts) | CType::Either(ts) => match p {
+            CType::Tuple(ts) | CType::Either(ts) => match &*p {
                 CType::TString(s) => {
                     for inner in ts {
-                        if let CType::Field(n, f) = inner {
+                        if let CType::Field(n, f) = &**inner {
                             if n == s {
-                                return *f.clone();
+                                return f.clone();
                             }
                         }
                     }
                     CType::fail(&format!("Property {} not found on type {:?}", s, t))
                 }
                 CType::Int(i) => {
-                    if (0..ts.len()).contains(&(i as usize)) {
-                        ts[i as usize].clone()
+                    if (0..ts.len()).contains(&(*i as usize)) {
+                        ts[*i as usize].clone()
                     } else {
                         CType::fail(&format!("{} is out of bounds for type {:?}", i, t))
                     }
@@ -3698,7 +3817,7 @@ impl CType {
                 )),
             },
             CType::TIf(_, tf) => {
-                match p {
+                match &*p {
                     CType::TString(s) => {
                         // TODO: Is this path reachable?
                         if s == "true" {
@@ -3710,15 +3829,15 @@ impl CType {
                         }
                     }
                     CType::Bool(b) => {
-                        if b {
+                        if *b {
                             tf[0].clone()
                         } else {
                             tf[1].clone()
                         }
                     }
                     CType::Int(i) => {
-                        if (0..2).contains(&i) {
-                            tf[i as usize].clone()
+                        if (0..2).contains(i) {
+                            tf[*i as usize].clone()
                         } else {
                             CType::fail("Only true or false (or 1 or 0) are valid for accessing the types from an If{C, A, B} type")
                         }
@@ -3735,53 +3854,49 @@ impl CType {
             )),
         }
     }
-    pub fn anyof(args: Vec<CType>) -> CType {
+    pub fn anyof(args: Vec<Arc<CType>>) -> Arc<CType> {
         let mut out_vec = Vec::new();
         for arg in args {
-            match arg {
+            match &*arg {
                 CType::AnyOf(ts) => {
                     for t in ts {
                         out_vec.push(t.clone());
                     }
                 }
-                other => out_vec.push(other),
+                _other => out_vec.push(arg),
             }
         }
-        CType::Either(out_vec)
+        Arc::new(CType::Either(out_vec))
     }
-    pub fn field(mut args: Vec<CType>) -> CType {
+    pub fn field(mut args: Vec<Arc<CType>>) -> Arc<CType> {
         if args.len() != 2 {
             CType::fail("Field{K, V} only accepts two sub-types")
         } else {
             let arg1 = args.pop().unwrap();
             let arg0 = args.pop().unwrap();
-            match (arg0, arg1) {
+            match (&*arg0, &*arg1) {
                 (CType::TString(key), anything) => {
-                    CType::Field(key.clone(), Box::new(anything.clone()))
+                    Arc::new(CType::Field(key.clone(), Arc::new(anything.clone())))
                 }
                 _ => CType::fail("The field key must be a quoted string at this time"),
             }
         }
     }
     // Some validation for buffer creation, too
-    pub fn buffer(mut args: Vec<CType>) -> CType {
+    pub fn buffer(mut args: Vec<Arc<CType>>) -> Arc<CType> {
         if args.len() != 2 {
             CType::fail("Buffer{T, S} only accepts two sub-types")
         } else {
             let arg1 = args.pop().unwrap().degroup();
             let arg0 = args.pop().unwrap().degroup();
-            match (&arg0, &arg1) {
-                (CType::Infer(..), _) => {
-                    CType::Buffer(Box::new(arg0.clone()), Box::new(arg1.clone()))
-                }
-                (_, CType::Infer(..)) => {
-                    CType::Buffer(Box::new(arg0.clone()), Box::new(arg1.clone()))
-                }
-                (anything, CType::Int(size)) => {
+            match (&*arg0, &*arg1) {
+                (CType::Infer(..), _) => Arc::new(CType::Buffer(arg0.clone(), arg1.clone())),
+                (_, CType::Infer(..)) => Arc::new(CType::Buffer(arg0.clone(), arg1.clone())),
+                (_, CType::Int(size)) => {
                     if *size < 0 {
                         CType::fail("The buffer size must be a positive integer")
                     } else {
-                        CType::Buffer(Box::new(anything.clone()), Box::new(CType::Int(*size)))
+                        Arc::new(CType::Buffer(arg0, Arc::new(CType::Int(*size))))
                     }
                 }
                 otherwise => CType::fail(&format!(
@@ -3797,54 +3912,54 @@ impl CType {
         eprintln!("{}", message);
         std::process::exit(1);
     }
-    pub fn cfail(message: &CType) -> CType {
-        match message {
-            CType::TString(s) => CType::Fail(s.clone()),
+    pub fn cfail(message: Arc<CType>) -> Arc<CType> {
+        match &*message {
+            CType::TString(s) => Arc::new(CType::Fail(s.clone())),
             _ => CType::fail("Fail passed a type that does not resolve into a message string"),
         }
     }
-    pub fn neg(t: &CType) -> CType {
-        match *t {
-            CType::Int(v) => CType::Int(-v),
-            CType::Float(v) => CType::Float(-v),
-            CType::Infer(..) => CType::Neg(Box::new(t.clone())),
+    pub fn neg(t: Arc<CType>) -> Arc<CType> {
+        match &*t {
+            CType::Int(v) => Arc::new(CType::Int(-v)),
+            CType::Float(v) => Arc::new(CType::Float(-v)),
+            CType::Infer(..) => Arc::new(CType::Neg(t)),
             _ => CType::fail("Attempting to negate non-integer or non-float types at compile time"),
         }
     }
-    pub fn len(t: &CType) -> CType {
-        match t {
-            CType::Tuple(tup) => CType::Int(tup.len() as i128),
+    pub fn len(t: Arc<CType>) -> Arc<CType> {
+        match &*t {
+            CType::Tuple(tup) => Arc::new(CType::Int(tup.len() as i128)),
             CType::Buffer(_, l) => match **l {
-                CType::Int(l) => CType::Int(l),
+                CType::Int(l) => Arc::new(CType::Int(l)),
                 _ => {
                     CType::fail("Cannot get a compile time length for an invalid Buffer definition")
                 }
             },
-            CType::Either(eit) => CType::Int(eit.len() as i128),
+            CType::Either(eit) => Arc::new(CType::Int(eit.len() as i128)),
             CType::Array(_) => {
                 CType::fail("Cannot get a compile time length for a variable-length array")
             }
-            CType::Infer(..) => CType::Len(Box::new(t.clone())),
-            _ => CType::Int(1),
+            CType::Infer(..) => Arc::new(CType::Len(t)),
+            _ => Arc::new(CType::Int(1)),
         }
     }
-    pub fn size(t: &CType) -> CType {
+    pub fn size(t: Arc<CType>) -> Arc<CType> {
         // TODO: Implementing this might require all types be made C-style structs under the hood,
         // and probably some weird hackery to find out the size including padding on aligned
         // architectures, so I might take it back out before its actually implemented, but I can
         // think of several places where knowing the actual size of the type could be useful,
         // particularly for writing to disk or interfacing with network protocols, etc, so I'd
         // prefer to keep it and have some compile-time guarantees we don't normally see.
-        match t {
-            CType::Void => CType::Int(0),
-            CType::Infer(..) => CType::Size(Box::new(t.clone())),
-            CType::Type(_, t) => CType::size(t),
+        match &*t {
+            CType::Void => Arc::new(CType::Int(0)),
+            CType::Infer(..) => Arc::new(CType::Size(t.clone())),
+            CType::Type(_, t) => CType::size(t.clone()),
             CType::Generic(..) => CType::fail("Cannot determine the size of an unbound generic"),
             CType::Binds(t, ts) => {
                 if !ts.is_empty() {
                     CType::fail("Cannot determine the size of an unbound generic")
                 } else {
-                    match &**t {
+                    Arc::new(match &**t {
                         CType::TString(n) if n == "i8" => CType::Int(1),
                         CType::TString(n) if n == "u8" => CType::Int(1),
                         CType::TString(n) if n == "i16" => CType::Int(2),
@@ -3862,44 +3977,52 @@ impl CType {
                             "Cannot determine the size of {}",
                             t.to_functional_string()
                         )),
-                    }
+                    })
                 }
             }
             CType::IntrinsicGeneric(..) => {
                 CType::fail("Cannot determine the size of an unbound generic")
             }
-            CType::Int(_) | CType::Float(_) => CType::Int(8),
-            CType::Bool(_) => CType::Int(1),
-            CType::TString(s) => CType::Int(s.capacity() as i128),
-            CType::Group(t) | CType::Field(_, t) => CType::size(t),
+            CType::Int(_) | CType::Float(_) => Arc::new(CType::Int(8)),
+            CType::Bool(_) => Arc::new(CType::Int(1)),
+            CType::TString(s) => Arc::new(CType::Int(s.capacity() as i128)),
+            CType::Group(t) | CType::Field(_, t) => CType::size(t.clone()),
             CType::Tuple(ts) => {
-                let sizes = ts.iter().map(CType::size).collect::<Vec<CType>>();
+                let sizes = ts
+                    .clone()
+                    .into_iter()
+                    .map(CType::size)
+                    .collect::<Vec<Arc<CType>>>();
                 let mut out_size = 0;
                 for t in sizes {
-                    match t {
+                    match &*t {
                         CType::Int(s) => out_size += s,
                         _ => unreachable!(),
                     }
                 }
-                CType::Int(out_size)
+                Arc::new(CType::Int(out_size))
             }
             CType::Either(ts) => {
-                let sizes = ts.iter().map(CType::size).collect::<Vec<CType>>();
+                let sizes = ts
+                    .clone()
+                    .into_iter()
+                    .map(CType::size)
+                    .collect::<Vec<Arc<CType>>>();
                 let mut out_size = 0;
                 for t in sizes {
-                    match t {
-                        CType::Int(s) => out_size = i128::max(out_size, s),
+                    match &*t {
+                        CType::Int(s) => out_size = i128::max(out_size, *s),
                         _ => unreachable!(),
                     }
                 }
-                CType::Int(out_size)
+                Arc::new(CType::Int(out_size))
             }
             CType::Buffer(b, s) => {
-                let base_size = CType::size(b);
-                match (&base_size, &**s) {
-                    (CType::Int(a), CType::Int(b)) => CType::Int(a + b),
+                let base_size = CType::size(b.clone());
+                match (&*base_size, &**s) {
+                    (CType::Int(a), CType::Int(b)) => Arc::new(CType::Int(a + b)),
                     (CType::Infer(..), _) | (_, CType::Infer(..)) => {
-                        CType::Size(Box::new((**b).clone()))
+                        Arc::new(CType::Size(b.clone()))
                     }
                     _ => unreachable!(),
                 }
@@ -3919,28 +4042,28 @@ impl CType {
             )),
         }
     }
-    pub fn filestr(f: &CType) -> CType {
-        match f {
+    pub fn filestr(f: Arc<CType>) -> Arc<CType> {
+        match &*f {
             CType::TString(s) => match std::fs::read_to_string(s) {
                 Err(e) => CType::fail(&format!("Failed to read {}: {:?}", s, e)),
-                Ok(s) => CType::TString(s),
+                Ok(s) => Arc::new(CType::TString(s)),
             },
-            CType::Infer(..) => CType::FileStr(Box::new(f.clone())),
+            CType::Infer(..) => f,
             _ => CType::fail("FileStr{F} must be given a string path to load"),
         }
     }
-    pub fn concat(a: &CType, b: &CType) -> CType {
-        match (a, b) {
-            (CType::Infer(..), _) | (_, CType::Infer(..)) => {
-                CType::Concat(Box::new(a.clone()), Box::new(b.clone()))
+    pub fn concat(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
+        match (&*a, &*b) {
+            (CType::Infer(..), _) | (_, CType::Infer(..)) => Arc::new(CType::Concat(a, b)),
+            (CType::TString(a), CType::TString(b)) => {
+                Arc::new(CType::TString(format!("{}{}", a, b)))
             }
-            (CType::TString(a), CType::TString(b)) => CType::TString(format!("{}{}", a, b)),
             _ => CType::fail("Concat{A, B} must be given strings to concatenate"),
         }
     }
-    pub fn env(k: &CType) -> CType {
+    pub fn env(k: Arc<CType>) -> Arc<CType> {
         let program = Program::get_program();
-        let out = match k {
+        let out = match &*k {
             CType::TString(s) => match program.env.get(s) {
                 None => CType::fail(&format!("Failed to load environment variable {}", s,)),
                 Some(s) => CType::TString(s.clone()),
@@ -3949,27 +4072,27 @@ impl CType {
             _ => CType::fail("Env{K} must be given a key as a string to load"),
         };
         Program::return_program(program);
-        out
+        Arc::new(out)
     }
-    pub fn envexists(k: &CType) -> CType {
+    pub fn envexists(k: Arc<CType>) -> Arc<CType> {
         let program = Program::get_program();
-        let out = match k {
+        let out = match &*k {
             CType::TString(s) => CType::Bool(program.env.contains_key(s)),
-            CType::Infer(..) => CType::EnvExists(Box::new(k.clone())),
+            CType::Infer(..) => CType::EnvExists(k),
             _ => CType::fail("EnvExists{K} must be given a key as a string to check"),
         };
         Program::return_program(program);
-        out
+        Arc::new(out)
     }
-    pub fn not(b: &CType) -> CType {
-        match b {
+    pub fn not(b: Arc<CType>) -> Arc<CType> {
+        Arc::new(match &*b {
             CType::Bool(b) => CType::Bool(!*b),
-            CType::Infer(..) => CType::Not(Box::new(b.clone())),
+            CType::Infer(..) => CType::Not(b),
             _ => CType::fail("Not{B} must be provided a boolean type to invert"),
-        }
+        })
     }
-    pub fn min(a: &CType, b: &CType) -> CType {
-        match (a, b) {
+    pub fn min(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
+        Arc::new(match (&*a, &*b) {
             (&CType::Int(a), &CType::Int(b)) => CType::Int(if a < b { a } else { b }),
             (&CType::Float(a), &CType::Float(b)) => CType::Float(if a < b { a } else { b }),
             (&CType::Infer(..), &CType::Infer(..) | &CType::Int(_) | &CType::Float(_)) => {
@@ -3981,10 +4104,10 @@ impl CType {
             _ => CType::fail(
                 "Attempting to min non-integer or non-float types together at compile time",
             ),
-        }
+        })
     }
-    pub fn max(a: &CType, b: &CType) -> CType {
-        match (a, b) {
+    pub fn max(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
+        Arc::new(match (&*a, &*b) {
             (&CType::Int(a), &CType::Int(b)) => CType::Int(if a > b { a } else { b }),
             (&CType::Float(a), &CType::Float(b)) => CType::Float(if a > b { a } else { b }),
             (&CType::Infer(..), &CType::Infer(..) | &CType::Int(_) | &CType::Float(_)) => {
@@ -3996,10 +4119,10 @@ impl CType {
             _ => CType::fail(
                 "Attempting to max non-integer or non-float types together at compile time",
             ),
-        }
+        })
     }
-    pub fn add(a: &CType, b: &CType) -> CType {
-        match (a, b) {
+    pub fn add(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
+        Arc::new(match (&*a, &*b) {
             (&CType::Int(a), &CType::Int(b)) => CType::Int(a + b),
             (&CType::Float(a), &CType::Float(b)) => CType::Float(a + b),
             (&CType::Infer(..), &CType::Infer(..) | &CType::Int(_) | &CType::Float(_)) => {
@@ -4011,10 +4134,10 @@ impl CType {
             _ => CType::fail(
                 "Attempting to add non-integer or non-float types together at compile time",
             ),
-        }
+        })
     }
-    pub fn sub(a: &CType, b: &CType) -> CType {
-        match (a, b) {
+    pub fn sub(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
+        Arc::new(match (&*a, &*b) {
             (&CType::Int(a), &CType::Int(b)) => CType::Int(a - b),
             (&CType::Float(a), &CType::Float(b)) => CType::Float(a - b),
             (&CType::Infer(..), &CType::Infer(..) | &CType::Int(_) | &CType::Float(_)) => {
@@ -4026,10 +4149,10 @@ impl CType {
             _ => CType::fail(
                 "Attempting to subtract non-integer or non-float types together at compile time",
             ),
-        }
+        })
     }
-    pub fn mul(a: &CType, b: &CType) -> CType {
-        match (a, b) {
+    pub fn mul(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
+        Arc::new(match (&*a, &*b) {
             (&CType::Int(a), &CType::Int(b)) => CType::Int(a * b),
             (&CType::Float(a), &CType::Float(b)) => CType::Float(a * b),
             (&CType::Infer(..), &CType::Infer(..) | &CType::Int(_) | &CType::Float(_)) => {
@@ -4041,10 +4164,10 @@ impl CType {
             _ => CType::fail(
                 "Attempting to multiply non-integer or non-float types together at compile time",
             ),
-        }
+        })
     }
-    pub fn div(a: &CType, b: &CType) -> CType {
-        match (a, b) {
+    pub fn div(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
+        Arc::new(match (&*a, &*b) {
             (&CType::Int(a), &CType::Int(b)) => CType::Int(a / b),
             (&CType::Float(a), &CType::Float(b)) => CType::Float(a / b),
             (&CType::Infer(..), &CType::Infer(..) | &CType::Int(_) | &CType::Float(_)) => {
@@ -4056,20 +4179,20 @@ impl CType {
             _ => CType::fail(
                 "Attempting to divide non-integer or non-float types together at compile time",
             ),
-        }
+        })
     }
-    pub fn cmod(a: &CType, b: &CType) -> CType {
-        match (a, b) {
+    pub fn cmod(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
+        Arc::new(match (&*a, &*b) {
             (&CType::Int(a), &CType::Int(b)) => CType::Int(a * b),
             (&CType::Infer(..), &CType::Infer(..) | &CType::Int(_)) => {
                 CType::Mod(vec![a.clone(), b.clone()])
             }
             (&CType::Int(_), &CType::Infer(..)) => CType::Mod(vec![a.clone(), b.clone()]),
             _ => CType::fail("Attempting to modulus non-integer types together at compile time"),
-        }
+        })
     }
-    pub fn pow(a: &CType, b: &CType) -> CType {
-        match (a, b) {
+    pub fn pow(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
+        Arc::new(match (&*a, &*b) {
             (&CType::Int(a), &CType::Int(b)) => CType::Int(match a.checked_pow(b as u32) {
                 Some(c) => c,
                 None => CType::fail("Compile time exponentiation too large"),
@@ -4084,22 +4207,22 @@ impl CType {
             _ => CType::fail(
                 "Attempting to divide non-integer or non-float types together at compile time",
             ),
-        }
+        })
     }
-    pub fn cif(c: &CType, a: &CType, b: &CType) -> CType {
-        match c {
+    pub fn cif(c: Arc<CType>, a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
+        match &*c {
             CType::Bool(cond) => match cond {
                 true => a.clone(),
                 false => b.clone(),
             },
-            CType::Infer(..) => CType::TIf(Box::new(c.clone()), vec![a.clone(), b.clone()]),
+            CType::Infer(..) => Arc::new(CType::TIf(c.clone(), vec![a.clone(), b.clone()])),
             _ => CType::fail("If{C, A, B} must be given a boolean value as the condition"),
         }
     }
-    pub fn tupleif(c: &CType, t: &CType) -> CType {
-        match c {
+    pub fn tupleif(c: Arc<CType>, t: Arc<CType>) -> Arc<CType> {
+        match &*c {
             CType::Bool(cond) => {
-                match t {
+                match &*t {
                     CType::Tuple(tup) => {
                         if tup.len() == 2 {
                             match cond {
@@ -4115,13 +4238,13 @@ impl CType {
                     ),
                 }
             }
-            CType::Infer(..) => CType::TIf(Box::new(c.clone()), vec![t.clone()]),
+            CType::Infer(..) => Arc::new(CType::TIf(c.clone(), vec![t.clone()])),
             _ => CType::fail("The first type provided to If{C, T} must be a boolean type"),
         }
     }
-    pub fn envdefault(k: &CType, d: &CType) -> CType {
+    pub fn envdefault(k: Arc<CType>, d: Arc<CType>) -> Arc<CType> {
         let program = Program::get_program();
-        let out = match (k, d) {
+        let out = match (&*k, &*d) {
             (CType::TString(s), CType::TString(def)) => match program.env.get(s) {
                 None => CType::TString(def.clone()),
                 Some(v) => CType::TString(v.clone()),
@@ -4132,10 +4255,10 @@ impl CType {
             _ => CType::fail("Env{K, D} must be provided a string for each type"),
         };
         Program::return_program(program);
-        out
+        Arc::new(out)
     }
-    pub fn and(a: &CType, b: &CType) -> CType {
-        match (a, b) {
+    pub fn and(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
+        Arc::new(match (&*a, &*b) {
             (CType::Int(a), CType::Int(b)) => CType::Int(*a & *b),
             (CType::Bool(a), CType::Bool(b)) => CType::Bool(*a && *b),
             (&CType::Infer(..), &CType::Infer(..) | &CType::Int(_) | &CType::Bool(_)) => {
@@ -4147,10 +4270,10 @@ impl CType {
             _ => CType::fail(
                 "And{A, B} must be provided two values of the same type, either integer or boolean",
             ),
-        }
+        })
     }
-    pub fn or(a: &CType, b: &CType) -> CType {
-        match (a, b) {
+    pub fn or(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
+        Arc::new(match (&*a, &*b) {
             (CType::Int(a), CType::Int(b)) => CType::Int(*a | *b),
             (CType::Bool(a), CType::Bool(b)) => CType::Bool(*a || *b),
             (&CType::Infer(..), &CType::Infer(..) | &CType::Int(_) | &CType::Bool(_)) => {
@@ -4162,10 +4285,10 @@ impl CType {
             _ => CType::fail(
                 "Or{A, B} must be provided two values of the same type, either integer or boolean",
             ),
-        }
+        })
     }
-    pub fn xor(a: &CType, b: &CType) -> CType {
-        match (a, b) {
+    pub fn xor(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
+        Arc::new(match (&*a, &*b) {
             (CType::Int(a), CType::Int(b)) => CType::Int(*a ^ *b),
             (CType::Bool(a), CType::Bool(b)) => CType::Bool(*a ^ *b),
             (&CType::Infer(..), &CType::Infer(..) | &CType::Int(_) | &CType::Bool(_)) => {
@@ -4177,10 +4300,10 @@ impl CType {
             _ => CType::fail(
                 "Or{A, B} must be provided two values of the same type, either integer or boolean",
             ),
-        }
+        })
     }
-    pub fn nand(a: &CType, b: &CType) -> CType {
-        match (a, b) {
+    pub fn nand(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
+        Arc::new(match (&*a, &*b) {
             (CType::Int(a), CType::Int(b)) => CType::Int(!(*a & *b)),
             (CType::Bool(a), CType::Bool(b)) => CType::Bool(!(*a && *b)),
             (&CType::Infer(..), &CType::Infer(..) | &CType::Int(_) | &CType::Bool(_)) => {
@@ -4190,10 +4313,10 @@ impl CType {
                 CType::Nand(vec![a.clone(), b.clone()])
             }
             _ => CType::fail("Nand{A, B} must be provided two values of the same type, either integer or boolean")
-        }
+        })
     }
-    pub fn nor(a: &CType, b: &CType) -> CType {
-        match (a, b) {
+    pub fn nor(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
+        Arc::new(match (&*a, &*b) {
             (CType::Int(a), CType::Int(b)) => CType::Int(!(*a | *b)),
             (CType::Bool(a), CType::Bool(b)) => CType::Bool(!(*a || *b)),
             (&CType::Infer(..), &CType::Infer(..) | &CType::Int(_) | &CType::Bool(_)) => {
@@ -4205,10 +4328,10 @@ impl CType {
             _ => CType::fail(
                 "Nor{A, B} must be provided two values of the same type, either integer or boolean",
             ),
-        }
+        })
     }
-    pub fn xnor(a: &CType, b: &CType) -> CType {
-        match (a, b) {
+    pub fn xnor(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
+        Arc::new(match (&*a, &*b) {
             (CType::Int(a), CType::Int(b)) => CType::Int(!(*a ^ *b)),
             (CType::Bool(a), CType::Bool(b)) => CType::Bool(!(*a ^ *b)),
             (&CType::Infer(..), &CType::Infer(..) | &CType::Int(_) | &CType::Bool(_)) => {
@@ -4218,10 +4341,10 @@ impl CType {
                 CType::Xnor(vec![a.clone(), b.clone()])
             }
             _ => CType::fail("Xnor{A, B} must be provided two values of the same type, either integer or boolean")
-        }
+        })
     }
-    pub fn eq(a: &CType, b: &CType) -> CType {
-        match (a, b) {
+    pub fn eq(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
+        Arc::new(match (&*a, &*b) {
             (CType::Int(a), CType::Int(b)) => CType::Bool(*a == *b),
             (CType::Float(a), CType::Float(b)) => CType::Bool(*a == *b),
             (CType::TString(a), CType::TString(b)) => CType::Bool(*a == *b),
@@ -4233,10 +4356,10 @@ impl CType {
                 CType::TEq(vec![a.clone(), b.clone()])
             }
             _ => CType::fail("Eq{A, B} must be provided two values of the same type, one of: integer, float, string, boolean"),
-        }
+        })
     }
-    pub fn neq(a: &CType, b: &CType) -> CType {
-        match (a, b) {
+    pub fn neq(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
+        Arc::new(match (&*a, &*b) {
             (CType::Int(a), CType::Int(b)) => CType::Bool(*a != *b),
             (CType::Float(a), CType::Float(b)) => CType::Bool(*a != *b),
             (CType::TString(a), CType::TString(b)) => CType::Bool(*a != *b),
@@ -4248,10 +4371,10 @@ impl CType {
                 CType::Neq(vec![a.clone(), b.clone()])
             }
             _ => CType::fail("Neq{A, B} must be provided two values of the same type, one of: integer, float, string, boolean"),
-        }
+        })
     }
-    pub fn lt(a: &CType, b: &CType) -> CType {
-        match (a, b) {
+    pub fn lt(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
+        Arc::new(match (&*a, &*b) {
             (CType::Int(a), CType::Int(b)) => CType::Bool(*a < *b),
             (CType::Float(a), CType::Float(b)) => CType::Bool(*a < *b),
             (CType::TString(a), CType::TString(b)) => CType::Bool(*a < *b),
@@ -4262,10 +4385,10 @@ impl CType {
                 CType::Lt(vec![a.clone(), b.clone()])
             }
             _ => CType::fail("Lt{A, B} must be provided two values of the same type, one of: integer, float, string"),
-        }
+        })
     }
-    pub fn lte(a: &CType, b: &CType) -> CType {
-        match (a, b) {
+    pub fn lte(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
+        Arc::new(match (&*a, &*b) {
             (CType::Int(a), CType::Int(b)) => CType::Bool(*a <= *b),
             (CType::Float(a), CType::Float(b)) => CType::Bool(*a <= *b),
             (CType::TString(a), CType::TString(b)) => CType::Bool(*a <= *b),
@@ -4276,10 +4399,10 @@ impl CType {
                 CType::Lte(vec![a.clone(), b.clone()])
             }
             _ => CType::fail("Lte{A, B} must be provided two values of the same type, one of: integer, float, string"),
-        }
+        })
     }
-    pub fn gt(a: &CType, b: &CType) -> CType {
-        match (a, b) {
+    pub fn gt(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
+        Arc::new(match (&*a, &*b) {
             (CType::Int(a), CType::Int(b)) => CType::Bool(*a > *b),
             (CType::Float(a), CType::Float(b)) => CType::Bool(*a > *b),
             (CType::TString(a), CType::TString(b)) => CType::Bool(*a > *b),
@@ -4290,10 +4413,10 @@ impl CType {
                 CType::Gt(vec![a.clone(), b.clone()])
             }
             _ => CType::fail("Gt{A, B} must be provided two values of the same type, one of: integer, float, string"),
-        }
+        })
     }
-    pub fn gte(a: &CType, b: &CType) -> CType {
-        match (a, b) {
+    pub fn gte(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
+        Arc::new(match (&*a, &*b) {
             (CType::Int(a), CType::Int(b)) => CType::Bool(*a >= *b),
             (CType::Float(a), CType::Float(b)) => CType::Bool(*a >= *b),
             (CType::TString(a), CType::TString(b)) => CType::Bool(*a >= *b),
@@ -4304,7 +4427,7 @@ impl CType {
                 CType::Gte(vec![a.clone(), b.clone()])
             }
             _ => CType::fail("Gte{A, B} must be provided two values of the same type, one of: integer, float, string"),
-        }
+        })
     }
 }
 
@@ -4313,7 +4436,7 @@ impl CType {
 pub fn withtypeoperatorslist_to_ctype(
     withtypeoperatorslist: &Vec<parse::WithTypeOperators>,
     scope: &Scope,
-) -> Result<CType, Box<dyn std::error::Error>> {
+) -> Result<Arc<CType>, Box<dyn std::error::Error>> {
     // To properly linearize the operations here, we need to scan through all of the operators,
     // determine which is the highest precedence, whether it is infix or prefix (or maybe postfix
     // in the future?) and then process them and whichever of the baseassignables surrounding them
@@ -4525,7 +4648,7 @@ pub fn withtypeoperatorslist_to_ctype(
 pub fn typebaselist_to_ctype(
     typebaselist: &[parse::TypeBase],
     scope: &Scope,
-) -> Result<CType, Box<dyn std::error::Error>> {
+) -> Result<Arc<CType>, Box<dyn std::error::Error>> {
     let mut i = 0;
     let mut prior_value = None;
     while i < typebaselist.len() {
@@ -4563,10 +4686,10 @@ pub fn typebaselist_to_ctype(
                 if prior_value.is_none() {
                     match c {
                         parse::Constants::Bool(b) => {
-                            prior_value = Some(CType::Bool(b.as_str() == "true"))
+                            prior_value = Some(Arc::new(CType::Bool(b.as_str() == "true")))
                         }
                         parse::Constants::Strn(s) => {
-                            prior_value = Some(CType::TString(if s.starts_with('"') {
+                            prior_value = Some(Arc::new(CType::TString(if s.starts_with('"') {
                                 s.split("\\\"")
                                     .map(|sub| sub.replace("\"", ""))
                                     .collect::<Vec<String>>()
@@ -4576,19 +4699,19 @@ pub fn typebaselist_to_ctype(
                                     .map(|sub| sub.replace("'", ""))
                                     .collect::<Vec<String>>()
                                     .join("'")
-                            }))
+                            })))
                         }
                         parse::Constants::Num(n) => match n {
                             parse::Number::RealNum(r) => {
-                                prior_value = Some(CType::Float(
+                                prior_value = Some(Arc::new(CType::Float(
                                     r.replace('_', "").parse::<f64>().unwrap(), // This should never fail if the
                                                                                 // parser says it's a float
-                                ))
+                                )))
                             }
                             parse::Number::IntNum(i) => {
-                                prior_value = Some(CType::Int(
+                                prior_value = Some(Arc::new(CType::Int(
                                     i.replace('_', "").parse::<i128>().unwrap(), // Same deal here
-                                ))
+                                )))
                             }
                         },
                     }
@@ -4600,13 +4723,13 @@ pub fn typebaselist_to_ctype(
                             return Err(format!("A boolean cannot follow another value without an operator between them: {}", typebaselist.iter().map(|tb| tb.to_string()).collect::<Vec<String>>().join("")).into());
                         }
                         parse::Constants::Strn(s) => {
-                            prior_value = Some(match prior_value.unwrap() {
+                            prior_value = Some(match &*prior_value.unwrap() {
                                 CType::Tuple(ts) => {
                                     let mut out = None;
-                                    for t in &ts {
-                                        if let CType::Field(f, c) = t {
+                                    for t in ts {
+                                        if let CType::Field(f, c) = &**t {
                                             if f.as_str() == s.as_str() {
-                                                out = Some(*c.clone());
+                                                out = Some(c.clone());
                                             }
                                         }
                                     }
@@ -4616,8 +4739,8 @@ pub fn typebaselist_to_ctype(
                                     }
                                 }
                                 CType::Function(i, o) => match s.as_str() {
-                                    "input" => *i.clone(),
-                                    "output" => *o.clone(),
+                                    "input" => i.clone(),
+                                    "output" => o.clone(),
                                     _ => CType::fail("Function types only have \"input\" and \"output\" properties"),
                                 }
                                 other => CType::fail(&format!("String properties are not allowed on {:?}", other)),
@@ -4633,7 +4756,7 @@ pub fn typebaselist_to_ctype(
                                     Ok(idx) => idx,
                                     Err(_) => CType::fail("Indexing into a type must be done with positive integers"),
                                 };
-                                    prior_value = Some(match prior_value.unwrap() {
+                                    prior_value = Some(match &*prior_value.unwrap() {
                                         CType::Tuple(ts) => match ts.get(idx) {
                                             Some(t) => t.clone(),
                                             None => CType::fail(&format!(
@@ -4679,7 +4802,7 @@ pub fn typebaselist_to_ctype(
                         // interface called `Label` that we can use here to mark the first argument
                         // to `Field` as a `Label` and turn this logic into something regularized
                         // For now, we're just special-casing the `Field` built-in generic type.
-                        match &t {
+                        match &*t {
                             CType::IntrinsicGeneric(p, 2) if p == "Prop" => {
                                 match nexttypebase {
                                     None => {},
@@ -4693,13 +4816,13 @@ pub fn typebaselist_to_ctype(
                                             }
                                             args.push(withtypeoperatorslist_to_ctype(&vec![g.typecalllist[0].clone()], scope)?);
                                             match g.typecalllist[0].to_string().parse::<i128>() {
-                                                Ok(i) => args.push(CType::Int(i)),
+                                                Ok(i) => args.push(Arc::new(CType::Int(i))),
                                                 Err(_) => {
                                                     let argstr = g.typecalllist[2].to_string();
                                                     match argstr.as_str() {
-                                                        "true" => args.push(CType::Bool(true)),
-                                                        "false" => args.push(CType::Bool(false)),
-                                                        _ => args.push(CType::TString(argstr))
+                                                        "true" => args.push(Arc::new(CType::Bool(true))),
+                                                        "false" => args.push(Arc::new(CType::Bool(false))),
+                                                        _ => args.push(Arc::new(CType::TString(argstr)))
                                                     }
                                                 }
                                             }
@@ -4719,7 +4842,7 @@ pub fn typebaselist_to_ctype(
                                             if g.typecalllist.len() != 3 {
                                                 CType::fail("The Field generic type accepts only two parameters");
                                             }
-                                            args.push(CType::TString(g.typecalllist[0].to_string()));
+                                            args.push(Arc::new(CType::TString(g.typecalllist[0].to_string())));
                                             args.push(withtypeoperatorslist_to_ctype(&vec![g.typecalllist[2].clone()], scope)?);
                                         }
                                         _ => CType::fail("Cannot follow method style syntax without an operator in between"),
@@ -4764,7 +4887,7 @@ pub fn typebaselist_to_ctype(
                         // type that can be called, and that we have the correct number of
                         // arguments for it, then we can call it and return the resulting
                         // type
-                        match t {
+                        match &*t {
                             CType::Generic(_name, params, generic_type) => {
                                 if params.len() != args.len() {
                                     CType::fail(&format!(
@@ -4777,11 +4900,14 @@ pub fn typebaselist_to_ctype(
                                     // We use a temporary scope to resolve the
                                     // arguments to the generic function as the
                                     // specified names
-                                    let mut out_type = *generic_type.clone();
+                                    let mut out_type = generic_type.clone();
                                     for i in 0..params.len() {
-                                        let generic_arg =
-                                            CType::Infer(params[i].clone(), "Any".to_string());
-                                        out_type = out_type.swap_subtype(&generic_arg, &args[i]);
+                                        let generic_arg = Arc::new(CType::Infer(
+                                            params[i].clone(),
+                                            "Any".to_string(),
+                                        ));
+                                        out_type =
+                                            out_type.swap_subtype(generic_arg, args[i].clone());
                                     }
                                     // Now we return the type we resolve within this
                                     // scope
@@ -4799,31 +4925,30 @@ pub fn typebaselist_to_ctype(
                                 } else {
                                     // TODO: Is there a better way to do this?
                                     match name.as_str() {
-                                        "Binds" => CType::binds(args.clone()),
-                                        "Group" => CType::Group(Box::new(args[0].clone())),
-                                        "Function" => CType::Function(
-                                            Box::new(args[0].clone()),
-                                            Box::new(args[1].clone()),
-                                        ),
-                                        "Call" => CType::Call(
-                                            Box::new(args[0].clone()),
-                                            Box::new(args[1].clone()),
-                                        ),
-                                        "Infix" => CType::Infix(Box::new(args[0].clone())),
-                                        "Prefix" => CType::Prefix(Box::new(args[0].clone())),
-                                        "Method" => CType::Method(Box::new(args[0].clone())),
-                                        "Property" => CType::Property(Box::new(args[0].clone())),
-                                        "Cast" => CType::Cast(Box::new(args[0].clone())),
-                                        "Own" => CType::Own(Box::new(args[0].clone())),
-                                        "Deref" => CType::Deref(Box::new(args[0].clone())),
-                                        "Mut" => CType::Mut(Box::new(args[0].clone())),
-                                        "Dependency" => CType::Dependency(
-                                            Box::new(args[0].clone()),
-                                            Box::new(args[1].clone()),
-                                        ),
-                                        "Rust" => CType::Rust(Box::new(args[0].clone())),
-                                        "Node" => CType::Node(Box::new(args[0].clone())),
-                                        "From" => CType::From(Box::new(args[0].clone())),
+                                        "Binds" => CType::binds(args),
+                                        "Group" => Arc::new(CType::Group(args[0].clone())),
+                                        "Function" => Arc::new(CType::Function(
+                                            args[0].clone(),
+                                            args[1].clone(),
+                                        )),
+                                        "Call" => {
+                                            Arc::new(CType::Call(args[0].clone(), args[1].clone()))
+                                        }
+                                        "Infix" => Arc::new(CType::Infix(args[0].clone())),
+                                        "Prefix" => Arc::new(CType::Prefix(args[0].clone())),
+                                        "Method" => Arc::new(CType::Method(args[0].clone())),
+                                        "Property" => Arc::new(CType::Property(args[0].clone())),
+                                        "Cast" => Arc::new(CType::Cast(args[0].clone())),
+                                        "Own" => Arc::new(CType::Own(args[0].clone())),
+                                        "Deref" => Arc::new(CType::Deref(args[0].clone())),
+                                        "Mut" => Arc::new(CType::Mut(args[0].clone())),
+                                        "Dependency" => Arc::new(CType::Dependency(
+                                            args[0].clone(),
+                                            args[1].clone(),
+                                        )),
+                                        "Rust" => Arc::new(CType::Rust(args[0].clone())),
+                                        "Node" => Arc::new(CType::Node(args[0].clone())),
+                                        "From" => Arc::new(CType::From(args[0].clone())),
                                         "Import" => CType::import(args[0].clone(), args[1].clone()),
                                         "Tuple" => CType::tuple(args.clone()),
                                         "Field" => CType::field(args.clone()),
@@ -4831,45 +4956,49 @@ pub fn typebaselist_to_ctype(
                                         "Prop" => CType::prop(args[0].clone(), args[1].clone()),
                                         "AnyOf" => CType::anyof(args.clone()),
                                         "Buffer" => CType::buffer(args.clone()),
-                                        "Array" => CType::Array(Box::new(args[0].clone())),
-                                        "Fail" => CType::cfail(&args[0]),
-                                        "Min" => CType::min(&args[0], &args[1]),
-                                        "Max" => CType::max(&args[0], &args[1]),
-                                        "Neg" => CType::neg(&args[0]),
-                                        "Len" => CType::len(&args[0]),
-                                        "Size" => CType::size(&args[0]),
-                                        "FileStr" => CType::filestr(&args[0]),
-                                        "Concat" => CType::concat(&args[0], &args[1]),
-                                        "Env" => CType::env(&args[0]),
-                                        "EnvExists" => CType::envexists(&args[0]),
-                                        "Not" => CType::not(&args[0]),
-                                        "Add" => CType::add(&args[0], &args[1]),
-                                        "Sub" => CType::sub(&args[0], &args[1]),
-                                        "Mul" => CType::mul(&args[0], &args[1]),
-                                        "Div" => CType::div(&args[0], &args[1]),
-                                        "Mod" => CType::cmod(&args[0], &args[1]),
-                                        "Pow" => CType::pow(&args[0], &args[1]),
+                                        "Array" => Arc::new(CType::Array(args[0].clone())),
+                                        "Fail" => CType::cfail(args[0].clone()),
+                                        "Min" => CType::min(args[0].clone(), args[1].clone()),
+                                        "Max" => CType::max(args[0].clone(), args[1].clone()),
+                                        "Neg" => CType::neg(args[0].clone()),
+                                        "Len" => CType::len(args[0].clone()),
+                                        "Size" => CType::size(args[0].clone()),
+                                        "FileStr" => CType::filestr(args[0].clone()),
+                                        "Concat" => CType::concat(args[0].clone(), args[1].clone()),
+                                        "Env" => CType::env(args[0].clone()),
+                                        "EnvExists" => CType::envexists(args[0].clone()),
+                                        "Not" => CType::not(args[0].clone()),
+                                        "Add" => CType::add(args[0].clone(), args[1].clone()),
+                                        "Sub" => CType::sub(args[0].clone(), args[1].clone()),
+                                        "Mul" => CType::mul(args[0].clone(), args[1].clone()),
+                                        "Div" => CType::div(args[0].clone(), args[1].clone()),
+                                        "Mod" => CType::cmod(args[0].clone(), args[1].clone()),
+                                        "Pow" => CType::pow(args[0].clone(), args[1].clone()),
                                         "If" => {
                                             if args.len() == 2 {
-                                                CType::tupleif(&args[0], &args[1])
+                                                CType::tupleif(args[0].clone(), args[1].clone())
                                             } else if args.len() == 3 {
-                                                CType::cif(&args[0], &args[1], &args[2])
+                                                CType::cif(
+                                                    args[0].clone(),
+                                                    args[1].clone(),
+                                                    args[2].clone(),
+                                                )
                                             } else {
                                                 CType::fail(&format!("Invalid arguments provided to `If{{...}}`: {:?}", args))
                                             }
                                         }
-                                        "And" => CType::and(&args[0], &args[1]),
-                                        "Or" => CType::or(&args[0], &args[1]),
-                                        "Xor" => CType::xor(&args[0], &args[1]),
-                                        "Nand" => CType::nand(&args[0], &args[1]),
-                                        "Nor" => CType::nor(&args[0], &args[1]),
-                                        "Xnor" => CType::xnor(&args[0], &args[1]),
-                                        "Eq" => CType::eq(&args[0], &args[1]),
-                                        "Neq" => CType::neq(&args[0], &args[1]),
-                                        "Lt" => CType::lt(&args[0], &args[1]),
-                                        "Lte" => CType::lte(&args[0], &args[1]),
-                                        "Gt" => CType::gt(&args[0], &args[1]),
-                                        "Gte" => CType::gte(&args[0], &args[1]),
+                                        "And" => CType::and(args[0].clone(), args[1].clone()),
+                                        "Or" => CType::or(args[0].clone(), args[1].clone()),
+                                        "Xor" => CType::xor(args[0].clone(), args[1].clone()),
+                                        "Nand" => CType::nand(args[0].clone(), args[1].clone()),
+                                        "Nor" => CType::nor(args[0].clone(), args[1].clone()),
+                                        "Xnor" => CType::xnor(args[0].clone(), args[1].clone()),
+                                        "Eq" => CType::eq(args[0].clone(), args[1].clone()),
+                                        "Neq" => CType::neq(args[0].clone(), args[1].clone()),
+                                        "Lt" => CType::lt(args[0].clone(), args[1].clone()),
+                                        "Lte" => CType::lte(args[0].clone(), args[1].clone()),
+                                        "Gt" => CType::gt(args[0].clone(), args[1].clone()),
+                                        "Gte" => CType::gte(args[0].clone(), args[1].clone()),
                                         unknown => CType::fail(&format!(
                                             "Unknown ctype {} accessed. How did this happen?",
                                             unknown
@@ -4881,7 +5010,7 @@ pub fn typebaselist_to_ctype(
                                 // If we hit this branch, then the `args` vector needs to have a
                                 // length of zero, and then we just bubble up the type as-is
                                 if args.is_empty() {
-                                    others.clone()
+                                    Arc::new(others.clone())
                                 } else {
                                     CType::fail(&format!(
                                         "{} is used as a generic type but is not one: {:?}, {:?}",
@@ -4898,10 +5027,10 @@ pub fn typebaselist_to_ctype(
             parse::TypeBase::TypeGroup(g) => {
                 if g.typeassignables.is_empty() {
                     // It's a void type!
-                    prior_value = Some(CType::Group(Box::new(CType::Void)));
+                    prior_value = Some(Arc::new(CType::Group(Arc::new(CType::Void))));
                 } else {
                     // Simply wrap the returned type in a `CType::Group`
-                    prior_value = Some(CType::Group(Box::new(withtypeoperatorslist_to_ctype(
+                    prior_value = Some(Arc::new(CType::Group(withtypeoperatorslist_to_ctype(
                         &g.typeassignables,
                         scope,
                     )?)));

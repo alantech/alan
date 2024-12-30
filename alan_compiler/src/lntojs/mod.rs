@@ -46,8 +46,8 @@ pub fn lntojs(
         OrderedHashMap::new(),
         OrderedHashMap::new(),
     )?;
-    let main_call = if let CType::Type(n, _) = func[0].rettype() {
-        if &n == "ExitCode" {
+    let main_call = if let CType::Type(n, _) = &*func[0].rettype() {
+        if n == "ExitCode" {
             "main().then(process.exit);"
         } else {
             "main();"
