@@ -3389,9 +3389,9 @@ impl CType {
                 // We need to similarly load all of the return types from the functions created by
                 // this from_ctype call if they don't already exist
                 let mut contains_rettype = false;
-                let retstr = f.rettype().to_callable_string();
+                let retstr = f.rettype().to_functional_string();
                 for t in scope.types.values() {
-                    if retstr == t.to_callable_string() {
+                    if retstr == t.to_functional_string() {
                         contains_rettype = true;
                     }
                 }
