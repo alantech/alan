@@ -582,7 +582,7 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
     match write(
         package_json_path.clone(),
         format!(
-            "{{\n  \"name\": \"alan_generated_bundle\",\n  \"main\": \"index.js\",\n  \"dependencies\": {{\n    {}\n  }},\n  \"devDependencies\": {{\n    \"rollup\": \"4.x\",\n    \"@rollup/plugin-node-resolve\": \"15.x\"\n  }}\n}}",
+            "{{\n  \"name\": \"alan_generated_bundle\",\n  \"main\": \"index.js\",\n  \"dependencies\": {{\n    {}\n  }},\n  \"devDependencies\": {{\n    \"rollup\": \"4.x\",\n    \"@rollup/plugin-node-resolve\": \"15.x\",\n \"@rollup/plugin-terser\": \"^0.4.4\"\n  }}\n}}",
             deps.iter()
                 .map(|(k, v)| {
                     format!("    \"{}\": \"{}\"", k, v)
@@ -661,6 +661,8 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
             .arg("alanGeneratedBundle")
             .arg("-p")
             .arg("@rollup/plugin-node-resolve")
+            .arg("-p")
+            .arg("@rollup/plugin-terser")
             .arg("--file")
             .arg("bundle.js")
             .stdout(Stdio::piped())
@@ -676,6 +678,8 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
             .arg("alanGeneratedBundle")
             .arg("-p")
             .arg("@rollup/plugin-node-resolve")
+            .arg("-p")
+            .arg("@rollup/plugin-terser")
             .arg("--file")
             .arg("bundle.js")
             .stdout(Stdio::piped())

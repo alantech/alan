@@ -9,7 +9,7 @@
     "start-server": "bash -c 'http-server &\necho $! > ./http-server.pid'",
     "stop-server": "bash -c 'kill `cat ./http-server.pid`\n rm ./http-server.pid'",
     "chrome-console": "node chrome_console.js",
-    "bundle": "npx rollup alan_std.js --name alanStdBundle -p @rollup/plugin-node-resolve --file alanStdBundle.js",
+    "bundle": "npx rollup alan_std.js --name alanStdBundle -p @rollup/plugin-node-resolve -p @rollup/plugin-terser --file alanStdBundle.js",
     "wasm-compiler": "cd web_compiler && wasm-pack build -t web --release"
   },
   "type": "module",
@@ -34,6 +34,7 @@
   },
   "devDependencies": {
     "@rollup/plugin-node-resolve": "15.x",
+    "@rollup/plugin-terser": "^0.4.4",
     "@types/uuid": "^10.0.0",
     "http-server": "^14.1.1",
     "playwright": "^1.48.1",
