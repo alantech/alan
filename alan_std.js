@@ -790,7 +790,7 @@ export async function createBufferInit(usage, vals) {
   let g = await gpu();
   let b = await g.device.createBuffer({
     mappedAtCreation: true,
-    size: vals.length * (vals[0]?.bits ?? 32) / 8,
+    size: vals.length * (Math.min(vals[0]?.bits ?? 32, 32)) / 8,
     usage,
     label: `buffer_${uuidv4().replaceAll('-', '_')}`,
   });
@@ -807,7 +807,7 @@ export async function createBufferInit(usage, vals) {
 export async function createEmptyBuffer(usage, size, ValKind) {
   let g = await gpu();
   let b = await g.device.createBuffer({
-    size: size.valueOf() * (ValKind?.bits ?? 32) / 8,
+    size: size.valueOf() * (Math.min(ValKind?.bits ?? 32, 32)) / 8,
     usage,
     label: `buffer_${uuidv4().replaceAll('-', '_')}`,
   });
