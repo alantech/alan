@@ -1,4 +1,6 @@
 // TODO: Generics/Interfaces resolution
+use std::sync::Arc;
+
 use ordered_hash_map::OrderedHashMap;
 
 use crate::program::CType;
@@ -103,7 +105,7 @@ pub fn ctype_to_rtype(
                         }
                     }
                 }
-                let name = t.to_callable_string();
+                let name = t.clone().to_callable_string();
                 Ok((format!(
                     "#[derive(Clone)]\nenum {} {{ {} }}",
                     name,
@@ -412,9 +414,9 @@ pub fn ctype_to_rtype(
                                 }
                                 Ok((format!("Result<{}, {}>", s, "alan_std::AlanError".to_string()), deps))
                             }
-                            _ => Ok((CType::Either(ts.clone()).to_callable_string(), deps)),
+                            _ => Ok((Arc::new(CType::Either(ts.clone())).to_callable_string(), deps)),
                         }
-                        _ => Ok((CType::Either(ts.clone()).to_callable_string(), deps)),
+                        _ => Ok((Arc::new(CType::Either(ts.clone())).to_callable_string(), deps)),
                     }
                     CType::Type(_, t) => match &**t {
                         CType::Binds(rustname, _) => match &**rustname {
@@ -459,13 +461,13 @@ pub fn ctype_to_rtype(
                                     }
                                     Ok((format!("Result<{}, {}>", s, "alan_std::AlanError".to_string()), deps))
                                 }
-                                _ => Ok((CType::Either(ts.clone()).to_callable_string(), deps)),
+                                _ => Ok((Arc::new(CType::Either(ts.clone())).to_callable_string(), deps)),
                             }
-                            _ => Ok((CType::Either(ts.clone()).to_callable_string(), deps)),
+                            _ => Ok((Arc::new(CType::Either(ts.clone())).to_callable_string(), deps)),
                         }
-                        _ => Ok((CType::Either(ts.clone()).to_callable_string(), deps)),
+                        _ => Ok((Arc::new(CType::Either(ts.clone())).to_callable_string(), deps)),
                     }
-                    _ => Ok((CType::Either(ts.clone()).to_callable_string(), deps)),
+                    _ => Ok((Arc::new(CType::Either(ts.clone())).to_callable_string(), deps)),
                 }
             } else {
                 for t in ts {
@@ -473,7 +475,7 @@ pub fn ctype_to_rtype(
                     let res = ctype_to_rtype(t, in_function_type, deps)?;
                     deps = res.1;
                 }
-                Ok((CType::Either(ts.clone()).to_callable_string(), deps))
+                Ok((Arc::new(CType::Either(ts.clone())).to_callable_string(), deps))
             }
         }
         CType::AnyOf(_) => Ok(("".to_string(), deps)), // Does this make any sense in Rust?
@@ -498,7 +500,7 @@ pub fn ctype_to_rtype(
             Ok((format!("Vec<{}>", s), deps))
         }
         CType::Fail(m) => CType::fail(m),
-        otherwise => CType::fail(&format!("Lower stage of the compiler received unresolved algebraic type {}, cannot deal with it here. Please report this error.", otherwise.to_functional_string())),
+        _otherwise => CType::fail(&format!("Lower stage of the compiler received unresolved algebraic type {}, cannot deal with it here. Please report this error.", Arc::new(ctype.clone()).to_functional_string())),
     }
 }
 
@@ -598,7 +600,7 @@ pub fn generate(
                 let res = ctype_to_rtype(typen, false, deps)?;
                 let s = res.0;
                 deps = res.1;
-                out.insert(t.to_callable_string(), s);
+                out.insert(t.clone().to_callable_string(), s);
                 Ok((name.clone(), out, deps))
             }
             _ => {

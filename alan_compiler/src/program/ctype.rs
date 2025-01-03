@@ -1,5 +1,7 @@
 use std::collections::{HashMap, HashSet};
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, LazyLock, Mutex, OnceLock, Weak};
+
+use weak_table::PtrWeakKeyHashMap;
 
 use super::function::{type_to_args, type_to_rettype};
 use super::ArgKind;
@@ -80,8 +82,10 @@ pub enum CType {
 }
 
 static CLOSE_BRACE: OnceLock<CType> = OnceLock::new();
+static CLOSE_BRACE_2: OnceLock<Arc<CType>> = OnceLock::new();
 static CLOSE_PAREN: OnceLock<CType> = OnceLock::new();
 static COMMA: OnceLock<CType> = OnceLock::new();
+static COMMA_2: OnceLock<Arc<CType>> = OnceLock::new();
 static FNARROW: OnceLock<CType> = OnceLock::new();
 static FNCALL: OnceLock<CType> = OnceLock::new();
 static DEPAT: OnceLock<CType> = OnceLock::new();
@@ -109,6 +113,8 @@ static LT: OnceLock<CType> = OnceLock::new();
 static LTE: OnceLock<CType> = OnceLock::new();
 static GT: OnceLock<CType> = OnceLock::new();
 static GTE: OnceLock<CType> = OnceLock::new();
+static FUNCTIONAL_STRINGS: LazyLock<Mutex<PtrWeakKeyHashMap<Weak<CType>, String>>> =
+    LazyLock::new(|| Mutex::new(PtrWeakKeyHashMap::<Weak<CType>, String>::new()));
 
 impl CType {
     #[allow(clippy::inherent_to_string)]
@@ -614,16 +620,21 @@ impl CType {
         }
         str_parts.join("")
     }
-    pub fn to_functional_string(&self) -> String {
+    pub fn to_functional_string(self: Arc<CType>) -> String {
+        let mut functional_strings = FUNCTIONAL_STRINGS.lock().unwrap();
+        if let Some(string) = functional_strings.get(&self) {
+            return string.clone();
+        }
         let mut unavoidable_strings = Vec::with_capacity(64);
         let mut str_parts = Vec::with_capacity(1024);
         let mut ctype_stack = Vec::with_capacity(64);
-        ctype_stack.push(self);
+        ctype_stack.push(&self);
         let close_brace =
-            CLOSE_BRACE.get_or_init(|| CType::Infer("}".to_string(), "}".to_string()));
-        let comma = COMMA.get_or_init(|| CType::Infer(", ".to_string(), ", ".to_string()));
+            CLOSE_BRACE_2.get_or_init(|| Arc::new(CType::Infer("}".to_string(), "}".to_string())));
+        let comma =
+            COMMA_2.get_or_init(|| Arc::new(CType::Infer(", ".to_string(), ", ".to_string())));
         while let Some(element) = ctype_stack.pop() {
-            match element {
+            match &**element {
                 CType::Void => str_parts.push("void"),
                 CType::Infer(s, _) => str_parts.push(s),
                 CType::Type(_, t) => ctype_stack.push(t),
@@ -1114,11 +1125,12 @@ impl CType {
                 }
             }
         }
-        str_parts.join("")
+        functional_strings.insert(self.clone(), str_parts.join(""));
+        functional_strings.get(&self).unwrap().clone()
     }
-    pub fn to_callable_string(&self) -> String {
+    pub fn to_callable_string(self: Arc<CType>) -> String {
         // TODO: Be more efficient with this later
-        match self {
+        match &*self {
             CType::Int(_) | CType::Float(_) => format!("_{}", self.to_functional_string()),
             CType::Type(n, t) => match **t {
                 CType::Int(_) | CType::Float(_) => format!("_{}", self.to_functional_string()),
@@ -2159,8 +2171,8 @@ impl CType {
                                         (CType::AnyOf(ots), nt) => {
                                             let mut preexists = false;
                                             for t in ots {
-                                                if t.to_functional_string()
-                                                    == nt.to_functional_string()
+                                                if t.clone().to_functional_string()
+                                                    == Arc::new(nt.clone()).to_functional_string()
                                                 {
                                                     preexists = true;
                                                 }
@@ -2197,8 +2209,8 @@ impl CType {
                                         let mut outts = Vec::new();
                                         for ot in oldts {
                                             for nt in newts {
-                                                if ot.to_functional_string()
-                                                    == nt.to_functional_string()
+                                                if ot.clone().to_functional_string()
+                                                    == nt.clone().to_functional_string()
                                                 {
                                                     outts.push(nt.clone());
                                                 }
@@ -2209,8 +2221,8 @@ impl CType {
                                     (ot, CType::AnyOf(newts)) => {
                                         let mut success = false;
                                         for nt in newts {
-                                            if ot.to_functional_string()
-                                                == nt.to_functional_string()
+                                            if Arc::new(ot.clone()).to_functional_string()
+                                                == nt.clone().to_functional_string()
                                             {
                                                 success = true;
                                                 break;
@@ -2232,8 +2244,8 @@ impl CType {
                                     (CType::AnyOf(oldts), nt) => {
                                         let mut success = false;
                                         for ot in oldts {
-                                            if ot.to_functional_string()
-                                                == nt.to_functional_string()
+                                            if ot.clone().to_functional_string()
+                                                == Arc::new(nt.clone()).to_functional_string()
                                             {
                                                 success = true;
                                                 break;
@@ -2254,7 +2266,9 @@ impl CType {
                                         generic_types.insert(k.clone(), nt.clone());
                                     }
                                     (ot, nt) => {
-                                        if ot.to_functional_string() != nt.to_functional_string() {
+                                        if Arc::new(ot.clone()).to_functional_string()
+                                            != Arc::new(nt.clone()).to_functional_string()
+                                        {
                                             return Err(format!(
                                                 "{} does not match {}",
                                                 ot.to_strict_string(false),
@@ -2342,8 +2356,8 @@ impl CType {
         name: String,
         scope: &Scope,
     ) -> (CType, Vec<Arc<Function>>) {
-        let t = CType::Type(name.clone(), self.clone());
-        let constructor_fn_name = t.to_callable_string();
+        let t = Arc::new(CType::Type(name.clone(), self.clone()));
+        let constructor_fn_name = t.clone().to_callable_string();
         let mut fs = Vec::new();
         match &*self {
             CType::Import(n, d) => match &**d {
@@ -2761,7 +2775,7 @@ impl CType {
                     name: constructor_fn_name.clone(),
                     typen: Arc::new(CType::Function(
                         Arc::new(CType::Field(n.clone(), self.clone())),
-                        Arc::new(t.clone()),
+                        t.clone(),
                     )),
                     microstatements: Vec::new(),
                     kind: FnKind::Derived,
@@ -2793,10 +2807,7 @@ impl CType {
                                     let string = scope.resolve_type("string").unwrap().clone();
                                     fs.push(Arc::new(Function {
                                         name: n.clone(),
-                                        typen: Arc::new(CType::Function(
-                                            Arc::new(t.clone()),
-                                            string.clone(),
-                                        )),
+                                        typen: Arc::new(CType::Function(t.clone(), string.clone())),
                                         microstatements: vec![Microstatement::Value {
                                             typen: string,
                                             representation: format!(
@@ -2815,10 +2826,7 @@ impl CType {
                                     let int64 = scope.resolve_type("i64").unwrap().clone();
                                     fs.push(Arc::new(Function {
                                         name: n.clone(),
-                                        typen: Arc::new(CType::Function(
-                                            Arc::new(t.clone()),
-                                            int64.clone(),
-                                        )),
+                                        typen: Arc::new(CType::Function(t.clone(), int64.clone())),
                                         microstatements: vec![Microstatement::Value {
                                             typen: int64,
                                             representation: format!("{}", i),
@@ -2835,7 +2843,7 @@ impl CType {
                                     fs.push(Arc::new(Function {
                                         name: n.clone(),
                                         typen: Arc::new(CType::Function(
-                                            Arc::new(t.clone()),
+                                            t.clone(),
                                             float64.clone(),
                                         )),
                                         microstatements: vec![Microstatement::Value {
@@ -2853,10 +2861,7 @@ impl CType {
                                     let booln = scope.resolve_type("bool").unwrap().clone();
                                     fs.push(Arc::new(Function {
                                         name: n.clone(),
-                                        typen: Arc::new(CType::Function(
-                                            Arc::new(t.clone()),
-                                            booln.clone(),
-                                        )),
+                                        typen: Arc::new(CType::Function(t.clone(), booln.clone())),
                                         microstatements: vec![Microstatement::Value {
                                             typen: booln,
                                             representation: match b {
@@ -2894,7 +2899,7 @@ impl CType {
                             // Create an accessor function
                             fs.push(Arc::new(Function {
                                 name: n.clone(),
-                                typen: Arc::new(CType::Function(Arc::new(t.clone()), f.clone())),
+                                typen: Arc::new(CType::Function(t.clone(), f.clone())),
                                 microstatements: Vec::new(),
                                 kind: FnKind::Derived,
                                 origin_scope_path: scope.path.clone(),
@@ -2904,7 +2909,7 @@ impl CType {
                             // Create an `<N>` function accepting the tuple by field number
                             fs.push(Arc::new(Function {
                                 name: format!("{}", i),
-                                typen: Arc::new(CType::Function(Arc::new(t.clone()), ti.clone())),
+                                typen: Arc::new(CType::Function(t.clone(), ti.clone())),
                                 microstatements: Vec::new(),
                                 kind: FnKind::Derived,
                                 origin_scope_path: scope.path.clone(),
@@ -2917,7 +2922,7 @@ impl CType {
                     name: constructor_fn_name.clone(),
                     typen: Arc::new(CType::Function(
                         Arc::new(CType::Tuple(actual_ts.clone())),
-                        Arc::new(t.clone()),
+                        t.clone(),
                     )),
                     microstatements: Vec::new(),
                     kind: FnKind::Derived,
@@ -2935,7 +2940,7 @@ impl CType {
                         let string = scope.resolve_type("string").unwrap().clone();
                         fs.push(Arc::new(Function {
                             name: n.clone(),
-                            typen: Arc::new(CType::Function(Arc::new(t.clone()), string.clone())),
+                            typen: Arc::new(CType::Function(t.clone(), string.clone())),
                             microstatements: vec![Microstatement::Value {
                                 typen: string,
                                 representation: s.clone(),
@@ -2951,7 +2956,7 @@ impl CType {
                         let int64 = scope.resolve_type("i64").unwrap().clone();
                         fs.push(Arc::new(Function {
                             name: n.clone(),
-                            typen: Arc::new(CType::Function(Arc::new(t.clone()), int64.clone())),
+                            typen: Arc::new(CType::Function(t.clone(), int64.clone())),
                             microstatements: vec![Microstatement::Value {
                                 typen: int64,
                                 representation: format!("{}", i),
@@ -2967,7 +2972,7 @@ impl CType {
                         let float64 = scope.resolve_type("f64").unwrap().clone();
                         fs.push(Arc::new(Function {
                             name: n.clone(),
-                            typen: Arc::new(CType::Function(Arc::new(t.clone()), float64.clone())),
+                            typen: Arc::new(CType::Function(t.clone(), float64.clone())),
                             microstatements: vec![Microstatement::Value {
                                 typen: float64,
                                 representation: format!("{}", f),
@@ -2983,7 +2988,7 @@ impl CType {
                         let booln = scope.resolve_type("bool").unwrap().clone();
                         fs.push(Arc::new(Function {
                             name: n.clone(),
-                            typen: Arc::new(CType::Function(Arc::new(t.clone()), booln.clone())),
+                            typen: Arc::new(CType::Function(t.clone(), booln.clone())),
                             microstatements: vec![Microstatement::Value {
                                 typen: booln,
                                 representation: match b {
@@ -2998,7 +3003,7 @@ impl CType {
                     _ => {
                         fs.push(Arc::new(Function {
                             name: n.clone(),
-                            typen: Arc::new(CType::Function(Arc::new(t.clone()), f.clone())),
+                            typen: Arc::new(CType::Function(t.clone(), f.clone())),
                             microstatements: Vec::new(),
                             kind: FnKind::Derived,
                             origin_scope_path: scope.path.clone(),
@@ -3008,7 +3013,7 @@ impl CType {
                 // Define the constructor function
                 fs.push(Arc::new(Function {
                     name: constructor_fn_name.clone(),
-                    typen: Arc::new(CType::Function(f.clone(), Arc::new(t.clone()))),
+                    typen: Arc::new(CType::Function(f.clone(), t.clone())),
                     microstatements: Vec::new(),
                     kind: FnKind::Derived,
                     origin_scope_path: scope.path.clone(),
@@ -3021,7 +3026,7 @@ impl CType {
                     // Create a constructor fn
                     fs.push(Arc::new(Function {
                         name: constructor_fn_name.clone(),
-                        typen: Arc::new(CType::Function(e.clone(), Arc::new(t.clone()))),
+                        typen: Arc::new(CType::Function(e.clone(), t.clone())),
                         microstatements: Vec::new(),
                         kind: FnKind::Derived,
                         origin_scope_path: scope.path.clone(),
@@ -3030,8 +3035,8 @@ impl CType {
                     fs.push(Arc::new(Function {
                         name: "store".to_string(),
                         typen: Arc::new(CType::Function(
-                            Arc::new(CType::Tuple(vec![Arc::new(t.clone()), e.clone()])),
-                            Arc::new(t.clone()),
+                            Arc::new(CType::Tuple(vec![t.clone(), e.clone()])),
+                            t.clone(),
                         )),
                         microstatements: Vec::new(),
                         kind: FnKind::Derived,
@@ -3041,10 +3046,7 @@ impl CType {
                         // Have a zero-arg constructor function produce the void type, if possible.
                         fs.push(Arc::new(Function {
                             name: constructor_fn_name.clone(),
-                            typen: Arc::new(CType::Function(
-                                Arc::new(CType::Void),
-                                Arc::new(t.clone()),
-                            )),
+                            typen: Arc::new(CType::Function(Arc::new(CType::Void), t.clone())),
                             microstatements: Vec::new(),
                             kind: FnKind::Derived,
                             origin_scope_path: scope.path.clone(),
@@ -3056,7 +3058,7 @@ impl CType {
                         CType::Field(n, i) => fs.push(Arc::new(Function {
                             name: n.clone(),
                             typen: Arc::new(CType::Function(
-                                Arc::new(t.clone()),
+                                t.clone(),
                                 Arc::new(CType::Either(vec![i.clone(), Arc::new(CType::Void)])),
                             )),
                             microstatements: Vec::new(),
@@ -3066,7 +3068,7 @@ impl CType {
                         CType::Type(n, _) => fs.push(Arc::new(Function {
                             name: n.clone(),
                             typen: Arc::new(CType::Function(
-                                Arc::new(t.clone()),
+                                t.clone(),
                                 Arc::new(CType::Either(vec![e.clone(), Arc::new(CType::Void)])),
                             )),
                             microstatements: Vec::new(),
@@ -3085,7 +3087,7 @@ impl CType {
                 // implement one of these
                 fs.push(Arc::new(Function {
                     name: constructor_fn_name.clone(),
-                    typen: Arc::new(CType::Function(b.clone(), Arc::new(t.clone()))),
+                    typen: Arc::new(CType::Function(b.clone(), t.clone())),
                     microstatements: Vec::new(),
                     kind: FnKind::Derived,
                     origin_scope_path: scope.path.clone(),
@@ -3105,7 +3107,7 @@ impl CType {
                                 }
                                 v
                             })),
-                            Arc::new(t.clone()),
+                            t.clone(),
                         )),
                         microstatements: Vec::new(),
                         kind: FnKind::Derived,
@@ -3116,7 +3118,7 @@ impl CType {
                 for i in 0..size {
                     fs.push(Arc::new(Function {
                         name: format!("{}", i),
-                        typen: Arc::new(CType::Function(Arc::new(t.clone()), b.clone())),
+                        typen: Arc::new(CType::Function(t.clone(), b.clone())),
                         microstatements: Vec::new(),
                         kind: FnKind::Derived,
                         origin_scope_path: scope.path.clone(),
@@ -3133,7 +3135,7 @@ impl CType {
                 // other types, too.
                 fs.push(Arc::new(Function {
                     name: constructor_fn_name.clone(),
-                    typen: Arc::new(CType::Function(a.clone(), Arc::new(t.clone()))),
+                    typen: Arc::new(CType::Function(a.clone(), t.clone())),
                     microstatements: Vec::new(),
                     kind: FnKind::DerivedVariadic,
                     origin_scope_path: scope.path.clone(),
@@ -3214,7 +3216,7 @@ impl CType {
             }
             _ => {} // Don't do anything for other types
         }
-        (t, fs)
+        (CType::clone(&t), fs)
     }
     pub fn from_ast<'a>(
         mut scope: Scope<'a>,
@@ -3355,7 +3357,9 @@ impl CType {
         }
         let insert_t = Arc::new(t.clone());
         scope.types.insert(name.clone(), insert_t.clone());
-        scope.types.insert(t.to_callable_string(), insert_t.clone());
+        scope
+            .types
+            .insert(insert_t.clone().to_callable_string(), insert_t.clone());
         if !fs.is_empty() {
             let mut name_fn_pairs = HashMap::new();
             for f in fs {
@@ -3382,7 +3386,9 @@ impl CType {
         scope.exports.insert(name.clone(), Export::Type);
         let (_, fs) = ctype.clone().to_functions(name.clone(), &scope);
         scope.types.insert(name, ctype.clone());
-        scope.types.insert(ctype.to_callable_string(), ctype);
+        scope
+            .types
+            .insert(ctype.clone().to_callable_string(), ctype);
         if !fs.is_empty() {
             let mut name_fn_pairs = HashMap::new();
             for f in fs {
@@ -3391,7 +3397,7 @@ impl CType {
                 let mut contains_rettype = false;
                 let retstr = f.rettype().to_functional_string();
                 for t in scope.types.values() {
-                    if retstr == t.to_functional_string() {
+                    if retstr == t.clone().to_functional_string() {
                         contains_rettype = true;
                     }
                 }
@@ -3975,7 +3981,7 @@ impl CType {
                         }
                         _ => CType::fail(&format!(
                             "Cannot determine the size of {}",
-                            t.to_functional_string()
+                            t.clone().to_functional_string()
                         )),
                     })
                 }
@@ -4036,7 +4042,7 @@ impl CType {
             | CType::Prefix(_)
             | CType::Method(_)
             | CType::Property(_) => CType::fail("Cannot determine the size of a function"),
-            t => CType::fail(&format!(
+            _ => CType::fail(&format!(
                 "Getting the size of {} doesn't make any sense",
                 t.to_functional_string()
             )),

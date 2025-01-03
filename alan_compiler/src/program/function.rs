@@ -553,8 +553,8 @@ impl Function {
                         ));
                     }
                     CType::Infer(..) => { /* Do nothing */ }
-                    otherwise => {
-                        let name = otherwise.to_callable_string();
+                    _otherwise => {
+                        let name = o.clone().to_callable_string();
                         // Don't recreate the exact same thing. It only causes pain
                         if scope.resolve_type(&name).is_none() {
                             scope = CType::from_ctype(scope, name, o.clone());
@@ -633,7 +633,7 @@ impl Function {
                     .collect::<Vec<(String, ArgKind, Arc<CType>)>>();
                 // Make sure all argument types exist within the generic function call scope
                 for (_, _, arg) in &args {
-                    scope = CType::from_ctype(scope, arg.to_callable_string(), arg.clone());
+                    scope = CType::from_ctype(scope, arg.clone().to_callable_string(), arg.clone());
                 }
                 let mut rettype = {
                     let mut a = generic_function.rettype().clone();
@@ -684,7 +684,7 @@ impl Function {
                     generic_function.name,
                     generic_types
                         .iter()
-                        .map(|t| t.to_callable_string())
+                        .map(|t| t.clone().to_callable_string())
                         .collect::<Vec<String>>()
                         .join("_")
                 ); // Really bad
@@ -726,7 +726,7 @@ impl Function {
                     .collect::<Vec<(String, ArgKind, Arc<CType>)>>();
                 // Make sure all argument types exist within the generic function call scope
                 for (_, _, arg) in &args {
-                    scope = CType::from_ctype(scope, arg.to_callable_string(), arg.clone());
+                    scope = CType::from_ctype(scope, arg.clone().to_callable_string(), arg.clone());
                 }
                 let mut rettype = {
                     let mut a = generic_function.rettype().clone();
@@ -792,7 +792,7 @@ impl Function {
                     generic_function.name,
                     generic_types
                         .iter()
-                        .map(|t| t.to_callable_string())
+                        .map(|t| t.clone().to_callable_string())
                         .collect::<Vec<String>>()
                         .join("_")
                 ); // Really bad

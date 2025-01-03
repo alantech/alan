@@ -208,7 +208,7 @@ pub fn from_microstatement(
                         | FnKind::Static => {
                             let mut arg_strs = Vec::new();
                             for arg in &fun.args() {
-                                arg_strs.push(arg.2.to_callable_string());
+                                arg_strs.push(arg.2.clone().to_callable_string());
                             }
                             let jsname = format!("{}_{}", fun.name, arg_strs.join("_"));
                             let (o, d) = generate(jsname.clone(), fun, scope, out, deps)?;
@@ -340,7 +340,7 @@ pub fn from_microstatement(
                     deps = d;
                     let mut arg_strs = Vec::new();
                     for arg in &function.args() {
-                        let arg_str = arg.2.to_callable_string();
+                        let arg_str = arg.2.clone().to_callable_string();
                         if &arg_str == "var" {
                             arg_strs.push("__var__".to_string());
                         } else {
@@ -761,7 +761,7 @@ pub fn from_microstatement(
                         }
                     }
                     let ret_type = function.rettype().degroup();
-                    let ret_name = ret_type.to_callable_string();
+                    let ret_name = ret_type.clone().to_callable_string();
                     if function.name == "store" {
                         let inner_ret_type = match &*ret_type {
                             CType::Field(_, t) => t.clone(),
@@ -945,7 +945,7 @@ pub fn from_microstatement(
                                 let enum_name = match &*enum_type {
                                     CType::Field(n, _) => Ok(n.clone()),
                                     CType::Type(n, _) => Ok(n.clone()),
-                                    CType::Array(_) => Ok(enum_type.to_callable_string()),
+                                    CType::Array(_) => Ok(enum_type.clone().to_callable_string()),
                                     otherwise => Err(format!("Cannot generate an constructor function for {} type as the input type has no name?, {:?}", function.name, otherwise)),
                                 }?;
                                 for t in ts {
@@ -996,8 +996,8 @@ pub fn from_microstatement(
                                             return Ok((argstrs[0].clone(), out, deps));
                                         }
                                         CType::Field(_, f)
-                                            if f.to_functional_string()
-                                                == enum_type.to_functional_string() =>
+                                            if f.clone().to_functional_string()
+                                                == enum_type.clone().to_functional_string() =>
                                         {
                                             // Special-casing for Option and Result mapping. TODO:
                                             // Make this more centralized

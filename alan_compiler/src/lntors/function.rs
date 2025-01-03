@@ -210,7 +210,7 @@ pub fn from_microstatement(
                             | FnKind::Static => {
                                 let mut arg_strs = Vec::new();
                                 for arg in &fun.args() {
-                                    arg_strs.push(arg.2.to_callable_string());
+                                    arg_strs.push(arg.2.clone().to_callable_string());
                                 }
                                 // Come up with a function name that is unique so Rust doesn't choke on
                                 // duplicate function names that are allowed in Alan
@@ -386,7 +386,7 @@ pub fn from_microstatement(
                     deps = d;
                     let mut arg_strs = Vec::new();
                     for arg in &function.args() {
-                        arg_strs.push(arg.2.to_callable_string());
+                        arg_strs.push(arg.2.clone().to_callable_string());
                     }
                     // Come up with a function name that is unique so Rust doesn't choke on
                     // duplicate function names that are allowed in Alan
@@ -779,7 +779,7 @@ pub fn from_microstatement(
                         }
                     }
                     let ret_type = function.rettype().degroup();
-                    let ret_name = ret_type.to_callable_string();
+                    let ret_name = ret_type.clone().to_callable_string();
                     if function.name == "store" {
                         let inner_ret_type = match &*ret_type {
                             CType::Field(_, t) => t.clone(),

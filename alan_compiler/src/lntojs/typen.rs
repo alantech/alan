@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use ordered_hash_map::OrderedHashMap;
 
 use crate::program::CType;
@@ -253,7 +255,7 @@ pub fn ctype_to_jtype(
             Ok(("".to_string(), deps))
         }
         CType::Fail(m) => CType::fail(m),
-        otherwise => CType::fail(&format!("Lower stage of the compiler received unresolved algebraic type {}, cannot deal with it here. Please report this error.", otherwise.to_functional_string())),
+        otherwise => CType::fail(&format!("Lower stage of the compiler received unresolved algebraic type {}, cannot deal with it here. Please report this error.", Arc::new(otherwise.clone()).to_functional_string())),
     }
 }
 
@@ -271,7 +273,7 @@ pub fn generate(
 > {
     let res = ctype_to_jtype(typen, deps)?;
     if !res.0.is_empty() {
-        out.insert(typen.to_callable_string(), res.0.clone());
+        out.insert(Arc::new(typen.clone()).to_callable_string(), res.0.clone());
     }
     Ok((res.0, out, res.1))
 }

@@ -444,7 +444,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                 // TODO: Currently assuming all array values are the same type, should check that
                 // better
                 let inner_type = array_vals[0].get_type();
-                let inner_type_str = inner_type.to_callable_string();
+                let inner_type_str = inner_type.clone().to_callable_string();
                 let array_type_name = format!("Array_{}_", inner_type_str);
                 let array_type = Arc::new(CType::Array(inner_type));
                 let type_str = format!("type {} = {}[];", array_type_name, inner_type_str);
@@ -636,8 +636,8 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                 ));
                             }
                             CType::Infer(..) => { /* Do nothing */ }
-                            otherwise => {
-                                let name = otherwise.to_callable_string();
+                            _otherwise => {
+                                let name = o.clone().to_callable_string();
                                 if scope.resolve_type(&name).is_none() {
                                     scope = CType::from_ctype(scope, name, o.clone());
                                 }
@@ -715,7 +715,8 @@ pub fn baseassignablelist_to_microstatements<'a>(
                         arg_types.push(m.get_type());
                         // In case the type constructor has not already been created
                         let t = m.get_type();
-                        temp_scope = CType::from_ctype(temp_scope, t.to_callable_string(), t);
+                        temp_scope =
+                            CType::from_ctype(temp_scope, t.clone().to_callable_string(), t);
                     }
                     let res = temp_scope.resolve_function(&c.to_string(), &arg_types);
                     match res {
@@ -773,7 +774,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                     arg_types.push(arg.get_type());
                 }
                 let ctype = withtypeoperatorslist_to_ctype(&g.typecalllist, &scope)?;
-                let name = ctype.to_callable_string();
+                let name = ctype.clone().to_callable_string();
                 scope = CType::from_ctype(scope, name.clone(), ctype.clone());
                 let temp_scope = scope.child();
                 // Now we are sure the type and function exist, and we know the name for the
@@ -1049,7 +1050,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                     out
                 };
                 for g in &generic_types {
-                    scope = CType::from_ctype(scope, g.to_callable_string(), g.clone());
+                    scope = CType::from_ctype(scope, g.clone().to_callable_string(), g.clone());
                 }
                 let maybe_type = scope.resolve_type(f);
                 let temp_scope = scope.child();
@@ -1107,7 +1108,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                         let res = CType::from_ast(scope, &parse_type, false)?;
                         scope = res.0;
                         let t = res.1;
-                        let real_name = t.to_callable_string();
+                        let real_name = Arc::new(t).to_callable_string();
                         // Now we are sure the type and function exist, and we know the name for the
                         // function. It would be best if we could just pass it to ourselves and run the
                         // `FuncCall` logic below, but it's easier at the moment to duplicate :( TODO
