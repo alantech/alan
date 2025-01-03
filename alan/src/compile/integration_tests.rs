@@ -653,6 +653,24 @@ test_gpgpu!(gpu_cross => r#"
     stdout "[1, -1]\n";
 );
 
+test_gpgpu!(gpu_transpose => r#"
+    export fn main {
+      let b = GBuffer([1, 2, 3, 4]);
+      //let m = gmat2x2f(b[0], b[1], b[2], b[3]).transpose;
+      let m = gmat2x2f(1.0, 2.0, 3.0, 4.0).transpose;
+      let compute = [
+        b[0].store((m * gmat2x2f(1.0, 0.0, 0.0, 0.0) * gvec2f(1.0, 0.0)).x.gi32),
+        b[1].store((m * gmat2x2f(1.0, 0.0, 0.0, 0.0) * gvec2f(1.0, 0.0)).y.gi32),
+        b[2].store((m * gmat2x2f(0.0, 1.0, 0.0, 0.0) * gvec2f(1.0, 0.0)).x.gi32),
+        b[3].store((m * gmat2x2f(0.0, 1.0, 0.0, 0.0) * gvec2f(1.0, 0.0)).y.gi32)
+      ].build;
+      compute.shader.print;
+      compute.run;
+      b.read{i32}.print;
+    }"#;
+    stdout "[1, 3, 2, 4]\n";
+);
+
 test_gpgpu!(gpu_reversebits => r#"
     export fn main {
         let b = GBuffer([0.i32, 1.i32, 2.i32, (-2_147_483_648).i32]);
