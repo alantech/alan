@@ -1147,7 +1147,7 @@ export async function runWindow(initialContextFn, contextFn, gpgpuShaderFn) {
     let ab = newContextBuffer.getMappedRange();
     let v = new Uint32Array(ab);
     for (let i = 0; i < contextArray.length; i++) {
-      v[i] = contextArray[i].valueOf();
+      v[i] = Number(contextArray[i].valueOf());
     }
     newContextBuffer.unmap();
     newContextBuffer.ValType = U32;
