@@ -790,14 +790,14 @@ export async function createBufferInit(usage, vals) {
   let g = await gpu();
   let b = await g.device.createBuffer({
     mappedAtCreation: true,
-    size: vals.length * (Math.min(vals[0]?.bits ?? 32, 32)) / 8,
+    size: vals.length * (vals[0]?.bits ?? 32) / 8,
     usage,
     label: `buffer_${uuidv4().replaceAll('-', '_')}`,
   });
   let ab = b.getMappedRange();
   let v = new (vals[0].constructor.ArrayKind ?? Int32Array)(ab);
   for (let i = 0; i < vals.length; i++) {
-    v[i] = Number(vals[i].valueOf());
+    v[i] = vals[i].valueOf();
   }
   b.unmap();
   b.ValType = vals[0].constructor;
@@ -807,7 +807,7 @@ export async function createBufferInit(usage, vals) {
 export async function createEmptyBuffer(usage, size, ValKind) {
   let g = await gpu();
   let b = await g.device.createBuffer({
-    size: size.valueOf() * (Math.min(ValKind?.bits ?? 32, 32)) / 8,
+    size: size.valueOf() * (ValKind?.bits ?? 32) / 8,
     usage,
     label: `buffer_${uuidv4().replaceAll('-', '_')}`,
   });
@@ -1147,7 +1147,7 @@ export async function runWindow(initialContextFn, contextFn, gpgpuShaderFn) {
     let ab = newContextBuffer.getMappedRange();
     let v = new Uint32Array(ab);
     for (let i = 0; i < contextArray.length; i++) {
-      v[i] = Number(contextArray[i].valueOf());
+      v[i] = contextArray[i].valueOf();
     }
     newContextBuffer.unmap();
     newContextBuffer.ValType = U32;

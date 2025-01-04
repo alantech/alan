@@ -2486,7 +2486,7 @@ fn gmat4x4f{I}(
   o: I,
   p: I
 ) = gmat4x4f(
-  a.gf32, 
+  a.gf32,
   b.gf32,
   c.gf32,
   d.gf32,
