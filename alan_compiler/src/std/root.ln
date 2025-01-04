@@ -2006,8 +2006,12 @@ fn gmat2x2f(a: gvec2f, b: gvec2f) {
   let buffers = a.buffers.union(b.buffers);
   return gmat2x2f(statement, statements, buffers);
 }
+fn gmat2x2f{I}(a: I, b: I, c: I, d: I) = gmat2x2f(a.gf32, b.gf32, c.gf32, d.gf32);
 fn gmat2x2f(a: gf32, b: gf32, c: gf32, d: gf32) {
-  let statement = "mat2x2f("
+  let varName = "mat2x2f_".concat(uuid().string.replace('-', '_'));
+  let statement = "let "
+    .concat(varName)
+    .concat(" = mat2x2f(")
     .concat(a.varName)
     .concat(", ")
     .concat(b.varName)
@@ -2016,9 +2020,9 @@ fn gmat2x2f(a: gf32, b: gf32, c: gf32, d: gf32) {
     .concat(", ")
     .concat(d.varName)
     .concat(")");
-  let statements = a.statements.concat(b.statements).concat(c.statements).concat(d.statements);
+  let statements = a.statements.concat(b.statements).concat(c.statements).concat(d.statements).concat(Dict(varName, statement));
   let buffers = a.buffers.union(b.buffers).union(c.buffers).union(d.buffers);
-  return gmat2x2f(statement, statements, buffers);
+  return gmat2x2f(varName, statements, buffers);
 }
 
 fn gmat2x3f() = gmat2x3f("mat2x3f()", Dict{string, string}(), Set{GBuffer}());
@@ -2028,6 +2032,9 @@ fn gmat2x3f(a: gvec3f, b: gvec3f) {
   let buffers = a.buffers.union(b.buffers);
   return gmat2x3f(statement, statements, buffers);
 }
+fn gmat2x3f{I}(a: I, b: I, c: I, d: I, e: I, f: I) = gmat2x3f(
+  a.gf32, b.gf32, c.gf32, d.gf32, e.gf32, f.gf32
+);
 fn gmat2x3f(a: gf32, b: gf32, c: gf32, d: gf32, e: gf32, f: gf32) {
   let statement = "mat2x3f("
     .concat(a.varName)
@@ -2064,6 +2071,9 @@ fn gmat2x4f(a: gvec4f, b: gvec4f) {
   let buffers = a.buffers.union(b.buffers);
   return gmat2x4f(statement, statements, buffers);
 }
+fn gmat2x4f{I}(a: I, b: I, c: I, d: I, e: I, f: I, g: gf32, h: gf32) = gmat2x4f(
+  a.gf32, b.gf32, c.gf32, d.gf32, e.gf32, f.gf32, g.gf32, h.gf32
+);
 fn gmat2x4f(a: gf32, b: gf32, c: gf32, d: gf32, e: gf32, f: gf32, g: gf32, h: gf32) {
   let statement = "mat2x4f("
     .concat(a.varName)
@@ -2114,6 +2124,9 @@ fn gmat3x2f(a: gvec2f, b: gvec2f, c: gvec2f) {
   let buffers = a.buffers.union(b.buffers).union(c.buffers);
   return gmat3x2f(statement, statements, buffers);
 }
+fn gmat3x2f{I}(a: I, b: I, c: I, d: I, e: I, f: I) = gmat3x2f(
+  a.gf32, b.gf32, c.gf32, d.gf32, e.gf32, f.gf32
+);
 fn gmat3x2f(a: gf32, b: gf32, c: gf32, d: gf32, e: gf32, f: gf32) {
   let statement = "mat3x2f("
     .concat(a.varName)
@@ -2156,6 +2169,9 @@ fn gmat3x3f(a: gvec3f, b: gvec3f, c: gvec3f) {
   let buffers = a.buffers.union(b.buffers).union(c.buffers);
   return gmat3x3f(statement, statements, buffers);
 }
+fn gmat3x3f{I}(a: I, b: I, c: I, d: I, e: I, f: I, g: I, h: I, i: I) = gmat3x3f(
+  a.gf32, b.gf32, c.gf32, d.gf32, e.gf32, f.gf32, g.gf32, h.gf32, i.gf32
+);
 fn gmat3x3f(
   a: gf32,
   b: gf32,
@@ -2220,6 +2236,9 @@ fn gmat3x4f(a: gvec4f, b: gvec4f, c: gvec4f) {
   let buffers = a.buffers.union(b.buffers).union(c.buffers);
   return gmat3x4f(statement, statements, buffers);
 }
+fn gmat3x4f{I}(a: I, b: I, c: I, d: I, e: I, f: I, g: I, h: I, i: I, j: I, k: I, l: I) = gmat3x4f(
+  a.gf32, b.gf32, c.gf32, d.gf32, e.gf32, f.gf32, g.gf32, h.gf32, i.gf32, j.gf32, k.gf32, l.gf32
+);
 fn gmat3x4f(
   a: gf32,
   b: gf32,
@@ -2301,6 +2320,9 @@ fn gmat4x2f(a: gvec2f, b: gvec2f, c: gvec2f, d: gvec2f) {
   let buffers = a.buffers.union(b.buffers).union(c.buffers).union(d.buffers);
   return gmat4x2f(statement, statements, buffers);
 }
+fn gmat4x2f{I}(a: I, b: I, c: I, d: I, e: I, f: I, g: I, h: I) = gmat4x2f(
+  a.gf32, b.gf32, c.gf32, d.gf32, e.gf32, f.gf32, g.gf32, h.gf32
+);
 fn gmat4x2f(
   a: gf32,
   b: gf32,
@@ -2362,6 +2384,9 @@ fn gmat4x3f(a: gvec3f, b: gvec3f, c: gvec3f, d: gvec3f) {
   let buffers = a.buffers.union(b.buffers).union(c.buffers).union(d.buffers);
   return gmat4x3f(statement, statements, buffers);
 }
+fn gmat4x3f{I}(a: I, b: I, c: I, d: I, e: I, f: I, g: I, h: I, i: I, j: I, k: I, l: I) = gmat4x3f(
+  a.gf32, b.gf32, c.gf32, d.gf32, e.gf32, f.gf32, g.gf32, h.gf32, i.gf32, j.gf32, k.gf32, l.gf32
+);
 fn gmat4x3f(
   a: gf32,
   b: gf32,
@@ -2443,6 +2468,41 @@ fn gmat4x4f(a: gvec4f, b: gvec4f, c: gvec4f, d: gvec4f) {
   let buffers = a.buffers.union(b.buffers).union(c.buffers).union(d.buffers);
   return gmat4x4f(statement, statements, buffers);
 }
+fn gmat4x4f{I}(
+  a: I,
+  b: I,
+  c: I,
+  d: I,
+  e: I,
+  f: I,
+  g: I,
+  h: I,
+  i: I,
+  j: I,
+  k: I,
+  l: I,
+  m: I,
+  n: I,
+  o: I,
+  p: I
+) = gmat4x4f(
+  a.gf32,
+  b.gf32,
+  c.gf32,
+  d.gf32,
+  e.gf32,
+  f.gf32,
+  g.gf32,
+  h.gf32,
+  i.gf32,
+  j.gf32,
+  k.gf32,
+  l.gf32,
+  m.gf32,
+  n.gf32,
+  o.gf32,
+  p.gf32
+);
 fn gmat4x4f(
   a: gf32,
   b: gf32,
@@ -3953,6 +4013,20 @@ fn cross(a: gvec3f, b: gvec3f) {
   let buffers = a.buffers.union(b.buffers);
   return gvec3f(varName, statements, buffers);
 }
+
+fn gTranspose{I, O}(m: I) {
+  let varName = 'transpose('.concat(m.varName).concat(')');
+  return {O}(varName, m.statements, m.buffers);
+}
+fn transpose(m: gmat2x2f) = gTranspose{gmat2x2f, gmat2x2f}(m);
+fn transpose(m: gmat2x3f) = gTranspose{gmat2x3f, gmat3x2f}(m);
+fn transpose(m: gmat2x4f) = gTranspose{gmat2x4f, gmat4x2f}(m);
+fn transpose(m: gmat3x2f) = gTranspose{gmat3x2f, gmat2x3f}(m);
+fn transpose(m: gmat3x3f) = gTranspose{gmat3x3f, gmat3x3f}(m);
+fn transpose(m: gmat3x4f) = gTranspose{gmat3x4f, gmat4x3f}(m);
+fn transpose(m: gmat4x2f) = gTranspose{gmat4x2f, gmat2x4f}(m);
+fn transpose(m: gmat4x3f) = gTranspose{gmat4x3f, gmat3x4f}(m);
+fn transpose(m: gmat4x4f) = gTranspose{gmat4x4f, gmat4x4f}(m);
 
 fn gdot{I, O}(a: I, b: I) {
   let varName = 'dot('.concat(a.varName).concat(', ').concat(b.varName).concat(')');
