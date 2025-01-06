@@ -1,13 +1,15 @@
+use std::sync::Arc;
+
 use ordered_hash_map::OrderedHashMap;
 
 use crate::program::CType;
 
 pub fn ctype_to_jtype(
-    ctype: &CType,
+    ctype: Arc<CType>,
     mut deps: OrderedHashMap<String, String>,
 ) -> Result<(String, OrderedHashMap<String, String>), Box<dyn std::error::Error>> {
-    match ctype {
-        CType::Mut(t) => ctype_to_jtype(t, deps),
+    match &*ctype {
+        CType::Mut(t) => ctype_to_jtype(t.clone(), deps),
         CType::Void => Ok(("".to_string(), deps)),
         CType::Infer(s, _) => Err(format!(
             "Inferred type matching {} was not realized before code generation",
@@ -19,26 +21,26 @@ pub fn ctype_to_jtype(
                 for t in ts {
                     match &**t {
                         CType::Field(_, v) => {
-                            let res = ctype_to_jtype(v, deps)?;
+                            let res = ctype_to_jtype(v.clone(), deps)?;
                             deps = res.1;
                         }
                         CType::Type(_, t) => {
-                            let res = ctype_to_jtype(t, deps)?;
+                            let res = ctype_to_jtype(t.clone(), deps)?;
                             deps = res.1;
                         }
                         CType::Group(g) => {
-                            let res = ctype_to_jtype(g, deps)?;
+                            let res = ctype_to_jtype(g.clone(), deps)?;
                             deps = res.1;
                         }
                         CType::Void => { /* Do nothing */ }
                         CType::Tuple(ts) => {
                             for t in ts {
-                                let res = ctype_to_jtype(t, deps)?;
+                                let res = ctype_to_jtype(t.clone(), deps)?;
                                 deps = res.1;
                             }
                         }
                         CType::Array(t) => {
-                            let res = ctype_to_jtype(t, deps)?;
+                            let res = ctype_to_jtype(t.clone(), deps)?;
                             deps = res.1;
                         }
                         otherwise => {
@@ -60,13 +62,13 @@ pub fn ctype_to_jtype(
                                     | CType::Bool(_)
                                     | CType::TString(_)
                             ) {
-                                let res = ctype_to_jtype(t, deps)?;
+                                let res = ctype_to_jtype(t.clone(), deps)?;
                                 deps = res.1;
                                 out.push(n.clone());
                             }
                         }
-                        t => {
-                            let res = ctype_to_jtype(t, deps)?;
+                        _otherwise => {
+                            let res = ctype_to_jtype(t.clone(), deps)?;
                             deps = res.1;
                             out.push(format!("arg{}", i));
                         }
@@ -138,7 +140,7 @@ pub fn ctype_to_jtype(
         CType::Generic(name, ..) => Ok((name.clone(), deps)),
         CType::Binds(n, args) => {
             for arg in args {
-                let res = ctype_to_jtype(arg, deps)?;
+                let res = ctype_to_jtype(arg.clone(), deps)?;
                 deps = res.1;
             }
             match &**n {
@@ -206,7 +208,7 @@ pub fn ctype_to_jtype(
             deps,
         )),
         CType::Group(g) => {
-            let res = ctype_to_jtype(g, deps)?;
+            let res = ctype_to_jtype(g.clone(), deps)?;
             let s = res.0;
             deps = res.1;
             if !s.is_empty() {
@@ -216,49 +218,49 @@ pub fn ctype_to_jtype(
             }
         }
         CType::Function(i, o) => {
-            let res = ctype_to_jtype(i, deps)?;
+            let res = ctype_to_jtype(i.clone(), deps)?;
             deps = res.1;
-            let res = ctype_to_jtype(o, deps)?;
+            let res = ctype_to_jtype(o.clone(), deps)?;
             deps = res.1;
             Ok(("".to_string(), deps)) // TODO: What do we even do with this?
         }
         CType::Tuple(ts) => {
             for t in ts {
-                let res = ctype_to_jtype(t, deps)?;
+                let res = ctype_to_jtype(t.clone(), deps)?;
                 deps = res.1;
             }
             Ok(("".to_string(), deps))
         }
         CType::Field(_, v) => {
-            let res = ctype_to_jtype(v, deps)?;
+            let res = ctype_to_jtype(v.clone(), deps)?;
             deps = res.1;
             Ok(("".to_string(), deps))
         }
         CType::Either(ts) => {
             for t in ts {
-                let res = ctype_to_jtype(t, deps)?;
+                let res = ctype_to_jtype(t.clone(), deps)?;
                 deps = res.1;
             }
             Ok(("".to_string(), deps))
         }
         CType::AnyOf(_) => Ok(("".to_string(), deps)), // Does this make any sense?
         CType::Buffer(t, _) => {
-            let res = ctype_to_jtype(t, deps)?;
+            let res = ctype_to_jtype(t.clone(), deps)?;
             deps = res.1;
             Ok(("".to_string(), deps))
         }
         CType::Array(t) => {
-            let res = ctype_to_jtype(t, deps)?;
+            let res = ctype_to_jtype(t.clone(), deps)?;
             deps = res.1;
             Ok(("".to_string(), deps))
         }
         CType::Fail(m) => CType::fail(m),
-        otherwise => CType::fail(&format!("Lower stage of the compiler received unresolved algebraic type {}, cannot deal with it here. Please report this error.", otherwise.to_functional_string())),
+        otherwise => CType::fail(&format!("Lower stage of the compiler received unresolved algebraic type {}, cannot deal with it here. Please report this error.", Arc::new(otherwise.clone()).to_functional_string())),
     }
 }
 
 pub fn generate(
-    typen: &CType,
+    typen: Arc<CType>,
     mut out: OrderedHashMap<String, String>,
     deps: OrderedHashMap<String, String>,
 ) -> Result<
@@ -269,9 +271,9 @@ pub fn generate(
     ),
     Box<dyn std::error::Error>,
 > {
-    let res = ctype_to_jtype(typen, deps)?;
+    let res = ctype_to_jtype(typen.clone(), deps)?;
     if !res.0.is_empty() {
-        out.insert(typen.to_callable_string(), res.0.clone());
+        out.insert(typen.clone().to_callable_string(), res.0.clone());
     }
     Ok((res.0, out, res.1))
 }

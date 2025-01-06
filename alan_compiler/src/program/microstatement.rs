@@ -444,7 +444,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                 // TODO: Currently assuming all array values are the same type, should check that
                 // better
                 let inner_type = array_vals[0].get_type();
-                let inner_type_str = inner_type.to_callable_string();
+                let inner_type_str = inner_type.clone().to_callable_string();
                 let array_type_name = format!("Array_{}_", inner_type_str);
                 let array_type = Arc::new(CType::Array(inner_type));
                 let type_str = format!("type {} = {}[];", array_type_name, inner_type_str);
@@ -604,8 +604,8 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                 _ => Arc::new(CType::Void),
                             };
                             typen = Arc::new(CType::Function(input_type, actual_rettype));
-                        } else if current_rettype.to_strict_string(false)
-                            != actual_rettype.to_strict_string(false)
+                        } else if current_rettype.clone().to_strict_string(false)
+                            != actual_rettype.clone().to_strict_string(false)
                         {
                             CType::fail(&format!(
                                 "Function {} specified to return {} but actually returns {}",
@@ -632,12 +632,12 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                         Some(name) => name,
                                         None => "closure",
                                     },
-                                    i.to_strict_string(false)
+                                    i.clone().to_strict_string(false)
                                 ));
                             }
                             CType::Infer(..) => { /* Do nothing */ }
-                            otherwise => {
-                                let name = otherwise.to_callable_string();
+                            _otherwise => {
+                                let name = o.clone().to_callable_string();
                                 if scope.resolve_type(&name).is_none() {
                                     scope = CType::from_ctype(scope, name, o.clone());
                                 }
@@ -694,7 +694,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                 "A function with the signature get({}) does not exist",
                                 arg_types
                                     .iter()
-                                    .map(|a| a.to_string())
+                                    .map(|a| a.clone().to_string())
                                     .collect::<Vec<String>>()
                                     .join(", ")
                             )
@@ -715,7 +715,8 @@ pub fn baseassignablelist_to_microstatements<'a>(
                         arg_types.push(m.get_type());
                         // In case the type constructor has not already been created
                         let t = m.get_type();
-                        temp_scope = CType::from_ctype(temp_scope, t.to_callable_string(), t);
+                        temp_scope =
+                            CType::from_ctype(temp_scope, t.clone().to_callable_string(), t);
                     }
                     let res = temp_scope.resolve_function(&c.to_string(), &arg_types);
                     match res {
@@ -733,7 +734,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                 c.to_string(),
                                 arg_types
                                     .iter()
-                                    .map(|a| a.to_string())
+                                    .map(|a| a.clone().to_string())
                                     .collect::<Vec<String>>()
                                     .join(", ")
                             )
@@ -773,7 +774,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                     arg_types.push(arg.get_type());
                 }
                 let ctype = withtypeoperatorslist_to_ctype(&g.typecalllist, &scope)?;
-                let name = ctype.to_callable_string();
+                let name = ctype.clone().to_callable_string();
                 scope = CType::from_ctype(scope, name.clone(), ctype.clone());
                 let temp_scope = scope.child();
                 // Now we are sure the type and function exist, and we know the name for the
@@ -795,7 +796,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                             name,
                             arg_types
                                 .iter()
-                                .map(|a| a.to_string())
+                                .map(|a| a.clone().to_string())
                                 .collect::<Vec<String>>()
                                 .join(", ")
                         )
@@ -841,7 +842,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                             if &function.name == f && function.args().len() == arg_types.len() {
                                 let mut works = true;
                                 for ((_, _, a), b) in function.args().iter().zip(&arg_types) {
-                                    if !a.accepts(b) {
+                                    if !a.clone().accepts(b.clone()) {
                                         works = false;
                                     }
                                 }
@@ -867,7 +868,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                         _other => vec![i.clone()],
                                     };
                                     for (a, b) in farg_types.iter().zip(&arg_types) {
-                                        if !a.accepts(b) {
+                                        if !a.clone().accepts(b.clone()) {
                                             works = false;
                                         }
                                     }
@@ -998,7 +999,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                 f,
                                 arg_types
                                     .iter()
-                                    .map(|a| a.to_string())
+                                    .map(|a| a.clone().to_string())
                                     .collect::<Vec<String>>()
                                     .join(", ")
                             )
@@ -1049,7 +1050,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                     out
                 };
                 for g in &generic_types {
-                    scope = CType::from_ctype(scope, g.to_callable_string(), g.clone());
+                    scope = CType::from_ctype(scope, g.clone().to_callable_string(), g.clone());
                 }
                 let maybe_type = scope.resolve_type(f);
                 let temp_scope = scope.child();
@@ -1107,7 +1108,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                         let res = CType::from_ast(scope, &parse_type, false)?;
                         scope = res.0;
                         let t = res.1;
-                        let real_name = t.to_callable_string();
+                        let real_name = Arc::new(t).to_callable_string();
                         // Now we are sure the type and function exist, and we know the name for the
                         // function. It would be best if we could just pass it to ourselves and run the
                         // `FuncCall` logic below, but it's easier at the moment to duplicate :( TODO
@@ -1131,7 +1132,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                     real_name,
                                     arg_types
                                         .iter()
-                                        .map(|a| a.to_string())
+                                        .map(|a| a.clone().to_string())
                                         .collect::<Vec<String>>()
                                         .join(", ")
                                 )
@@ -1569,7 +1570,7 @@ pub fn statement_to_microstatements<'a>(
                         "Could not find store function with arguments {}",
                         arg_types
                             .iter()
-                            .map(|a| a.to_strict_string(false))
+                            .map(|a| a.clone().to_strict_string(false))
                             .collect::<Vec<String>>()
                             .join(", "),
                     )),

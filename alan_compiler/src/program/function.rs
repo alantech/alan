@@ -523,8 +523,8 @@ impl Function {
                         _ => Arc::new(CType::Void),
                     };
                     typen = Arc::new(CType::Function(input_type, actual_rettype));
-                } else if current_rettype.to_strict_string(false)
-                    != actual_rettype.to_strict_string(false)
+                } else if current_rettype.clone().to_strict_string(false)
+                    != actual_rettype.clone().to_strict_string(false)
                 {
                     CType::fail(&format!(
                         "Function {} specified to return {} but actually returns {}",
@@ -549,12 +549,12 @@ impl Function {
                         CType::fail(&format!(
                             "The return type for {}({}) could not be inferred.",
                             name,
-                            i.to_strict_string(false)
+                            i.clone().to_strict_string(false)
                         ));
                     }
                     CType::Infer(..) => { /* Do nothing */ }
-                    otherwise => {
-                        let name = otherwise.to_callable_string();
+                    _otherwise => {
+                        let name = o.clone().to_callable_string();
                         // Don't recreate the exact same thing. It only causes pain
                         if scope.resolve_type(&name).is_none() {
                             scope = CType::from_ctype(scope, name, o.clone());
@@ -606,7 +606,7 @@ impl Function {
             | FnKind::ExternalGeneric(gen_args, generic_fn_string, _) => {
                 let arg_strs = generic_types
                     .iter()
-                    .map(|a| a.to_string())
+                    .map(|a| a.clone().to_string())
                     .collect::<Vec<String>>();
                 let mut bind_str = generic_fn_string.clone();
                 for (i, arg_str) in arg_strs.iter().enumerate() {
@@ -633,7 +633,7 @@ impl Function {
                     .collect::<Vec<(String, ArgKind, Arc<CType>)>>();
                 // Make sure all argument types exist within the generic function call scope
                 for (_, _, arg) in &args {
-                    scope = CType::from_ctype(scope, arg.to_callable_string(), arg.clone());
+                    scope = CType::from_ctype(scope, arg.clone().to_callable_string(), arg.clone());
                 }
                 let mut rettype = {
                     let mut a = generic_function.rettype().clone();
@@ -665,8 +665,8 @@ impl Function {
                         };
                         if let CType::Infer(..) = &*rettype {
                             rettype = actual_rettype;
-                        } else if rettype.to_strict_string(false)
-                            != actual_rettype.to_strict_string(false)
+                        } else if rettype.clone().to_strict_string(false)
+                            != actual_rettype.clone().to_strict_string(false)
                         {
                             CType::fail(&format!(
                                 "Function {} specified to return {} but actually returns {}",
@@ -684,7 +684,7 @@ impl Function {
                     generic_function.name,
                     generic_types
                         .iter()
-                        .map(|t| t.to_callable_string())
+                        .map(|t| t.clone().to_callable_string())
                         .collect::<Vec<String>>()
                         .join("_")
                 ); // Really bad
@@ -726,7 +726,7 @@ impl Function {
                     .collect::<Vec<(String, ArgKind, Arc<CType>)>>();
                 // Make sure all argument types exist within the generic function call scope
                 for (_, _, arg) in &args {
-                    scope = CType::from_ctype(scope, arg.to_callable_string(), arg.clone());
+                    scope = CType::from_ctype(scope, arg.clone().to_callable_string(), arg.clone());
                 }
                 let mut rettype = {
                     let mut a = generic_function.rettype().clone();
@@ -773,8 +773,8 @@ impl Function {
                         };
                         if let CType::Infer(..) = &*rettype {
                             rettype = actual_rettype;
-                        } else if rettype.to_strict_string(false)
-                            != actual_rettype.to_strict_string(false)
+                        } else if rettype.clone().to_strict_string(false)
+                            != actual_rettype.clone().to_strict_string(false)
                         {
                             CType::fail(&format!(
                                 "Function {} specified to return {} but actually returns {}",
@@ -792,7 +792,7 @@ impl Function {
                     generic_function.name,
                     generic_types
                         .iter()
-                        .map(|t| t.to_callable_string())
+                        .map(|t| t.clone().to_callable_string())
                         .collect::<Vec<String>>()
                         .join("_")
                 ); // Really bad

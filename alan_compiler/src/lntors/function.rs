@@ -210,7 +210,7 @@ pub fn from_microstatement(
                             | FnKind::Static => {
                                 let mut arg_strs = Vec::new();
                                 for arg in &fun.args() {
-                                    arg_strs.push(arg.2.to_callable_string());
+                                    arg_strs.push(arg.2.clone().to_callable_string());
                                 }
                                 // Come up with a function name that is unique so Rust doesn't choke on
                                 // duplicate function names that are allowed in Alan
@@ -381,12 +381,12 @@ pub fn from_microstatement(
                     Err("Generic functions should have been resolved before reaching here".into())
                 }
                 FnKind::Normal | FnKind::External(_) => {
-                    let (_, o, d) = typen::generate(&function.rettype(), out, deps)?;
+                    let (_, o, d) = typen::generate(function.rettype(), out, deps)?;
                     out = o;
                     deps = d;
                     let mut arg_strs = Vec::new();
                     for arg in &function.args() {
-                        arg_strs.push(arg.2.to_callable_string());
+                        arg_strs.push(arg.2.clone().to_callable_string());
                     }
                     // Come up with a function name that is unique so Rust doesn't choke on
                     // duplicate function names that are allowed in Alan
@@ -617,7 +617,7 @@ pub fn from_microstatement(
                 FnKind::Derived | FnKind::DerivedVariadic => {
                     // The initial work to get the values to construct the type is the same as
                     // with bound functions, though.
-                    let (_, o, d) = typen::generate(&function.rettype(), out, deps)?;
+                    let (_, o, d) = typen::generate(function.rettype(), out, deps)?;
                     out = o;
                     deps = d;
                     let mut argstrs = Vec::new();
@@ -779,7 +779,7 @@ pub fn from_microstatement(
                         }
                     }
                     let ret_type = function.rettype().degroup();
-                    let ret_name = ret_type.to_callable_string();
+                    let ret_name = ret_type.clone().to_callable_string();
                     if function.name == "store" {
                         let inner_ret_type = match &*ret_type {
                             CType::Field(_, t) => t.clone(),
@@ -844,12 +844,16 @@ pub fn from_microstatement(
                                                     if name == "Error" {
                                                         let (okrustname, d) =
                                                             typen::ctype_to_rtype(
-                                                                &ts[0], true, deps,
+                                                                ts[0].clone(),
+                                                                true,
+                                                                deps,
                                                             )?;
                                                         deps = d;
                                                         let (errrustname, d) =
                                                             typen::ctype_to_rtype(
-                                                                &ts[1], true, deps,
+                                                                ts[1].clone(),
+                                                                true,
+                                                                deps,
                                                             )?;
                                                         deps = d;
                                                         if let CType::Binds(..) = &**t {
@@ -962,12 +966,16 @@ pub fn from_microstatement(
                                                     if name == "Error" {
                                                         let (okrustname, d) =
                                                             typen::ctype_to_rtype(
-                                                                &ts[0], true, deps,
+                                                                ts[0].clone(),
+                                                                true,
+                                                                deps,
                                                             )?;
                                                         deps = d;
                                                         let (errrustname, d) =
                                                             typen::ctype_to_rtype(
-                                                                &ts[1], true, deps,
+                                                                ts[1].clone(),
+                                                                true,
+                                                                deps,
                                                             )?;
                                                         deps = d;
                                                         if let CType::Binds(..) = &**t {
@@ -1150,12 +1158,16 @@ pub fn from_microstatement(
                                                     if name == "Error" {
                                                         let (okrustname, d) =
                                                             typen::ctype_to_rtype(
-                                                                &ts[0], true, deps,
+                                                                ts[0].clone(),
+                                                                true,
+                                                                deps,
                                                             )?;
                                                         deps = d;
                                                         let (errrustname, d) =
                                                             typen::ctype_to_rtype(
-                                                                &ts[1], true, deps,
+                                                                ts[1].clone(),
+                                                                true,
+                                                                deps,
                                                             )?;
                                                         deps = d;
                                                         if let CType::Binds(..) = &**t {
@@ -1234,12 +1246,16 @@ pub fn from_microstatement(
                                                     if name == "Error" {
                                                         let (okrustname, d) =
                                                             typen::ctype_to_rtype(
-                                                                &ts[0], true, deps,
+                                                                ts[0].clone(),
+                                                                true,
+                                                                deps,
                                                             )?;
                                                         deps = d;
                                                         let (errrustname, d) =
                                                             typen::ctype_to_rtype(
-                                                                &ts[1], true, deps,
+                                                                ts[1].clone(),
+                                                                true,
+                                                                deps,
                                                             )?;
                                                         deps = d;
                                                         if let CType::Binds(..) = &**t {
@@ -1323,12 +1339,16 @@ pub fn from_microstatement(
                                                         if name == "Error" {
                                                             let (okrustname, d) =
                                                                 typen::ctype_to_rtype(
-                                                                    &ts[0], true, deps,
+                                                                    ts[0].clone(),
+                                                                    true,
+                                                                    deps,
                                                                 )?;
                                                             deps = d;
                                                             let (errrustname, d) =
                                                                 typen::ctype_to_rtype(
-                                                                    &ts[1], true, deps,
+                                                                    ts[1].clone(),
+                                                                    true,
+                                                                    deps,
                                                                 )?;
                                                             deps = d;
                                                             if let CType::Binds(..) = &**t {
@@ -1447,12 +1467,16 @@ pub fn from_microstatement(
                                                             if name == "Error" {
                                                                 let (okrustname, d) =
                                                                     typen::ctype_to_rtype(
-                                                                        &ts[0], true, deps,
+                                                                        ts[0].clone(),
+                                                                        true,
+                                                                        deps,
                                                                     )?;
                                                                 deps = d;
                                                                 let (errrustname, d) =
                                                                     typen::ctype_to_rtype(
-                                                                        &ts[1], true, deps,
+                                                                        ts[1].clone(),
+                                                                        true,
+                                                                        deps,
                                                                     )?;
                                                                 deps = d;
                                                                 if let CType::Binds(..) = &**t {
@@ -1683,7 +1707,7 @@ pub fn generate(
         } else {
             t.clone()
         };
-        let (t_str, o, d) = typen::generate(&ty, out, deps)?;
+        let (t_str, o, d) = typen::generate(ty, out, deps)?;
         out = o;
         deps = d;
         if t_str.starts_with("impl") || t_str.starts_with("&") {
@@ -1700,11 +1724,12 @@ pub fn generate(
             }
         }
     }
-    let opt_ret_str = match &*function.rettype().degroup() {
+    let ret = function.rettype().degroup();
+    let opt_ret_str = match &*ret {
         CType::Void => None,
         CType::Type(n, _) if n == "void" => None,
-        otherwise => {
-            let (t_str, o, d) = typen::generate(otherwise, out, deps)?;
+        _otherwise => {
+            let (t_str, o, d) = typen::generate(ret, out, deps)?;
             out = o;
             deps = d;
             match t_str.strip_prefix("&") {

@@ -349,7 +349,7 @@ impl<'a> Scope<'a> {
             if let Some(s) = scope_to_check {
                 if let Some(funcs) = s.functions.get(function) {
                     for f in funcs {
-                        if f.typen.to_strict_string(false) == fn_type_str {
+                        if f.typen.clone().to_strict_string(false) == fn_type_str {
                             return Some(f.clone());
                         }
                     }
@@ -453,7 +453,7 @@ impl<'a> Scope<'a> {
                 // This is pretty cheap, but for now, a "non-strict" string representation
                 // of the CTypes is how we'll match the args against each other. TODO: Do
                 // this without constructing a string to compare against each other.
-                if !possible_args[i].2.accepts(arg) {
+                if !possible_args[i].2.clone().accepts(arg.clone()) {
                     args_match = false;
                     break;
                 }
@@ -566,7 +566,7 @@ impl<'a> Scope<'a> {
                     // actual args are the same type as the function's arg.
                     let mut args_match = true;
                     for arg in args.iter() {
-                        if !f.args()[0].2.accepts(arg) {
+                        if !f.args()[0].2.clone().accepts(arg.clone()) {
                             args_match = false;
                             break;
                         }
@@ -591,7 +591,7 @@ impl<'a> Scope<'a> {
                         // This is pretty cheap, but for now, a "non-strict" string representation
                         // of the CTypes is how we'll match the args against each other. TODO: Do
                         // this without constructing a string to compare against each other.
-                        if !f.args()[i].2.accepts(arg) {
+                        if !f.args()[i].2.clone().accepts(arg.clone()) {
                             args_match = false;
                             break;
                         }
@@ -669,7 +669,7 @@ impl<'a> Scope<'a> {
                     // actual args are the same type as the function's arg.
                     let mut args_match = true;
                     for arg in args.iter() {
-                        if !f.args()[0].2.accepts(arg) {
+                        if !f.args()[0].2.clone().accepts(arg.clone()) {
                             args_match = false;
                             break;
                         }
@@ -692,7 +692,7 @@ impl<'a> Scope<'a> {
                         // This is pretty cheap, but for now, a "non-strict" string representation
                         // of the CTypes is how we'll match the args against each other. TODO: Do
                         // this without constructing a string to compare against each other.
-                        if !f.args()[i].2.accepts(arg) {
+                        if !f.args()[i].2.clone().accepts(arg.clone()) {
                             args_match = false;
                             break;
                         }

@@ -1,5 +1,7 @@
 use std::collections::{HashMap, HashSet};
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, LazyLock, Mutex, OnceLock, Weak};
+
+use weak_table::PtrWeakKeyHashMap;
 
 use super::function::{type_to_args, type_to_rettype};
 use super::ArgKind;
@@ -79,84 +81,113 @@ pub enum CType {
     Gte(Vec<Arc<CType>>),
 }
 
-static CLOSE_BRACE: OnceLock<CType> = OnceLock::new();
-static CLOSE_PAREN: OnceLock<CType> = OnceLock::new();
-static COMMA: OnceLock<CType> = OnceLock::new();
-static FNARROW: OnceLock<CType> = OnceLock::new();
-static FNCALL: OnceLock<CType> = OnceLock::new();
-static DEPAT: OnceLock<CType> = OnceLock::new();
-static IMARROW: OnceLock<CType> = OnceLock::new();
-static OR: OnceLock<CType> = OnceLock::new();
-static DOT: OnceLock<CType> = OnceLock::new();
-static AND: OnceLock<CType> = OnceLock::new();
-static OPEN_BRACKET: OnceLock<CType> = OnceLock::new();
-static CLOSE_BRACKET: OnceLock<CType> = OnceLock::new();
-static ADD: OnceLock<CType> = OnceLock::new();
-static SUB: OnceLock<CType> = OnceLock::new();
-static MUL: OnceLock<CType> = OnceLock::new();
-static DIV: OnceLock<CType> = OnceLock::new();
-static MOD: OnceLock<CType> = OnceLock::new();
-static POW: OnceLock<CType> = OnceLock::new();
-static BAND: OnceLock<CType> = OnceLock::new();
-static BOR: OnceLock<CType> = OnceLock::new();
-static XOR: OnceLock<CType> = OnceLock::new();
-static NAND: OnceLock<CType> = OnceLock::new();
-static NOR: OnceLock<CType> = OnceLock::new();
-static XNOR: OnceLock<CType> = OnceLock::new();
-static EQ: OnceLock<CType> = OnceLock::new();
-static NEQ: OnceLock<CType> = OnceLock::new();
-static LT: OnceLock<CType> = OnceLock::new();
-static LTE: OnceLock<CType> = OnceLock::new();
-static GT: OnceLock<CType> = OnceLock::new();
-static GTE: OnceLock<CType> = OnceLock::new();
+static CLOSE_BRACE: OnceLock<Arc<CType>> = OnceLock::new();
+static CLOSE_PAREN: OnceLock<Arc<CType>> = OnceLock::new();
+static COMMA: OnceLock<Arc<CType>> = OnceLock::new();
+static FNARROW: OnceLock<Arc<CType>> = OnceLock::new();
+static FNCALL: OnceLock<Arc<CType>> = OnceLock::new();
+static DEPAT: OnceLock<Arc<CType>> = OnceLock::new();
+static IMARROW: OnceLock<Arc<CType>> = OnceLock::new();
+static OR: OnceLock<Arc<CType>> = OnceLock::new();
+static DOT: OnceLock<Arc<CType>> = OnceLock::new();
+static AND: OnceLock<Arc<CType>> = OnceLock::new();
+static OPEN_BRACKET: OnceLock<Arc<CType>> = OnceLock::new();
+static CLOSE_BRACKET: OnceLock<Arc<CType>> = OnceLock::new();
+static ADD: OnceLock<Arc<CType>> = OnceLock::new();
+static SUB: OnceLock<Arc<CType>> = OnceLock::new();
+static MUL: OnceLock<Arc<CType>> = OnceLock::new();
+static DIV: OnceLock<Arc<CType>> = OnceLock::new();
+static MOD: OnceLock<Arc<CType>> = OnceLock::new();
+static POW: OnceLock<Arc<CType>> = OnceLock::new();
+static BAND: OnceLock<Arc<CType>> = OnceLock::new();
+static BOR: OnceLock<Arc<CType>> = OnceLock::new();
+static XOR: OnceLock<Arc<CType>> = OnceLock::new();
+static NAND: OnceLock<Arc<CType>> = OnceLock::new();
+static NOR: OnceLock<Arc<CType>> = OnceLock::new();
+static XNOR: OnceLock<Arc<CType>> = OnceLock::new();
+static EQ: OnceLock<Arc<CType>> = OnceLock::new();
+static NEQ: OnceLock<Arc<CType>> = OnceLock::new();
+static LT: OnceLock<Arc<CType>> = OnceLock::new();
+static LTE: OnceLock<Arc<CType>> = OnceLock::new();
+static GT: OnceLock<Arc<CType>> = OnceLock::new();
+static GTE: OnceLock<Arc<CType>> = OnceLock::new();
+static FUNCTIONAL_STRINGS: LazyLock<Mutex<PtrWeakKeyHashMap<Weak<CType>, String>>> =
+    LazyLock::new(|| Mutex::new(PtrWeakKeyHashMap::<Weak<CType>, String>::new()));
+static STRICT_STRINGS: LazyLock<Mutex<PtrWeakKeyHashMap<Weak<CType>, String>>> =
+    LazyLock::new(|| Mutex::new(PtrWeakKeyHashMap::<Weak<CType>, String>::new()));
+static LOOSE_STRINGS: LazyLock<Mutex<PtrWeakKeyHashMap<Weak<CType>, String>>> =
+    LazyLock::new(|| Mutex::new(PtrWeakKeyHashMap::<Weak<CType>, String>::new()));
+static CALLABLE_STRINGS: LazyLock<Mutex<PtrWeakKeyHashMap<Weak<CType>, String>>> =
+    LazyLock::new(|| Mutex::new(PtrWeakKeyHashMap::<Weak<CType>, String>::new()));
 
 impl CType {
     #[allow(clippy::inherent_to_string)]
-    pub fn to_string(&self) -> String {
+    pub fn to_string(self: Arc<CType>) -> String {
         self.to_strict_string(true)
     }
-    pub fn to_strict_string(&self, strict: bool) -> String {
+    pub fn to_strict_string(self: Arc<CType>, strict: bool) -> String {
+        let mut strings = if strict {
+            STRICT_STRINGS.lock().unwrap()
+        } else {
+            LOOSE_STRINGS.lock().unwrap()
+        };
+        if let Some(string) = strings.get(&self) {
+            return string.clone();
+        }
         let mut unavoidable_strings = Vec::with_capacity(64);
         let mut str_parts = Vec::with_capacity(1024);
         let mut ctype_stack = Vec::with_capacity(64);
-        ctype_stack.push(self);
+        ctype_stack.push(&self);
         // Hacky re-use of CType::Infer to insert constant strings into the ctype stack
         let close_brace =
-            CLOSE_BRACE.get_or_init(|| CType::Infer("}".to_string(), "}".to_string()));
+            CLOSE_BRACE.get_or_init(|| Arc::new(CType::Infer("}".to_string(), "}".to_string())));
         let close_paren =
-            CLOSE_PAREN.get_or_init(|| CType::Infer(")".to_string(), ")".to_string()));
-        let comma = COMMA.get_or_init(|| CType::Infer(", ".to_string(), ", ".to_string()));
-        let fnarrow = FNARROW.get_or_init(|| CType::Infer(" -> ".to_string(), " -> ".to_string()));
-        let fncall = FNCALL.get_or_init(|| CType::Infer(" :: ".to_string(), " :: ".to_string()));
-        let depat = DEPAT.get_or_init(|| CType::Infer(" @ ".to_string(), " @ ".to_string()));
-        let imarrow = IMARROW.get_or_init(|| CType::Infer(" <- ".to_string(), " <- ".to_string()));
-        let or = OR.get_or_init(|| CType::Infer(" | ".to_string(), " | ".to_string()));
-        let dot = DOT.get_or_init(|| CType::Infer(".".to_string(), ".".to_string()));
-        let and = AND.get_or_init(|| CType::Infer(" & ".to_string(), " & ".to_string()));
+            CLOSE_PAREN.get_or_init(|| Arc::new(CType::Infer(")".to_string(), ")".to_string())));
+        let comma =
+            COMMA.get_or_init(|| Arc::new(CType::Infer(", ".to_string(), ", ".to_string())));
+        let fnarrow =
+            FNARROW.get_or_init(|| Arc::new(CType::Infer(" -> ".to_string(), " -> ".to_string())));
+        let fncall =
+            FNCALL.get_or_init(|| Arc::new(CType::Infer(" :: ".to_string(), " :: ".to_string())));
+        let depat =
+            DEPAT.get_or_init(|| Arc::new(CType::Infer(" @ ".to_string(), " @ ".to_string())));
+        let imarrow =
+            IMARROW.get_or_init(|| Arc::new(CType::Infer(" <- ".to_string(), " <- ".to_string())));
+        let or = OR.get_or_init(|| Arc::new(CType::Infer(" | ".to_string(), " | ".to_string())));
+        let dot = DOT.get_or_init(|| Arc::new(CType::Infer(".".to_string(), ".".to_string())));
+        let and = AND.get_or_init(|| Arc::new(CType::Infer(" & ".to_string(), " & ".to_string())));
         let open_bracket =
-            OPEN_BRACKET.get_or_init(|| CType::Infer("[".to_string(), "[".to_string()));
+            OPEN_BRACKET.get_or_init(|| Arc::new(CType::Infer("[".to_string(), "[".to_string())));
         let close_bracket =
-            CLOSE_BRACKET.get_or_init(|| CType::Infer("]".to_string(), "]".to_string()));
-        let add = ADD.get_or_init(|| CType::Infer(" + ".to_string(), " + ".to_string()));
-        let sub = SUB.get_or_init(|| CType::Infer(" - ".to_string(), " - ".to_string()));
-        let mul = MUL.get_or_init(|| CType::Infer(" * ".to_string(), " * ".to_string()));
-        let div = DIV.get_or_init(|| CType::Infer(" / ".to_string(), " / ".to_string()));
-        let tmod = MOD.get_or_init(|| CType::Infer(" % ".to_string(), " % ".to_string()));
-        let pow = POW.get_or_init(|| CType::Infer(" ** ".to_string(), " ** ".to_string()));
-        let band = BAND.get_or_init(|| CType::Infer(" && ".to_string(), " && ".to_string()));
-        let bor = BOR.get_or_init(|| CType::Infer(" || ".to_string(), " || ".to_string()));
-        let xor = XOR.get_or_init(|| CType::Infer(" ^ ".to_string(), " ^ ".to_string()));
-        let nand = NAND.get_or_init(|| CType::Infer(" !& ".to_string(), " !& ".to_string()));
-        let nor = NOR.get_or_init(|| CType::Infer(" !| ".to_string(), " !| ".to_string()));
-        let xnor = XNOR.get_or_init(|| CType::Infer(" !^ ".to_string(), " !^ ".to_string()));
-        let eq = EQ.get_or_init(|| CType::Infer(" == ".to_string(), " == ".to_string()));
-        let neq = NEQ.get_or_init(|| CType::Infer(" != ".to_string(), " != ".to_string()));
-        let lt = LT.get_or_init(|| CType::Infer(" < ".to_string(), " < ".to_string()));
-        let lte = LTE.get_or_init(|| CType::Infer(" <= ".to_string(), " <= ".to_string()));
-        let gt = GT.get_or_init(|| CType::Infer(" > ".to_string(), " > ".to_string()));
-        let gte = GTE.get_or_init(|| CType::Infer(" >= ".to_string(), " >= ".to_string()));
+            CLOSE_BRACKET.get_or_init(|| Arc::new(CType::Infer("]".to_string(), "]".to_string())));
+        let add = ADD.get_or_init(|| Arc::new(CType::Infer(" + ".to_string(), " + ".to_string())));
+        let sub = SUB.get_or_init(|| Arc::new(CType::Infer(" - ".to_string(), " - ".to_string())));
+        let mul = MUL.get_or_init(|| Arc::new(CType::Infer(" * ".to_string(), " * ".to_string())));
+        let div = DIV.get_or_init(|| Arc::new(CType::Infer(" / ".to_string(), " / ".to_string())));
+        let tmod = MOD.get_or_init(|| Arc::new(CType::Infer(" % ".to_string(), " % ".to_string())));
+        let pow =
+            POW.get_or_init(|| Arc::new(CType::Infer(" ** ".to_string(), " ** ".to_string())));
+        let band =
+            BAND.get_or_init(|| Arc::new(CType::Infer(" && ".to_string(), " && ".to_string())));
+        let bor = BOR.get_or_init(|| Arc::new(CType::Infer(" ||".to_string(), " ||".to_string())));
+        let xor = XOR.get_or_init(|| Arc::new(CType::Infer(" ^ ".to_string(), " ^ ".to_string())));
+        let nand =
+            NAND.get_or_init(|| Arc::new(CType::Infer(" !& ".to_string(), " !& ".to_string())));
+        let nor =
+            NOR.get_or_init(|| Arc::new(CType::Infer(" !| ".to_string(), " !| ".to_string())));
+        let xnor =
+            XNOR.get_or_init(|| Arc::new(CType::Infer(" !^ ".to_string(), " !^ ".to_string())));
+        let eq = EQ.get_or_init(|| Arc::new(CType::Infer(" == ".to_string(), " == ".to_string())));
+        let neq =
+            NEQ.get_or_init(|| Arc::new(CType::Infer(" != ".to_string(), " != ".to_string())));
+        let lt = LT.get_or_init(|| Arc::new(CType::Infer(" < ".to_string(), " < ".to_string())));
+        let lte =
+            LTE.get_or_init(|| Arc::new(CType::Infer(" <= ".to_string(), " <= ".to_string())));
+        let gt = GT.get_or_init(|| Arc::new(CType::Infer(" > ".to_string(), " > ".to_string())));
+        let gte =
+            GTE.get_or_init(|| Arc::new(CType::Infer(" >= ".to_string(), " >= ".to_string())));
         while let Some(element) = ctype_stack.pop() {
-            match element {
+            match &**element {
                 CType::Void => str_parts.push("()"),
                 CType::Infer(s, _) => str_parts.push(s),
                 CType::Type(n, t) => match strict {
@@ -612,18 +643,24 @@ impl CType {
                 }
             }
         }
-        str_parts.join("")
+        strings.insert(self.clone(), str_parts.join(""));
+        strings.get(&self).unwrap().clone()
     }
-    pub fn to_functional_string(&self) -> String {
+    pub fn to_functional_string(self: Arc<CType>) -> String {
+        let mut functional_strings = FUNCTIONAL_STRINGS.lock().unwrap();
+        if let Some(string) = functional_strings.get(&self) {
+            return string.clone();
+        }
         let mut unavoidable_strings = Vec::with_capacity(64);
         let mut str_parts = Vec::with_capacity(1024);
         let mut ctype_stack = Vec::with_capacity(64);
-        ctype_stack.push(self);
+        ctype_stack.push(&self);
         let close_brace =
-            CLOSE_BRACE.get_or_init(|| CType::Infer("}".to_string(), "}".to_string()));
-        let comma = COMMA.get_or_init(|| CType::Infer(", ".to_string(), ", ".to_string()));
+            CLOSE_BRACE.get_or_init(|| Arc::new(CType::Infer("}".to_string(), "}".to_string())));
+        let comma =
+            COMMA.get_or_init(|| Arc::new(CType::Infer(", ".to_string(), ", ".to_string())));
         while let Some(element) = ctype_stack.pop() {
-            match element {
+            match &**element {
                 CType::Void => str_parts.push("void"),
                 CType::Infer(s, _) => str_parts.push(s),
                 CType::Type(_, t) => ctype_stack.push(t),
@@ -1114,18 +1151,25 @@ impl CType {
                 }
             }
         }
-        str_parts.join("")
+        functional_strings.insert(self.clone(), str_parts.join(""));
+        functional_strings.get(&self).unwrap().clone()
     }
-    pub fn to_callable_string(&self) -> String {
+    pub fn to_callable_string(self: Arc<CType>) -> String {
         // TODO: Be more efficient with this later
-        match self {
-            CType::Int(_) | CType::Float(_) => format!("_{}", self.to_functional_string()),
+        let mut callable_strings = CALLABLE_STRINGS.lock().unwrap();
+        if let Some(string) = callable_strings.get(&self) {
+            return string.clone();
+        }
+        let string = match &*self {
+            CType::Int(_) | CType::Float(_) => format!("_{}", self.clone().to_functional_string()),
             CType::Type(n, t) => match **t {
-                CType::Int(_) | CType::Float(_) => format!("_{}", self.to_functional_string()),
+                CType::Int(_) | CType::Float(_) => {
+                    format!("_{}", self.clone().to_functional_string())
+                }
                 CType::Binds(..) => n.clone(),
-                _ => self.to_functional_string(),
+                _ => self.clone().to_functional_string(),
             },
-            _ => self.to_functional_string(),
+            _ => self.clone().to_functional_string(),
         }
         .chars()
         .map(|c| match c {
@@ -1139,7 +1183,9 @@ impl CType {
             '~' => 'y',
             _ => '_',
         })
-        .collect::<String>()
+        .collect::<String>();
+        callable_strings.insert(self.clone(), string);
+        callable_strings.get(&self).unwrap().clone()
     }
     pub fn degroup(self: Arc<CType>) -> Arc<CType> {
         match &*self {
@@ -1334,72 +1380,81 @@ impl CType {
     // generic type names, we succeed, otherwise we have to fail on being unable to resolve
     // specific generics.
     pub fn infer_generics_inner_loop(
-        generic_types: &mut HashMap<String, CType>,
-        arg_type_vec: Vec<(&CType, &CType)>,
+        generic_types: &mut HashMap<String, Arc<CType>>,
+        arg_type_vec: Vec<(Arc<CType>, Arc<CType>)>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         for (a, i) in arg_type_vec {
             let mut arg = vec![a];
             let mut input = vec![i];
-            while !arg.is_empty() {
-                let a = arg.pop();
-                let i = input.pop();
-                match (a, i) {
-                    (Some(CType::Void), Some(CType::Void)) => { /* Do nothing */ }
-                    (Some(CType::Infer(s1, _)), Some(CType::Infer(s2, _))) if s1 == s2 => {
+            while let (Some(a), Some(i)) = (arg.pop(), input.pop()) {
+                match (&*a, &*i) {
+                    (CType::Void, CType::Void) => { /* Do nothing */ }
+                    (CType::Infer(s1, _), CType::Infer(s2, _)) if s1 == s2 => {
                         // This is not an error, but we can't garner any useful information here
                     }
-                    (Some(CType::Infer(s, _)), _) => {
+                    (CType::Infer(s, _), _) => {
                         return Err(format!(
                             "While attempting to infer generics found an inference type {} as an input somehow",
                             s
                         )
                         .into());
                     }
-                    (Some(CType::Type(_, t1)), Some(CType::Type(_, t2))) => {
-                        arg.push(t1);
-                        input.push(t2);
+                    (CType::Type(_, t1), CType::Type(_, t2)) => {
+                        arg.push(t1.clone());
+                        input.push(t2.clone());
                     }
-                    (Some(CType::Type(_, t1)), Some(b)) if !matches!(&**t1, CType::Binds(..)) => {
-                        arg.push(t1);
-                        input.push(b);
+                    (CType::Type(_, t1), _) if !matches!(&**t1, CType::Binds(..)) => {
+                        arg.push(t1.clone());
+                        input.push(i.clone());
                     }
-                    (Some(a), Some(CType::Type(_, t2))) if !matches!(&**t2, CType::Binds(..)) => {
-                        arg.push(a);
-                        input.push(t2);
+                    (_, CType::Type(_, t2)) if !matches!(&**t2, CType::Binds(..)) => {
+                        arg.push(a.clone());
+                        input.push(t2.clone());
                     }
-                    (Some(CType::Generic(_, _, t)), Some(CType::Function(..)))
+                    (CType::Generic(_, _, t), CType::Function(..))
                         if matches!(&**t, CType::Function(..)) =>
                     {
                         // TODO: How to get the generic args to compare correctly
-                        arg.push(t);
-                        input.push(i.unwrap());
+                        arg.push(t.clone());
+                        input.push(i.clone());
                     }
-                    (Some(CType::Generic(..)), _) => {
+                    (CType::Generic(..), _) => {
                         return Err(format!(
                             "Ran into an unresolved generic in the arguments list: {:?}",
                             arg
                         )
                         .into());
                     }
-                    (Some(CType::Binds(n1, ts1)), Some(CType::Binds(n2, ts2))) => {
+                    (CType::Binds(n1, ts1), CType::Binds(n2, ts2)) => {
                         if ts1.len() != ts2.len() {
                             // TODO: Better generic arg matching
-                            return Err(format!("Mismatched resolved bound generic types {}{{{}}} and {}{{{}}} during inference", n1.to_strict_string(false), ts1.iter().map(|t| t.to_strict_string(false)).collect::<Vec<String>>().join(", "), n2.to_strict_string(false), ts2.iter().map(|t| t.to_strict_string(false)).collect::<Vec<String>>().join(", ")).into());
+                            return Err(format!(
+                                "Mismatched resolved bound generic types {}{{{}}} and {}{{{}}} during inference",
+                                n1.clone().to_strict_string(false),
+                                ts1
+                                    .iter()
+                                    .map(|t| t.clone().to_strict_string(false))
+                                    .collect::<Vec<String>>()
+                                    .join(", "),
+                                n2.clone().to_strict_string(false),
+                                ts2
+                                    .iter()
+                                    .map(|t| t.clone().to_strict_string(false))
+                                    .collect::<Vec<String>>()
+                                    .join(", ")
+                            ).into());
                         }
-                        arg.push(n1);
-                        input.push(n2);
+                        arg.push(n1.clone());
+                        input.push(n2.clone());
                         // Enqueue the bound types for checking purposes
                         for t1 in ts1 {
-                            arg.push(t1);
+                            arg.push(t1.clone());
                         }
                         for t2 in ts2 {
-                            input.push(t2);
+                            input.push(t2.clone());
                         }
                     }
-                    (
-                        Some(CType::IntrinsicGeneric(n1, s1)),
-                        Some(CType::IntrinsicGeneric(n2, s2)),
-                    ) => {
+                    (CType::IntrinsicGeneric(n1, s1), CType::IntrinsicGeneric(n2, s2)) => {
                         if !(n1 == n2 && s1 == s2) {
                             return Err(format!(
                                 "Mismatched generics {} and {} during inference",
@@ -1408,7 +1463,7 @@ impl CType {
                             .into());
                         }
                     }
-                    (Some(CType::Int(i1)), Some(CType::Int(i2))) => {
+                    (CType::Int(i1), CType::Int(i2)) => {
                         if i1 != i2 {
                             return Err(format!(
                                 "Mismatched integers {} and {} during inference",
@@ -1417,7 +1472,7 @@ impl CType {
                             .into());
                         }
                     }
-                    (Some(CType::Float(f1)), Some(CType::Float(f2))) => {
+                    (CType::Float(f1), CType::Float(f2)) => {
                         if f1 != f2 {
                             return Err(format!(
                                 "Mismatched floats {} and {} during inference",
@@ -1426,12 +1481,12 @@ impl CType {
                             .into());
                         }
                     }
-                    (Some(CType::Bool(b1)), Some(CType::Bool(b2))) => {
+                    (CType::Bool(b1), CType::Bool(b2)) => {
                         if b1 != b2 {
                             return Err("Mismatched booleans during inference".to_string().into());
                         }
                     }
-                    (Some(CType::TString(s1)), Some(CType::TString(s2))) => {
+                    (CType::TString(s1), CType::TString(s2)) => {
                         if s1 != s2 {
                             return Err(format!(
                                 "Mismatched strings {} and {} during inference",
@@ -1440,114 +1495,114 @@ impl CType {
                             .into());
                         }
                     }
-                    (Some(CType::Group(g1)), Some(CType::Group(g2))) => {
-                        arg.push(g1);
-                        input.push(g2);
+                    (CType::Group(g1), CType::Group(g2)) => {
+                        arg.push(g1.clone());
+                        input.push(g2.clone());
                     }
-                    (Some(CType::Group(g1)), Some(b)) => {
-                        arg.push(g1);
-                        input.push(b);
+                    (CType::Group(g1), _) => {
+                        arg.push(g1.clone());
+                        input.push(i.clone());
                     }
-                    (Some(a), Some(CType::Group(g2))) => {
-                        arg.push(a);
-                        input.push(g2);
+                    (_, CType::Group(g2)) => {
+                        arg.push(a.clone());
+                        input.push(g2.clone());
                     }
-                    (Some(CType::Function(i1, o1)), Some(CType::Function(i2, o2))) => {
+                    (CType::Function(i1, o1), CType::Function(i2, o2)) => {
                         match &**i1 {
                             CType::Tuple(ts1) if ts1.len() == 1 => {
-                                arg.push(&ts1[0]);
+                                arg.push(ts1[0].clone());
                             }
-                            otherwise => arg.push(otherwise),
+                            _otherwise => arg.push(i1.clone()),
                         }
-                        arg.push(o1);
+                        arg.push(o1.clone());
                         match &**i2 {
                             CType::Tuple(ts2) if ts2.len() == 1 => {
-                                input.push(&ts2[0]);
+                                input.push(ts2[0].clone());
                             }
-                            otherwise => input.push(otherwise),
+                            _otherwise => input.push(i2.clone()),
                         }
-                        input.push(o2);
+                        input.push(o2.clone());
                     }
-                    (Some(CType::Call(n1, f1)), Some(CType::Call(n2, f2))) => {
-                        arg.push(n1);
-                        arg.push(f1);
-                        input.push(n2);
-                        input.push(f2);
+                    (CType::Call(n1, f1), CType::Call(n2, f2)) => {
+                        arg.push(n1.clone());
+                        arg.push(f1.clone());
+                        input.push(n2.clone());
+                        input.push(f2.clone());
                     }
-                    (Some(CType::Infix(o1)), Some(CType::Infix(o2))) => {
-                        arg.push(o1);
-                        input.push(o2);
+                    (CType::Infix(o1), CType::Infix(o2)) => {
+                        arg.push(o1.clone());
+                        input.push(o2.clone());
                     }
-                    (Some(CType::Prefix(o1)), Some(CType::Prefix(o2))) => {
-                        arg.push(o1);
-                        input.push(o2);
+                    (CType::Prefix(o1), CType::Prefix(o2)) => {
+                        arg.push(o1.clone());
+                        input.push(o2.clone());
                     }
-                    (Some(CType::Method(f1)), Some(CType::Method(f2))) => {
-                        arg.push(f1);
-                        input.push(f2);
+                    (CType::Method(f1), CType::Method(f2)) => {
+                        arg.push(f1.clone());
+                        input.push(f2.clone());
                     }
-                    (Some(CType::Property(p1)), Some(CType::Property(p2))) => {
-                        arg.push(p1);
-                        input.push(p2);
+                    (CType::Property(p1), CType::Property(p2)) => {
+                        arg.push(p1.clone());
+                        input.push(p2.clone());
                     }
-                    (Some(CType::Cast(t1)), Some(CType::Cast(t2))) => {
-                        arg.push(t1);
-                        input.push(t2);
+                    (CType::Cast(t1), CType::Cast(t2)) => {
+                        arg.push(t1.clone());
+                        input.push(t2.clone());
                     }
-                    (Some(CType::Own(t1)), Some(CType::Own(t2))) => {
-                        arg.push(t1);
-                        input.push(t2);
+                    (CType::Own(t1), CType::Own(t2)) => {
+                        arg.push(t1.clone());
+                        input.push(t2.clone());
                     }
-                    (Some(CType::Deref(t1)), Some(CType::Deref(t2))) => {
-                        arg.push(t1);
-                        input.push(t2);
+                    (CType::Deref(t1), CType::Deref(t2)) => {
+                        arg.push(t1.clone());
+                        input.push(t2.clone());
                     }
-                    (Some(CType::Mut(t1)), Some(CType::Mut(t2))) => {
-                        arg.push(t1);
-                        input.push(t2);
+                    (CType::Mut(t1), CType::Mut(t2)) => {
+                        arg.push(t1.clone());
+                        input.push(t2.clone());
                     }
-                    (Some(CType::Dependency(n1, v1)), Some(CType::Dependency(n2, v2))) => {
-                        arg.push(n1);
-                        arg.push(v1);
-                        input.push(n2);
-                        input.push(v2);
+                    (CType::Dependency(n1, v1), CType::Dependency(n2, v2)) => {
+                        arg.push(n1.clone());
+                        arg.push(v1.clone());
+                        input.push(n2.clone());
+                        input.push(v2.clone());
                     }
-                    (Some(CType::Rust(d1)), Some(CType::Rust(d2))) => {
-                        arg.push(d1);
-                        input.push(d2);
+                    (CType::Rust(d1), CType::Rust(d2)) => {
+                        arg.push(d1.clone());
+                        input.push(d2.clone());
                     }
-                    (Some(CType::Node(d1)), Some(CType::Node(d2))) => {
-                        arg.push(d1);
-                        input.push(d2);
+                    (CType::Node(d1), CType::Node(d2)) => {
+                        arg.push(d1.clone());
+                        input.push(d2.clone());
                     }
-                    (Some(CType::From(d1)), Some(CType::From(d2))) => {
-                        arg.push(d1);
-                        input.push(d2);
+                    (CType::From(d1), CType::From(d2)) => {
+                        arg.push(d1.clone());
+                        input.push(d2.clone());
                     }
-                    (Some(CType::Import(n1, d1)), Some(CType::Import(n2, d2))) => {
-                        arg.push(n1);
-                        arg.push(d1);
-                        input.push(n2);
-                        input.push(d2);
+                    (CType::Import(n1, d1), CType::Import(n2, d2)) => {
+                        arg.push(n1.clone());
+                        arg.push(d1.clone());
+                        input.push(n2.clone());
+                        input.push(d2.clone());
                     }
-                    (Some(CType::Tuple(ts1)), Some(CType::Tuple(ts2))) => {
+                    (CType::Tuple(ts1), CType::Tuple(ts2)) => {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched tuple types {} and {} found during inference",
-                                a.unwrap().to_string(),
-                                i.unwrap().to_string()
+                                a.clone().to_string(),
+                                i.clone().to_string()
                             )
                             .into());
                         }
                         // TODO: Allow out-of-order listing based on Field labels
                         for t1 in ts1 {
-                            arg.push(t1);
+                            arg.push(t1.clone());
                         }
                         for t2 in ts2 {
-                            input.push(t2);
+                            input.push(t2.clone());
                         }
                     }
-                    (Some(CType::Field(l1, t1)), Some(CType::Field(l2, t2))) => {
+                    (CType::Field(l1, t1), CType::Field(l2, t2)) => {
                         // TODO: Allow out-of-order listing based on Field labels
                         if l1 != l2 {
                             return Err(format!(
@@ -1556,44 +1611,44 @@ impl CType {
                             )
                             .into());
                         }
-                        arg.push(t1);
-                        input.push(t2);
+                        arg.push(t1.clone());
+                        input.push(t2.clone());
                     }
-                    (Some(a), Some(CType::Field(_, t2))) => {
-                        arg.push(a);
-                        input.push(t2);
+                    (_, CType::Field(_, t2)) => {
+                        arg.push(a.clone());
+                        input.push(t2.clone());
                     }
-                    (Some(CType::Field(_, t1)), Some(b)) => {
-                        arg.push(t1);
-                        input.push(b);
+                    (CType::Field(_, t1), _) => {
+                        arg.push(t1.clone());
+                        input.push(i.clone());
                     }
-                    (Some(CType::Either(ts1)), Some(CType::Either(ts2))) => {
+                    (CType::Either(ts1), CType::Either(ts2)) => {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched either types {} and {} found during inference",
-                                a.unwrap().to_string(),
-                                i.unwrap().to_string()
+                                a.clone().to_string(),
+                                i.clone().to_string()
                             )
                             .into());
                         }
                         for t1 in ts1 {
-                            arg.push(t1);
+                            arg.push(t1.clone());
                         }
                         for t2 in ts2 {
-                            input.push(t2);
+                            input.push(t2.clone());
                         }
                     }
-                    (Some(CType::Buffer(t1, s1)), Some(CType::Buffer(t2, s2))) => {
-                        arg.push(t1);
-                        arg.push(s1);
-                        input.push(t2);
-                        input.push(s2);
+                    (CType::Buffer(t1, s1), CType::Buffer(t2, s2)) => {
+                        arg.push(t1.clone());
+                        arg.push(s1.clone());
+                        input.push(t2.clone());
+                        input.push(s2.clone());
                     }
-                    (Some(CType::Array(t1)), Some(CType::Array(t2))) => {
-                        arg.push(t1);
-                        input.push(t2);
+                    (CType::Array(t1), CType::Array(t2)) => {
+                        arg.push(t1.clone());
+                        input.push(t2.clone());
                     }
-                    (Some(CType::AnyOf(ts)), Some(CType::Infer(g, _))) => {
+                    (CType::AnyOf(ts), CType::Infer(g, _)) => {
                         // Found an interesting inference situation where more than one answer may
                         // be right. We need to check the existing possible matches (if any) and
                         // intersect it with this AnyOf set, then store the set. If there is only
@@ -1628,55 +1683,51 @@ impl CType {
                             if matches.is_empty() {
                                 // Do nothing
                             } else if matches.len() == 1 {
-                                generic_types.insert(
-                                    g.clone(),
-                                    (*matches.into_iter().nth(0).unwrap()).clone(),
-                                );
+                                generic_types
+                                    .insert(g.clone(), matches.into_iter().nth(0).unwrap().clone());
                             } else {
-                                generic_types.insert(g.clone(), CType::AnyOf(matches));
+                                generic_types.insert(g.clone(), Arc::new(CType::AnyOf(matches)));
                             }
                         } else {
-                            generic_types.insert(g.clone(), CType::AnyOf(ts.clone()));
+                            generic_types.insert(g.clone(), Arc::new(CType::AnyOf(ts.clone())));
                         }
                     }
-                    (Some(CType::Fail(m1)), Some(CType::Fail(m2))) => {
+                    (CType::Fail(m1), CType::Fail(m2)) => {
                         if m1 != m2 {
                             return Err(
                                 "The two types want to fail in different ways. How bizarre!".into(),
                             );
                         }
                     }
-                    (Some(CType::Add(ts1)), Some(CType::Add(ts2))) => {
+                    (CType::Add(ts1), CType::Add(ts2)) => {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched add types {} and {} found during inference",
-                                a.unwrap().to_string(),
-                                i.unwrap().to_string()
+                                a.clone().to_string(),
+                                i.clone().to_string()
                             )
                             .into());
                         }
                         for t1 in ts1 {
-                            arg.push(t1);
+                            arg.push(t1.clone());
                         }
                         for t2 in ts2 {
-                            input.push(t2);
+                            input.push(t2.clone());
                         }
                     }
                     (
-                        Some(CType::Int(_) | CType::Float(_)),
-                        Some(
-                            CType::Add(_)
-                            | CType::Sub(_)
-                            | CType::Mul(_)
-                            | CType::Div(_)
-                            | CType::Mod(_)
-                            | CType::Pow(_)
-                            | CType::Min(_)
-                            | CType::Max(_)
-                            | CType::Neg(_)
-                            | CType::Len(_)
-                            | CType::Size(_),
-                        ),
+                        CType::Int(_) | CType::Float(_),
+                        CType::Add(_)
+                        | CType::Sub(_)
+                        | CType::Mul(_)
+                        | CType::Div(_)
+                        | CType::Mod(_)
+                        | CType::Pow(_)
+                        | CType::Min(_)
+                        | CType::Max(_)
+                        | CType::Neg(_)
+                        | CType::Len(_)
+                        | CType::Size(_),
                     ) => {
                         // TODO: This should allow us to constrain which generic values are
                         // possible for each generic to infer on the right-hand-side, but for now
@@ -1684,407 +1735,405 @@ impl CType {
                         // inferred separately in the type system
                     }
                     (
-                        Some(CType::Int(_) | CType::Bool(_)),
-                        Some(
-                            CType::And(_)
-                            | CType::Or(_)
-                            | CType::Xor(_)
-                            | CType::Not(_)
-                            | CType::Nand(_)
-                            | CType::Nor(_)
-                            | CType::Xnor(_),
-                        ),
+                        CType::Int(_) | CType::Bool(_),
+                        CType::And(_)
+                        | CType::Or(_)
+                        | CType::Xor(_)
+                        | CType::Not(_)
+                        | CType::Nand(_)
+                        | CType::Nor(_)
+                        | CType::Xnor(_),
                     ) => {
                         // TODO: Also skipping this for now
                     }
                     (
-                        Some(CType::Int(_) | CType::Float(_) | CType::TString(_) | CType::Bool(_)),
-                        Some(CType::TEq(_) | CType::Neq(_)),
+                        CType::Int(_) | CType::Float(_) | CType::TString(_) | CType::Bool(_),
+                        CType::TEq(_) | CType::Neq(_),
                     ) => {
                         // TODO: Also skipping this for now
                     }
                     (
-                        Some(CType::Int(_) | CType::Float(_) | CType::TString(_)),
-                        Some(CType::Lt(_) | CType::Lte(_) | CType::Gt(_) | CType::Gte(_)),
+                        CType::Int(_) | CType::Float(_) | CType::TString(_),
+                        CType::Lt(_) | CType::Lte(_) | CType::Gt(_) | CType::Gte(_),
                     ) => {
                         // TODO: Also skipping this for now
                     }
-                    (Some(CType::Sub(ts1)), Some(CType::Sub(ts2))) => {
+                    (CType::Sub(ts1), CType::Sub(ts2)) => {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched sub types {} and {} found during inference",
-                                a.unwrap().to_string(),
-                                i.unwrap().to_string()
+                                a.clone().to_string(),
+                                i.clone().to_string()
                             )
                             .into());
                         }
                         for t1 in ts1 {
-                            arg.push(t1);
+                            arg.push(t1.clone());
                         }
                         for t2 in ts2 {
-                            input.push(t2);
+                            input.push(t2.clone());
                         }
                     }
-                    (Some(CType::Mul(ts1)), Some(CType::Mul(ts2))) => {
+                    (CType::Mul(ts1), CType::Mul(ts2)) => {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched mul types {} and {} found during inference",
-                                a.unwrap().to_string(),
-                                i.unwrap().to_string()
+                                a.clone().to_string(),
+                                i.clone().to_string()
                             )
                             .into());
                         }
                         for t1 in ts1 {
-                            arg.push(t1);
+                            arg.push(t1.clone());
                         }
                         for t2 in ts2 {
-                            input.push(t2);
+                            input.push(t2.clone());
                         }
                     }
-                    (Some(CType::Div(ts1)), Some(CType::Div(ts2))) => {
+                    (CType::Div(ts1), CType::Div(ts2)) => {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched div types {} and {} found during inference",
-                                a.unwrap().to_string(),
-                                i.unwrap().to_string()
+                                a.clone().to_string(),
+                                i.clone().to_string()
                             )
                             .into());
                         }
                         for t1 in ts1 {
-                            arg.push(t1);
+                            arg.push(t1.clone());
                         }
                         for t2 in ts2 {
-                            input.push(t2);
+                            input.push(t2.clone());
                         }
                     }
-                    (Some(CType::Mod(ts1)), Some(CType::Mod(ts2))) => {
+                    (CType::Mod(ts1), CType::Mod(ts2)) => {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched div types {} and {} found during inference",
-                                a.unwrap().to_string(),
-                                i.unwrap().to_string()
+                                a.clone().to_string(),
+                                i.clone().to_string()
                             )
                             .into());
                         }
                         for t1 in ts1 {
-                            arg.push(t1);
+                            arg.push(t1.clone());
                         }
                         for t2 in ts2 {
-                            input.push(t2);
+                            input.push(t2.clone());
                         }
                     }
-                    (Some(CType::Pow(ts1)), Some(CType::Pow(ts2))) => {
+                    (CType::Pow(ts1), CType::Pow(ts2)) => {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched pow types {} and {} found during inference",
-                                a.unwrap().to_string(),
-                                i.unwrap().to_string()
+                                a.clone().to_string(),
+                                i.clone().to_string()
                             )
                             .into());
                         }
                         for t1 in ts1 {
-                            arg.push(t1);
+                            arg.push(t1.clone());
                         }
                         for t2 in ts2 {
-                            input.push(t2);
+                            input.push(t2.clone());
                         }
                     }
-                    (Some(CType::Min(ts1)), Some(CType::Min(ts2))) => {
+                    (CType::Min(ts1), CType::Min(ts2)) => {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched min types {} and {} found during inference",
-                                a.unwrap().to_string(),
-                                i.unwrap().to_string()
+                                a.clone().to_string(),
+                                i.clone().to_string()
                             )
                             .into());
                         }
                         for t1 in ts1 {
-                            arg.push(t1);
+                            arg.push(t1.clone());
                         }
                         for t2 in ts2 {
-                            input.push(t2);
+                            input.push(t2.clone());
                         }
                     }
-                    (Some(CType::Max(ts1)), Some(CType::Max(ts2))) => {
+                    (CType::Max(ts1), CType::Max(ts2)) => {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched max types {} and {} found during inference",
-                                a.unwrap().to_string(),
-                                i.unwrap().to_string()
+                                a.clone().to_string(),
+                                i.clone().to_string()
                             )
                             .into());
                         }
                         for t1 in ts1 {
-                            arg.push(t1);
+                            arg.push(t1.clone());
                         }
                         for t2 in ts2 {
-                            input.push(t2);
+                            input.push(t2.clone());
                         }
                     }
-                    (Some(CType::Neg(t1)), Some(CType::Neg(t2))) => {
-                        arg.push(t1);
-                        input.push(t2);
+                    (CType::Neg(t1), CType::Neg(t2)) => {
+                        arg.push(t1.clone());
+                        input.push(t2.clone());
                     }
-                    (Some(CType::Len(t1)), Some(CType::Len(t2))) => {
-                        arg.push(t1);
-                        input.push(t2);
+                    (CType::Len(t1), CType::Len(t2)) => {
+                        arg.push(t1.clone());
+                        input.push(t2.clone());
                     }
-                    (Some(CType::Size(t1)), Some(CType::Size(t2))) => {
-                        arg.push(t1);
-                        input.push(t2);
+                    (CType::Size(t1), CType::Size(t2)) => {
+                        arg.push(t1.clone());
+                        input.push(t2.clone());
                     }
-                    (Some(CType::FileStr(t1)), Some(CType::FileStr(t2))) => {
-                        arg.push(t1);
-                        input.push(t2);
+                    (CType::FileStr(t1), CType::FileStr(t2)) => {
+                        arg.push(t1.clone());
+                        input.push(t2.clone());
                     }
-                    (Some(CType::Env(ts1)), Some(CType::Env(ts2))) => {
+                    (CType::Env(ts1), CType::Env(ts2)) => {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched env types {} and {} found during inference",
-                                a.unwrap().to_string(),
-                                i.unwrap().to_string()
+                                a.clone().to_string(),
+                                i.clone().to_string()
                             )
                             .into());
                         }
                         for t1 in ts1 {
-                            arg.push(t1);
+                            arg.push(t1.clone());
                         }
                         for t2 in ts2 {
-                            input.push(t2);
+                            input.push(t2.clone());
                         }
                     }
-                    (Some(CType::EnvExists(t1)), Some(CType::EnvExists(t2))) => {
-                        arg.push(t1);
-                        input.push(t2);
+                    (CType::EnvExists(t1), CType::EnvExists(t2)) => {
+                        arg.push(t1.clone());
+                        input.push(t2.clone());
                     }
-                    (Some(CType::TIf(t1, ts1)), Some(CType::TIf(t2, ts2))) => {
+                    (CType::TIf(t1, ts1), CType::TIf(t2, ts2)) => {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched env types {} and {} found during inference",
-                                a.unwrap().to_string(),
-                                i.unwrap().to_string()
+                                a.clone().to_string(),
+                                i.clone().to_string()
                             )
                             .into());
                         }
-                        arg.push(t1);
+                        arg.push(t1.clone());
                         for t1 in ts1 {
-                            arg.push(t1);
+                            arg.push(t1.clone());
                         }
-                        input.push(t2);
+                        input.push(t2.clone());
                         for t2 in ts2 {
-                            input.push(t2);
+                            input.push(t2.clone());
                         }
                     }
-                    (Some(CType::And(ts1)), Some(CType::And(ts2))) => {
+                    (CType::And(ts1), CType::And(ts2)) => {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched and types {} and {} found during inference",
-                                a.unwrap().to_string(),
-                                i.unwrap().to_string()
+                                a.clone().to_string(),
+                                i.clone().to_string()
                             )
                             .into());
                         }
                         for t1 in ts1 {
-                            arg.push(t1);
+                            arg.push(t1.clone());
                         }
                         for t2 in ts2 {
-                            input.push(t2);
+                            input.push(t2.clone());
                         }
                     }
-                    (Some(CType::Or(ts1)), Some(CType::Or(ts2))) => {
+                    (CType::Or(ts1), CType::Or(ts2)) => {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched or types {} and {} found during inference",
-                                a.unwrap().to_string(),
-                                i.unwrap().to_string()
+                                a.clone().to_string(),
+                                i.clone().to_string()
                             )
                             .into());
                         }
                         for t1 in ts1 {
-                            arg.push(t1);
+                            arg.push(t1.clone());
                         }
                         for t2 in ts2 {
-                            input.push(t2);
+                            input.push(t2.clone());
                         }
                     }
-                    (Some(CType::Xor(ts1)), Some(CType::Xor(ts2))) => {
+                    (CType::Xor(ts1), CType::Xor(ts2)) => {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched xor types {} and {} found during inference",
-                                a.unwrap().to_string(),
-                                i.unwrap().to_string()
+                                a.clone().to_string(),
+                                i.clone().to_string()
                             )
                             .into());
                         }
                         for t1 in ts1 {
-                            arg.push(t1);
+                            arg.push(t1.clone());
                         }
                         for t2 in ts2 {
-                            input.push(t2);
+                            input.push(t2.clone());
                         }
                     }
-                    (Some(CType::Not(t1)), Some(CType::Not(t2))) => {
-                        arg.push(t1);
-                        input.push(t2);
+                    (CType::Not(t1), CType::Not(t2)) => {
+                        arg.push(t1.clone());
+                        input.push(t2.clone());
                     }
-                    (Some(CType::Nand(ts1)), Some(CType::Nand(ts2))) => {
+                    (CType::Nand(ts1), CType::Nand(ts2)) => {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched nand types {} and {} found during inference",
-                                a.unwrap().to_string(),
-                                i.unwrap().to_string()
+                                a.clone().to_string(),
+                                i.clone().to_string()
                             )
                             .into());
                         }
                         for t1 in ts1 {
-                            arg.push(t1);
+                            arg.push(t1.clone());
                         }
                         for t2 in ts2 {
-                            input.push(t2);
+                            input.push(t2.clone());
                         }
                     }
-                    (Some(CType::Nor(ts1)), Some(CType::Nor(ts2))) => {
+                    (CType::Nor(ts1), CType::Nor(ts2)) => {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched nor types {} and {} found during inference",
-                                a.unwrap().to_string(),
-                                i.unwrap().to_string()
+                                a.clone().to_string(),
+                                i.clone().to_string()
                             )
                             .into());
                         }
                         for t1 in ts1 {
-                            arg.push(t1);
+                            arg.push(t1.clone());
                         }
                         for t2 in ts2 {
-                            input.push(t2);
+                            input.push(t2.clone());
                         }
                     }
-                    (Some(CType::Xnor(ts1)), Some(CType::Xnor(ts2))) => {
+                    (CType::Xnor(ts1), CType::Xnor(ts2)) => {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched xnor types {} and {} found during inference",
-                                a.unwrap().to_string(),
-                                i.unwrap().to_string()
+                                a.clone().to_string(),
+                                i.clone().to_string()
                             )
                             .into());
                         }
                         for t1 in ts1 {
-                            arg.push(t1);
+                            arg.push(t1.clone());
                         }
                         for t2 in ts2 {
-                            input.push(t2);
+                            input.push(t2.clone());
                         }
                     }
-                    (Some(CType::TEq(ts1)), Some(CType::TEq(ts2))) => {
+                    (CType::TEq(ts1), CType::TEq(ts2)) => {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched eq types {} and {} found during inference",
-                                a.unwrap().to_string(),
-                                i.unwrap().to_string()
+                                a.clone().to_string(),
+                                i.clone().to_string()
                             )
                             .into());
                         }
                         for t1 in ts1 {
-                            arg.push(t1);
+                            arg.push(t1.clone());
                         }
                         for t2 in ts2 {
-                            input.push(t2);
+                            input.push(t2.clone());
                         }
                     }
-                    (Some(CType::Neq(ts1)), Some(CType::Neq(ts2))) => {
+                    (CType::Neq(ts1), CType::Neq(ts2)) => {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched neq types {} and {} found during inference",
-                                a.unwrap().to_string(),
-                                i.unwrap().to_string()
+                                a.clone().to_string(),
+                                i.clone().to_string()
                             )
                             .into());
                         }
                         for t1 in ts1 {
-                            arg.push(t1);
+                            arg.push(t1.clone());
                         }
                         for t2 in ts2 {
-                            input.push(t2);
+                            input.push(t2.clone());
                         }
                     }
-                    (Some(CType::Lt(ts1)), Some(CType::Lt(ts2))) => {
+                    (CType::Lt(ts1), CType::Lt(ts2)) => {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched lt types {} and {} found during inference",
-                                a.unwrap().to_string(),
-                                i.unwrap().to_string()
+                                a.clone().to_string(),
+                                i.clone().to_string()
                             )
                             .into());
                         }
                         for t1 in ts1 {
-                            arg.push(t1);
+                            arg.push(t1.clone());
                         }
                         for t2 in ts2 {
-                            input.push(t2);
+                            input.push(t2.clone());
                         }
                     }
-                    (Some(CType::Lte(ts1)), Some(CType::Lte(ts2))) => {
+                    (CType::Lte(ts1), CType::Lte(ts2)) => {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched lte types {} and {} found during inference",
-                                a.unwrap().to_string(),
-                                i.unwrap().to_string()
+                                a.clone().to_string(),
+                                i.clone().to_string()
                             )
                             .into());
                         }
                         for t1 in ts1 {
-                            arg.push(t1);
+                            arg.push(t1.clone());
                         }
                         for t2 in ts2 {
-                            input.push(t2);
+                            input.push(t2.clone());
                         }
                     }
-                    (Some(CType::Gt(ts1)), Some(CType::Gt(ts2))) => {
+                    (CType::Gt(ts1), CType::Gt(ts2)) => {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched gt types {} and {} found during inference",
-                                a.unwrap().to_string(),
-                                i.unwrap().to_string()
+                                a.clone().to_string(),
+                                i.clone().to_string()
                             )
                             .into());
                         }
                         for t1 in ts1 {
-                            arg.push(t1);
+                            arg.push(t1.clone());
                         }
                         for t2 in ts2 {
-                            input.push(t2);
+                            input.push(t2.clone());
                         }
                     }
-                    (Some(CType::Gte(ts1)), Some(CType::Gte(ts2))) => {
+                    (CType::Gte(ts1), CType::Gte(ts2)) => {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched gte types {} and {} found during inference",
-                                a.unwrap().to_string(),
-                                i.unwrap().to_string()
+                                a.clone().to_string(),
+                                i.clone().to_string()
                             )
                             .into());
                         }
                         for t1 in ts1 {
-                            arg.push(t1);
+                            arg.push(t1.clone());
                         }
                         for t2 in ts2 {
-                            input.push(t2);
+                            input.push(t2.clone());
                         }
                     }
-                    (Some(a), Some(CType::Infer(g, _))) => {
+                    (_, CType::Infer(g, _)) => {
                         // Found the normal path to infer. If there's already a match, check if the
                         // existing match is an AnyOf and intersect the set, otherwise a simple
                         // comparison
                         if generic_types.contains_key(g) {
                             // Possible found the same thing, already, let's confirm that we aren't
                             // in an impossible scenario.
-                            let other_type: &CType = generic_types.get(g).unwrap();
+                            let other_type: &Arc<CType> = generic_types.get(g).unwrap();
                             let mut matched = false;
-                            match other_type {
+                            match &**other_type {
                                 CType::AnyOf(ts) => {
                                     for t1 in ts {
                                         if t1.clone().degroup().to_callable_string()
-                                            == Arc::new(a.clone()).degroup().to_callable_string()
+                                            == a.clone().degroup().to_callable_string()
                                         {
                                             matched = true;
                                         }
@@ -2092,7 +2141,7 @@ impl CType {
                                 }
                                 otherwise => {
                                     if Arc::new(otherwise.clone()).degroup().to_callable_string()
-                                        == Arc::new(a.clone()).degroup().to_callable_string()
+                                        == a.clone().degroup().to_callable_string()
                                     {
                                         matched = true;
                                     }
@@ -2104,7 +2153,7 @@ impl CType {
                                 return Err(format!(
                                     "Generic {} matched both {} and {}",
                                     g,
-                                    other_type.to_strict_string(false),
+                                    other_type.clone().to_strict_string(false),
                                     a.to_strict_string(false)
                                 )
                                 .into());
@@ -2113,7 +2162,7 @@ impl CType {
                             generic_types.insert(g.clone(), a.clone());
                         }
                     }
-                    (Some(CType::AnyOf(ts)), Some(b)) => {
+                    (CType::AnyOf(ts), _) => {
                         // Multiple of these `AnyOf` types may be viable. Accept all that are, and
                         // later on something should hopefully work as a tiebreaker.
                         let mut success = false;
@@ -2123,7 +2172,7 @@ impl CType {
                                 let mut generic_types_inner = generic_types.clone();
                                 if CType::infer_generics_inner_loop(
                                     &mut generic_types_inner,
-                                    vec![(t, b)],
+                                    vec![(t.clone(), i.clone())],
                                 )
                                 .is_ok()
                                 {
@@ -2134,15 +2183,15 @@ impl CType {
                                 }
                                 generic_types_inner
                             })
-                            .collect::<Vec<HashMap<String, CType>>>();
+                            .collect::<Vec<HashMap<String, Arc<CType>>>>();
                         if !success {
                             return Err(format!(
                                 "None of {} matches {}",
                                 ts.iter()
-                                    .map(|t| t.to_strict_string(false))
+                                    .map(|t| t.clone().to_strict_string(false))
                                     .collect::<Vec<String>>()
                                     .join(" & "),
-                                b.to_strict_string(false)
+                                i.clone().to_strict_string(false)
                             )
                             .into());
                         }
@@ -2155,12 +2204,12 @@ impl CType {
                                     None => {
                                         combined_types.insert(k.clone(), v.clone());
                                     }
-                                    Some(other_v) => match (other_v, v) {
+                                    Some(other_v) => match (&**other_v, &**v) {
                                         (CType::AnyOf(ots), nt) => {
                                             let mut preexists = false;
                                             for t in ots {
-                                                if t.to_functional_string()
-                                                    == nt.to_functional_string()
+                                                if t.clone().to_functional_string()
+                                                    == Arc::new(nt.clone()).to_functional_string()
                                                 {
                                                     preexists = true;
                                                 }
@@ -2168,16 +2217,17 @@ impl CType {
                                             if !preexists {
                                                 let mut nts = ots.clone();
                                                 nts.push(Arc::new(nt.clone()));
-                                                combined_types.insert(k.clone(), CType::AnyOf(nts));
+                                                combined_types
+                                                    .insert(k.clone(), Arc::new(CType::AnyOf(nts)));
                                             }
                                         }
-                                        (ot, nt) => {
+                                        (_, _) => {
                                             combined_types.insert(
                                                 k.clone(),
-                                                CType::AnyOf(vec![
-                                                    Arc::new(ot.clone()),
-                                                    Arc::new(nt.clone()),
-                                                ]),
+                                                Arc::new(CType::AnyOf(vec![
+                                                    other_v.clone(),
+                                                    v.clone(),
+                                                ])),
                                             );
                                         }
                                     },
@@ -2192,25 +2242,26 @@ impl CType {
                                 None => {
                                     generic_types.insert(k.clone(), v.clone());
                                 }
-                                Some(old_v) => match (old_v, v) {
+                                Some(old_v) => match (&**old_v, &**v) {
                                     (CType::AnyOf(oldts), CType::AnyOf(newts)) => {
                                         let mut outts = Vec::new();
                                         for ot in oldts {
                                             for nt in newts {
-                                                if ot.to_functional_string()
-                                                    == nt.to_functional_string()
+                                                if ot.clone().to_functional_string()
+                                                    == nt.clone().to_functional_string()
                                                 {
                                                     outts.push(nt.clone());
                                                 }
                                             }
                                         }
-                                        generic_types.insert(k.clone(), CType::AnyOf(outts));
+                                        generic_types
+                                            .insert(k.clone(), Arc::new(CType::AnyOf(outts)));
                                     }
-                                    (ot, CType::AnyOf(newts)) => {
+                                    (_, CType::AnyOf(newts)) => {
                                         let mut success = false;
                                         for nt in newts {
-                                            if ot.to_functional_string()
-                                                == nt.to_functional_string()
+                                            if old_v.clone().to_functional_string()
+                                                == nt.clone().to_functional_string()
                                             {
                                                 success = true;
                                                 break;
@@ -2221,19 +2272,19 @@ impl CType {
                                                 "None of {} matches {}",
                                                 newts
                                                     .iter()
-                                                    .map(|t| t.to_strict_string(false))
+                                                    .map(|t| t.clone().to_strict_string(false))
                                                     .collect::<Vec<String>>()
                                                     .join(" & "),
-                                                ot.to_strict_string(false)
+                                                old_v.clone().to_strict_string(false)
                                             )
                                             .into());
                                         }
                                     }
-                                    (CType::AnyOf(oldts), nt) => {
+                                    (CType::AnyOf(oldts), _) => {
                                         let mut success = false;
                                         for ot in oldts {
-                                            if ot.to_functional_string()
-                                                == nt.to_functional_string()
+                                            if ot.clone().to_functional_string()
+                                                == v.clone().to_functional_string()
                                             {
                                                 success = true;
                                                 break;
@@ -2244,21 +2295,23 @@ impl CType {
                                                 "None of {} matches {}",
                                                 oldts
                                                     .iter()
-                                                    .map(|t| t.to_strict_string(false))
+                                                    .map(|t| t.clone().to_strict_string(false))
                                                     .collect::<Vec<String>>()
                                                     .join(" & "),
-                                                nt.to_strict_string(false)
+                                                v.clone().to_strict_string(false)
                                             )
                                             .into());
                                         }
-                                        generic_types.insert(k.clone(), nt.clone());
+                                        generic_types.insert(k.clone(), v.clone());
                                     }
-                                    (ot, nt) => {
-                                        if ot.to_functional_string() != nt.to_functional_string() {
+                                    (_, _) => {
+                                        if old_v.clone().to_functional_string()
+                                            != v.clone().to_functional_string()
+                                        {
                                             return Err(format!(
                                                 "{} does not match {}",
-                                                ot.to_strict_string(false),
-                                                nt.to_strict_string(false),
+                                                old_v.clone().to_strict_string(false),
+                                                v.clone().to_strict_string(false),
                                             )
                                             .into());
                                         }
@@ -2291,29 +2344,29 @@ impl CType {
             .iter()
             .map(|(_, _, t)| t.clone())
             .collect::<Vec<Arc<CType>>>();
-        let mut generic_types: HashMap<String, CType> = HashMap::new();
+        let mut generic_types: HashMap<String, Arc<CType>> = HashMap::new();
         CType::infer_generics_inner_loop(
             &mut generic_types,
             call_args
                 .iter()
-                .map(|t| &**t)
-                .zip(input_types.iter().map(|t| &**t))
-                .collect::<Vec<(&CType, &CType)>>(),
+                .zip(input_types.iter())
+                .map(|(a, b)| (a.clone(), b.clone()))
+                .collect::<Vec<(Arc<CType>, Arc<CType>)>>(),
         )?;
         let mut output_types = Vec::new();
         for (generic_name, _) in generics {
             output_types.push(match generic_types.get(generic_name) {
-                Some(t) => Ok(Arc::new(t.clone())),
+                Some(t) => Ok(t.clone()),
                 None => Err(format!("No inferred type found for {}", generic_name)),
             }?);
         }
         Ok(output_types)
     }
-    pub fn accepts(&self, arg: &CType) -> bool {
-        match (self, arg) {
-            (a, CType::AnyOf(ts)) => {
+    pub fn accepts(self: Arc<CType>, arg: Arc<CType>) -> bool {
+        match (&*self, &*arg) {
+            (_a, CType::AnyOf(ts)) => {
                 for t in ts {
-                    if a.accepts(t) {
+                    if self.clone().accepts(t.clone()) {
                         return true;
                     }
                 }
@@ -2333,7 +2386,7 @@ impl CType {
                 }
             }
             // TODO: Do this without stringification
-            (a, b) => a.to_strict_string(false) == b.to_strict_string(false),
+            (_a, _b) => self.clone().to_strict_string(false) == arg.clone().to_strict_string(false),
         }
     }
 
@@ -2342,8 +2395,8 @@ impl CType {
         name: String,
         scope: &Scope,
     ) -> (CType, Vec<Arc<Function>>) {
-        let t = CType::Type(name.clone(), self.clone());
-        let constructor_fn_name = t.to_callable_string();
+        let t = Arc::new(CType::Type(name.clone(), self.clone()));
+        let constructor_fn_name = t.clone().to_callable_string();
         let mut fs = Vec::new();
         match &*self {
             CType::Import(n, d) => match &**d {
@@ -2761,7 +2814,7 @@ impl CType {
                     name: constructor_fn_name.clone(),
                     typen: Arc::new(CType::Function(
                         Arc::new(CType::Field(n.clone(), self.clone())),
-                        Arc::new(t.clone()),
+                        t.clone(),
                     )),
                     microstatements: Vec::new(),
                     kind: FnKind::Derived,
@@ -2793,10 +2846,7 @@ impl CType {
                                     let string = scope.resolve_type("string").unwrap().clone();
                                     fs.push(Arc::new(Function {
                                         name: n.clone(),
-                                        typen: Arc::new(CType::Function(
-                                            Arc::new(t.clone()),
-                                            string.clone(),
-                                        )),
+                                        typen: Arc::new(CType::Function(t.clone(), string.clone())),
                                         microstatements: vec![Microstatement::Value {
                                             typen: string,
                                             representation: format!(
@@ -2815,10 +2865,7 @@ impl CType {
                                     let int64 = scope.resolve_type("i64").unwrap().clone();
                                     fs.push(Arc::new(Function {
                                         name: n.clone(),
-                                        typen: Arc::new(CType::Function(
-                                            Arc::new(t.clone()),
-                                            int64.clone(),
-                                        )),
+                                        typen: Arc::new(CType::Function(t.clone(), int64.clone())),
                                         microstatements: vec![Microstatement::Value {
                                             typen: int64,
                                             representation: format!("{}", i),
@@ -2835,7 +2882,7 @@ impl CType {
                                     fs.push(Arc::new(Function {
                                         name: n.clone(),
                                         typen: Arc::new(CType::Function(
-                                            Arc::new(t.clone()),
+                                            t.clone(),
                                             float64.clone(),
                                         )),
                                         microstatements: vec![Microstatement::Value {
@@ -2853,10 +2900,7 @@ impl CType {
                                     let booln = scope.resolve_type("bool").unwrap().clone();
                                     fs.push(Arc::new(Function {
                                         name: n.clone(),
-                                        typen: Arc::new(CType::Function(
-                                            Arc::new(t.clone()),
-                                            booln.clone(),
-                                        )),
+                                        typen: Arc::new(CType::Function(t.clone(), booln.clone())),
                                         microstatements: vec![Microstatement::Value {
                                             typen: booln,
                                             representation: match b {
@@ -2894,7 +2938,7 @@ impl CType {
                             // Create an accessor function
                             fs.push(Arc::new(Function {
                                 name: n.clone(),
-                                typen: Arc::new(CType::Function(Arc::new(t.clone()), f.clone())),
+                                typen: Arc::new(CType::Function(t.clone(), f.clone())),
                                 microstatements: Vec::new(),
                                 kind: FnKind::Derived,
                                 origin_scope_path: scope.path.clone(),
@@ -2904,7 +2948,7 @@ impl CType {
                             // Create an `<N>` function accepting the tuple by field number
                             fs.push(Arc::new(Function {
                                 name: format!("{}", i),
-                                typen: Arc::new(CType::Function(Arc::new(t.clone()), ti.clone())),
+                                typen: Arc::new(CType::Function(t.clone(), ti.clone())),
                                 microstatements: Vec::new(),
                                 kind: FnKind::Derived,
                                 origin_scope_path: scope.path.clone(),
@@ -2917,7 +2961,7 @@ impl CType {
                     name: constructor_fn_name.clone(),
                     typen: Arc::new(CType::Function(
                         Arc::new(CType::Tuple(actual_ts.clone())),
-                        Arc::new(t.clone()),
+                        t.clone(),
                     )),
                     microstatements: Vec::new(),
                     kind: FnKind::Derived,
@@ -2935,7 +2979,7 @@ impl CType {
                         let string = scope.resolve_type("string").unwrap().clone();
                         fs.push(Arc::new(Function {
                             name: n.clone(),
-                            typen: Arc::new(CType::Function(Arc::new(t.clone()), string.clone())),
+                            typen: Arc::new(CType::Function(t.clone(), string.clone())),
                             microstatements: vec![Microstatement::Value {
                                 typen: string,
                                 representation: s.clone(),
@@ -2951,7 +2995,7 @@ impl CType {
                         let int64 = scope.resolve_type("i64").unwrap().clone();
                         fs.push(Arc::new(Function {
                             name: n.clone(),
-                            typen: Arc::new(CType::Function(Arc::new(t.clone()), int64.clone())),
+                            typen: Arc::new(CType::Function(t.clone(), int64.clone())),
                             microstatements: vec![Microstatement::Value {
                                 typen: int64,
                                 representation: format!("{}", i),
@@ -2967,7 +3011,7 @@ impl CType {
                         let float64 = scope.resolve_type("f64").unwrap().clone();
                         fs.push(Arc::new(Function {
                             name: n.clone(),
-                            typen: Arc::new(CType::Function(Arc::new(t.clone()), float64.clone())),
+                            typen: Arc::new(CType::Function(t.clone(), float64.clone())),
                             microstatements: vec![Microstatement::Value {
                                 typen: float64,
                                 representation: format!("{}", f),
@@ -2983,7 +3027,7 @@ impl CType {
                         let booln = scope.resolve_type("bool").unwrap().clone();
                         fs.push(Arc::new(Function {
                             name: n.clone(),
-                            typen: Arc::new(CType::Function(Arc::new(t.clone()), booln.clone())),
+                            typen: Arc::new(CType::Function(t.clone(), booln.clone())),
                             microstatements: vec![Microstatement::Value {
                                 typen: booln,
                                 representation: match b {
@@ -2998,7 +3042,7 @@ impl CType {
                     _ => {
                         fs.push(Arc::new(Function {
                             name: n.clone(),
-                            typen: Arc::new(CType::Function(Arc::new(t.clone()), f.clone())),
+                            typen: Arc::new(CType::Function(t.clone(), f.clone())),
                             microstatements: Vec::new(),
                             kind: FnKind::Derived,
                             origin_scope_path: scope.path.clone(),
@@ -3008,7 +3052,7 @@ impl CType {
                 // Define the constructor function
                 fs.push(Arc::new(Function {
                     name: constructor_fn_name.clone(),
-                    typen: Arc::new(CType::Function(f.clone(), Arc::new(t.clone()))),
+                    typen: Arc::new(CType::Function(f.clone(), t.clone())),
                     microstatements: Vec::new(),
                     kind: FnKind::Derived,
                     origin_scope_path: scope.path.clone(),
@@ -3021,7 +3065,7 @@ impl CType {
                     // Create a constructor fn
                     fs.push(Arc::new(Function {
                         name: constructor_fn_name.clone(),
-                        typen: Arc::new(CType::Function(e.clone(), Arc::new(t.clone()))),
+                        typen: Arc::new(CType::Function(e.clone(), t.clone())),
                         microstatements: Vec::new(),
                         kind: FnKind::Derived,
                         origin_scope_path: scope.path.clone(),
@@ -3030,8 +3074,8 @@ impl CType {
                     fs.push(Arc::new(Function {
                         name: "store".to_string(),
                         typen: Arc::new(CType::Function(
-                            Arc::new(CType::Tuple(vec![Arc::new(t.clone()), e.clone()])),
-                            Arc::new(t.clone()),
+                            Arc::new(CType::Tuple(vec![t.clone(), e.clone()])),
+                            t.clone(),
                         )),
                         microstatements: Vec::new(),
                         kind: FnKind::Derived,
@@ -3041,10 +3085,7 @@ impl CType {
                         // Have a zero-arg constructor function produce the void type, if possible.
                         fs.push(Arc::new(Function {
                             name: constructor_fn_name.clone(),
-                            typen: Arc::new(CType::Function(
-                                Arc::new(CType::Void),
-                                Arc::new(t.clone()),
-                            )),
+                            typen: Arc::new(CType::Function(Arc::new(CType::Void), t.clone())),
                             microstatements: Vec::new(),
                             kind: FnKind::Derived,
                             origin_scope_path: scope.path.clone(),
@@ -3056,7 +3097,7 @@ impl CType {
                         CType::Field(n, i) => fs.push(Arc::new(Function {
                             name: n.clone(),
                             typen: Arc::new(CType::Function(
-                                Arc::new(t.clone()),
+                                t.clone(),
                                 Arc::new(CType::Either(vec![i.clone(), Arc::new(CType::Void)])),
                             )),
                             microstatements: Vec::new(),
@@ -3066,7 +3107,7 @@ impl CType {
                         CType::Type(n, _) => fs.push(Arc::new(Function {
                             name: n.clone(),
                             typen: Arc::new(CType::Function(
-                                Arc::new(t.clone()),
+                                t.clone(),
                                 Arc::new(CType::Either(vec![e.clone(), Arc::new(CType::Void)])),
                             )),
                             microstatements: Vec::new(),
@@ -3085,7 +3126,7 @@ impl CType {
                 // implement one of these
                 fs.push(Arc::new(Function {
                     name: constructor_fn_name.clone(),
-                    typen: Arc::new(CType::Function(b.clone(), Arc::new(t.clone()))),
+                    typen: Arc::new(CType::Function(b.clone(), t.clone())),
                     microstatements: Vec::new(),
                     kind: FnKind::Derived,
                     origin_scope_path: scope.path.clone(),
@@ -3105,7 +3146,7 @@ impl CType {
                                 }
                                 v
                             })),
-                            Arc::new(t.clone()),
+                            t.clone(),
                         )),
                         microstatements: Vec::new(),
                         kind: FnKind::Derived,
@@ -3116,7 +3157,7 @@ impl CType {
                 for i in 0..size {
                     fs.push(Arc::new(Function {
                         name: format!("{}", i),
-                        typen: Arc::new(CType::Function(Arc::new(t.clone()), b.clone())),
+                        typen: Arc::new(CType::Function(t.clone(), b.clone())),
                         microstatements: Vec::new(),
                         kind: FnKind::Derived,
                         origin_scope_path: scope.path.clone(),
@@ -3133,7 +3174,7 @@ impl CType {
                 // other types, too.
                 fs.push(Arc::new(Function {
                     name: constructor_fn_name.clone(),
-                    typen: Arc::new(CType::Function(a.clone(), Arc::new(t.clone()))),
+                    typen: Arc::new(CType::Function(a.clone(), t.clone())),
                     microstatements: Vec::new(),
                     kind: FnKind::DerivedVariadic,
                     origin_scope_path: scope.path.clone(),
@@ -3214,7 +3255,7 @@ impl CType {
             }
             _ => {} // Don't do anything for other types
         }
-        (t, fs)
+        (CType::clone(&t), fs)
     }
     pub fn from_ast<'a>(
         mut scope: Scope<'a>,
@@ -3355,7 +3396,9 @@ impl CType {
         }
         let insert_t = Arc::new(t.clone());
         scope.types.insert(name.clone(), insert_t.clone());
-        scope.types.insert(t.to_callable_string(), insert_t.clone());
+        scope
+            .types
+            .insert(insert_t.clone().to_callable_string(), insert_t.clone());
         if !fs.is_empty() {
             let mut name_fn_pairs = HashMap::new();
             for f in fs {
@@ -3382,7 +3425,9 @@ impl CType {
         scope.exports.insert(name.clone(), Export::Type);
         let (_, fs) = ctype.clone().to_functions(name.clone(), &scope);
         scope.types.insert(name, ctype.clone());
-        scope.types.insert(ctype.to_callable_string(), ctype);
+        scope
+            .types
+            .insert(ctype.clone().to_callable_string(), ctype);
         if !fs.is_empty() {
             let mut name_fn_pairs = HashMap::new();
             for f in fs {
@@ -3391,7 +3436,7 @@ impl CType {
                 let mut contains_rettype = false;
                 let retstr = f.rettype().to_functional_string();
                 for t in scope.types.values() {
-                    if retstr == t.to_functional_string() {
+                    if retstr == t.clone().to_functional_string() {
                         contains_rettype = true;
                     }
                 }
@@ -3975,7 +4020,7 @@ impl CType {
                         }
                         _ => CType::fail(&format!(
                             "Cannot determine the size of {}",
-                            t.to_functional_string()
+                            t.clone().to_functional_string()
                         )),
                     })
                 }
@@ -4036,7 +4081,7 @@ impl CType {
             | CType::Prefix(_)
             | CType::Method(_)
             | CType::Property(_) => CType::fail("Cannot determine the size of a function"),
-            t => CType::fail(&format!(
+            _ => CType::fail(&format!(
                 "Getting the size of {} doesn't make any sense",
                 t.to_functional_string()
             )),
