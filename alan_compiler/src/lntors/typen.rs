@@ -6,16 +6,16 @@ use ordered_hash_map::OrderedHashMap;
 use crate::program::CType;
 
 pub fn ctype_to_rtype(
-    ctype: &CType,
+    ctype: Arc<CType>,
     in_function_type: bool,
     mut deps: OrderedHashMap<String, String>,
 ) -> Result<(String, OrderedHashMap<String, String>), Box<dyn std::error::Error>> {
-    match ctype {
+    match &*ctype {
         CType::Mut(t) if matches!(&**t, CType::Function(..)) => {
             // Special path to mark a closure as allowed to mutate its originating scope
             if let CType::Function(i, o) = &**t {
                 if let CType::Void = **i {
-                    let res = ctype_to_rtype(o, true, deps)?;
+                    let res = ctype_to_rtype(o.clone(), true, deps)?;
                     let s = res.0;
                     deps = res.1;
                     Ok((format!("impl FnMut() -> {}", s), deps))
@@ -26,7 +26,7 @@ pub fn ctype_to_rtype(
                             CType::Tuple(ts) => {
                                 let mut out = Vec::new();
                                 for t in ts {
-                                    let res = ctype_to_rtype(t, true, deps)?;
+                                    let res = ctype_to_rtype(t.clone(), true, deps)?;
                                     let s = res.0;
                                     deps = res.1;
                                     out.push(match &**t {
@@ -37,7 +37,7 @@ pub fn ctype_to_rtype(
                                 out.join(", &")
                             },
                             otherwise => {
-                                let res = ctype_to_rtype(otherwise, true, deps)?;
+                                let res = ctype_to_rtype(i.clone(), true, deps)?;
                                 let s = res.0;
                                 deps = res.1;
                                 match &otherwise {
@@ -46,7 +46,7 @@ pub fn ctype_to_rtype(
                                 }
                             }
                         }, {
-                            let res = ctype_to_rtype(o, true, deps)?;
+                            let res = ctype_to_rtype(o.clone(), true, deps)?;
                             let s = res.0;
                             deps = res.1;
                             s
@@ -58,7 +58,7 @@ pub fn ctype_to_rtype(
             }
         }
         CType::Mut(t) => {
-            ctype_to_rtype(t, in_function_type, deps)
+            ctype_to_rtype(t.clone(), in_function_type, deps)
         }
         CType::Void => Ok(("void".to_string(), deps)),
         CType::Infer(s, _) => Err(format!(
@@ -72,19 +72,19 @@ pub fn ctype_to_rtype(
                 for t in ts {
                     match &**t {
                         CType::Field(k, v) => {
-                            let res = ctype_to_rtype(v, in_function_type, deps)?;
+                            let res = ctype_to_rtype(v.clone(), in_function_type, deps)?;
                             let s = res.0;
                             deps = res.1;
                             enum_type_strs.push(format!("{}({})", k, s));
                         }
                         CType::Type(n, t) => {
-                            let res = ctype_to_rtype(t, in_function_type, deps)?;
+                            let res = ctype_to_rtype(t.clone(), in_function_type, deps)?;
                             let s = res.0;
                             deps = res.1;
                             enum_type_strs.push(format!("{}({})", n, s));
                         }
                         CType::Group(g) => {
-                            let res = ctype_to_rtype(g, in_function_type, deps)?;
+                            let res = ctype_to_rtype(g.clone(), in_function_type, deps)?;
                             let s = res.0;
                             deps = res.1;
                             enum_type_strs.push(s);
@@ -93,7 +93,7 @@ pub fn ctype_to_rtype(
                         CType::Tuple(ts) => {
                             let mut out = Vec::new();
                             for t in ts {
-                                let res = ctype_to_rtype(t, in_function_type, deps)?;
+                                let res = ctype_to_rtype(t.clone(), in_function_type, deps)?;
                                 let s = res.0;
                                 deps = res.1;
                                 out.push(s);
@@ -118,14 +118,14 @@ pub fn ctype_to_rtype(
                     match &**t {
                         CType::Field(_, t2) => {
                             if !matches!(&**t2, CType::Int(_) | CType::Float(_) | CType::Bool(_) | CType::TString(_)) {
-                                let res = ctype_to_rtype(t, in_function_type, deps)?;
+                                let res = ctype_to_rtype(t.clone(), in_function_type, deps)?;
                                 let s = res.0;
                                 deps = res.1;
                                 out.push(s);
                             }
                         }
-                        t => {
-                            let res = ctype_to_rtype(t, in_function_type, deps)?;
+                        _otherwise => {
+                            let res = ctype_to_rtype(t.clone(), in_function_type, deps)?;
                             let s = res.0;
                             deps = res.1;
                             out.push(s);
@@ -137,7 +137,7 @@ pub fn ctype_to_rtype(
             CType::Binds(name, args) => {
                 let mut out_args = Vec::new();
                 for arg in args {
-                    let res = ctype_to_rtype(arg, in_function_type, deps)?;
+                    let res = ctype_to_rtype(arg.clone(), in_function_type, deps)?;
                     let s = res.0;
                     deps = res.1;
                     out_args.push(s);
@@ -204,13 +204,13 @@ pub fn ctype_to_rtype(
                     _ => CType::fail("Bound types must be strings or rust imports"),
                 }
             }
-            otherwise => ctype_to_rtype(otherwise, in_function_type, deps),
+            _otherwise => ctype_to_rtype(t.clone(), in_function_type, deps),
         }
         CType::Generic(name, args, _) => Ok((format!("{}<{}>", name, args.join(", ")), deps)),
         CType::Binds(n, args) => {
             let mut out_args = Vec::new();
             for arg in args {
-                let res = ctype_to_rtype(arg, in_function_type, deps)?;
+                let res = ctype_to_rtype(arg.clone(), in_function_type, deps)?;
                 let s = res.0;
                 deps = res.1;
                 out_args.push(s);
@@ -288,14 +288,14 @@ pub fn ctype_to_rtype(
             _ => '_',
         }).collect::<String>(), deps)),
         CType::Group(g) => {
-            let res = ctype_to_rtype(g, in_function_type, deps)?;
+            let res = ctype_to_rtype(g.clone(), in_function_type, deps)?;
             let s = res.0;
             deps = res.1;
             Ok((format!("({})", s), deps))
         }
         CType::Function(i, o) => {
             if let CType::Void = **i {
-                let res = ctype_to_rtype(o, true, deps)?;
+                let res = ctype_to_rtype(o.clone(), true, deps)?;
                 let s = res.0;
                 deps = res.1;
                 Ok((format!("impl Fn() -> {}", s), deps))
@@ -306,21 +306,21 @@ pub fn ctype_to_rtype(
                         CType::Tuple(ts) => {
                             let mut out = Vec::new();
                             for t in ts {
-                                let res = ctype_to_rtype(t, true, deps)?;
+                                let res = ctype_to_rtype(t.clone(), true, deps)?;
                                 let s = res.0;
                                 deps = res.1;
                                 out.push(s);
                             }
                             out.join(", &")
                         },
-                        otherwise => {
-                            let res = ctype_to_rtype(otherwise, true, deps)?;
+                        _otherwise => {
+                            let res = ctype_to_rtype(i.clone(), true, deps)?;
                             let s = res.0;
                             deps = res.1;
                             s
                         }
                     }, {
-                        let res = ctype_to_rtype(o, true, deps)?;
+                        let res = ctype_to_rtype(o.clone(), true, deps)?;
                         let s = res.0;
                         deps = res.1;
                         s
@@ -334,14 +334,14 @@ pub fn ctype_to_rtype(
                 match &**t {
                     CType::Field(_, t2) => {
                         if !matches!(&**t2, CType::Int(_) | CType::Float(_) | CType::Bool(_) | CType::TString(_)) {
-                            let res = ctype_to_rtype(t, in_function_type, deps)?;
+                            let res = ctype_to_rtype(t.clone(), in_function_type, deps)?;
                             let s = res.0;
                             deps = res.1;
                             out.push(s);
                         }
                     }
-                    t => {
-                        let res = ctype_to_rtype(t, in_function_type, deps)?;
+                    _otherwise => {
+                        let res = ctype_to_rtype(t.clone(), in_function_type, deps)?;
                         let s = res.0;
                         deps = res.1;
                         out.push(s);
@@ -355,7 +355,7 @@ pub fn ctype_to_rtype(
             }
         }
         CType::Field(k, v) => {
-            let res = ctype_to_rtype(v, in_function_type, deps)?;
+            let res = ctype_to_rtype(v.clone(), in_function_type, deps)?;
             let s = res.0;
             deps = res.1;
             Ok((format!("/* {} */ {}", k, s), deps))
@@ -367,7 +367,7 @@ pub fn ctype_to_rtype(
                 let alan_error = "alan_std::AlanError".to_string();
                 match &*ts[1] {
                     CType::Void => {
-                        let res = ctype_to_rtype(&ts[0], in_function_type, deps)?;
+                        let res = ctype_to_rtype(ts[0].clone(), in_function_type, deps)?;
                         let s = res.0;
                         deps = res.1;
                         Ok((format!("Option<{}>", s), deps))
@@ -375,7 +375,7 @@ pub fn ctype_to_rtype(
                     CType::Binds(rustname, _) => match &**rustname {
                         CType::Import(n, d) => match &**n {
                             CType::TString(e) if e == &alan_error => {
-                                let res = ctype_to_rtype(&ts[0], in_function_type, deps)?;
+                                let res = ctype_to_rtype(ts[0].clone(), in_function_type, deps)?;
                                 let s = res.0;
                                 deps = res.1;
                                 match &**d {
@@ -422,7 +422,7 @@ pub fn ctype_to_rtype(
                         CType::Binds(rustname, _) => match &**rustname {
                             CType::Import(n, d) => match &**n {
                                 CType::TString(e) if e == &alan_error => {
-                                    let res = ctype_to_rtype(&ts[0], in_function_type, deps)?;
+                                    let res = ctype_to_rtype(ts[0].clone(), in_function_type, deps)?;
                                     let s = res.0;
                                     deps = res.1;
                                     match &**d {
@@ -472,7 +472,7 @@ pub fn ctype_to_rtype(
             } else {
                 for t in ts {
                     // Make sure we add all of the deps, if necessary
-                    let res = ctype_to_rtype(t, in_function_type, deps)?;
+                    let res = ctype_to_rtype(t.clone(), in_function_type, deps)?;
                     deps = res.1;
                 }
                 Ok((Arc::new(CType::Either(ts.clone())).to_callable_string(), deps))
@@ -480,7 +480,7 @@ pub fn ctype_to_rtype(
         }
         CType::AnyOf(_) => Ok(("".to_string(), deps)), // Does this make any sense in Rust?
         CType::Buffer(t, s) => {
-            let res = ctype_to_rtype(t, in_function_type, deps)?;
+            let res = ctype_to_rtype(t.clone(), in_function_type, deps)?;
             let t = res.0;
             deps = res.1;
             Ok((format!(
@@ -494,18 +494,18 @@ pub fn ctype_to_rtype(
             ), deps))
         }
         CType::Array(t) => {
-            let res = ctype_to_rtype(t, in_function_type, deps)?;
+            let res = ctype_to_rtype(t.clone(), in_function_type, deps)?;
             let s = res.0;
             deps = res.1;
             Ok((format!("Vec<{}>", s), deps))
         }
         CType::Fail(m) => CType::fail(m),
-        _otherwise => CType::fail(&format!("Lower stage of the compiler received unresolved algebraic type {}, cannot deal with it here. Please report this error.", Arc::new(ctype.clone()).to_functional_string())),
+        _otherwise => CType::fail(&format!("Lower stage of the compiler received unresolved algebraic type {}, cannot deal with it here. Please report this error.", ctype.clone().to_functional_string())),
     }
 }
 
 pub fn generate(
-    typen: &CType,
+    typen: Arc<CType>,
     mut out: OrderedHashMap<String, String>,
     mut deps: OrderedHashMap<String, String>,
 ) -> Result<
@@ -516,7 +516,7 @@ pub fn generate(
     ),
     Box<dyn std::error::Error>,
 > {
-    match &typen {
+    match &*typen {
         // The first value is the identifier, and the second is the generated source. For the
         // `Bind` and `Alias` types, these already exist in the Rust environment (or should exist,
         // assuming no bugs in the standard library) so they do not alter the generated source
@@ -525,7 +525,7 @@ pub fn generate(
         CType::Binds(n, ts) => {
             let mut genargs = Vec::new();
             for t in ts {
-                let res = ctype_to_rtype(t, false, deps)?;
+                let res = ctype_to_rtype(t.clone(), false, deps)?;
                 let s = res.0;
                 deps = res.1;
                 genargs.push(s);
@@ -594,17 +594,17 @@ pub fn generate(
         // generation. This needs a rethink and rewrite.
         CType::Type(name, t) => match &**t {
             CType::Either(_) => {
-                let res = generate(t, out, deps)?;
+                let res = generate(t.clone(), out, deps)?;
                 out = res.1;
                 deps = res.2;
-                let res = ctype_to_rtype(typen, false, deps)?;
+                let res = ctype_to_rtype(typen.clone(), false, deps)?;
                 let s = res.0;
                 deps = res.1;
                 out.insert(t.clone().to_callable_string(), s);
                 Ok((name.clone(), out, deps))
             }
             _ => {
-                let res = ctype_to_rtype(t, true, deps)?;
+                let res = ctype_to_rtype(t.clone(), true, deps)?;
                 let s = res.0;
                 deps = res.1;
 
@@ -624,7 +624,7 @@ pub fn generate(
         CType::Either(ts) => {
             // Make sure every sub-type exists
             for t in ts {
-                let res = generate(t, out, deps)?;
+                let res = generate(t.clone(), out, deps)?;
                 out = res.1;
                 deps = res.2;
             }
@@ -635,13 +635,13 @@ pub fn generate(
             Ok((out_str, out, deps)) // TODO: Put something into out?
         }
         CType::Group(g) => {
-            let res = generate(g, out, deps)?;
+            let res = generate(g.clone(), out, deps)?;
             out = res.1;
             deps = res.2;
             Ok(("".to_string(), out, deps))
         }
-        otherwise => {
-            let res = ctype_to_rtype(otherwise, false, deps)?;
+        _otherwise => {
+            let res = ctype_to_rtype(typen, false, deps)?;
             let out_str = res.0;
             deps = res.1;
             Ok((out_str, out, deps)) // TODO: Put something into out?

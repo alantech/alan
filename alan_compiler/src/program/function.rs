@@ -523,8 +523,8 @@ impl Function {
                         _ => Arc::new(CType::Void),
                     };
                     typen = Arc::new(CType::Function(input_type, actual_rettype));
-                } else if current_rettype.to_strict_string(false)
-                    != actual_rettype.to_strict_string(false)
+                } else if current_rettype.clone().to_strict_string(false)
+                    != actual_rettype.clone().to_strict_string(false)
                 {
                     CType::fail(&format!(
                         "Function {} specified to return {} but actually returns {}",
@@ -549,7 +549,7 @@ impl Function {
                         CType::fail(&format!(
                             "The return type for {}({}) could not be inferred.",
                             name,
-                            i.to_strict_string(false)
+                            i.clone().to_strict_string(false)
                         ));
                     }
                     CType::Infer(..) => { /* Do nothing */ }
@@ -606,7 +606,7 @@ impl Function {
             | FnKind::ExternalGeneric(gen_args, generic_fn_string, _) => {
                 let arg_strs = generic_types
                     .iter()
-                    .map(|a| a.to_string())
+                    .map(|a| a.clone().to_string())
                     .collect::<Vec<String>>();
                 let mut bind_str = generic_fn_string.clone();
                 for (i, arg_str) in arg_strs.iter().enumerate() {
@@ -665,8 +665,8 @@ impl Function {
                         };
                         if let CType::Infer(..) = &*rettype {
                             rettype = actual_rettype;
-                        } else if rettype.to_strict_string(false)
-                            != actual_rettype.to_strict_string(false)
+                        } else if rettype.clone().to_strict_string(false)
+                            != actual_rettype.clone().to_strict_string(false)
                         {
                             CType::fail(&format!(
                                 "Function {} specified to return {} but actually returns {}",
@@ -773,8 +773,8 @@ impl Function {
                         };
                         if let CType::Infer(..) = &*rettype {
                             rettype = actual_rettype;
-                        } else if rettype.to_strict_string(false)
-                            != actual_rettype.to_strict_string(false)
+                        } else if rettype.clone().to_strict_string(false)
+                            != actual_rettype.clone().to_strict_string(false)
                         {
                             CType::fail(&format!(
                                 "Function {} specified to return {} but actually returns {}",

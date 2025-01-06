@@ -604,8 +604,8 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                 _ => Arc::new(CType::Void),
                             };
                             typen = Arc::new(CType::Function(input_type, actual_rettype));
-                        } else if current_rettype.to_strict_string(false)
-                            != actual_rettype.to_strict_string(false)
+                        } else if current_rettype.clone().to_strict_string(false)
+                            != actual_rettype.clone().to_strict_string(false)
                         {
                             CType::fail(&format!(
                                 "Function {} specified to return {} but actually returns {}",
@@ -632,7 +632,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                         Some(name) => name,
                                         None => "closure",
                                     },
-                                    i.to_strict_string(false)
+                                    i.clone().to_strict_string(false)
                                 ));
                             }
                             CType::Infer(..) => { /* Do nothing */ }
@@ -694,7 +694,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                 "A function with the signature get({}) does not exist",
                                 arg_types
                                     .iter()
-                                    .map(|a| a.to_string())
+                                    .map(|a| a.clone().to_string())
                                     .collect::<Vec<String>>()
                                     .join(", ")
                             )
@@ -734,7 +734,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                 c.to_string(),
                                 arg_types
                                     .iter()
-                                    .map(|a| a.to_string())
+                                    .map(|a| a.clone().to_string())
                                     .collect::<Vec<String>>()
                                     .join(", ")
                             )
@@ -796,7 +796,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                             name,
                             arg_types
                                 .iter()
-                                .map(|a| a.to_string())
+                                .map(|a| a.clone().to_string())
                                 .collect::<Vec<String>>()
                                 .join(", ")
                         )
@@ -842,7 +842,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                             if &function.name == f && function.args().len() == arg_types.len() {
                                 let mut works = true;
                                 for ((_, _, a), b) in function.args().iter().zip(&arg_types) {
-                                    if !a.accepts(b) {
+                                    if !a.clone().accepts(b.clone()) {
                                         works = false;
                                     }
                                 }
@@ -868,7 +868,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                         _other => vec![i.clone()],
                                     };
                                     for (a, b) in farg_types.iter().zip(&arg_types) {
-                                        if !a.accepts(b) {
+                                        if !a.clone().accepts(b.clone()) {
                                             works = false;
                                         }
                                     }
@@ -999,7 +999,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                 f,
                                 arg_types
                                     .iter()
-                                    .map(|a| a.to_string())
+                                    .map(|a| a.clone().to_string())
                                     .collect::<Vec<String>>()
                                     .join(", ")
                             )
@@ -1132,7 +1132,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                     real_name,
                                     arg_types
                                         .iter()
-                                        .map(|a| a.to_string())
+                                        .map(|a| a.clone().to_string())
                                         .collect::<Vec<String>>()
                                         .join(", ")
                                 )
@@ -1570,7 +1570,7 @@ pub fn statement_to_microstatements<'a>(
                         "Could not find store function with arguments {}",
                         arg_types
                             .iter()
-                            .map(|a| a.to_strict_string(false))
+                            .map(|a| a.clone().to_strict_string(false))
                             .collect::<Vec<String>>()
                             .join(", "),
                     )),
