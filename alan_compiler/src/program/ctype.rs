@@ -1386,9 +1386,7 @@ impl CType {
         for (a, i) in arg_type_vec {
             let mut arg = vec![a];
             let mut input = vec![i];
-            while !arg.is_empty() {
-                let a = arg.pop().unwrap();
-                let i = input.pop().unwrap();
+            while let (Some(a), Some(i)) = (arg.pop(), input.pop()) {
                 match (&*a, &*i) {
                     (CType::Void, CType::Void) => { /* Do nothing */ }
                     (CType::Infer(s1, _), CType::Infer(s2, _)) if s1 == s2 => {
