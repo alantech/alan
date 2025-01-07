@@ -615,6 +615,8 @@ fn{Js} round Method{"roundTiesEven"} :: f32 -> f32;
 fn magnitude f32 = arg0.abs;
 fn{Rs} inverseSqrt (v: f32) = {Method{"recip"} :: f32 -> f32}(sqrt(v));
 fn{Js} inverseSqrt (v: f32) = 1.0.f32 / sqrt(v);
+fn{Rs} fma Method{"mul_add"} :: (f32, Deref{f32}, Deref{f32}) -> f32;
+fn{Js} fma "((a, b, c) => new alan_std.F32(a.val * b.val + c.val))" <- RootBacking :: (f32, f32, f32) -> f32;
 
 fn{Rs} add Infix{"+"} :: (f64, f64) -> f64;
 fn{Js} add "((a, b) => new alan_std.F64(a.val + b.val))" <- RootBacking :: (f64, f64) -> f64;
@@ -703,6 +705,8 @@ fn{Js} round Method{"roundTiesEven"} :: f64 -> f64;
 fn magnitude f64 = arg0.abs;
 fn{Rs} inverseSqrt (v: f64) = {Method{"recip"} :: f64 -> f64}(sqrt(v));
 fn{Js} inverseSqrt (v: f64) = 1.0 / sqrt(v);
+fn{Rs} fma Method{"mul_add"} :: (f64, Deref{f64}, Deref{f64}) -> f64;
+fn{Js} fma "((a, b, c) => new alan_std.F32(a.val * b.val + c.val))" <- RootBacking :: (f64, f64, f64) -> f64;
 
 /// Unsigned Integer-related functions and function bindings
 fn{Rs} add Method{"wrapping_add"} :: (u8, Deref{u8}) -> u8;
@@ -1335,6 +1339,22 @@ fn normalize (arr: f64[]) {
 }
 fn inverseSqrt(arr: f32[]) = arr.map(inverseSqrt);
 fn inverseSqrt(arr: f64[]) = arr.map(inverseSqrt);
+fn fma(a: f32[], b: f32[], c: f32[]) -> Fallible{f32[]} {
+  return if(a.len == b.len && b.len == c.len, fn {
+    // TODO: Figure out why I need to explicitly wrap this in `Fallible{f32[]}(...)` instead of just
+    // using the `!` postfix operator
+    return Fallible{f32[]}(a.map(fn (v: f32, i: i64) = v.fma(b[i]!!, c[i]!!)));
+  }, fn {
+    return Error{f32[]}("Fused multiply-add on arrays requires equal-length arrays");
+  });
+}
+fn fma(a: f64[], b: f64[], c: f64[]) -> Fallible{f64[]} {
+  return if(a.len == b.len && b.len == c.len, fn {
+    return Fallible{f64[]}(a.map(fn (v: f64, i: i64) = v.fma(b[i]!!, c[i]!!)));
+  }, fn {
+    return Error{f64[]}("Fused multiply-add on arrays requires equal-length arrays");
+  });
+}
 
 /// Buffer related bindings
 fn{Rs} get{T, S} "alan_std::getbuffer" <- RootBacking :: (T[S], i64) -> T?;
@@ -1342,7 +1362,7 @@ fn len{T, S}(T[S]) = {S}();
 fn{Js} get{T, S} "((b, i) => { let idx = Number(i.val); if (idx >= 0 && idx < b.length) { return b[idx]; } else { return null; } })" :: (T[S], i64) -> T?;
 fn{Rs} map{T, S, U} "alan_std::mapbuffer_onearg" <- RootBacking :: (T[S], T -> U) -> (U[S]);
 fn{Js} map{T, S, U} (a: T[S], f: T -> U) = {"Promise.all" :: Buffer{U, S} -> Buffer{U, S}}({Method{"map"} :: (Buffer{T, S}, T -> U) -> Buffer{U, S}}(a, f));
-fn{Rs} map{T, S, U} "alan_std::mapbuffer_twoarg" <- RootBacking :: (T[S], (T, i64) -> U) -> (U[S]);
+fn{Rs} map{T, S, U} "alan_std::mapbuffer_twoarg" <- RootBacking :: (Buffer{T, S}, (T, i64) -> U) -> Buffer{U, S};
 fn{Js} map{T, S, U} (a: T[S], f: (T, i64) -> U) = {"Promise.all" :: Buffer{U, S} -> Buffer{U, S}}({Method{"map"} :: (Buffer{T, S}, (T, i32) -> U) -> Buffer{U, S}}(a, fn (v: T, i: i32) = f(v, i.i64)));
 fn{Rs} reduce{T, S} "alan_std::reducebuffer_sametype" <- RootBacking :: (T[S], (T, T) -> T) -> T?;
 fn{Js} reduce{T, S} (a: T[S], f: (T, T) -> T) = {"(async (a, f) => { if (a.length === 0) { return null; } let out = a[0]; for (let i = 1; i < a.length; i++) { out = await f(out, a[i]); } return out; })" :: (T[S], (T, T) -> T) -> T?}(a, f);
@@ -1398,6 +1418,8 @@ fn normalize{S} (arr: f64[S]) {
 }
 fn inverseSqrt{S}(buf: f32[S]) = buf.map(inverseSqrt);
 fn inverseSqrt{S}(buf: f64[S]) = buf.map(inverseSqrt);
+fn fma{S}(a: Buffer{f32, S}, b: Buffer{f32, S}, c: Buffer{f32, S}) = a.map(fn (v: f32, i: i64) = v.fma(b[i]!!, c[i]!!));
+fn fma{S}(a: Buffer{f64, S}, b: Buffer{f64, S}, c: Buffer{f64, S}) = a.map(fn (v: f64, i: i64) = v.fma(b[i]!!, c[i]!!));
 
 /// Dictionary-related bindings
 fn{Rs} Dict{K, V} "alan_std::OrderedHashMap::new" <- RootBacking :: () -> Dict{K, V};
@@ -4078,6 +4100,23 @@ fn round(v: gf32) = gRound(v);
 fn round(v: gvec2f) = gRound(v);
 fn round(v: gvec3f) = gRound(v);
 fn round(v: gvec4f) = gRound(v);
+
+fn gFma{I}(a: I, b: I, c: I) {
+  let varName = 'fma('
+    .concat(a.varName)
+    .concat(', ')
+    .concat(b.varName)
+    .concat(', ')
+    .concat(c.varName)
+    .concat(')');
+  let statements = a.statements.concat(b.statements).concat(c.statements);
+  let buffers = a.buffers.union(b.buffers).union(c.buffers);
+  return {I}(varName, statements, buffers);
+}
+fn fma(a: gf32, b: gf32, c: gf32) = gFma(a, b, c);
+fn fma(a: gvec2f, b: gvec2f, c: gvec2f) = gFma(a, b, c);
+fn fma(a: gvec3f, b: gvec3f, c: gvec3f) = gFma(a, b, c);
+fn fma(a: gvec4f, b: gvec4f, c: gvec4f) = gFma(a, b, c);
 
 fn gadd{A, B}(a: A, b: B) {
   let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');

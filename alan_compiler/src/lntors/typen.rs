@@ -98,10 +98,14 @@ pub fn ctype_to_rtype(
                                 deps = res.1;
                                 out.push(s);
                             }
-                            enum_type_strs.push(format!("({}", out.join(", ")));
+                            enum_type_strs.push(format!("({})", out.join(", ")));
                         }
-                        otherwise => {
-                            return Err(format!("TODO: What is this? {:?}", otherwise).into());
+                        _otherwise => {
+                            let res = ctype_to_rtype(t.clone(), in_function_type, deps)?;
+                            let s = res.0;
+                            deps = res.1;
+                            let name = t.clone().to_callable_string();
+                            enum_type_strs.push(format!("{}({})", name, s));
                         }
                     }
                 }

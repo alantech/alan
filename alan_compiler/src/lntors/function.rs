@@ -1125,10 +1125,10 @@ pub fn from_microstatement(
                                     None => Arc::new(CType::Void),
                                 };
                                 let enum_name = match &*enum_type {
-                                    CType::Field(n, _) => Ok(n.clone()),
-                                    CType::Type(n, _) => Ok(n.clone()),
-                                    _ => Err(format!("Cannot generate an constructor function for {} type as the input type has no name?", function.name)),
-                                }?;
+                                    CType::Field(n, _) => n.clone(),
+                                    CType::Type(n, _) => n.clone(),
+                                    _ => enum_type.clone().to_callable_string(),
+                                };
                                 for t in ts {
                                     let inner_type = t.clone().degroup();
                                     match &*inner_type {
@@ -1535,7 +1535,92 @@ pub fn from_microstatement(
                                             },
                                             _ => {}
                                         },
-                                        _ => {}
+                                        _ => {
+                                            if ts.len() == 2 {
+                                                if let CType::Void = &*ts[1] {
+                                                    if let CType::Void = &**t {
+                                                        return Ok(("None".to_string(), out, deps));
+                                                    } else {
+                                                        return Ok((
+                                                            format!(
+                                                                "Some({})",
+                                                                match argstrs[0]
+                                                                    .strip_prefix("&mut ")
+                                                                {
+                                                                    Some(s) => s,
+                                                                    None => &argstrs[0],
+                                                                }
+                                                            ),
+                                                            out,
+                                                            deps,
+                                                        ));
+                                                    }
+                                                } else if let CType::Type(name, _) = &*ts[1] {
+                                                    if name == "Error" {
+                                                        let (okrustname, d) =
+                                                            typen::ctype_to_rtype(
+                                                                ts[0].clone(),
+                                                                true,
+                                                                deps,
+                                                            )?;
+                                                        deps = d;
+                                                        let (errrustname, d) =
+                                                            typen::ctype_to_rtype(
+                                                                ts[1].clone(),
+                                                                true,
+                                                                deps,
+                                                            )?;
+                                                        deps = d;
+                                                        if let CType::Binds(..) = &**t {
+                                                            return Ok((
+                                                                format!(
+                                                                    "Err::<{}, {}>({})",
+                                                                    okrustname,
+                                                                    errrustname,
+                                                                    match argstrs[0]
+                                                                        .strip_prefix("&mut ")
+                                                                    {
+                                                                        Some(s) => s,
+                                                                        None => &argstrs[0],
+                                                                    }
+                                                                ),
+                                                                out,
+                                                                deps,
+                                                            ));
+                                                        } else {
+                                                            return Ok((
+                                                                format!(
+                                                                    "Ok::<{}, {}>({})",
+                                                                    okrustname,
+                                                                    errrustname,
+                                                                    match argstrs[0]
+                                                                        .strip_prefix("&mut ")
+                                                                    {
+                                                                        Some(s) => s,
+                                                                        None => &argstrs[0],
+                                                                    }
+                                                                ),
+                                                                out,
+                                                                deps,
+                                                            ));
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            return Ok((
+                                                format!(
+                                                    "{}::{}({})",
+                                                    function.name,
+                                                    enum_name,
+                                                    match argstrs[0].strip_prefix("&mut ") {
+                                                        Some(s) => s,
+                                                        None => &argstrs[0],
+                                                    },
+                                                ),
+                                                out,
+                                                deps,
+                                            ));
+                                        }
                                     }
                                 }
                                 return Err(format!("Cannot generate a constructor function for {} type as it is not part of the {} type", enum_name, function.name).into());
