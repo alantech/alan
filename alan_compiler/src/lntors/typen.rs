@@ -100,14 +100,12 @@ pub fn ctype_to_rtype(
                             }
                             enum_type_strs.push(format!("({})", out.join(", ")));
                         }
-                        CType::Array(t) => {
+                        _otherwise => {
                             let res = ctype_to_rtype(t.clone(), in_function_type, deps)?;
                             let s = res.0;
                             deps = res.1;
-                            enum_type_strs.push(format!("Vec<{}>", s));
-                        }
-                        otherwise => {
-                            return Err(format!("TODO: What is this? {:?}", otherwise).into());
+                            let name = t.clone().to_callable_string();
+                            enum_type_strs.push(format!("{}({})", name, s));
                         }
                     }
                 }

@@ -615,7 +615,7 @@ fn{Js} round Method{"roundTiesEven"} :: f32 -> f32;
 fn magnitude f32 = arg0.abs;
 fn{Rs} inverseSqrt (v: f32) = {Method{"recip"} :: f32 -> f32}(sqrt(v));
 fn{Js} inverseSqrt (v: f32) = 1.0.f32 / sqrt(v);
-fn{Rs} fma Method{"mul_add"} :: (f32, f32, f32) -> f32;
+fn{Rs} fma Method{"mul_add"} :: (f32, Deref{f32}, Deref{f32}) -> f32;
 fn{Js} fma "((a, b, c) => new alan_std.F32(a.val * b.val + c.val))" <- RootBacking :: (f32, f32, f32) -> f32;
 
 fn{Rs} add Infix{"+"} :: (f64, f64) -> f64;
@@ -705,7 +705,7 @@ fn{Js} round Method{"roundTiesEven"} :: f64 -> f64;
 fn magnitude f64 = arg0.abs;
 fn{Rs} inverseSqrt (v: f64) = {Method{"recip"} :: f64 -> f64}(sqrt(v));
 fn{Js} inverseSqrt (v: f64) = 1.0 / sqrt(v);
-fn{Rs} fma Method{"mul_add"} :: (f64, f64, f64) -> f64;
+fn{Rs} fma Method{"mul_add"} :: (f64, Deref{f64}, Deref{f64}) -> f64;
 fn{Js} fma "((a, b, c) => new alan_std.F32(a.val * b.val + c.val))" <- RootBacking :: (f64, f64, f64) -> f64;
 
 /// Unsigned Integer-related functions and function bindings
