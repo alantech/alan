@@ -1428,6 +1428,23 @@ fn fma{S}(a: Buffer{f32, S}, b: Buffer{f32, S}, c: Buffer{f32, S}) = a.map(fn (v
 fn fma{S}(a: Buffer{f64, S}, b: Buffer{f64, S}, c: Buffer{f64, S}) = a.map(fn (v: f64, i: i64) = v.fma(b[i]!!, c[i]!!));
 fn fract{S}(a: Buffer{f32, S}) = a.map(fract);
 fn fract{S}(a: Buffer{f64, S}) = a.map(fract);
+fn determinant{T}(m: Buffer{T, 4}) = m.0 * m.3 - m.2 * m.1;
+fn determinant{T}(m: Buffer{T, 9}) =
+  m.0 * m.4 * m.8 +
+  m.3 * m.7 * m.2 +
+  m.6 * m.1 * m.5 -
+  m.6 * m.4 * m.2 -
+  m.3 * m.1 * m.8 -
+  m.0 * m.7 * m.5;
+fn determinant{T}(m: Buffer{T, 16}) =
+  m.0 * m.5 * m.10 * m.15 +
+  m.4 * m.9 * m.14 * m.3 +
+  m.8 * m.13 * m.2 * m.7 +
+  m.12 * m.1 * m.6 * m.11 -
+  m.12 * m.9 * m.6 * m.3 -
+  m.8 * m.5 * m.2 * m.15 -
+  m.4 * m.1 * m.14 * m.11 -
+  m.0 * m.13 * m.10 * m.7;
 
 /// Dictionary-related bindings
 fn{Rs} Dict{K, V} "alan_std::OrderedHashMap::new" <- RootBacking :: () -> Dict{K, V};
@@ -4134,6 +4151,14 @@ fn fract(a: gf32) = gFract(a);
 fn fract(a: gvec2f) = gFract(a);
 fn fract(a: gvec3f) = gFract(a);
 fn fract(a: gvec4f) = gFract(a);
+
+fn gDeterminant{I}(m: I) {
+  let varName = 'determinant('.concat(m.varName).concat(')');
+  return gf32(varName, m.statements, m.buffers);
+}
+fn determinant(m: gmat2x2f) = gDeterminant(m);
+fn determinant(m: gmat3x3f) = gDeterminant(m);
+fn determinant(m: gmat4x4f) = gDeterminant(m);
 
 fn gadd{A, B}(a: A, b: B) {
   let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');

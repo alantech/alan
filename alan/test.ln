@@ -1061,7 +1061,9 @@ export fn{Test} main {
           .map(fn (v: f64) = string(v, 1)).join(', '),
         '10.0, 14.0, 11.0')
     .it('fract')
-      .assert(eq, {f64[2]}(1.0, 3.14).fract.map(fn (v: f64) = v.string(2)).join(', '), '0.00, 0.14');
+      .assert(eq, {f64[2]}(1.0, 3.14).fract.map(fn (v: f64) = v.string(2)).join(', '), '0.00, 0.14')
+    .it('determinant')
+      .assert(eq, {f64[4]}(1.0, 2.0, 3.0, 4.0).determinant, -2.0);
 
   test.describe("Conditionals")
     .it("if function")
