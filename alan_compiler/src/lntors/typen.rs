@@ -101,7 +101,7 @@ pub fn ctype_to_rtype(
                             enum_type_strs.push(format!("({})", out.join(", ")));
                         }
                         CType::Array(t) => {
-                            let res = ctype_to_rtype(t, in_function_type, deps)?;
+                            let res = ctype_to_rtype(t.clone(), in_function_type, deps)?;
                             let s = res.0;
                             deps = res.1;
                             enum_type_strs.push(format!("Vec<{}>", s));
