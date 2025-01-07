@@ -808,6 +808,14 @@ test_gpgpu!(gpu_fma => r#"
     stdout "10.0\n";
 );
 
+test_gpgpu!(gpu_fract => r#"
+    export fn main {
+      let b = GBuffer([1.0.f32, 3.14.f32]);
+      b.map(fn (val: gf32) = val.fract).read{f32}.map(fn (v: f32) = v.string(2)).join(", ").print;
+    }"#;
+    stdout "0.00, 0.14\n";
+);
+
 // TODO: Fix u64 numeric constants to get u64 bitwise tests in the new test suite
 test!(u64_bitwise => r#"
     prefix u64 as ~ precedence 10
