@@ -1393,7 +1393,7 @@ fn concat{T, S, N}(a: T[S], b: T[N]) {
   // It's *theoretically* possible to generate a new Rust function in each case with the required
   // sizes, but it will be really difficult, so I'm implementing this for now with the intent to
   // eventually replace it.
-  let o = {T[S + N]}(a[0]!!);
+  let o = {T[S + N]}(a.0);
   concatInner(o, a, b);
   return o;
 }
