@@ -836,6 +836,38 @@ test_gpgpu!(gpu_determinant => r#"
     stdout "-2.0\n";
 );
 
+test_gpgpu!(gpu_storage_barrier => r#"
+    export fn main {
+      let id = gFor(3, 3);
+      let temp = GBuffer{f32}(9);
+      let out = GBuffer{f32}(9);
+      /*let compute = [
+        // Something that generates a buffer independently
+        temp[id.x + 3 * id.y].store((id.x.gf32 + id.y.gf32).asI32).build,
+        // Something that creates a new buffer based on the prior buffer
+        out[id.x + 3 * id.y].store(
+            ((if(id.x > 0, temp[id.x - 1 + 3 * id.y].asF32, 0.0.gf32) +
+            temp[id.x + 3 * id.y].asF32 +
+            if(id.x < 2, temp[id.x + 1 + 3 * id.y].asF32, 0.0.gf32)) / 3.0).asI32).build
+      ];
+      compute.run;*/
+      let compute = [
+        // Something that generates a buffer independently
+        temp[id.x + 3 * id.y].store((id.x.gf32 + id.y.gf32).asI32),
+        // Storage Barrier
+        storageBarrier(),
+        // Something that creates a new buffer based on the prior buffer
+        out[id.x + 3 * id.y].store(
+            ((if(id.x > 0, temp[id.x - 1 + 3 * id.y].asF32, 0.0.gf32) +
+            temp[id.x + 3 * id.y].asF32 +
+            if(id.x < 2, temp[id.x + 1 + 3 * id.y].asF32, 0.0.gf32)) / 3.0).asI32)
+      ].build.run;
+      //temp.read{f32}.map(fn (v: f32) = v.string(2)).join(", ").print;
+      out.read{f32}.map(fn (v: f32) = v.string(2)).join(", ").print;
+    }"#;
+    stdout "0.33, 1.00, 1.00, 1.00, 2.00, 1.67, 1.67, 3.00, 2.33\n";
+);
+
 // TODO: Fix u64 numeric constants to get u64 bitwise tests in the new test suite
 test!(u64_bitwise => r#"
     prefix u64 as ~ precedence 10
