@@ -114,6 +114,10 @@ type Release = Env{"ALAN_TARGET"} == "release";
 type Debug = Env{"ALAN_TARGET"} == "debug";
 type Rs = Env{"ALAN_OUTPUT_LANG"} == "rs";
 type Js = Env{"ALAN_OUTPUT_LANG"} == "js";
+type Lin = Env{"ALAN_PLATFORM"} == "linux";
+type Win = Env{"ALAN_PLATFORM"} == "windows";
+type Mac = Env{"ALAN_PLATFORM"} == "macos";
+type Browser = Env{"ALAN_PLATFORM"} == "browser"; // Technically not necessary, always also Js
 
 // Importing the Root Scope backing implementation and supporting 3rd party libraries
 type{Rs} RootBacking = Rust{"alan_std" @ "https://github.com/alantech/alan.git"};

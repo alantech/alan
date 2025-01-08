@@ -837,7 +837,31 @@ test_gpgpu!(gpu_determinant => r#"
 );
 
 test_gpgpu!(gpu_storage_barrier => r#"
-    export fn{Rs} main {
+    export fn{Lin || Win} main {
+      // On Linux and Windows, you can use `storageBarrier` to act as a synchronization point
+      // across multiple threads running the same shader, which can let you do some work, then wait
+      // to do more work that each thread may depend on the prior output of multiple threads to do
+      let id = gFor(3, 3);
+      let temp = GBuffer{f32}(9);
+      let out = GBuffer{f32}(9);
+      let compute = [
+        // Something that generates a buffer independently
+        temp[id.x + 3 * id.y].store((id.x.gf32 + id.y.gf32).asI32),
+        // Storage Barrier
+        storageBarrier(),
+        // Something that creates a new buffer based on the prior buffer
+        out[id.x + 3 * id.y].store(
+            ((if(id.x > 0, temp[id.x - 1 + 3 * id.y].asF32, 0.0.gf32) +
+            temp[id.x + 3 * id.y].asF32 +
+            if(id.x < 2, temp[id.x + 1 + 3 * id.y].asF32, 0.0.gf32)) / 3.0).asI32)
+      ].build.run;
+      out.read{f32}.map(fn (v: f32) = v.string(2)).join(", ").print;
+    }
+    export fn{Mac} main {
+      // It's never safe to use `storageBarrier` on a Mac because the new ARM Macs break it. This
+      // version "simulates" the barrier by instead breaking the single shader into two separate
+      // shaders that are run sequentially. This theoretically has a higher synchronization cost so
+      // it's not ideal, but I haven't done any benchmarking to see how much of an impact it has.
       let id = gFor(3, 3);
       let temp = GBuffer{f32}(9);
       let out = GBuffer{f32}(9);
@@ -851,20 +875,13 @@ test_gpgpu!(gpu_storage_barrier => r#"
             if(id.x < 2, temp[id.x + 1 + 3 * id.y].asF32, 0.0.gf32)) / 3.0).asI32).build
       ];
       compute.run;
-      /*let compute = [
-        // Something that generates a buffer independently
-        temp[id.x + 3 * id.y].store((id.x.gf32 + id.y.gf32).asI32),
-        // Storage Barrier
-        storageBarrier(),
-        // Something that creates a new buffer based on the prior buffer
-        out[id.x + 3 * id.y].store(
-            ((if(id.x > 0, temp[id.x - 1 + 3 * id.y].asF32, 0.0.gf32) +
-            temp[id.x + 3 * id.y].asF32 +
-            if(id.x < 2, temp[id.x + 1 + 3 * id.y].asF32, 0.0.gf32)) / 3.0).asI32)
-      ].build.run;*/
       out.read{f32}.map(fn (v: f32) = v.string(2)).join(", ").print;
     }
     export fn{Js} main {
+      // Because it's not safe to use `storageBarrier` on a Mac it is also never safe to do so when
+      // in a browser context because you don't know what platform will be underneath. I'd argue
+      // that this means `storageBarrier` should never have been included in the WebGPU spec, but
+      // here we are.
       let id = gFor(3, 3);
       let temp = GBuffer{f32}(9);
       let out = GBuffer{f32}(9);
@@ -880,17 +897,6 @@ test_gpgpu!(gpu_storage_barrier => r#"
             if(id.x < 2, temp[id.x + 1 + 3 * id.y].asF32, 0.0.gf32)) / 3.0).asI32).build
       ];
       compute.run;
-      /*let compute = [
-        // Something that generates a buffer independently
-        temp[id.x + 3 * id.y].store((id.x.gf32 + id.y.gf32).asI32),
-        // Storage Barrier
-        storageBarrier(),
-        // Something that creates a new buffer based on the prior buffer
-        out[id.x + 3 * id.y].store(
-            ((if(id.x > 0, temp[id.x - 1 + 3 * id.y].asF32, 0.0.gf32) +
-            temp[id.x + 3 * id.y].asF32 +
-            if(id.x < 2, temp[id.x + 1 + 3 * id.y].asF32, 0.0.gf32)) / 3.0).asI32)
-      ].build.run;*/
       out.read{f32}.map(fn (v: f32) = v.string(2)).join(", ").print;
     }"#;
     stdout "0.33, 1.00, 1.00, 1.00, 2.00, 1.67, 1.67, 3.00, 2.33\n";
