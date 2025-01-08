@@ -841,7 +841,7 @@ test_gpgpu!(gpu_storage_barrier => r#"
       let id = gFor(3, 3);
       let temp = GBuffer{f32}(9);
       let out = GBuffer{f32}(9);
-      /*let compute = [
+      let compute = [
         // Something that generates a buffer independently
         temp[id.x + 3 * id.y].store((id.x.gf32 + id.y.gf32).asI32).build,
         // Something that creates a new buffer based on the prior buffer
@@ -850,8 +850,8 @@ test_gpgpu!(gpu_storage_barrier => r#"
             temp[id.x + 3 * id.y].asF32 +
             if(id.x < 2, temp[id.x + 1 + 3 * id.y].asF32, 0.0.gf32)) / 3.0).asI32).build
       ];
-      compute.run;*/
-      let compute = [
+      compute.run;
+      /*let compute = [
         // Something that generates a buffer independently
         temp[id.x + 3 * id.y].store((id.x.gf32 + id.y.gf32).asI32),
         // Storage Barrier
@@ -861,8 +861,7 @@ test_gpgpu!(gpu_storage_barrier => r#"
             ((if(id.x > 0, temp[id.x - 1 + 3 * id.y].asF32, 0.0.gf32) +
             temp[id.x + 3 * id.y].asF32 +
             if(id.x < 2, temp[id.x + 1 + 3 * id.y].asF32, 0.0.gf32)) / 3.0).asI32)
-      ].build.run;
-      //temp.read{f32}.map(fn (v: f32) = v.string(2)).join(", ").print;
+      ].build.run;*/
       out.read{f32}.map(fn (v: f32) = v.string(2)).join(", ").print;
     }
     export fn{Js} main {
@@ -871,7 +870,7 @@ test_gpgpu!(gpu_storage_barrier => r#"
       let out = GBuffer{f32}(9);
       // Hack to get this to work in JS, because the generic is not passed through there
       {"((b) => { b.ValKind = alan_std.F32; })" :: GBuffer}(out);
-      /*let compute = [
+      let compute = [
         // Something that generates a buffer independently
         temp[id.x + 3 * id.y].store((id.x.gf32 + id.y.gf32).asI32).build,
         // Something that creates a new buffer based on the prior buffer
@@ -880,8 +879,8 @@ test_gpgpu!(gpu_storage_barrier => r#"
             temp[id.x + 3 * id.y].asF32 +
             if(id.x < 2, temp[id.x + 1 + 3 * id.y].asF32, 0.0.gf32)) / 3.0).asI32).build
       ];
-      compute.run;*/
-      let compute = [
+      compute.run;
+      /*let compute = [
         // Something that generates a buffer independently
         temp[id.x + 3 * id.y].store((id.x.gf32 + id.y.gf32).asI32),
         // Storage Barrier
@@ -891,8 +890,7 @@ test_gpgpu!(gpu_storage_barrier => r#"
             ((if(id.x > 0, temp[id.x - 1 + 3 * id.y].asF32, 0.0.gf32) +
             temp[id.x + 3 * id.y].asF32 +
             if(id.x < 2, temp[id.x + 1 + 3 * id.y].asF32, 0.0.gf32)) / 3.0).asI32)
-      ].build.run;
-      //temp.read{f32}.map(fn (v: f32) = v.string(2)).join(", ").print;
+      ].build.run;*/
       out.read{f32}.map(fn (v: f32) = v.string(2)).join(", ").print;
     }"#;
     stdout "0.33, 1.00, 1.00, 1.00, 2.00, 1.67, 1.67, 3.00, 2.33\n";
