@@ -4303,6 +4303,12 @@ impl CType {
         Arc::new(out)
     }
     pub fn and(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
+        if let CType::Type(_, t) = &*a {
+            return CType::and(t.clone(), b);
+        }
+        if let CType::Type(_, t) = &*b {
+            return CType::and(a, t.clone());
+        }
         Arc::new(match (&*a, &*b) {
             (CType::Int(a), CType::Int(b)) => CType::Int(*a & *b),
             (CType::Bool(a), CType::Bool(b)) => CType::Bool(*a && *b),
@@ -4318,6 +4324,12 @@ impl CType {
         })
     }
     pub fn or(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
+        if let CType::Type(_, t) = &*a {
+            return CType::or(t.clone(), b);
+        }
+        if let CType::Type(_, t) = &*b {
+            return CType::or(a, t.clone());
+        }
         Arc::new(match (&*a, &*b) {
             (CType::Int(a), CType::Int(b)) => CType::Int(*a | *b),
             (CType::Bool(a), CType::Bool(b)) => CType::Bool(*a || *b),
@@ -4333,6 +4345,12 @@ impl CType {
         })
     }
     pub fn xor(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
+        if let CType::Type(_, t) = &*a {
+            return CType::xor(t.clone(), b);
+        }
+        if let CType::Type(_, t) = &*b {
+            return CType::xor(a, t.clone());
+        }
         Arc::new(match (&*a, &*b) {
             (CType::Int(a), CType::Int(b)) => CType::Int(*a ^ *b),
             (CType::Bool(a), CType::Bool(b)) => CType::Bool(*a ^ *b),
@@ -4343,11 +4361,17 @@ impl CType {
                 CType::Xor(vec![a.clone(), b.clone()])
             }
             _ => CType::fail(
-                "Or{A, B} must be provided two values of the same type, either integer or boolean",
+                "Xor{A, B} must be provided two values of the same type, either integer or boolean",
             ),
         })
     }
     pub fn nand(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
+        if let CType::Type(_, t) = &*a {
+            return CType::nand(t.clone(), b);
+        }
+        if let CType::Type(_, t) = &*b {
+            return CType::nand(a, t.clone());
+        }
         Arc::new(match (&*a, &*b) {
             (CType::Int(a), CType::Int(b)) => CType::Int(!(*a & *b)),
             (CType::Bool(a), CType::Bool(b)) => CType::Bool(!(*a && *b)),
@@ -4361,6 +4385,12 @@ impl CType {
         })
     }
     pub fn nor(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
+        if let CType::Type(_, t) = &*a {
+            return CType::nor(t.clone(), b);
+        }
+        if let CType::Type(_, t) = &*b {
+            return CType::nor(a, t.clone());
+        }
         Arc::new(match (&*a, &*b) {
             (CType::Int(a), CType::Int(b)) => CType::Int(!(*a | *b)),
             (CType::Bool(a), CType::Bool(b)) => CType::Bool(!(*a || *b)),
@@ -4376,6 +4406,12 @@ impl CType {
         })
     }
     pub fn xnor(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
+        if let CType::Type(_, t) = &*a {
+            return CType::xnor(t.clone(), b);
+        }
+        if let CType::Type(_, t) = &*b {
+            return CType::xnor(a, t.clone());
+        }
         Arc::new(match (&*a, &*b) {
             (CType::Int(a), CType::Int(b)) => CType::Int(!(*a ^ *b)),
             (CType::Bool(a), CType::Bool(b)) => CType::Bool(!(*a ^ *b)),
@@ -4389,6 +4425,12 @@ impl CType {
         })
     }
     pub fn eq(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
+        if let CType::Type(_, t) = &*a {
+            return CType::eq(t.clone(), b);
+        }
+        if let CType::Type(_, t) = &*b {
+            return CType::eq(a, t.clone());
+        }
         Arc::new(match (&*a, &*b) {
             (CType::Int(a), CType::Int(b)) => CType::Bool(*a == *b),
             (CType::Float(a), CType::Float(b)) => CType::Bool(*a == *b),
@@ -4404,6 +4446,12 @@ impl CType {
         })
     }
     pub fn neq(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
+        if let CType::Type(_, t) = &*a {
+            return CType::neq(t.clone(), b);
+        }
+        if let CType::Type(_, t) = &*b {
+            return CType::neq(a, t.clone());
+        }
         Arc::new(match (&*a, &*b) {
             (CType::Int(a), CType::Int(b)) => CType::Bool(*a != *b),
             (CType::Float(a), CType::Float(b)) => CType::Bool(*a != *b),
@@ -4419,6 +4467,12 @@ impl CType {
         })
     }
     pub fn lt(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
+        if let CType::Type(_, t) = &*a {
+            return CType::lt(t.clone(), b);
+        }
+        if let CType::Type(_, t) = &*b {
+            return CType::lt(a, t.clone());
+        }
         Arc::new(match (&*a, &*b) {
             (CType::Int(a), CType::Int(b)) => CType::Bool(*a < *b),
             (CType::Float(a), CType::Float(b)) => CType::Bool(*a < *b),
@@ -4433,6 +4487,12 @@ impl CType {
         })
     }
     pub fn lte(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
+        if let CType::Type(_, t) = &*a {
+            return CType::lte(t.clone(), b);
+        }
+        if let CType::Type(_, t) = &*b {
+            return CType::lte(a, t.clone());
+        }
         Arc::new(match (&*a, &*b) {
             (CType::Int(a), CType::Int(b)) => CType::Bool(*a <= *b),
             (CType::Float(a), CType::Float(b)) => CType::Bool(*a <= *b),
@@ -4447,6 +4507,12 @@ impl CType {
         })
     }
     pub fn gt(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
+        if let CType::Type(_, t) = &*a {
+            return CType::gt(t.clone(), b);
+        }
+        if let CType::Type(_, t) = &*b {
+            return CType::gt(a, t.clone());
+        }
         Arc::new(match (&*a, &*b) {
             (CType::Int(a), CType::Int(b)) => CType::Bool(*a > *b),
             (CType::Float(a), CType::Float(b)) => CType::Bool(*a > *b),
@@ -4461,6 +4527,12 @@ impl CType {
         })
     }
     pub fn gte(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
+        if let CType::Type(_, t) = &*a {
+            return CType::gte(t.clone(), b);
+        }
+        if let CType::Type(_, t) = &*b {
+            return CType::gte(a, t.clone());
+        }
         Arc::new(match (&*a, &*b) {
             (CType::Int(a), CType::Int(b)) => CType::Bool(*a >= *b),
             (CType::Float(a), CType::Float(b)) => CType::Bool(*a >= *b),

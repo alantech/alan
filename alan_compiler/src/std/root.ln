@@ -114,6 +114,10 @@ type Release = Env{"ALAN_TARGET"} == "release";
 type Debug = Env{"ALAN_TARGET"} == "debug";
 type Rs = Env{"ALAN_OUTPUT_LANG"} == "rs";
 type Js = Env{"ALAN_OUTPUT_LANG"} == "js";
+type Lin = Env{"ALAN_PLATFORM"} == "linux";
+type Win = Env{"ALAN_PLATFORM"} == "windows";
+type Mac = Env{"ALAN_PLATFORM"} == "macos";
+type Browser = Env{"ALAN_PLATFORM"} == "browser"; // Technically not necessary, always also Js
 
 // Importing the Root Scope backing implementation and supporting 3rd party libraries
 type{Rs} RootBacking = Rust{"alan_std" @ "https://github.com/alantech/alan.git"};
@@ -4992,7 +4996,7 @@ fn lte(a: gvec4i, b: gvec4i) = glte{gvec4i, gvec4b}(a, b);
 fn lte(a: gvec4f, b: gvec4f) = glte{gvec4f, gvec4b}(a, b);
 
 fn ggt{I, O}(a: I, b: I) {
-  let varName = '('.concat(a.varName).concat(' < ').concat(b.varName).concat(')');
+  let varName = '('.concat(a.varName).concat(' > ').concat(b.varName).concat(')');
   let statements = a.statements.concat(b.statements);
   let buffers = a.buffers.union(b.buffers);
   return {O}(varName, statements, buffers);
@@ -5017,7 +5021,7 @@ fn gt(a: gvec4i, b: gvec4i) = ggt{gvec4i, gvec4b}(a, b);
 fn gt(a: gvec4f, b: gvec4f) = ggt{gvec4f, gvec4b}(a, b);
 
 fn ggte{I, O}(a: I, b: I) {
-  let varName = '('.concat(a.varName).concat(' <= ').concat(b.varName).concat(')');
+  let varName = '('.concat(a.varName).concat(' >= ').concat(b.varName).concat(')');
   let statements = a.statements.concat(b.statements);
   let buffers = a.buffers.union(b.buffers);
   return {O}(varName, statements, buffers);
@@ -5421,7 +5425,6 @@ fn pack2x16float(v: gvec2f) {
 }
 // No CPU-side equivalent as `f16` is only available in Rust nightly and not at all in JS-land.
 
-
 fn unpack4x8snorm(v: gu32) {
   let varName = 'unpack4x8snorm('.concat(v.varName).concat(')');
   let statements = v.statements.clone;
@@ -5490,6 +5493,19 @@ fn unpack2x16float(v: gu32) {
   return gvec2f(varName, statements, buffers);
 }
 // Also not doing this on the CPU side
+
+// storageBarrier is a synchronization mechanism on writes to storage buffers up to that point, to
+// make sure further reads/writes can expect all prior logical reads/writes to have completed. This
+// can be useful for operations where you need multiple prior outputs as the new input, like doing
+// a gaussian blur on an image, the current pixel is dependent on a set of pixels surrounding it, so
+// rather than having two different shaders, one to first create the image buffer and the second to
+// blur it, you can combine them and insert the storage barrier between the steps to avoid the extra
+// machinery of another shader compilation and work scheduling, or you could do it in a loop which
+// would be infeasible otherwise. It's a pure side-effect function, though, so using it "properly"
+// in the GPGPU binding in Alan is trickier. (Really only possible with the array-based `run`.
+fn storageBarrier() = WgpuType{"storageBarrier"}(
+  "storageBarrier()", Dict("storageBarrier()", "storageBarrier()"), Set{GBuffer}()
+);
 
 // GBuffer methods
 

@@ -26,6 +26,15 @@ Program {
             env.insert(k.to_string(), v.to_string());
         }
         env.insert("ALAN_OUTPUT_LANG".to_string(), "rs".to_string());
+        env.insert("ALAN_PLATFORM".to_string(), if cfg!(target_os="windows") {
+            "windows".to_string()
+        } else if cfg!(target_os="macos") {
+            "macos".to_string()
+        } else if cfg!(target_os="linux") {
+            "linux".to_string()
+        } else {
+            "what".to_string()
+        });
         env
     },
 }));
@@ -42,6 +51,7 @@ Program {
             env.insert("ALAN_TARGET".to_string(), "release".to_string());
         }
         env.insert("ALAN_OUTPUT_LANG".to_string(), "js".to_string());
+        env.insert("ALAN_PLATFORM".to_string(), "browser".to_string());
         env
     },
 }));
