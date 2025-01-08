@@ -77,7 +77,7 @@ pub fn ctype_to_jtype(
                 Ok((
                     format!(
                         "class {} {{\n  constructor({}) {{\n    {}\n  }}\n}}",
-                        n,
+                        n.replace("\"", "_"), // TODO: How is this happening?
                         out.join(", "),
                         out.iter()
                             .map(|s| format!("    this.{} = {};", s, s))
