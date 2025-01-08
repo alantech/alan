@@ -846,14 +846,14 @@ test_gpgpu!(gpu_storage_barrier => r#"
       let out = GBuffer{f32}(9);
       let compute = [
         // Something that generates a buffer independently
-        temp[id.x + 3 * id.y].store((id.x.gf32 + id.y.gf32).asI32),
+        temp[id.x + 3 * id.y] = (id.x.gf32 + id.y.gf32).asI32,
         // Storage Barrier
         storageBarrier(),
         // Something that creates a new buffer based on the prior buffer
-        out[id.x + 3 * id.y].store(
+        out[id.x + 3 * id.y] =
             ((if(id.x > 0, temp[id.x - 1 + 3 * id.y].asF32, 0.0.gf32) +
             temp[id.x + 3 * id.y].asF32 +
-            if(id.x < 2, temp[id.x + 1 + 3 * id.y].asF32, 0.0.gf32)) / 3.0).asI32)
+            if(id.x < 2, temp[id.x + 1 + 3 * id.y].asF32, 0.0.gf32)) / 3.0).asI32
       ].build.run;
       out.read{f32}.map(fn (v: f32) = v.string(2)).join(", ").print;
     }
@@ -867,12 +867,12 @@ test_gpgpu!(gpu_storage_barrier => r#"
       let out = GBuffer{f32}(9);
       let compute = [
         // Something that generates a buffer independently
-        temp[id.x + 3 * id.y].store((id.x.gf32 + id.y.gf32).asI32).build,
+        build(temp[id.x + 3 * id.y] = (id.x.gf32 + id.y.gf32).asI32),
         // Something that creates a new buffer based on the prior buffer
-        out[id.x + 3 * id.y].store(
+        build(out[id.x + 3 * id.y] = 
             ((if(id.x > 0, temp[id.x - 1 + 3 * id.y].asF32, 0.0.gf32) +
             temp[id.x + 3 * id.y].asF32 +
-            if(id.x < 2, temp[id.x + 1 + 3 * id.y].asF32, 0.0.gf32)) / 3.0).asI32).build
+            if(id.x < 2, temp[id.x + 1 + 3 * id.y].asF32, 0.0.gf32)) / 3.0).asI32)
       ];
       compute.run;
       out.read{f32}.map(fn (v: f32) = v.string(2)).join(", ").print;
