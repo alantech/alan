@@ -13,7 +13,7 @@ edition = "2021"
 
 [dependencies]
 alan_compiler = { path = "../alan_compiler" }
-clap = { version = "4.5.23", features = ["derive"] }
+clap = { version = "4.5.26", features = ["derive"] }
 dirs = "5.0.1"
 fs2 = "0.4.3"
 
