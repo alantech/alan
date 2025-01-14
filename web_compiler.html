@@ -6,12 +6,14 @@
     <script type="importmap">
       {
         "imports": {
-          "web_compiler": "./web_compiler/pkg/web_compiler.js"
+          "web_compiler": "./web_compiler/pkg/web_compiler.js",
+          "alan_std": "./alanStdBundle.js"
         }
       }
     </script>
     <script type="module">
       import { default as init, compile } from "web_compiler";
+      import * as alan_std from "alan_std";
       let t1 = performance.now();
       document.addEventListener("DOMContentLoaded", async (evt) => {
         let t2 = performance.now();
@@ -19,14 +21,33 @@
         await init();
         let t3 = performance.now();
         console.log(`WASM initialized in ${t3 - t2}ms`);
-        let ln = "export fn main = 'Hello, World!'.print;";
-        let js = compile(ln);
-        let t4 = performance.now();
-        console.log(`Alan compilation took ${t4 - t3}ms`);
-        console.log({ ln, js });
-        document.body.innerHTML = `<h1>Alan</h1><pre><code>${ln}</code></pre><h1>JS</h1><pre><code>${js}</code><pre>`;
+        document.getElementById("run").addEventListener("click", () => {
+          let t4 = performance.now();
+          let ln = document.getElementById("source").value;
+          // Add a redirect a print to write to the 'out' div
+          let preface = `
+            fn print{T}(v: T) = {"((v) => document.getElementById('out').innerHTML = v.toString())" :: T}(v);
+            fn print(v: string) = {"((v) => document.getElementById('out').innerHTML = v.toString())" :: string}(v);
+          `;
+          let js = compile(preface + ln);
+          let t5 = performance.now();
+          console.log(`Alan compilation took ${t5 - t4}ms`);
+          // Remove any `import` from the generated Javascript before eval'ing
+          eval(js.replaceAll(/^import.*/g, ""));
+        });
       });
     </script>
   </head>
-  <body></body>
+  <body>
+    <form>
+      <div>
+        <textarea id="source" rows="24" cols="80">export fn main = 'Hello, World!'.print;</textarea>
+      </div>
+      <div>
+        <button id="run" type="button">Run</button>
+      </div>
+    </form>
+    <p>Standard Out:</p>
+    <div id="out"></div>
+  </body>
 </html>
