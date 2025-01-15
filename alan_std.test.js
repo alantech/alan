@@ -436,6 +436,107 @@ assert.equal(new alanStd.I64(2).ctz(), 1n, "ctzI64(2) = 1");
 assert.equal(new alanStd.I64(3).ctz(), 0n, "ctzI64(3) = 0");
 assert.equal(new alanStd.I64(-9_223_372_036_854_775_808n).ctz(), 63n, "ctzI64(-9_223_372_036_854_775_808n) = 63");
 
+assert.equal(new alanStd.U8(0).flb(), 255, "flbU8(0) = 255");
+assert.equal(new alanStd.U8(1).flb(), 0, "flbU8(1) = 0");
+assert.equal(new alanStd.U8(2).flb(), 1, "flbU8(2) = 1");
+assert.equal(new alanStd.U8(3).flb(), 1, "flbU8(3) = 1");
+assert.equal(new alanStd.U8(128).flb(), 7, "flbU8(128) = 7");
+
+assert.equal(new alanStd.I8(0).flb(), -1, "flbI8(0) = -128");
+assert.equal(new alanStd.I8(1).flb(), 0, "flbI8(1) = 0");
+assert.equal(new alanStd.I8(2).flb(), 1, "flbI8(2) = 1");
+assert.equal(new alanStd.I8(3).flb(), 1, "flbI8(3) = 1");
+assert.equal(new alanStd.I8(-128).flb(), 7, "flbI8(-128) = 7");
+
+assert.equal(new alanStd.U16(0).flb(), 65535, "flbU16(0) = 65535");
+assert.equal(new alanStd.U16(1).flb(), 0, "flbU16(1) = 0");
+assert.equal(new alanStd.U16(2).flb(), 1, "flbU16(2) = 1");
+assert.equal(new alanStd.U16(3).flb(), 1, "flbU16(3) = 1");
+assert.equal(new alanStd.U16(32768).flb(), 15, "flbU16(32768) = 15");
+
+assert.equal(new alanStd.I16(0).flb(), -1, "flbI16(0) = -1");
+assert.equal(new alanStd.I16(1).flb(), 0, "flbI16(1) = 0");
+assert.equal(new alanStd.I16(2).flb(), 1, "flbI16(2) = 1");
+assert.equal(new alanStd.I16(3).flb(), 1, "flbI16(3) = 1");
+assert.equal(new alanStd.I16(-32768).flb(), 15, "flbI16(-32768) = 15");
+
+assert.equal(new alanStd.U32(0).flb(), 4_294_967_295, "flbU32(0) = 4_294_967_295");
+assert.equal(new alanStd.U32(1).flb(), 0, "flbU32(1) = 0");
+assert.equal(new alanStd.U32(2).flb(), 1, "flbU32(2) = 1");
+assert.equal(new alanStd.U32(3).flb(), 1, "flbU32(3) = 1");
+assert.equal(new alanStd.U32(2_147_483_648).flb(), 31, "flbU32(2_147_483_648) = 31");
+
+assert.equal(new alanStd.I32(0).flb(), -1, "flbI32(0) = -1");
+assert.equal(new alanStd.I32(1).flb(), 0, "flbI32(1) = 0");
+assert.equal(new alanStd.I32(2).flb(), 1, "flbI32(2) = 1");
+assert.equal(new alanStd.I32(3).flb(), 1, "flbI32(3) = 1");
+assert.equal(new alanStd.I32(-2_147_483_648).flb(), 31, "flbI32(-2_147_483_648) = 31");
+
+assert.equal(new alanStd.U64(0).flb(), 18_446_744_073_709_551_615n, "flbU64(0) = 18_446_744_073_709_551_615n");
+assert.equal(new alanStd.U64(1).flb(), 0n, "flbU64(1) = 0");
+assert.equal(new alanStd.U64(2).flb(), 1n, "flbU64(2) = 1");
+assert.equal(new alanStd.U64(3).flb(), 1n, "flbU64(3) = 1");
+assert.equal(new alanStd.U64(9_223_372_036_854_775_808n).flb(), 63n, "flbU64(9_223_372_036_854_775_808) = 63");
+
+assert.equal(new alanStd.I64(0).flb(), -1n, "flbI64(0) = -1");
+assert.equal(new alanStd.I64(1).flb(), 0n, "flbI64(1) = 0");
+assert.equal(new alanStd.I64(2).flb(), 1n, "flbI64(2) = 1");
+assert.equal(new alanStd.I64(3).flb(), 1n, "flbI64(3) = 1");
+assert.equal(new alanStd.I64(-9_223_372_036_854_775_808n).flb(), 63n, "flbI64(-9_223_372_036_854_775_808n) = 63");
+
+assert.equal(new alanStd.U8(255).ftb(), 0, "ftbU8(255) = 0");
+assert.equal(new alanStd.U8(0).ftb(), 255, "ftbU8(0) = 255");
+assert.equal(new alanStd.U8(1).ftb(), 0, "ftbU8(1) = 0");
+assert.equal(new alanStd.U8(2).ftb(), 1, "ftbU8(2) = 1");
+assert.equal(new alanStd.U8(4).ftb(), 2, "ftbU8(4) = 2");
+assert.equal(new alanStd.U8(8).ftb(), 3, "ftbU8(8) = 3");
+assert.equal(new alanStd.U8(16).ftb(), 4, "ftbU8(16) = 4");
+assert.equal(new alanStd.U8(32).ftb(), 5, "ftbU8(32) = 5");
+assert.equal(new alanStd.U8(64).ftb(), 6, "ftbU8(64) = 6");
+assert.equal(new alanStd.U8(128).ftb(), 7, "ftbU8(128) = 7");
+
+assert.equal(new alanStd.I8(-1).ftb(), 0, "ftbI8(-1) = 0");
+assert.equal(new alanStd.I8(0).ftb(), -1, "ftbI8(0) = -1");
+assert.equal(new alanStd.I8(1).ftb(), 0, "ftbI8(1) = 0");
+assert.equal(new alanStd.I8(16).ftb(), 4, "ftbI8(16) = 4");
+assert.equal(new alanStd.I8(-128).ftb(), 7, "ftbI8(-128) = 7");
+
+assert.equal(new alanStd.U16(65535).ftb(), 0, "ftbU16(65535) = 0");
+assert.equal(new alanStd.U16(0).ftb(), 65535, "ftbU16(0) = 65535");
+assert.equal(new alanStd.U16(1).ftb(), 0, "ftbU16(1) = 0");
+assert.equal(new alanStd.U16(16).ftb(), 4, "ftbU16(16) = 4");
+assert.equal(new alanStd.U16(32768).ftb(), 15, "ftbU16(32768) = 15");
+
+assert.equal(new alanStd.I16(-1).ftb(), 0, "ftbI16(-1) = 0");
+assert.equal(new alanStd.I16(0).ftb(), -1, "ftbI16(0) = -1");
+assert.equal(new alanStd.I16(1).ftb(), 0, "ftbI16(1) = 15");
+assert.equal(new alanStd.I16(16).ftb(), 4, "ftbI16(16) = 4");
+assert.equal(new alanStd.I16(-32768).ftb(), 15, "ftbI16(-32768) = 15");
+
+assert.equal(new alanStd.U32(4_294_967_295).ftb(), 0, "ftbU32(4_294_967_295) = 0");
+assert.equal(new alanStd.U32(0).ftb(), 4_294_967_295, "ftbU32(0) = 4_294_967_295");
+assert.equal(new alanStd.U32(1).ftb(), 0, "ftbU32(1) = 0");
+assert.equal(new alanStd.U32(16).ftb(), 4, "ftbU32(32) = 4");
+assert.equal(new alanStd.U32(2_147_483_648).ftb(), 31, "ftbU32(2_147_483_648) = 31");
+
+assert.equal(new alanStd.I32(-1).ftb(), 0, "ftbI32(-1) = 0");
+assert.equal(new alanStd.I32(0).ftb(), -1, "ftbI32(0) = -1");
+assert.equal(new alanStd.I32(1).ftb(), 0, "ftbI32(1) = 0");
+assert.equal(new alanStd.I32(16).ftb(), 4, "ftbI32(16) = 4");
+assert.equal(new alanStd.I32(-2_147_483_648).ftb(), 31, "ftbI32(-2_147_483_648) = 31");
+
+assert.equal(new alanStd.U64(18_446_744_073_709_551_615n).ftb(), 0, "ftbU64(18_446_744_073_709_551_615n) = 0");
+assert.equal(new alanStd.U64(0).ftb(), 18_446_744_073_709_551_615n, "ftbU64(0) = 18_446_744_073_709_551_615");
+assert.equal(new alanStd.U64(1).ftb(), 0, "ftbU64(1) = 0");
+assert.equal(new alanStd.U64(16).ftb(), 4, "ftbU64(64) = 4");
+assert.equal(new alanStd.U64(9_223_372_036_854_775_808n).ftb(), 63, "ftbU64(9_223_372_036_854_775_808n) = 63");
+
+assert.equal(new alanStd.I64(-1).ftb(), 0, "ftbI64(-1) = 0");
+assert.equal(new alanStd.I64(0).ftb(), -1, "ftbI64(0) = -1");
+assert.equal(new alanStd.I64(1).ftb(), 0, "ftbI64(1) = 0");
+assert.equal(new alanStd.I64(16).ftb(), 4, "ftbI64(16) = 4");
+assert.equal(new alanStd.I64(-9_223_372_036_854_775_808n).ftb(), 63, "ftbI64(-9_223_372_036_854_775_808n) = 63");
+
 assert.deepEqual(alanStd.cross(
   [new alanStd.F64(1), new alanStd.F64(0), new alanStd.F64(0)],
   [new alanStd.F64(0), new alanStd.F64(1), new alanStd.F64(0)],
