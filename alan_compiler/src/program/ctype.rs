@@ -4132,8 +4132,9 @@ impl CType {
     pub fn not(b: Arc<CType>) -> Arc<CType> {
         Arc::new(match &*b {
             CType::Bool(b) => CType::Bool(!*b),
+            CType::Int(b) => CType::Int(!*b),
             CType::Infer(..) => CType::Not(b),
-            _ => CType::fail("Not{B} must be provided a boolean type to invert"),
+            _ => CType::fail("Not{B} must be provided a boolean or integer type to invert"),
         })
     }
     pub fn min(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
