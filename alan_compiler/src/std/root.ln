@@ -127,7 +127,7 @@ type Browser = Env{"ALAN_PLATFORM"} == "browser"; // Technically not necessary, 
 
 // Importing the Root Scope backing implementation and supporting 3rd party libraries
 type{Rs} RootBacking = Rust{"alan_std" @ "https://github.com/alantech/alan.git"};
-type{Js} RootBacking = Node{"alan_std" @ "https://github.com/alantech/alan.git"};
+type{Js} RootBacking = Node{"alan_std" @ "https://github.com/alantech/alan.git#flb-ftb"};
 
 // Defining derived types
 type void = ();
@@ -825,6 +825,10 @@ fn{Js} reverseBits Method{"reverseBits"} :: u8 -> u8;
 fn extractBits(v: u8, offset: u8, count: u8) = (v >> offset) & (2.u8 ** count - 1.u8);
 fn insertBits(v: u8, newbits: u8, offset: u8, count: u8) =
   ((newbits & (2.u8 ** count - 1.u8)) << offset) + (v & !((2.u8 ** count - 1.u8) << offset));
+fn{Rs} flb (a: u8) = {Method{"leading_ones"} :: u8 -> u32}(a).u8;
+fn{Js} flb Method{"flb"} :: u8 -> u8;
+fn{Rs} ftb (a: u8) = {Method{"trailing_ones"} :: u8 -> u32}(a).u8;
+fn{Js} ftb Method{"ftb"} :: u8 -> u8;
 
 fn{Rs} add Method{"wrapping_add"} :: (u16, Deref{u16}) -> u16;
 fn{Js} add Method{"wrappingAdd"} :: (u16, u16) -> u16;
@@ -883,6 +887,10 @@ fn{Js} reverseBits Method{"reverseBits"} :: u16 -> u16;
 fn extractBits(v: u16, offset: u16, count: u16) = (v >> offset) & (2.u16 ** count - 1.u16);
 fn insertBits(v: u16, newbits: u16, offset: u16, count: u16) =
   ((newbits & (2.u16 ** count - 1.u16)) << offset) + (v & !((2.u16 ** count - 1.u16) << offset));
+fn{Rs} flb (a: u16) = {Method{"leading_ones"} :: u16 -> u32}(a).u16;
+fn{Js} flb Method{"flb"} :: u16 -> u16;
+fn{Rs} ftb (a: u16) = {Method{"trailing_ones"} :: u16 -> u32}(a).u16;
+fn{Js} ftb Method{"ftb"} :: u16 -> u16;
 
 fn{Rs} add Method{"wrapping_add"} :: (u32, Deref{u32}) -> u32;
 fn{Js} add Method{"wrappingAdd"} :: (u32, u32) -> u32;
@@ -941,6 +949,10 @@ fn{Js} reverseBits Method{"reverseBits"} :: u32 -> u32;
 fn extractBits(v: u32, offset: u32, count: u32) = (v >> offset) & (2.u32 ** count - 1.u32);
 fn insertBits(v: u32, newbits: u32, offset: u32, count: u32) =
   ((newbits & (2.u32 ** count - 1.u32)) << offset) + (v & !((2.u32 ** count - 1.u32) << offset));
+fn{Rs} flb Method{"leading_ones"} :: u32 -> u32;
+fn{Js} flb Method{"flb"} :: u32 -> u32;
+fn{Rs} ftb Method{"trailing_ones"} :: u32 -> u32;
+fn{Js} ftb Method{"ftb"} :: u32 -> u32;
 
 fn{Rs} add Method{"wrapping_add"} :: (u64, Deref{u64}) -> u64;
 fn{Js} add Method{"wrappingAdd"} :: (u64, u64) -> u64;
@@ -999,6 +1011,10 @@ fn{Js} reverseBits Method{"reverseBits"} :: u64 -> u64;
 fn extractBits(v: u64, offset: u64, count: u64) = (v >> offset) & (2.u64 ** count - 1.u64);
 fn insertBits(v: u64, newbits: u64, offset: u64, count: u64) =
   ((newbits & (2.u64 ** count - 1.u64)) << offset) + (v & !((2.u64 ** count - 1.u64) << offset));
+fn{Rs} flb (a: u64) = {Method{"leading_ones"} :: u64 -> u32}(a).u64;
+fn{Js} flb Method{"flb"} :: u64 -> u64;
+fn{Rs} ftb (a: u64) = {Method{"trailing_ones"} :: u64 -> u32}(a).u64;
+fn{Js} ftb Method{"ftb"} :: u64 -> u64;
 
 /// Signed Integer-related functions
 fn{Rs} add Method{"wrapping_add"} :: (i8, Deref{i8}) -> i8;
@@ -1061,6 +1077,11 @@ fn{Rs} reverseBits Method{"reverse_bits"} :: Deref{i8} -> i8;
 fn{Js} reverseBits Method{"reverseBits"} :: i8 -> i8;
 fn insertBits(v: i8, newbits: i8, offset: i8, count: i8) =
   ((newbits & (2.i8 ** count - 1.i8)) << offset) + (v & !((2.i8 ** count - 1.i8) << offset));
+fn flb (a: i8) = 7.i8 - a.clz;
+fn ftb (a: i8) {
+  let val = a.ctz;
+  return if(val == 8.i8, (-1).i8, val);
+}
 
 fn{Rs} add Method{"wrapping_add"} :: (i16, Deref{i16}) -> i16;
 fn{Js} add Method{"wrappingAdd"} :: (i16, i16) -> i16;
@@ -1122,6 +1143,11 @@ fn{Rs} reverseBits Method{"reverse_bits"} :: Deref{i16} -> i16;
 fn{Js} reverseBits Method{"reverseBits"} :: i16 -> i16;
 fn insertBits(v: i16, newbits: i16, offset: i16, count: i16) =
   ((newbits & (2.i16 ** count - 1.i16)) << offset) + (v & !((2.i16 ** count - 1.i16) << offset));
+fn flb (a: i16) = 15.i16 - a.clz;
+fn ftb (a: i16) {
+  let val = a.ctz;
+  return if(val == 16.i16, (-1).i16, val);
+}
 
 fn{Rs} add Method{"wrapping_add"} :: (i32, Deref{i32}) -> i32;
 fn{Js} add Method{"wrappingAdd"} :: (i32, i32) -> i32;
@@ -1183,6 +1209,10 @@ fn{Rs} reverseBits Method{"reverse_bits"} :: Deref{i32} -> i32;
 fn{Js} reverseBits Method{"reverseBits"} :: i32 -> i32;
 fn insertBits(v: i32, newbits: i32, offset: i32, count: i32) =
   ((newbits & (2.i32 ** count - 1.i32)) << offset) + (v & !((2.i32 ** count - 1.i32) << offset));
+fn{Rs} flb (a: i32) = {Method{"leading_ones"} :: i32 -> u32}(a).i32;
+fn{Js} flb Method{"flb"} :: i32 -> i32;
+fn{Rs} ftb (a: i32) = {Method{"trailing_ones"} :: i32 -> u32}(a).i32;
+fn{Js} ftb Method{"ftb"} :: i32 -> i32;
 
 fn{Rs} add Method{"wrapping_add"} :: (i64, Deref{i64}) -> i64;
 fn{Js} add Method{"wrappingAdd"} :: (i64, i64) -> i64;
@@ -1244,6 +1274,10 @@ fn{Rs} reverseBits Method{"reverse_bits"} :: Deref{i64} -> i64;
 fn{Js} reverseBits Method{"reverseBits"} :: i64 -> i64;
 fn insertBits(v: i64, newbits: i64, offset: i64, count: i64) =
   ((newbits & (2 ** count - 1)) << offset) + (v & !((2 ** count - 1) << offset));
+fn{Rs} flb (a: i64) = {Method{"leading_ones"} :: i64 -> u32}(a).i64;
+fn{Js} flb Method{"flb"} :: i64 -> i64;
+fn{Rs} ftb (a: i64) = {Method{"trailing_ones"} :: i64 -> u32}(a).i64;
+fn{Js} ftb Method{"ftb"} :: i64 -> i64;
 
 /// String-related functions
 fn{Rs} string "format!" :: ("{}", f32) -> string;

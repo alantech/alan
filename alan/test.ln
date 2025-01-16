@@ -80,7 +80,17 @@ export fn{Test} main {
     .it('insertBits', fn (test: Mut{Testing}) = test
       .assert(eq, 0.i8.insertBits(1.i8, 2.i8, 3.i8), 4.i8)
       .assert(eq, 31.i8.insertBits(1.i8, 2.i8, 3.i8), 7.i8))
-    .it('dot').assert(eq, {i8[2]}(3.i8, 4.i8) *. {i8[2]}(3.i8, 4.i8), 25.i8);
+    .it('dot').assert(eq, {i8[2]}(3.i8, 4.i8) *. {i8[2]}(3.i8, 4.i8), 25.i8)
+    .it("flb", fn (test: Mut{Testing}) = test
+      .assert(eq, 0.i8.flb, (-1).i8)
+      .assert(eq, 1.i8.flb, 0.i8)
+      .assert(eq, 2.i8.flb, 1.i8)
+      .assert(eq, (-128).i8.flb, 7.i8))
+    .it("ftb", fn (test: Mut{Testing}) = test
+      .assert(eq, 0.i8.flb, (-1).i8)
+      .assert(eq, 1.i8.flb, 0.i8)
+      .assert(eq, 2.i8.flb, 1.i8)
+      .assert(eq, (-128).i8.flb, 7.i8));
 
   test.describe("Basic math tests i16")
     .it("add")
