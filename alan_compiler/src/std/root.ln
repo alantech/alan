@@ -5,16 +5,21 @@
 
 /// Type system setup
 
-// Declaration of the types the compiler-time type system is built on
+// Declaration of the types the compiler-time type system is built on. There are four groups of these compiler-defined types: meta types of the type system itself, host types to interact with the host language, type types to construct your own types, and compute types that perform compile-time computation
+
+/// Meta types
 ctype Type; // Any kind of concrete type
 ctype Generic; // Any type that is a generic type (not yet realized into a concrete type)
-ctype Binds{T}; // A direct reference into the platform language's type system
 ctype Int; // An integer used *to define a type*, like the length of a fixed array
 ctype Float; // A float used to define a type. I have no idea why you'd want this, yet
 ctype Bool; // A bool used to define a type. Heavily used for conditional compilation
 ctype String; // A string used to define a type. Useful for conditional inclusion of files/code
 ctype Group{G}; // A grouping of type statements `()`. Useful to allow for tuples of tuples
 ctype Function{I, O}; // A function type, indicating the input and output of the function
+ctype AnyOf{A, B}; // The AnyOf type is kinda like a Tuple, in that all sub-types are present, but it only *resolves* into one of these types above it. Useful for choosing the "best" integer, or a particular function by name.
+
+/// Host types
+ctype Binds{T}; // A direct reference into the platform language's type system
 ctype Call{N, F}; // A reference to a function call (or method, etc) in the platform language
 ctype Infix{O}; // A reference to a native infix operation in the platform language
 ctype Prefix{O}; // A reference to a native prefix operation in the platform language
@@ -27,18 +32,29 @@ ctype Mut{T}; // Specifying that the function (native or otherwise) needs a muta
 ctype Dependency{N, V}; // The representation of a dependency (of some form or another). Does nothing on its own
 ctype Rust{D}; // Specifying that the provided dependency is a Rust dependency.
 ctype Node{D}; // Specifying that the provided dependency is a Node.js dependency.
-ctype From{D}; // Pulls the desired value from the dependency. Magically figures out which is needed through compiler trickery.
 ctype Import{N, D}; // Imports the named value from the dependency.
+ctype From{D}; // Pulls the desired value from the dependency. Magically figures out which is needed through compiler trickery.
+
+/// Type types
 ctype Tuple{A, B}; // A tuple of two (or more) types in a single compound type
 ctype Field{L, V}; // Labeling a type with a property name. Useful to turn tuples into structs
 ctype Either{A, B}; // An either type, allowing the value to be from *one* of the specified types, kinda like Rust enums
-ctype Prop{T, P}; // Extracts the inner type from the outer type by the property name or number
-ctype AnyOf{A, B}; // The AnyOf type is kinda like a Tuple, in that all sub-types are present, but it only *resolves* into one of these types above it. Useful for choosing the "best" integer, or a particular function by name.
 ctype Buffer{T, S}; // A buffer type, a pre-allocated, fixed-length array of the specified type the specified amount
 ctype Array{T}; // An array type, a variable-length array of the specified type the specified amount. This would usually be an stdlib type built in the language itself, but we're just going to re-use the one in the platform language
 
-// The following `ctype`s don't represent data but instead represent transforms that convert into one of the many ctypes above. (I did not expect to need so many of them.)
+/// Compute types
+ctype Prop{T, P}; // Extracts the inner type from the outer type by the property name or number
+ctype Len{A}; // Returns the length of the input type in terms of the number of elements it contains, which is most useful for Buffers, Tuples, and Either, causes a compiler failure for Arrays, and returns 1 for everything else
+ctype Size{T}; // Returns the size in bytes of the type in question, if possible, causing a compiler failure otherwise.
+ctype FileStr{F}; // Read a file and return a string constant, useful for including large strings from a separate, nearby file, or fails if it doesn't exist
+ctype Concat{A, B}; // Concatenates two strings together at compile time
+ctype Env{K}; // Read an environment variable at compile time and return a string of the value. Returns an empty string if the key doesn't exist. Intended to be used with...
+ctype EnvExists{K}; // Returns a boolean if the environment variable key exists at compile time, and...
 ctype Fail{M}; // A special type that if ever encountered at compile time causes the compilation to fail with the specified error message. Useful with conditional types
+ctype If{C, A, B}; // A conditional type, if C is true, resolves to A, otherwise to B. There's also a simpler version...
+ctype If{C, T}; // That expects a two-type tuple and extracts the first tuple type for true and the second for false, which can be bound to symbolic syntax
+ctype Env{K, D}; // Finally, since the majority of the time this is what you'd want, this variant of `Env` takes a default value to use when the key does not exist, making this another conditional type
+ctype Neg{A}; // Negate the value
 ctype Add{A, B}; // Combines the Int or Float types together at compile time into a new Int or Float. Fails if an Int and Float are mixed.
 ctype Sub{A, B}; // Same, but subtracts them
 ctype Mul{A, B}; // Multiplication
@@ -47,20 +63,10 @@ ctype Mod{A, B}; // Modulus (remainder)
 ctype Pow{A, B}; // Exponentiation/Power
 ctype Min{A, B}; // Minimum value of the two
 ctype Max{A, B}; // Maximum value of the two
-ctype Neg{A}; // Negate the value
-ctype Len{A}; // Returns the length of the input type in terms of the number of elements it contains, which is most useful for Buffers, Tuples, and Either, causes a compiler failure for Arrays, and returns 1 for everything else
-ctype Size{T}; // Returns the size in bytes of the type in question, if possible, causing a compiler failure otherwise.
-ctype FileStr{F}; // Read a file and return a string constant, useful for including large strings from a separate, nearby file, or fails if it doesn't exist
-ctype Concat{A, B}; // Concatenates two strings together at compile time
-ctype Env{K}; // Read an environment variable at compile time and return a string of the value. Returns an empty string if the key doesn't exist. Intended to be used with...
-ctype EnvExists{K}; // Returns a boolean if the environment variable key exists at compile time, and...
-ctype If{C, A, B}; // A conditional type, if C is true, resolves to A, otherwise to B. There's also a simpler version...
-ctype If{C, T}; // That expects a two-type tuple and extracts the first tuple type for true and the second for false, which can be bound to symbolic syntax
-ctype Env{K, D}; // Finally, since the majority of the time this is what you'd want, this variant of `Env` takes a default value to use when the key does not exist, making this another conditional type
+ctype Not{A}; // Inverts the boolean provided
 ctype And{A, B}; // Performs a boolean or bitwise AND on the inputs, depending on type
 ctype Or{A, B}; // Performs a boolean or bitwise OR on the inputs
 ctype Xor{A, B}; // Performs a boolean or bitwise XOR on the inputs
-ctype Not{B}; // Inverts the boolean provided
 ctype Nand{A, B}; // Performs a boolean or bitwise NAND on the inputs
 ctype Nor{A, B}; // Performs a boolean or bitwise NOR on the inputs
 ctype Xnor{A, B}; // Performs a boolean or bitwise XNOR on the inputs (same as EQ for booleans)
