@@ -249,7 +249,6 @@ fn{Js} getOr{T} (v: T!, d: T) = {"((v, d) => v instanceof alan_std.AlanError ? d
 fn{Rs} getOrExit{T} (v: T!) = {Method{"unwrap"} :: Own{T!} -> T}(v);
 fn{Js} getOrExit{T} (v: T!) = {"((a) => { if (!(a instanceof alan_std.AlanError)) { return a; } else { process.exit(101); } })" :: T! -> T}(v);
 fn{Rs} getOrExit{T} (v: T?) = {Method{"unwrap"} :: Own{T?} -> T}(v);
-fn{Js} getOrExit{T} (v: T?) = {"((a) => a)" :: T? -> T}(v);
 fn{Js} getOrExit{T} (v: T?) = {"((a) => { if (a !== null && a !== undefined) { return a; } else { process.exit(101); } })" :: T? -> T}(v);
 fn{Rs} Error{T} (e: string) = {"Err" :: Own{Error} -> T!}(
   {Method{"into"} :: Own{string} -> Error}(e));
