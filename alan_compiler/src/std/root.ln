@@ -1671,7 +1671,7 @@ fn reduce{T}(t: Tree{T}, f: (Node{T}, Node{T}, i64) -> Node{T}) = t.Array.reduce
 fn reduce{T, U}(t: Tree{T}, i: U, f: (U, Node{T}) -> U) = t.Array.reduce(i, f);
 fn reduce{T, U}(t: Tree{T}, i: U, f: (U, Node{T}, i64) -> U) = t.Array.reduce(i, f);
 
-fn find{T}(t: Tree{T}, f: (T) -> bool) = t.Array.find(f);
+fn find{T}(t: Tree{T}, f: (Node{T}) -> bool) = t.Array.find(f);
 
 /// Thread-related bindings
 fn{Rs} wait (t: i64) = {"std::thread::sleep" :: Own{Duration}}(
