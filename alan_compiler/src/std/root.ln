@@ -508,7 +508,53 @@ fn{Rs} bool(s: string) = {Infix{"=="} :: (string, string) -> bool}(s, "true");
 fn{Js} bool "((s) => new alan_std.Bool(s.val == 'true'))" <- RootBacking :: string -> bool;
 fn bool(b: bool) = b;
 
-/// Boolean related bindings
+/// Bitcasting functions (TODO: Is there a better naming scheme possible?)
+fn asU8(v: u8) = v;
+fn{Rs} asU8(v: i8) = {"u8::from_le_bytes" :: Own{Buffer{u8, 1}} -> u8}({"i8::to_le_bytes" :: Own{i8} -> Buffer{u8, 1}}(v));
+fn{Js} asU8 "alan_std.i8AsU8" <- RootBacking :: i8 -> u8;
+fn asU16(v: u16) = v;
+fn{Rs} asU16(v: i16) = {"u16::from_le_bytes" :: Own{Buffer{u8, 2}} -> u16}({"i16::to_le_bytes" :: Own{i16} -> Buffer{u8, 2}}(v));
+fn{Js} asU16 "alan_std.i16AsU16" <- RootBacking :: i16 -> u16;
+fn asU32(v: u32) = v;
+fn{Rs} asU32(v: i32) = {"u32::from_le_bytes" :: Own{Buffer{u8, 4}} -> u32}({"i32::to_le_bytes" :: Own{i32} -> Buffer{u8, 4}}(v));
+fn{Js} asU32 "alan_std.i32AsU32" <- RootBacking :: i32 -> u32;
+fn{Rs} asU32(v: f32) = {"u32::from_le_bytes" :: Own{Buffer{u8, 4}} -> u32}({"f32::to_le_bytes" :: Own{f32} -> Buffer{u8, 4}}(v));
+fn{Js} asU32 "alan_std.f32AsU32" <- RootBacking :: f32 -> u32;
+fn asU64(v: u64) = v;
+fn{Rs} asU64(v: i64) = {"u64::from_le_bytes" :: Own{Buffer{u8, 8}} -> u64}({"i64::to_le_bytes" :: Own{i64} -> Buffer{u8, 8}}(v));
+fn{Js} asU64 "alan_std.i64AsU64" <- RootBacking :: i64 -> u64;
+fn{Rs} asU64(v: f64) = {"u64::from_le_bytes" :: Own{Buffer{u8, 8}} -> f64}({"f64::to_le_bytes" :: Own{f64} -> Buffer{u8, 8}}(v));
+fn{Js} asU64 "alan_std.f64AsU64" <- RootBacking :: f64 -> u64;
+
+fn{Rs} asI8(v: u8) = {"i8::from_le_bytes" :: Own{Buffer{u8, 1}} -> i8}({"u8::to_le_bytes" :: Own{u8} -> Buffer{u8, 1}}(v));
+fn{Js} asI8 "alan_std.u8AsI8" <- RootBacking :: u8 -> i8;
+fn asI8(v: i8) = v;
+fn{Rs} asI16(v: u16) = {"i16::from_le_bytes" :: Own{Buffer{u8, 2}} -> i16}({"u16::to_le_bytes" :: Own{u16} -> Buffer{u8, 2}}(v));
+fn{Js} asI16 "alan_std.u16AsI16" <- RootBacking :: u16 -> i16;
+fn asI16(v: i16) = v;
+fn{Rs} asI32(v: u32) = {"i32::from_le_bytes" :: Own{Buffer{u8, 4}} -> i32}({"u32::to_le_bytes" :: Own{u32} -> Buffer{u8, 4}}(v));
+fn{Js} asI32 "alan_std.u32AsI32" <- RootBacking :: u32 -> i32;
+fn asI32(v: i32) = v;
+fn{Rs} asI32(v: f32) = {"i32::from_le_bytes" :: Own{Buffer{u8, 4}} -> i32}({"f32::to_le_bytes" :: Own{f32} -> Buffer{u8, 4}}(v));
+fn{Js} asI32 "alan_std.f32AsI32" <- RootBacking :: f32 -> i32;
+fn{Rs} asI64(v: u64) = {"i64::from_le_bytes" :: Own{Buffer{u8, 8}} -> i64}({"u64::to_le_bytes" :: Own{u64} -> Buffer{u8, 8}}(v));
+fn{Js} asI64 "alan_std.u64AsI64" <- RootBacking :: u64 -> i64;
+fn asI64(v: i64) = v;
+fn{Rs} asI64(v: f64) = {"i64::from_le_bytes" :: Own{Buffer{u8, 8}} -> i64}({"f64::to_le_bytes" :: Own{f64} -> Buffer{u8, 8}}(v));
+fn{Js} asI64 "alan_std.f64AsI64" <- RootBacking :: f64 -> i64;
+
+fn{Rs} asF32(v: u32) = {"f32::from_le_bytes" :: Own{Buffer{u8, 4}} -> f32}({"u32::to_le_bytes" :: Own{u32} -> Buffer{u8, 4}}(v));
+fn{Js} asF32 "alan_std.u32AsF32" <- RootBacking :: u32 -> f32;
+fn{Rs} asF32(v: i32) = {"f32::from_le_bytes" :: Own{Buffer{u8, 4}} -> f32}({"i32::to_le_bytes" :: Own{i32} -> Buffer{u8, 4}}(v));
+fn{Js} asF32 "alan_std.i32AsF32" <- RootBacking :: i32 -> f32;
+fn asF32(v: f32) = v;
+fn{Rs} asF64(v: u64) = {"f64::from_le_bytes" :: Own{Buffer{u8, 8}} -> f64}({"u64::to_le_bytes" :: Own{u64} -> Buffer{u8, 8}}(v));
+fn{Js} asF64 "alan_std.u64AsF64" <- RootBacking :: u64 -> f64;
+fn{Rs} asF64(v: i64) = {"f64::from_le_bytes" :: Own{Buffer{u8, 8}} -> f64}({"i64::to_le_bytes" :: Own{i64} -> Buffer{u8, 8}}(v));
+fn{Js} asF64 "alan_std.i64AsF64" <- RootBacking :: i64 -> f64;
+fn asF64(v: f64) = v;
+
+/// Boolean-related functions
 fn{Rs} and Infix{"&&"} :: (Deref{bool}, Deref{bool}) -> bool;
 fn{Js} and "((a, b) => new alan_std.Bool(a.val && b.val))" <- RootBacking :: (bool, bool) -> bool;
 fn{Rs} or Infix{"||"} :: (Deref{bool}, Deref{bool}) -> bool;
@@ -536,7 +582,7 @@ fn{Js} if(c: bool, t: () -> ()) {
 fn{Rs} if "ifstatementhack" :: (bool, () -> ()) -> ();
 fn{Rs} if "ifelsestatementhack" :: (bool, () -> (), () -> ()) -> ();
 
-/// Float-related functions and function bindings
+/// Float-related functions
 fn{Rs} add Infix{"+"} :: (f32, f32) -> f32;
 fn{Js} add "((a, b) => new alan_std.F32(a.val + b.val))" <- RootBacking :: (f32, f32) -> f32;
 fn{Rs} sub Infix{"-"} :: (f32, f32) -> f32;
@@ -721,7 +767,7 @@ fn{Js} fma "((a, b, c) => new alan_std.F32(a.val * b.val + c.val))" <- RootBacki
 fn{Rs} fract Method{"fract"} :: f64 -> f64;
 fn{Js} fract "((a) => new alan_std.F64(a.val % 1))" <- RootBacking :: f64 -> f64;
 
-/// Unsigned Integer-related functions and function bindings
+/// Unsigned Integer-related functions
 fn{Rs} add Method{"wrapping_add"} :: (u8, Deref{u8}) -> u8;
 fn{Js} add Method{"wrappingAdd"} :: (u8, u8) -> u8;
 fn{Rs} sub Method{"wrapping_sub"} :: (u8, Deref{u8}) -> u8;
@@ -954,7 +1000,7 @@ fn extractBits(v: u64, offset: u64, count: u64) = (v >> offset) & (2.u64 ** coun
 fn insertBits(v: u64, newbits: u64, offset: u64, count: u64) =
   ((newbits & (2.u64 ** count - 1.u64)) << offset) + (v & !((2.u64 ** count - 1.u64) << offset));
 
-/// Signed Integer-related functions and function bindings
+/// Signed Integer-related functions
 fn{Rs} add Method{"wrapping_add"} :: (i8, Deref{i8}) -> i8;
 fn{Js} add Method{"wrappingAdd"} :: (i8, i8) -> i8;
 fn{Rs} sub Method{"wrapping_sub"} :: (i8, Deref{i8}) -> i8;
@@ -1199,7 +1245,7 @@ fn{Js} reverseBits Method{"reverseBits"} :: i64 -> i64;
 fn insertBits(v: i64, newbits: i64, offset: i64, count: i64) =
   ((newbits & (2 ** count - 1)) << offset) + (v & !((2 ** count - 1) << offset));
 
-/// String related bindings
+/// String-related functions
 fn{Rs} string "format!" :: ("{}", f32) -> string;
 fn{Js} string "new alan_std.Str" <- RootBacking :: f32 -> string;
 fn{Rs} string "format!" :: ("{}", f64) -> string;
@@ -1271,7 +1317,7 @@ fn{Js} join "((a, b) => new alan_std.Str([...a.map(v => v.val)].join(b.val)))" <
 fn{Rs} join{S}(a: string[S], s: string) = {Method{"join"} :: (string[S], string) -> string}(a, s);
 fn{Js} join{S}(a: string[S], s: string) = {"((a, s) => new alan_std.Str(a.map(v => v.val).join(s.val)))" <- RootBacking :: (string[S], string) -> string}(a, s);
 
-/// Array related bindings
+/// Array-related functions
 fn{Rs} len{T} (a: T[]) = {Cast{"i64"} :: Deref{Binds{"usize"}} -> i64}(
   {Method{"len"} :: T[] -> Binds{"usize"}}(a));
 fn{Js} len{T} (a: T[]) = {Property{"length"} :: T[] -> i32}(a).i64;
@@ -1371,7 +1417,7 @@ fn fma(a: f64[], b: f64[], c: f64[]) -> Fallible{f64[]} {
 fn fract(a: f32[]) = a.map(fract);
 fn fract(a: f64[]) = a.map(fract);
 
-/// Buffer related bindings
+/// Buffer-related functions
 fn{Rs} get{T, S} "alan_std::getbuffer" <- RootBacking :: (T[S], i64) -> T?;
 fn len{T, S}(T[S]) = {S}();
 fn{Js} get{T, S} "((b, i) => { let idx = Number(i.val); if (idx >= 0 && idx < b.length) { return b[idx]; } else { return null; } })" :: (T[S], i64) -> T?;
@@ -1455,7 +1501,7 @@ fn determinant{T}(m: Buffer{T, 16}) =
   m.4 * m.1 * m.14 * m.11 -
   m.0 * m.13 * m.10 * m.7;
 
-/// Dictionary-related bindings
+/// Dictionary-related functions
 fn{Rs} Dict{K, V} "alan_std::OrderedHashMap::new" <- RootBacking :: () -> Dict{K, V};
 fn{Js} Dict{K, V} "new Map" :: () -> Dict{K, V};
 fn Dict{K, V}(k: K, v: V) {
@@ -1518,7 +1564,7 @@ fn{Js} Array{V} (d: Dict{string, V}) = {"((d) => Array.from(d).map(kv => ({ arg0
 fn{Rs} concat{K, V} "alan_std::concatdict" <- RootBacking :: (Dict{K, V}, Dict{K, V}) -> Dict{K, V};
 fn{Js} concat{K, V} "((a, b) => new Map([...a, ...b]))" :: (Dict{K, V}, Dict{K, V}) -> Dict{K, V};
 
-/// Set-related bindings
+/// Set-related functions
 fn Set{V}(v: V) {
   let out = Set{V}();
   out.store(v);
@@ -1673,29 +1719,29 @@ fn reduce{T, U}(t: Tree{T}, i: U, f: (U, Node{T}, i64) -> U) = t.Array.reduce(i,
 
 fn find{T}(t: Tree{T}, f: (Node{T}) -> bool) = t.Array.find(f);
 
-/// Thread-related bindings
+/// Thread-related functions
 fn{Rs} wait (t: i64) = {"std::thread::sleep" :: Own{Duration}}(
   {"std::time::Duration::from_millis" :: Own{u64} -> Duration}(t.u64)
 );
 fn{Js} wait "((t) => new Promise((r) => setTimeout(() => { r(performance.now()) }, Number(t))))" :: i64 -> f64;
 
-/// Time-related bindings
+/// Time-related functions
 fn{Rs} now "std::time::Instant::now" :: () -> Instant;
 fn{Js} now "performance.now" :: () -> Performance;
 fn{Rs} elapsed Method{"elapsed"} :: Instant -> Duration;
 fn{Js} elapsed "((p) => (performance.now() - p) / 1000.0)" :: Performance -> f64;
 fn{Rs} f64 Method{"as_secs_f64"} :: Duration -> f64;
 
-/// Uuid-related bindings
+/// Uuid-related functions
 fn{Rs} uuid "alan_std::Uuid::new_v4" <- RootBacking :: () -> uuid;
 fn{Js} uuid "alan_std.uuidv4" <- RootBacking :: () -> uuid;
 fn{Rs} string "format!" :: ("{}", uuid) -> string;
 fn{Js} string "new alan_std.Str" :: uuid -> string;
 
-/// GPU-related bindings
+/// GPU-related functions
 
-// The base bindings to create buffers of memory on the GPU, construct a plan for a compute shader,
-// execute it, and read the buffer back to the CPU
+// The base types and functionsto create buffers of memory on the GPU, construct a plan for a
+// compute shader, execute it, and read the buffer back to the CPU
 type{Rs} BufferUsages = Binds{"alan_std::BufferUsages" <- RootBacking};
 type{Js} BufferUsages = Binds{"GPUBufferUsage"};
 type{Rs} GBuffer = Binds{"alan_std::GBuffer" <- RootBacking};
@@ -1761,6 +1807,8 @@ fn{Js} read{T} "alan_std.readBuffer" <- RootBacking :: GBuffer -> T[];
 fn{Rs} replace{T} "alan_std::replace_buffer" <- RootBacking :: (GBuffer, T[]) -> ()!;
 fn{Js} replace{T} "alan_std.replaceBuffer" <- RootBacking :: (GBuffer, T[]) -> ()!;
 
+/// Ergonomic GPGPU-related types and functions
+
 // The WgpuType provides a mechanism to build up the logic for a compute shader with normal-looking
 // Alan code, not requiring to think in two different languages at the same time. All of the GPU
 // types hereafter are derivative of this type
@@ -1800,12 +1848,6 @@ type WgpuTypeMap =
   mat4x2f: Buffer{f32, 8},
   mat4x3f: Buffer{f32, 12},
   mat4x4f: Buffer{f32, 16};
-
-// Scalar types and constructors
-type gu32 = WgpuType{"u32"};
-type gi32 = WgpuType{"i32"};
-type gf32 = WgpuType{"f32"};
-type gbool = WgpuType{"bool"};
 
 // TODO: Better constraining on the input types allowed. It will still fail to compile, but the
 // error message isn't great at the moment.
@@ -1850,6 +1892,14 @@ fn build{N}(ret: N[]) {
   let buffers = ret.reduce(Set{GBuffer}(), fn (o: Set{GBuffer}, r: N) = o.union(r.buffers));
   return build({N}("", statements, buffers));
 }
+
+/// GPGPU primitive type functions
+
+// Scalar types and constructors
+type gu32 = WgpuType{"u32"};
+type gi32 = WgpuType{"i32"};
+type gf32 = WgpuType{"f32"};
+type gbool = WgpuType{"bool"};
 
 fn gPrimitiveConvert{I, O}(i: I) {
   let typename = {O.typeName}();
@@ -1899,7 +1949,7 @@ fn len(gb: GBuffer) = gu32(
   Set(gb)
 );
 
-// Vector types and constructors
+/// GPGPU Vector types functions
 type gvec2u = WgpuType{"vec2u"};
 type gvec2i = WgpuType{"vec2i"};
 type gvec2f = WgpuType{"vec2f"};
@@ -2044,7 +2094,7 @@ fn gFor(x: i64, y: i64) {
   return gvec3u('id', statements, Set{GBuffer}());
 }
 
-// Matrix types
+/// GPGPU Matrix types and functions
 type gmat2x2f = WgpuType{"mat2x2f"};
 type gmat2x3f = WgpuType{"mat2x3f"};
 type gmat2x4f = WgpuType{"mat2x4f"};
@@ -2649,7 +2699,7 @@ fn gmat4x4f(
 
 // TODO: How to handle structs?
 
-// GPU Type accessors
+/// GPGPU Accessor functions
 
 fn x(v: gvec2u) {
   let varName = v.varName.concat('.x');
@@ -3922,7 +3972,7 @@ fn store(a: gi32, b: gi32) {
   return gi32(statement, statements, buffers);
 }
 
-// GPU Math
+/// GPGPU Math functions
 
 fn gneg{I}(v: I) {
   let varName = '(-'.concat(v.varName).concat(')');
@@ -4886,7 +4936,7 @@ fn acoth(x: gvec2f) = ln(x.add(gvec2f(1.0)).div(x.sub(gvec2f(1.0)))).div(gvec2f(
 fn acoth(x: gvec3f) = ln(x.add(gvec3f(1.0)).div(x.sub(gvec3f(1.0)))).div(gvec3f(2.0));
 fn acoth(x: gvec4f) = ln(x.add(gvec4f(1.0)).div(x.sub(gvec4f(1.0)))).div(gvec4f(2.0));
 
-// GPU Comparison methods
+/// GPGPU Comparison functions
 
 fn geq{I, O}(a: I, b: I) {
   let varName = '('.concat(a.varName).concat(' == ').concat(b.varName).concat(')');
@@ -5050,6 +5100,8 @@ fn gte(a: gvec4u, b: gvec4u) = ggte{gvec4u, gvec4b}(a, b);
 fn gte(a: gvec4i, b: gvec4i) = ggte{gvec4i, gvec4b}(a, b);
 fn gte(a: gvec4f, b: gvec4f) = ggte{gvec4f, gvec4b}(a, b);
 
+/// GPGPU Conditional functions
+
 fn if{T}(c: gbool, t: T, f: T) {
   let varName = "if_".concat(uuid().string.replace('-', '_'));
   let tBody = t.statements.Array.map(fn (kv: (string, string)) {
@@ -5099,7 +5151,7 @@ fn if{T}(c: gbool, t: T, f: T) {
   return {T}(varName, statements, buffers);
 }
 
-// GPU Boolean and Bitwise methods
+/// GPU Boolean and Bitwise methods
 
 fn gnot{I}(a: I) {
   let varName = '(!'.concat(a.varName).concat(')');
@@ -5233,51 +5285,7 @@ fn shr(a: gvec3i, b: gvec3i) = gshr(a, b);
 fn shr(a: gvec4u, b: gvec4u) = gshr(a, b);
 fn shr(a: gvec4i, b: gvec4i) = gshr(a, b);
 
-// Bitcasting methods (TODO: Is there a better naming scheme possible?)
-fn asU8(v: u8) = v;
-fn{Rs} asU8(v: i8) = {"u8::from_le_bytes" :: Own{Buffer{u8, 1}} -> u8}({"i8::to_le_bytes" :: Own{i8} -> Buffer{u8, 1}}(v));
-fn{Js} asU8 "alan_std.i8AsU8" <- RootBacking :: i8 -> u8;
-fn asU16(v: u16) = v;
-fn{Rs} asU16(v: i16) = {"u16::from_le_bytes" :: Own{Buffer{u8, 2}} -> u16}({"i16::to_le_bytes" :: Own{i16} -> Buffer{u8, 2}}(v));
-fn{Js} asU16 "alan_std.i16AsU16" <- RootBacking :: i16 -> u16;
-fn asU32(v: u32) = v;
-fn{Rs} asU32(v: i32) = {"u32::from_le_bytes" :: Own{Buffer{u8, 4}} -> u32}({"i32::to_le_bytes" :: Own{i32} -> Buffer{u8, 4}}(v));
-fn{Js} asU32 "alan_std.i32AsU32" <- RootBacking :: i32 -> u32;
-fn{Rs} asU32(v: f32) = {"u32::from_le_bytes" :: Own{Buffer{u8, 4}} -> u32}({"f32::to_le_bytes" :: Own{f32} -> Buffer{u8, 4}}(v));
-fn{Js} asU32 "alan_std.f32AsU32" <- RootBacking :: f32 -> u32;
-fn asU64(v: u64) = v;
-fn{Rs} asU64(v: i64) = {"u64::from_le_bytes" :: Own{Buffer{u8, 8}} -> u64}({"i64::to_le_bytes" :: Own{i64} -> Buffer{u8, 8}}(v));
-fn{Js} asU64 "alan_std.i64AsU64" <- RootBacking :: i64 -> u64;
-fn{Rs} asU64(v: f64) = {"u64::from_le_bytes" :: Own{Buffer{u8, 8}} -> f64}({"f64::to_le_bytes" :: Own{f64} -> Buffer{u8, 8}}(v));
-fn{Js} asU64 "alan_std.f64AsU64" <- RootBacking :: f64 -> u64;
-
-fn{Rs} asI8(v: u8) = {"i8::from_le_bytes" :: Own{Buffer{u8, 1}} -> i8}({"u8::to_le_bytes" :: Own{u8} -> Buffer{u8, 1}}(v));
-fn{Js} asI8 "alan_std.u8AsI8" <- RootBacking :: u8 -> i8;
-fn asI8(v: i8) = v;
-fn{Rs} asI16(v: u16) = {"i16::from_le_bytes" :: Own{Buffer{u8, 2}} -> i16}({"u16::to_le_bytes" :: Own{u16} -> Buffer{u8, 2}}(v));
-fn{Js} asI16 "alan_std.u16AsI16" <- RootBacking :: u16 -> i16;
-fn asI16(v: i16) = v;
-fn{Rs} asI32(v: u32) = {"i32::from_le_bytes" :: Own{Buffer{u8, 4}} -> i32}({"u32::to_le_bytes" :: Own{u32} -> Buffer{u8, 4}}(v));
-fn{Js} asI32 "alan_std.u32AsI32" <- RootBacking :: u32 -> i32;
-fn asI32(v: i32) = v;
-fn{Rs} asI32(v: f32) = {"i32::from_le_bytes" :: Own{Buffer{u8, 4}} -> i32}({"f32::to_le_bytes" :: Own{f32} -> Buffer{u8, 4}}(v));
-fn{Js} asI32 "alan_std.f32AsI32" <- RootBacking :: f32 -> i32;
-fn{Rs} asI64(v: u64) = {"i64::from_le_bytes" :: Own{Buffer{u8, 8}} -> i64}({"u64::to_le_bytes" :: Own{u64} -> Buffer{u8, 8}}(v));
-fn{Js} asI64 "alan_std.u64AsI64" <- RootBacking :: u64 -> i64;
-fn asI64(v: i64) = v;
-fn{Rs} asI64(v: f64) = {"i64::from_le_bytes" :: Own{Buffer{u8, 8}} -> i64}({"f64::to_le_bytes" :: Own{f64} -> Buffer{u8, 8}}(v));
-fn{Js} asI64 "alan_std.f64AsI64" <- RootBacking :: f64 -> i64;
-
-fn{Rs} asF32(v: u32) = {"f32::from_le_bytes" :: Own{Buffer{u8, 4}} -> f32}({"u32::to_le_bytes" :: Own{u32} -> Buffer{u8, 4}}(v));
-fn{Js} asF32 "alan_std.u32AsF32" <- RootBacking :: u32 -> f32;
-fn{Rs} asF32(v: i32) = {"f32::from_le_bytes" :: Own{Buffer{u8, 4}} -> f32}({"i32::to_le_bytes" :: Own{i32} -> Buffer{u8, 4}}(v));
-fn{Js} asF32 "alan_std.i32AsF32" <- RootBacking :: i32 -> f32;
-fn asF32(v: f32) = v;
-fn{Rs} asF64(v: u64) = {"f64::from_le_bytes" :: Own{Buffer{u8, 8}} -> f64}({"u64::to_le_bytes" :: Own{u64} -> Buffer{u8, 8}}(v));
-fn{Js} asF64 "alan_std.u64AsF64" <- RootBacking :: u64 -> f64;
-fn{Rs} asF64(v: i64) = {"f64::from_le_bytes" :: Own{Buffer{u8, 8}} -> f64}({"i64::to_le_bytes" :: Own{i64} -> Buffer{u8, 8}}(v));
-fn{Js} asF64 "alan_std.i64AsF64" <- RootBacking :: i64 -> f64;
-fn asF64(v: f64) = v;
+/// GPGPU Bitcasting functions
 
 fn gbitcast{I, O}(v: I) {
   let varName = 'bitcast<'.concat({O.typeName}()).concat('>(').concat(v.varName).concat(')');
@@ -5322,7 +5330,7 @@ fn asVec4f(v: gvec4u) = gbitcast{gvec4u, gvec4f}(v);
 fn asVec4f(v: gvec4i) = gbitcast{gvec4i, gvec4f}(v);
 fn asVec4f(v: gvec4f) = v;
 
-// GPU Vector functions
+/// CPU and GPGPU miscellaneous Vector functions
 
 fn gevery{I}(v: I) {
   let varName = 'all('.concat(v.varName).concat(')');
@@ -5396,7 +5404,6 @@ fn pack4x8unorm(v: f32[4]) {
   let d = floor(0.5.f32 + 255.f32 * v.3.min(1.f32).max(0.f32)).u32;
   return a + b + c + d;
 }
-
 
 fn pack2x16snorm(v: gvec2f) {
   let varName = 'pack2x16snorm('.concat(v.varName).concat(')');
@@ -5512,7 +5519,7 @@ fn storageBarrier() = WgpuType{"storageBarrier"}(
   "storageBarrier()", Dict("storageBarrier()", "storageBarrier()"), Set{GBuffer}()
 );
 
-// GBuffer methods
+/// GBuffer-specific functions
 
 /* This one doesn't seem to work yet for some reason
 fn map{G, G2}(gb: GBuffer, f: G -> G2) {
@@ -5567,7 +5574,7 @@ fn map{G, G2}(gb: GBuffer, f: (G, gu32) -> G2) {
   return out;
 }
 
-/// Window-related bindings
+/// GPU Rendering-related functions
 type{Rs} Window = Binds{"alan_std::AlanWindowContext" <- RootBacking};
 type{Js} Window = Binds{"AlanWindowContext"};
 type{Rs} Frame = Binds{"alan_std::AlanWindowFrame" <- RootBacking};
@@ -5601,7 +5608,7 @@ fn{Rs} framebuffer Property{"framebuffer.clone()"} :: Frame -> GBuffer;
 fn{Js} framebuffer "alan_std.frameFramebuffer" <- RootBacking :: Frame -> GBuffer;
 fn pixel Frame = gFor(-1, -2); // Magic numbers for the binding
 
-/// Process exit-related bindings
+/// Process exit-related functions
 fn{Rs} ExitCode "std::process::ExitCode::from" :: Own{u8} -> ExitCode;
 fn{Js} ExitCode "Number" :: u8 -> ExitCode;
 fn ExitCode(e: u16) = ExitCode(e.u8);
@@ -5612,7 +5619,7 @@ fn ExitCode(e: i16) = ExitCode(e.u8);
 fn ExitCode(e: i32) = ExitCode(e.u8);
 fn ExitCode(e: i64) = ExitCode(e.u8);
 
-/// Stdout/stderr-related bindings
+/// Stdout/stderr-related functions
 // TODO: Rework this to just print anything that can be converted to `string` via interfaces
 fn{Rs} print{T}(v: T) = {"println!" :: ("{}", string)}(v.string);
 fn{Js} print{T}(v: T) = {"console.log" :: T}(v);
