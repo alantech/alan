@@ -5102,41 +5102,6 @@ fn gte(a: gvec4f, b: gvec4f) = ggte{gvec4f, gvec4b}(a, b);
 
 /// GPGPU Conditional functions
 
-fn if{T}(c: gbool, t: T, f: T) {
-  let varName = "if_".concat(uuid().string.replace('-', '_'));
-  let tBody = t.statements.Array.map(fn (kv: (string, string)) {
-    return if(kv.0 == "@builtin(global_invocation_id) id: vec3u", fn () = "", fn () {
-      return "  ".concat(kv.1).concat(";\n");
-    });
-  }).join("");
-  let fBody = f.statements.Array.map(fn (kv: (string, string)) {
-    return if(kv.0 == "@builtin(global_invocation_id) id: vec3u", fn () = "", fn () {
-      return "  ".concat(kv.1).concat(";\n");
-    });
-  }).join("");
-  let statement = "var "
-    .concat(varName)
-    .concat(": ")
-    .concat(t.typeName)
-    .concat("; if ")
-    .concat(c.varName)
-    .concat(" { ")
-    .concat(tBody)
-    .concat('; ')
-    .concat(varName)
-    .concat(' = ')
-    .concat(t.varName)
-    .concat("; } else { ")
-    .concat(fBody)
-    .concat('; ')
-    .concat(varName)
-    .concat(' = ')
-    .concat(f.varName)
-    .concat('; }');
-  let statements = c.statements.concat(Dict(varName, statement));
-  let buffers = c.buffers.union(t.buffers).union(f.buffers);
-  return {T}(varName, statements, buffers);
-}
 fn if{T}(c: gbool, t: () -> T, f: () -> T) = if(c, t(), f());
 fn if{T}(c: gbool, t: T, f: T) {
   let varName = "select("
