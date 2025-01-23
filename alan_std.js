@@ -125,17 +125,13 @@ export function clone(v) {
   } else if (v instanceof FuzzySet) {
     return v.union(new FuzzySet());
   } else if (v instanceof Map) {
-    return new Map(v.entries().map((kv) => [clone(kv[0]), clone(kv[1])]));
+    return new Map([...v.entries()].map((kv) => [clone(kv[0]), clone(kv[1])]));
   } else if (v.build instanceof Function) {
     return v.build(v.val);
   } else if (v instanceof Object) {
-    return Object.fromEntries(Object.entries(v).map((kv) => [kv[0], clone(kv[1])]));
+    return Object.fromEntries([...Object.entries(v)].map((kv) => [kv[0], clone(kv[1])]));
   } else {
-    if (!!global.structuredClone) {
-      return structuredClone(v);
-    } else {
-      return JSON.parse(JSON.stringify(v));
-    }
+    return structuredClone(v);
   }
 }
 
