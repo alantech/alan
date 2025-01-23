@@ -22,12 +22,67 @@ jobs:
       name: Run tests
       run: cargo test --release --verbose -- --include-ignored
     - if: ${{ github.ref_name != 'main' }}
-      name: Run tests
-      run: cargo test --release --verbose
+      name: Run tests with Node 23
+      run: |
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+        nvm install 23
+        nvm use 23
+        cargo test --release --verbose
+    - if: ${{ github.ref_name != 'main' }}
+      name: Run tests with Node 22
+      run: |
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+        nvm install 22
+        nvm use 22
+        cargo test --release --verbose
+    - if: ${{ github.ref_name != 'main' }}
+      name: Run tests with Node 20
+      run: |
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+        nvm install 20
+        nvm use 20
+        cargo test --release --verbose
+    - if: ${{ github.ref_name != 'main' }}
+      name: Run tests with Node 18
+      run: |
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+        nvm install 18
+        nvm use 18
+        cargo test --release --verbose
     - name: Run native tests
       run: cargo run --release -- test alan/test.ln
-    - name: Run js tests
-      run: cargo run --release -- test --js alan/test.ln
+    - name: Run js tests with Node 23
+      run: |
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+        nvm install 23
+        nvm use 23
+        cargo run --release -- test --js alan/test.ln
+    - name: Run js tests with Node 22
+      run: |
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+        nvm install 22
+        nvm use 22
+        cargo run --release -- test --js alan/test.ln
+    - name: Run js tests with Node 20
+      run: |
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+        nvm install 20
+        nvm use 20
+        cargo run --release -- test --js alan/test.ln
+    - name: Run js tests with Node 18
+      run: |
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+        nvm install 18
+        nvm use 18
+        cargo run --release -- test --js alan/test.ln
 
   test-windows:
     runs-on: [self-hosted, windows]
