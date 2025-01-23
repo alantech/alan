@@ -22,12 +22,12 @@ jobs:
       name: Run tests
       run: cargo test --release --verbose -- --include-ignored
     - if: ${{ github.ref_name != 'main' }}
-      name: Run tests with Node 24
+      name: Run tests with Node 23
       run: |
         export NVM_DIR="$HOME/.nvm"
         [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-        nvm install 24
-        nvm use 24
+        nvm install 23
+        nvm use 23
         cargo test --release --verbose
     - if: ${{ github.ref_name != 'main' }}
       name: Run tests with Node 22
@@ -55,12 +55,12 @@ jobs:
         cargo test --release --verbose
     - name: Run native tests
       run: cargo run --release -- test alan/test.ln
-    - name: Run js tests with Node 24
+    - name: Run js tests with Node 23
       run: |
         export NVM_DIR="$HOME/.nvm"
         [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-        nvm install 24
-        nvm use 24
+        nvm install 23
+        nvm use 23
         cargo run --release -- test --js alan/test.ln
     - name: Run js tests with Node 22
       run: |
