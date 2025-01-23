@@ -131,7 +131,11 @@ export function clone(v) {
   } else if (v instanceof Object) {
     return Object.fromEntries(Object.entries(v).map((kv) => [kv[0], clone(kv[1])]));
   } else {
-    return structuredClone(v);
+    if (!!global.structuredClone) {
+      return structuredClone(v);
+    } else {
+      return JSON.parse(JSON.stringify(v));
+    }
   }
 }
 
