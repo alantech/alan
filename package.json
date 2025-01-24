@@ -13,6 +13,9 @@
     "wasm-compiler": "cd web_compiler && wasm-pack build -t web --release"
   },
   "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/alantech/alan.git"
