@@ -1595,9 +1595,9 @@ where
                 self.context_buffer.as_ref().unwrap().destroy();
                 self.context_buffer = Some(new_context_buffer);
                 encoder.copy_buffer_to_texture(
-                    wgpu::ImageCopyBuffer {
+                    wgpu::TexelCopyBufferInfo {
                         buffer: &self.buffer.as_ref().unwrap().buffer,
-                        layout: wgpu::ImageDataLayout {
+                        layout: wgpu::TexelCopyBufferLayout {
                             offset: 0,
                             bytes_per_row: self.context.buffer_width,
                             rows_per_image: None,
