@@ -1,4 +1,13 @@
 [workspace]
-
 members = [ "alan", "alan_compiler", "alan_std", "web_compiler" ]
 resolver = "2"
+
+[workspace.package]
+license = "MIT"
+homepage = "https://alan-lang.org"
+documentation = "https://docs.alan-lang.org"
+repository = "https://github.com/alantech/alan"
+version = "0.2.0"
+rust-version = "1.83.0"
+authors = ["David Ellis <isv.damocles@gmail.com>"]
+edition = "2021"

@@ -1,13 +1,13 @@
 [package]
 name = "alan_std"
 description = "The Alan Standard Library Rust Implementation"
-license = "MIT"
-homepage = "https://alan-lang.org"
-documentation = "https://docs.alan-lang.org"
-repository = "https://github.com/alantech/alan"
-version = "0.2.0"
-authors = ["David Ellis <isv.damocles@gmail.com>"]
-edition = "2021"
+license.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+repository.workspace = true
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
 
 [dependencies]
 flume = "0.11.1"
