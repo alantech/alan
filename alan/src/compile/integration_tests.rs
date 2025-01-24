@@ -460,8 +460,9 @@ test!(print_function => r#"
 test!(duration_print => r#"
     export fn main() -> void {
         const i = now();
-        wait(100); // Increased from 10ms to 100ms because the node.js event loop seems less
-                   // capable of guaranteeing staying below 20ms in the delay here.
+        wait(110); // Increased from 10ms to 110ms because the node.js event loop seems less
+                   // capable of guaranteeing staying below 20ms in the delay here. Adding an extra
+                   // 10ms in case it accidentally waits 90-something ms instead.
         const d = i.elapsed;
         print(d);
     }"#;
