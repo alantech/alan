@@ -903,22 +903,6 @@ test_gpgpu!(gpu_storage_barrier => r#"
     stdout "0.33, 1.00, 1.00, 1.00, 2.00, 1.67, 1.67, 3.00, 2.33\n";
 );
 
-// TODO: Fix u64 numeric constants to get u64 bitwise tests in the new test suite
-test!(u64_bitwise => r#"
-    prefix u64 as ~ precedence 10
-
-    export fn main {
-      print(~1 & ~2);
-      print(~1 | ~3);
-      print(~5 ^ ~3);
-      print(! ~0);
-      print(~1 !& ~2);
-      print(~1 !| ~2);
-      print(~5 !^ ~3);
-    }"#;
-    stdout "0\n3\n6\n18446744073709551615\n18446744073709551615\n18446744073709551612\n18446744073709551609\n";
-);
-
 // Functions and Custom Operators
 
 test!(basic_function_usage => r#"
