@@ -382,19 +382,6 @@ export class Int {
     return this.build(this.upper < out ? out - BigInt(this.size) : out);
   }
 
-  flb() {
-    // Determines the location of the largest 1 bit in the number. This can be implemented simply as
-    // subtracting the number of bits by the number of leading zeroes and one
-    return this.build(this.bits - Number(this.clz().val) - 1);
-  }
-
-  ftb() {
-    // Determines the location of the smallest 1 bit in the number. This is implemented by simply
-    // returning the `ctz` value, except if it equals the number of bits, then return -1
-    let val = Number(this.ctz().val);
-    return this.build(val === this.bits ? -1 : val);
-  }
-
   valueOf() {
     return this.val;
   }
