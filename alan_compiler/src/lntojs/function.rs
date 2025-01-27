@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use nom::Parser;
 use nom::combinator::all_consuming;
+use nom::Parser;
 use ordered_hash_map::OrderedHashMap;
 
 use crate::lntojs::typen;

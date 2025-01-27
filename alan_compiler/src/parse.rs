@@ -5,8 +5,7 @@ use nom::{
     combinator::{all_consuming, opt, peek, recognize},
     error::{Error, ErrorKind},
     multi::{many0, many1, separated_list0},
-    IResult,
-    Parser,
+    IResult, Parser,
 };
 
 /// Macros to make building nom functions nicer (for me). For now they always make everything
