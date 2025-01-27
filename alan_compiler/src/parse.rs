@@ -5,8 +5,8 @@ use nom::{
     combinator::{all_consuming, opt, peek, recognize},
     error::{Error, ErrorKind},
     multi::{many0, many1, separated_list0},
-    sequence::tuple,
     IResult,
+    Parser,
 };
 
 /// Macros to make building nom functions nicer (for me). For now they always make everything
@@ -16,12 +16,12 @@ use nom::{
 macro_rules! build {
     ( $name:ident, $body:expr $(,)? ) => {
         pub fn $name(input: &str) -> IResult<&str, &str> {
-            $body(input)
+            $body.parse(input)
         }
     };
     ( $name:ident: $ret:ty, $body:expr $(,)? ) => {
         pub fn $name(input: &str) -> IResult<&str, $ret> {
-            $body(input)
+            $body.parse(input)
         }
     };
 }
@@ -40,7 +40,7 @@ macro_rules! not {
     ( $str:expr ) => {
         (|input| match tag::<&str, &str, Error<&str>>($str)(input) {
             Ok(_) => Err(nom::Err::Error(Error::new(input, ErrorKind::Fail))),
-            Err(_) => take($str.len())(input),
+            Err(_) => take($str.len()).parse(input),
         })
     };
 }
@@ -77,7 +77,7 @@ macro_rules! or {
 /// The `and` macro matches all of the given rules in a tuple, returning them all as a single
 /// string
 macro_rules! and {
-  ( $($rule:expr),+ $(,)? ) => {recognize(tuple(($($rule,)+)))}
+  ( $($rule:expr),+ $(,)? ) => {recognize((($($rule,)+)))}
 }
 
 /// The `charset` macro matches a single character in the given character set. Multiple such sets
@@ -117,7 +117,7 @@ macro_rules! named_and {
       let mut i = input;
       let out = $struct_name {
         $( $field_name: {
-          let res = $rule(i)?;
+          let res = $rule.parse(i)?;
           i = res.0;
           res.1.into()
         },)+
@@ -139,7 +139,7 @@ macro_rules! named_or {
     }
 
     pub fn $fn_name(input: &str) -> IResult<&str, $enum_name> {
-      $(if let Ok((i, val)) = $rule(input) {
+      $(if let Ok((i, val)) = $rule.parse(input) {
         return Ok((i, $enum_name::$option_name(val.into())));
       })+
       // Reaching this point is an error. For now, just return a generic one
@@ -158,8 +158,8 @@ macro_rules! named_or {
 macro_rules! left_subset {
     ( $left:expr, $right:expr $(,)? ) => {
         (|input| {
-            let left_match = $left(input)?;
-            let right_match = $right(left_match.1);
+            let left_match = $left.parse(input)?;
+            let right_match = $right.parse(left_match.1);
             if let Ok((i, _)) = right_match {
                 if i.len() == 0 {
                     return Err(nom::Err::Error(Error::new(input, ErrorKind::Fail)));
@@ -183,25 +183,25 @@ macro_rules! list {
     // Normal path
     ( $fn_name:ident: $type:ty => $rule:expr, $sep:expr $(,)? ) => {
         pub fn $fn_name(input: &str) -> IResult<&str, Vec<$type>> {
-            separated_list1($sep, $rule)(input)
+            separated_list1($sep, $rule).parse(input)
         }
     };
     // Path for no separators
     ( $fn_name: ident: $type:ty => $rule:expr $(,)? ) => {
         pub fn $fn_name(input: &str) -> IResult<&str, Vec<$type>> {
-            many1($rule)(input)
+            many1($rule).parse(input)
         }
     };
     // Normal path where an empty vector is fine
     ( opt $fn_name:ident: $type:ty => $rule:expr, $sep:expr $(,)? ) => {
         pub fn $fn_name(input: &str) -> IResult<&str, Vec<$type>> {
-            separated_list0($sep, $rule)(input)
+            separated_list0($sep, $rule).parse(input)
         }
     };
     // Path for no separators where an empty vector is fine
     ( opt $fn_name: ident: $type:ty => $rule:expr $(,)? ) => {
         pub fn $fn_name(input: &str) -> IResult<&str, Vec<$type>> {
-            many0($rule)(input)
+            many0($rule).parse(input)
         }
     };
 }
@@ -1314,7 +1314,7 @@ pub fn get_ast(input: &str) -> Result<Ln, nom::Err<nom::error::Error<&str>>> {
     // cruft at the end of the input, which we consider a syntax error at compile time. An LSP
     // would probably use `ln` directly, instead, so new lines/functions/etc the user is currently
     // writing don't trip things up.
-    match all_consuming(ln)(input) {
+    match all_consuming(ln).parse(input) {
         Ok((_, out)) => Ok(out),
         Err(e) => Err(e),
     }
