@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use nom::combinator::all_consuming;
+use nom::Parser;
 use ordered_hash_map::OrderedHashMap;
 
 use crate::lntojs::typen;
@@ -88,7 +89,7 @@ pub fn from_microstatement(
                 }
             }
             CType::Type(n, _) if n == "i64" || n == "u64" => {
-                if all_consuming(integer)(representation).is_ok() {
+                if all_consuming(integer).parse(representation).is_ok() {
                     if n == "i64" {
                         Ok((format!("new alan_std.I64({}n)", representation), out, deps))
                     } else {
@@ -99,14 +100,14 @@ pub fn from_microstatement(
                 }
             }
             CType::Type(n, _) if n == "f64" => {
-                if all_consuming(real)(representation).is_ok() {
+                if all_consuming(real).parse(representation).is_ok() {
                     Ok((format!("new alan_std.F64({})", representation), out, deps))
                 } else {
                     Ok((representation.clone(), out, deps))
                 }
             }
             CType::Type(n, _) if n == "bool" => {
-                if all_consuming(booln)(representation).is_ok() {
+                if all_consuming(booln).parse(representation).is_ok() {
                     Ok((format!("new alan_std.Bool({})", representation), out, deps))
                 } else {
                     Ok((representation.clone(), out, deps))
