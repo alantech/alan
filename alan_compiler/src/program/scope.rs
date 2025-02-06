@@ -81,13 +81,13 @@ impl<'a> Scope<'a> {
                         return Err("ctypes can only be defined in the compiler internals".into());
                     }
                     match c.name.as_str() {
-                        "Type" | "Generic" | "Int" | "Float" | "Bool" | "String" => {
+                        "Type" | "Generic" => {
                             /* Do nothing for the 'structural' types */
                         }
-                        g @ ("Group" | "Infix" | "Prefix" | "Method" | "Property" | "Cast"
-                        | "Own" | "Deref" | "Mut" | "Rust" | "Node" | "From" | "Array"
-                        | "Fail" | "Neg" | "Len" | "Size" | "FileStr" | "Env" | "EnvExists"
-                        | "Not") => s = CType::from_generic(s, g, 1),
+                        g @ ("Int" | "Float" | "Bool" | "String" | "Group" | "Unwrap" | "Infix"
+                        | "Prefix" | "Method" | "Property" | "Cast" | "Own" | "Deref" | "Mut"
+                        | "Rust" | "Node" | "From" | "Array" | "Fail" | "Neg" | "Len" | "Size"
+                        | "FileStr" | "Env" | "EnvExists" | "Not") => s = CType::from_generic(s, g, 1),
                         g @ ("Function" | "Call" | "Dependency" | "Import" | "Field"
                         | "Prop" | "Buffer" | "Add" | "Sub" | "Mul" | "Div" | "Mod"
                         | "Pow" | "Min" | "Max" | "Concat" | "And" | "Or" | "Xor" | "Nand"
