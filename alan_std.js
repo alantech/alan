@@ -44,8 +44,7 @@ export class FuzzySet {
 
   store(val) {
     let id = FuzzySet.valToId(val);
-    if (globalThis.
-    this.map[globalThis.GPUBuffer && val instanceof globalThis.GPUBuffer ? val.label : val.toString()] = val;
+    this.map[id] = val;
   }
 
   has(val) {
