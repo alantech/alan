@@ -5566,59 +5566,6 @@ fn map{G, G2}(gb: GBuffer{G}, f: (Prop{WgpuTypeMap, String{G}}, gu32) -> Prop{Wg
   compute.build.run;
   return out;
 }
-/* This one doesn't seem to work yet for some reason
-fn map{G, G2}(gb: GBuffer, f: G -> G2) {
-  let idx = gFor(gb.len);
-  let val = gb[idx];
-  let out = GBuffer{i32}(gb.len);
-  let compute = out[idx].store(f(val));
-  compute.build.run;
-  return out;
-}*/
-/* These should no longer be necessary
-fn map(gb: GBuffer, f: gu32 -> gu32) {
-  let idx = gFor(gb.cpulen);
-  let val = gb[idx].asU32;
-  let out = GBuffer{u32}(gb.cpulen);
-  let compute = out[idx].store(f(val).asI32);
-  compute.build.run;
-  return out;
-}
-fn map(gb: GBuffer, f: gi32 -> gi32) {
-  let idx = gFor(gb.cpulen);
-  let val = gb[idx];
-  let out = GBuffer{i32}(gb.cpulen);
-  let compute = out[idx].store(f(val));
-  compute.build.run;
-  return out;
-}
-fn map(gb: GBuffer, f: gf32 -> gf32) {
-  let idx = gFor(gb.cpulen);
-  let val = gb[idx].asF32;
-  let out = GBuffer{f32}(gb.cpulen);
-  let compute = out[idx].store(f(val).asI32);
-  compute.build.run;
-  return out;
-}
-fn{Js} map(gb: GBuffer, f: gf32 -> gf32) { // TODO: Get rid of this jank
-  let idx = gFor(gb.cpulen);
-  let val = gb[idx].asF32;
-  let out = GBuffer{f32}(gb.cpulen); // The JS binding currently ignores this
-  {"((b) => { b.ValKind = alan_std.F32; })" :: GBuffer}(out); // Trick to get it to work for now
-  let compute = out[idx].store(f(val).asI32);
-  compute.build.run;
-  return out;
-}
-// This one technically only works for i32/u32/f32 by chance. Once the issue above is fixed, this
-// one can be fixed, too.
-fn map{G, G2}(gb: GBuffer, f: (G, gu32) -> G2) {
-  let idx = gFor(gb.cpulen);
-  let val = gb[idx];
-  let out = GBuffer{i32}(gb.cpulen);
-  let compute = out[idx].store(f(val, idx));
-  compute.build.run;
-  return out;
-}*/
 
 /// GPU Rendering-related functions
 type{Rs} Window = Binds{"alan_std::AlanWindowContext" <- RootBacking};
