@@ -28,18 +28,29 @@ export class FuzzySet {
     this.map = map ?? {};
   }
 
-  store(val) {
+  static valToId(val) {
     // TODO: Create a 'universal' hash function for JS to make the key
     // TODO: Remove this GPUBuffer hack eventually
+    let id = val.toString();
+    if (globalThis.GPUBuffer) {
+      if (val instanceof globalThis.GPUBuffer) {
+        id = val.label;
+      } else if (val.rawBuffer instanceof globalThis.GPUBuffer) {
+        id = val.rawBuffer.label;
+      }
+    }
+    return id;
+  }
+
+  store(val) {
+    let id = FuzzySet.valToId(val);
+    if (globalThis.
     this.map[globalThis.GPUBuffer && val instanceof globalThis.GPUBuffer ? val.label : val.toString()] = val;
   }
 
   has(val) {
-    return new Bool(
-      this.map.hasOwnProperty(
-        globalThis.GPUBuffer && val instanceof globalThis.GPUBuffer ? val.label : val.toString()
-      )
-    );
+    let id = FuzzySet.valToId(val);
+    return new Bool(this.map.hasOwnProperty(id));
   }
 
   len() {
