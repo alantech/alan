@@ -950,7 +950,7 @@ export async function gpuRunList(ggs) {
   g.queue.submit([encoder.finish()]);
 }
 
-export async function readBuffer(b) {
+export async function readBuffer(b, t) {
   let g = await gpu();
   await g.queue.onSubmittedWorkDone(); // Don't try to read until you're sure it's safe to
   let tempBuffer = await createEmptyBuffer(mapReadBufferType(), b.size / 4);
@@ -959,10 +959,27 @@ export async function readBuffer(b) {
   g.queue.submit([encoder.finish()]);
   await tempBuffer.mapAsync(GPUMapMode.READ);
   let data = tempBuffer.getMappedRange(0, b.size);
-  let vals = new (b?.ValKind?.ArrayKind ?? Int32Array)(data);
+  // TODO: Eliminate the need for this casting logic within the bindings, ideally.
+  let ValKind = I32;
+  let ArrayKind = Int32Array;
+  switch(t) {
+  case "f32":
+    ValKind = F32;
+    ArrayKind = Float32Array;
+    break;
+  case "u32":
+    ValKind = U32;
+    ArrayKind = Uint32Array;
+    break;
+  case "i32":
+  default:
+    ValKind = I32;
+    ArrayKind = Int32Array;
+  }
+  let vals = new ArrayKind(data);
   let out = [];
   for (let i = 0; i < vals.length; i++) {
-    out[i] = new (b?.ValKind ?? I32)(vals[i]);
+    out[i] = new ValKind(vals[i]);
   }
   tempBuffer.unmap();
   tempBuffer.destroy();
