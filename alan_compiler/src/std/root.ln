@@ -5598,10 +5598,10 @@ fn{Js} opaque "alan_std.contextOpaque" <- RootBacking :: Window -> ();
 fn{Rs} runtime Method{"runtime"} :: Window -> u32;
 fn{Js} runtime "alan_std.contextRuntime" <- RootBacking :: Window -> u32;
 // TODO: Be less opinionated on the context and framebuffer types, maybe?
-fn{Rs} context(f: Frame) = GBuffer{gu32}({Property{"context.clone()"} :: Frame -> GBufferRaw}(f));
-fn{Js} context(f: Frame) = GBuffer{gu32}({"alan_std.frameContext" <- RootBacking :: Frame -> GBufferRaw}(f));
-fn{Rs} framebuffer(f: Frame) = GBuffer{gu32}({Property{"framebuffer.clone()"} :: Frame -> GBufferRaw}(f));
-fn{Js} framebuffer(f: Frame) = GBuffer{gu32}({"alan_std.frameFramebuffer" <- RootBacking :: Frame -> GBufferRaw}(f));
+fn{Rs} context(f: Frame) = GBuffer{u32}({Property{"context.clone()"} :: Frame -> GBufferRaw}(f));
+fn{Js} context(f: Frame) = GBuffer{u32}({"alan_std.frameContext" <- RootBacking :: Frame -> GBufferRaw}(f));
+fn{Rs} framebuffer(f: Frame) = GBuffer{u32}({Property{"framebuffer.clone()"} :: Frame -> GBufferRaw}(f));
+fn{Js} framebuffer(f: Frame) = GBuffer{u32}({"alan_std.frameFramebuffer" <- RootBacking :: Frame -> GBufferRaw}(f));
 fn pixel Frame = gFor(-1, -2); // Magic numbers for the binding
 
 /// Process exit-related functions
