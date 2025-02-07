@@ -1661,8 +1661,7 @@ impl CType {
                             CType::Infer(..) => {
                                 // We need to parse the string back into a type and then pass that
                                 // along
-                                let wtol =
-                                    parse::typeassignables(s).expect("should be impossible");
+                                let wtol = parse::typeassignables(s).expect("should be impossible");
                                 let t = withtypeoperatorslist_to_ctype(&wtol.1, scope)?;
                                 arg.push(t.clone());
                                 input.push(sc.clone());
