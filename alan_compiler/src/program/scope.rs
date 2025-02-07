@@ -513,9 +513,7 @@ impl<'a> Scope<'a> {
                 .map(|f| (self, f))
         } else {
             match self.resolve_function_generic_args(function, args) {
-                Some(gs) => {
-                  self.resolve_generic_function(function, &gs, args)
-                }
+                Some(gs) => self.resolve_generic_function(function, &gs, args),
                 None => None,
             }
         }

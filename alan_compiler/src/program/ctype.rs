@@ -1617,7 +1617,7 @@ impl CType {
                         // Unfortunately may not infer correctly in this scenario as casting to an
                         // integer is lossy.
                         return Err("Cannot infer an integer cast".into());
-                    },
+                    }
                     (CType::Float(f1), CType::Float(f2)) => {
                         if f1 != f2 {
                             return Err(format!(
@@ -1632,7 +1632,7 @@ impl CType {
                         // Unfortunately may not infer correctly in this scenario as casting to a
                         // float is lossy.
                         return Err("Cannot infer a float cast".into());
-                    },
+                    }
                     (CType::Bool(b1), CType::Bool(b2)) => {
                         if b1 != b2 {
                             return Err("Mismatched booleans during inference".into());
@@ -1643,7 +1643,7 @@ impl CType {
                         // Unfortunately may not infer correctly in this scenario as casting to a
                         // boolean is lossy.
                         return Err("Cannot infer a bool cast".into());
-                    },
+                    }
                     (CType::TString(s1), CType::TString(s2)) => {
                         if s1 != s2 {
                             return Err(format!(
@@ -1661,16 +1661,21 @@ impl CType {
                             CType::Infer(..) => {
                                 // We need to parse the string back into a type and then pass that
                                 // along
-                                let wtol = parse::typeassignables(&s).expect("should be impossible");
+                                let wtol =
+                                    parse::typeassignables(&s).expect("should be impossible");
                                 let t = withtypeoperatorslist_to_ctype(&wtol.1, scope)?;
                                 arg.push(t.clone());
                                 input.push(sc.clone());
                             }
                             _ => {
-                                return Err(format!("Mismatched string {} and string cast {:?} during inference", s, sc).into());
+                                return Err(format!(
+                                    "Mismatched string {} and string cast {:?} during inference",
+                                    s, sc
+                                )
+                                .into());
                             }
                         }
-                    },
+                    }
                     (CType::Group(g1), CType::Group(g2)) => {
                         arg.push(g1.clone());
                         input.push(g2.clone());
@@ -1802,8 +1807,11 @@ impl CType {
                                                     if Arc::new(a.clone()).accepts(v.clone()) {
                                                         // We found a match, parse the label back to a
                                                         // type
-                                                        let wtol = parse::typeassignables(&l).expect("should be impossible");
-                                                        let t = withtypeoperatorslist_to_ctype(&wtol.1, scope)?;
+                                                        let wtol = parse::typeassignables(&l)
+                                                            .expect("should be impossible");
+                                                        let t = withtypeoperatorslist_to_ctype(
+                                                            &wtol.1, scope,
+                                                        )?;
                                                         arg.push(t.clone());
                                                         input.push(sc.clone());
                                                         found = true;
@@ -1811,13 +1819,16 @@ impl CType {
                                                 }
                                             }
                                             if !found {
-                                                return Err("Unable to find property during inference".into());
+                                                return Err(
+                                                    "Unable to find property during inference"
+                                                        .into(),
+                                                );
                                             }
                                         }
                                         _ => {
                                             return Err("Property extraction inference only possible on a tuple type".into());
                                         }
-                                    }
+                                    },
                                     CType::Tuple(tp) => {
                                         let mut found = false;
                                         for r in tp {
@@ -1825,8 +1836,11 @@ impl CType {
                                                 if Arc::new(a.clone()).accepts(v.clone()) {
                                                     // We found a match, parse the label back to a
                                                     // type
-                                                    let wtol = parse::typeassignables(&l).expect("should be impossible");
-                                                    let t = withtypeoperatorslist_to_ctype(&wtol.1, scope)?;
+                                                    let wtol = parse::typeassignables(&l)
+                                                        .expect("should be impossible");
+                                                    let t = withtypeoperatorslist_to_ctype(
+                                                        &wtol.1, scope,
+                                                    )?;
                                                     arg.push(t.clone());
                                                     input.push(sc.clone());
                                                     found = true;
@@ -1834,15 +1848,17 @@ impl CType {
                                             }
                                         }
                                         if !found {
-                                            return Err("Unable to find property during inference".into());
+                                            return Err(
+                                                "Unable to find property during inference".into()
+                                            );
                                         }
                                     }
                                     _ => {
                                         return Err("Property extraction inference only possible on a tuple type".into());
                                     }
-                                }
+                                },
                                 _ => unreachable!(),
-                            }
+                            },
                             // The other path that is being hardwired right now is the version used
                             // for GBufferTagged. TODO: Figure out a general way to handle this
                             // kind of type inference and replace the hacks with it.
@@ -1850,14 +1866,43 @@ impl CType {
                                 match &**t {
                                     CType::Prop(t, p) => {
                                         match &**p {
-                                            CType::StringCast(sc) => match &**sc {
-                                                CType::Infer(..) => match &**t {
-                                                    CType::Type(_, it) => match &**it {
+                                            CType::StringCast(sc) => {
+                                                match &**sc {
+                                                    CType::Infer(..) => match &**t {
+                                                        CType::Type(_, it) => match &**it {
+                                                            CType::Tuple(tp) => {
+                                                                let mut found = false;
+                                                                for r in tp {
+                                                                    if let CType::Field(l, v) = &**r
+                                                                    {
+                                                                        if Arc::new(a.clone())
+                                                                            .accepts(v.clone())
+                                                                        {
+                                                                            // We found a match, parse the label back to a
+                                                                            // type
+                                                                            let wtol = parse::typeassignables(&l).expect("should be impossible");
+                                                                            let t = withtypeoperatorslist_to_ctype(&wtol.1, scope)?;
+                                                                            arg.push(t.clone());
+                                                                            input.push(sc.clone());
+                                                                            found = true;
+                                                                        }
+                                                                    }
+                                                                }
+                                                                if !found {
+                                                                    return Err("Unable to find property during inference".into());
+                                                                }
+                                                            }
+                                                            _ => {
+                                                                return Err("Property extraction inference only possible on a tuple type".into());
+                                                            }
+                                                        },
                                                         CType::Tuple(tp) => {
                                                             let mut found = false;
                                                             for r in tp {
                                                                 if let CType::Field(l, v) = &**r {
-                                                                    if Arc::new(a.clone()).accepts(v.clone()) {
+                                                                    if Arc::new(a.clone())
+                                                                        .accepts(v.clone())
+                                                                    {
                                                                         // We found a match, parse the label back to a
                                                                         // type
                                                                         let wtol = parse::typeassignables(&l).expect("should be impossible");
@@ -1875,31 +1920,9 @@ impl CType {
                                                         _ => {
                                                             return Err("Property extraction inference only possible on a tuple type".into());
                                                         }
-                                                    }
-                                                    CType::Tuple(tp) => {
-                                                        let mut found = false;
-                                                        for r in tp {
-                                                            if let CType::Field(l, v) = &**r {
-                                                                if Arc::new(a.clone()).accepts(v.clone()) {
-                                                                    // We found a match, parse the label back to a
-                                                                    // type
-                                                                    let wtol = parse::typeassignables(&l).expect("should be impossible");
-                                                                    let t = withtypeoperatorslist_to_ctype(&wtol.1, scope)?;
-                                                                    arg.push(t.clone());
-                                                                    input.push(sc.clone());
-                                                                    found = true;
-                                                                }
-                                                            }
-                                                        }
-                                                        if !found {
-                                                            return Err("Unable to find property during inference".into());
-                                                        }
-                                                    }
-                                                    _ => {
-                                                        return Err("Property extraction inference only possible on a tuple type".into());
-                                                    }
+                                                    },
+                                                    _ => unreachable!(),
                                                 }
-                                                _ => unreachable!(),
                                             }
                                             _ => {
                                                 return Err(format!("Mismatch between {:?} and {:?} during inference", a, i).into());
@@ -1907,12 +1930,20 @@ impl CType {
                                         }
                                     }
                                     _ => {
-                                        return Err(format!("Mismatch between {:?} and {:?} during inference", a, i).into());
+                                        return Err(format!(
+                                            "Mismatch between {:?} and {:?} during inference",
+                                            a, i
+                                        )
+                                        .into());
                                     }
                                 }
                             }
                             _ => {
-                                return Err(format!("Mismatch between {:?} and {:?} during inference", a, i).into());
+                                return Err(format!(
+                                    "Mismatch between {:?} and {:?} during inference",
+                                    a, i
+                                )
+                                .into());
                             }
                         }
                     }
@@ -2446,16 +2477,20 @@ impl CType {
                             match &**other_type {
                                 CType::AnyOf(ts) => {
                                     for t1 in ts {
-                                        if CType::tunwrap(t1.clone().degroup()).to_functional_string()
-                                            == CType::tunwrap(a.clone().degroup()).to_functional_string()
+                                        if CType::tunwrap(t1.clone().degroup())
+                                            .to_functional_string()
+                                            == CType::tunwrap(a.clone().degroup())
+                                                .to_functional_string()
                                         {
                                             matched = true;
                                         }
                                     }
                                 }
                                 otherwise => {
-                                    if CType::tunwrap(Arc::new(otherwise.clone()).degroup()).to_functional_string()
-                                        == CType::tunwrap(a.clone().degroup()).to_functional_string()
+                                    if CType::tunwrap(Arc::new(otherwise.clone()).degroup())
+                                        .to_functional_string()
+                                        == CType::tunwrap(a.clone().degroup())
+                                            .to_functional_string()
                                     {
                                         matched = true;
                                     }
@@ -4167,12 +4202,11 @@ impl CType {
                 CType::Type(_, t) if matches!(**t, CType::Nodejs(_) | CType::Rust(_)) => {
                     Arc::new(CType::Import(name, dep))
                 }
-                otherwise => {
-                  CType::fail(&format!(
+                otherwise => CType::fail(&format!(
                     "Invalid import defined {} <- {}",
-                    name.clone().to_functional_string(), Arc::new(otherwise.clone()).to_functional_string()
-                  ))
-                }
+                    name.clone().to_functional_string(),
+                    Arc::new(otherwise.clone()).to_functional_string()
+                )),
             }
         }
     }
@@ -4220,13 +4254,18 @@ impl CType {
                     if n == s {
                         f.clone()
                     } else {
-                        Arc::new(CType::Fail(format!("Property {} not found on type {:?}", s, &t)))
+                        Arc::new(CType::Fail(format!(
+                            "Property {} not found on type {:?}",
+                            s, &t
+                        )))
                     }
                 }
                 CType::Int(i) => match i {
                     0 => Arc::new(CType::TString(n.to_string())),
                     1 => f.clone(),
-                    _ => Arc::new(CType::Fail("Only 0 or 1 are valid integer accesses on a field".into())),
+                    _ => Arc::new(CType::Fail(
+                        "Only 0 or 1 are valid integer accesses on a field".into(),
+                    )),
                 },
                 otherwise => Arc::new(CType::Fail(format!(
                     "Properties must be a name or integer location, not {:?}",
@@ -4242,13 +4281,19 @@ impl CType {
                             }
                         }
                     }
-                    Arc::new(CType::Fail(format!("Property {} not found on type {:?}", s, t)))
+                    Arc::new(CType::Fail(format!(
+                        "Property {} not found on type {:?}",
+                        s, t
+                    )))
                 }
                 CType::Int(i) => {
                     if (0..ts.len()).contains(&(*i as usize)) {
                         ts[*i as usize].clone()
                     } else {
-                        Arc::new(CType::Fail(format!("{} is out of bounds for type {:?}", i, t)))
+                        Arc::new(CType::Fail(format!(
+                            "{} is out of bounds for type {:?}",
+                            i, t
+                        )))
                     }
                 }
                 otherwise => Arc::new(CType::Fail(format!(

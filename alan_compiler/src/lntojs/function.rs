@@ -1226,7 +1226,12 @@ pub fn from_microstatement(
                                                     }
                                                     return Ok((argstrs[0].clone(), out, deps));
                                                 }
-                                                CType::TString(_) if enum_name == inner_type.clone().to_callable_string() => {
+                                                CType::TString(_)
+                                                    if enum_name
+                                                        == inner_type
+                                                            .clone()
+                                                            .to_callable_string() =>
+                                                {
                                                     // Special-casing for Option and Result mapping. TODO:
                                                     // Make this more centralized
                                                     if ts.len() == 2 {
