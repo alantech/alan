@@ -1218,7 +1218,7 @@ impl CType {
         }
         let string = match &*self {
             CType::Int(_) | CType::Float(_) => format!("_{}", self.clone().to_functional_string()),
-            CType::TString(s) if s.starts_with(|c| matches!(c, '0'..='9')) => {
+            CType::TString(s) if s.starts_with(|c: char| c.is_ascii_digit()) => {
                 format!("_{}", self.clone().to_functional_string())
             }
             CType::Type(n, t) => match **t {
@@ -1662,7 +1662,7 @@ impl CType {
                                 // We need to parse the string back into a type and then pass that
                                 // along
                                 let wtol =
-                                    parse::typeassignables(&s).expect("should be impossible");
+                                    parse::typeassignables(s).expect("should be impossible");
                                 let t = withtypeoperatorslist_to_ctype(&wtol.1, scope)?;
                                 arg.push(t.clone());
                                 input.push(sc.clone());
@@ -1807,7 +1807,7 @@ impl CType {
                                                     if Arc::new(a.clone()).accepts(v.clone()) {
                                                         // We found a match, parse the label back to a
                                                         // type
-                                                        let wtol = parse::typeassignables(&l)
+                                                        let wtol = parse::typeassignables(l)
                                                             .expect("should be impossible");
                                                         let t = withtypeoperatorslist_to_ctype(
                                                             &wtol.1, scope,
@@ -1836,7 +1836,7 @@ impl CType {
                                                 if Arc::new(a.clone()).accepts(v.clone()) {
                                                     // We found a match, parse the label back to a
                                                     // type
-                                                    let wtol = parse::typeassignables(&l)
+                                                    let wtol = parse::typeassignables(l)
                                                         .expect("should be impossible");
                                                     let t = withtypeoperatorslist_to_ctype(
                                                         &wtol.1, scope,
@@ -1880,7 +1880,7 @@ impl CType {
                                                                         {
                                                                             // We found a match, parse the label back to a
                                                                             // type
-                                                                            let wtol = parse::typeassignables(&l).expect("should be impossible");
+                                                                            let wtol = parse::typeassignables(l).expect("should be impossible");
                                                                             let t = withtypeoperatorslist_to_ctype(&wtol.1, scope)?;
                                                                             arg.push(t.clone());
                                                                             input.push(sc.clone());
@@ -1905,7 +1905,7 @@ impl CType {
                                                                     {
                                                                         // We found a match, parse the label back to a
                                                                         // type
-                                                                        let wtol = parse::typeassignables(&l).expect("should be impossible");
+                                                                        let wtol = parse::typeassignables(l).expect("should be impossible");
                                                                         let t = withtypeoperatorslist_to_ctype(&wtol.1, scope)?;
                                                                         arg.push(t.clone());
                                                                         input.push(sc.clone());
