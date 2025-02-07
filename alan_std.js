@@ -962,17 +962,13 @@ export async function readBuffer(b, t) {
   // TODO: Eliminate the need for this casting logic within the bindings, ideally.
   let ValKind = I32;
   let ArrayKind = Int32Array;
-  switch(t) {
-  case "f32":
+  if (/F32/.test(t)) {
     ValKind = F32;
     ArrayKind = Float32Array;
-    break;
-  case "u32":
+  } else if (/U32/.test(t)) {
     ValKind = U32;
     ArrayKind = Uint32Array;
-    break;
-  case "i32":
-  default:
+  } else {
     ValKind = I32;
     ArrayKind = Int32Array;
   }
