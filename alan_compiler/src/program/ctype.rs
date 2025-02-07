@@ -44,7 +44,7 @@ pub enum CType {
     Mut(Arc<CType>),
     Dependency(Arc<CType>, Arc<CType>),
     Rust(Arc<CType>),
-    Node(Arc<CType>),
+    Nodejs(Arc<CType>),
     From(Arc<CType>),
     Import(Arc<CType>, Arc<CType>),
     Tuple(Vec<Arc<CType>>),
@@ -212,11 +212,9 @@ impl CType {
                 CType::Binds(n, ts) => {
                     str_parts.push("Binds{");
                     ctype_stack.push(close_brace);
-                    for (i, t) in ts.iter().rev().enumerate() {
+                    for t in ts.iter().rev() {
                         ctype_stack.push(t);
-                        if i != 0 {
-                            ctype_stack.push(comma);
-                        }
+                        ctype_stack.push(comma);
                     }
                     ctype_stack.push(n);
                 }
@@ -368,8 +366,8 @@ impl CType {
                     ctype_stack.push(close_brace);
                     ctype_stack.push(d);
                 }
-                CType::Node(d) => {
-                    str_parts.push("Node{");
+                CType::Nodejs(d) => {
+                    str_parts.push("Nodejs{");
                     ctype_stack.push(close_brace);
                     ctype_stack.push(d);
                 }
@@ -870,8 +868,8 @@ impl CType {
                     ctype_stack.push(close_brace);
                     ctype_stack.push(d);
                 }
-                CType::Node(d) => {
-                    str_parts.push("Node{");
+                CType::Nodejs(d) => {
+                    str_parts.push("Nodejs{");
                     ctype_stack.push(close_brace);
                     ctype_stack.push(d);
                 }
@@ -1276,7 +1274,7 @@ impl CType {
             | CType::Deref(t)
             | CType::Mut(t)
             | CType::Rust(t)
-            | CType::Node(t)
+            | CType::Nodejs(t)
             | CType::From(t)
             | CType::Array(t)
             | CType::Field(_, t)
@@ -1362,7 +1360,7 @@ impl CType {
                 Arc::new(CType::Dependency(n.clone().degroup(), v.clone().degroup()))
             }
             CType::Rust(d) => Arc::new(CType::Rust(d.clone().degroup())),
-            CType::Node(d) => Arc::new(CType::Node(d.clone().degroup())),
+            CType::Nodejs(d) => Arc::new(CType::Nodejs(d.clone().degroup())),
             CType::From(d) => Arc::new(CType::From(d.clone().degroup())),
             CType::Import(n, d) => {
                 Arc::new(CType::Import(n.clone().degroup(), d.clone().degroup()))
@@ -1749,7 +1747,7 @@ impl CType {
                         arg.push(d1.clone());
                         input.push(d2.clone());
                     }
-                    (CType::Node(d1), CType::Node(d2)) => {
+                    (CType::Nodejs(d1), CType::Nodejs(d2)) => {
                         arg.push(d1.clone());
                         input.push(d2.clone());
                     }
@@ -3849,7 +3847,7 @@ impl CType {
                 v.clone().swap_subtype(old_type, new_type),
             )),
             CType::Rust(d) => Arc::new(CType::Rust(d.clone().swap_subtype(old_type, new_type))),
-            CType::Node(d) => Arc::new(CType::Node(d.clone().swap_subtype(old_type, new_type))),
+            CType::Nodejs(d) => Arc::new(CType::Nodejs(d.clone().swap_subtype(old_type, new_type))),
             CType::From(d) => Arc::new(CType::From(d.clone().swap_subtype(old_type, new_type))),
             CType::Import(n, d) => Arc::new(CType::Import(
                 n.clone().swap_subtype(old_type.clone(), new_type.clone()),
@@ -4165,14 +4163,16 @@ impl CType {
                     }
                 }
                 CType::Dependency(..) => CType::fail("TODO: Alan package import support"),
-                CType::Node(_) | CType::Rust(_) => Arc::new(CType::Import(name, dep)),
-                CType::Type(_, t) if matches!(**t, CType::Node(_) | CType::Rust(_)) => {
+                CType::Nodejs(_) | CType::Rust(_) => Arc::new(CType::Import(name, dep)),
+                CType::Type(_, t) if matches!(**t, CType::Nodejs(_) | CType::Rust(_)) => {
                     Arc::new(CType::Import(name, dep))
                 }
-                otherwise => CType::fail(&format!(
-                    "Invalid import defined {:?} <- {:?}",
-                    name, otherwise
-                )),
+                otherwise => {
+                  CType::fail(&format!(
+                    "Invalid import defined {} <- {}",
+                    name.clone().to_functional_string(), Arc::new(otherwise.clone()).to_functional_string()
+                  ))
+                }
             }
         }
     }
@@ -4651,7 +4651,7 @@ impl CType {
         })
     }
     pub fn cif(c: Arc<CType>, a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
-        match &*c {
+        match &*CType::tunwrap(c.clone().degroup()) {
             CType::Bool(cond) => match cond {
                 true => a.clone(),
                 false => b.clone(),
@@ -5480,7 +5480,7 @@ pub fn typebaselist_to_ctype(
                                             args[1].clone(),
                                         )),
                                         "Rust" => Arc::new(CType::Rust(args[0].clone())),
-                                        "Node" => Arc::new(CType::Node(args[0].clone())),
+                                        "Nodejs" => Arc::new(CType::Nodejs(args[0].clone())),
                                         "From" => Arc::new(CType::From(args[0].clone())),
                                         "Import" => CType::import(args[0].clone(), args[1].clone()),
                                         "Tuple" => CType::tuple(args.clone()),

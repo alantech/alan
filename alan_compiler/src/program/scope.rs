@@ -86,7 +86,7 @@ impl<'a> Scope<'a> {
                         }
                         g @ ("Int" | "Float" | "Bool" | "String" | "Group" | "Unwrap" | "Infix"
                         | "Prefix" | "Method" | "Property" | "Cast" | "Own" | "Deref" | "Mut"
-                        | "Rust" | "Node" | "From" | "Array" | "Fail" | "Neg" | "Len" | "Size"
+                        | "Rust" | "Nodejs" | "From" | "Array" | "Fail" | "Neg" | "Len" | "Size"
                         | "FileStr" | "Env" | "EnvExists" | "Not") => s = CType::from_generic(s, g, 1),
                         g @ ("Function" | "Call" | "Dependency" | "Import" | "Field"
                         | "Prop" | "Buffer" | "Add" | "Sub" | "Mul" | "Div" | "Mod"
@@ -513,7 +513,9 @@ impl<'a> Scope<'a> {
                 .map(|f| (self, f))
         } else {
             match self.resolve_function_generic_args(function, args) {
-                Some(gs) => self.resolve_generic_function(function, &gs, args),
+                Some(gs) => {
+                  self.resolve_generic_function(function, &gs, args)
+                }
                 None => None,
             }
         }

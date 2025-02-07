@@ -32,7 +32,7 @@ ctype Deref{T}; // Specifying that the native code needs an owned version of the
 ctype Mut{T}; // Specifying that the function (native or otherwise) needs a mutable reference of the type
 ctype Dependency{N, V}; // The representation of a dependency (of some form or another). Does nothing on its own
 ctype Rust{D}; // Specifying that the provided dependency is a Rust dependency.
-ctype Node{D}; // Specifying that the provided dependency is a Node.js dependency.
+ctype Nodejs{D}; // Specifying that the provided dependency is a Node.js dependency.
 ctype Import{N, D}; // Imports the named value from the dependency.
 ctype From{D}; // Pulls the desired value from the dependency. Magically figures out which is needed through compiler trickery.
 
@@ -128,7 +128,7 @@ type Browser = Env{"ALAN_PLATFORM"} == "browser"; // Technically not necessary, 
 
 // Importing the Root Scope backing implementation and supporting 3rd party libraries
 type{Rs} RootBacking = Rust{"alan_std" @ "https://github.com/alantech/alan.git"};
-type{Js} RootBacking = Node{"alan_std" @ "https://github.com/alantech/alan.git"};
+type{Js} RootBacking = Nodejs{"alan_std" @ "https://github.com/alantech/alan.git#refactor-gbuffer"};
 
 // Defining derived types
 type void = ();
@@ -1632,7 +1632,9 @@ fn{Js} Set{V} "new alan_std.FuzzySet" <- RootBacking :: () -> Set{V};
 fn{Rs} store{V} (s: Mut{Set{V}}, v: V) {
   {Method{"insert"} :: (Mut{Set{V}}, Own{V}) -> bool}(s, v);
 }
-fn{Js} store{V} (s: Mut{Set{V}}, v: V) = {Method{"store"} :: (Set{V}, V) -> ()}(s, v);
+fn{Js} store{V} (s: Set{V}, v: V) {
+  {Method{"store"} :: (s: Set{V}, v: V) -> ()}(s, v);
+}
 fn{Rs} has{V} (s: Set{V}, v: V) = {Method{"contains"} :: (Set{V}, V) -> bool}(s, v);
 fn{Js} has{V} (s: Set{V}, v: V) = {Method{"has"} :: (Set{V}, V) -> bool}(s, v);
 fn{Rs} len{V} (s: Set{V}) = {Cast{"i64"} :: Deref{Binds{"usize"}} -> i64}(
@@ -1860,7 +1862,7 @@ fn{Rs} shader Property{"source.clone()"} :: GPGPU -> string;
 fn{Js} shader Property{"source"} :: GPGPU -> string;
 // TODO: Modify the `readBuffer` binding to pass the relevant type to it and remove the magic guess logic
 fn{Rs} read{T}(gb: GBuffer{T}) = {"alan_std::read_buffer" <- RootBacking :: GBufferRaw -> T[]}(gb.rawBuffer);
-fn{Js} read{T}(gb: GBuffer{T}) = {"alan_std.readBuffer" <- RootBacking :: GBufferRaw -> T[]}(gb.rawBuffer);
+fn{Js} read{T}(gb: GBuffer{T}) = {"alan_std.readBuffer" <- RootBacking :: (GBufferRaw, string) -> T[]}(gb.rawBuffer, String{T}());
 // TODO: Same here
 fn{Rs} replace{T}(gb: GBuffer{T}, vals: T[]) = {"alan_std::replace_buffer" <- RootBacking :: (GBufferRaw, T[]) -> ()!}(gb.rawBuffer, vals);
 fn{Js} replace{T}(gb: GBuffer{T}, vals: T[]) = {"alan_std.replaceBuffer" <- RootBacking :: (GBufferRaw, T[]) -> ()!}(gb.rawBuffer, vals);
