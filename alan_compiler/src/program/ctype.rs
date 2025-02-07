@@ -22,11 +22,16 @@ pub enum CType {
     Generic(String, Vec<String>, Arc<CType>),
     Binds(Arc<CType>, Vec<Arc<CType>>),
     IntrinsicGeneric(String, usize),
+    IntCast(Arc<CType>),
     Int(i128),
+    FloatCast(Arc<CType>),
     Float(f64),
+    BoolCast(Arc<CType>),
     Bool(bool),
+    StringCast(Arc<CType>),
     TString(String),
     Group(Arc<CType>),
+    Unwrap(Arc<CType>),
     Function(Arc<CType>, Arc<CType>),
     Call(Arc<CType>, Arc<CType>),
     Infix(Arc<CType>),
@@ -39,7 +44,7 @@ pub enum CType {
     Mut(Arc<CType>),
     Dependency(Arc<CType>, Arc<CType>),
     Rust(Arc<CType>),
-    Node(Arc<CType>),
+    Nodejs(Arc<CType>),
     From(Arc<CType>),
     Import(Arc<CType>, Arc<CType>),
     Tuple(Vec<Arc<CType>>),
@@ -207,11 +212,9 @@ impl CType {
                 CType::Binds(n, ts) => {
                     str_parts.push("Binds{");
                     ctype_stack.push(close_brace);
-                    for (i, t) in ts.iter().rev().enumerate() {
+                    for t in ts.iter().rev() {
                         ctype_stack.push(t);
-                        if i != 0 {
-                            ctype_stack.push(comma);
-                        }
+                        ctype_stack.push(comma);
                     }
                     ctype_stack.push(n);
                 }
@@ -230,6 +233,11 @@ impl CType {
                     str_parts.pop();
                     str_parts.push("}");
                 }
+                CType::IntCast(t) => {
+                    str_parts.push("Int{");
+                    ctype_stack.push(close_brace);
+                    ctype_stack.push(t);
+                }
                 CType::Int(i) => {
                     let l = unavoidable_strings.len();
                     unavoidable_strings.push(format!("{}", i));
@@ -237,6 +245,11 @@ impl CType {
                     unsafe {
                         str_parts.push(p.add(l).as_ref().unwrap());
                     }
+                }
+                CType::FloatCast(t) => {
+                    str_parts.push("Float{");
+                    ctype_stack.push(close_brace);
+                    ctype_stack.push(t);
                 }
                 CType::Float(f) => {
                     let l = unavoidable_strings.len();
@@ -246,10 +259,20 @@ impl CType {
                         str_parts.push(p.add(l).as_ref().unwrap());
                     }
                 }
+                CType::BoolCast(t) => {
+                    str_parts.push("Bool{");
+                    ctype_stack.push(close_brace);
+                    ctype_stack.push(t);
+                }
                 CType::Bool(b) => match b {
                     true => str_parts.push("true"),
                     false => str_parts.push("false"),
                 },
+                CType::StringCast(t) => {
+                    str_parts.push("String{");
+                    ctype_stack.push(close_brace);
+                    ctype_stack.push(t);
+                }
                 CType::TString(s) => str_parts.push(s),
                 CType::Group(t) => match strict {
                     true => {
@@ -259,6 +282,12 @@ impl CType {
                     }
                     false => ctype_stack.push(t),
                 },
+                CType::Unwrap(t) => {
+                    // TODO: Should this path just have it unwrapped?
+                    str_parts.push("Unwrap{");
+                    ctype_stack.push(close_brace);
+                    ctype_stack.push(t);
+                }
                 CType::Function(i, o) => {
                     ctype_stack.push(o);
                     ctype_stack.push(fnarrow);
@@ -337,8 +366,8 @@ impl CType {
                     ctype_stack.push(close_brace);
                     ctype_stack.push(d);
                 }
-                CType::Node(d) => {
-                    str_parts.push("Node{");
+                CType::Nodejs(d) => {
+                    str_parts.push("Nodejs{");
                     ctype_stack.push(close_brace);
                     ctype_stack.push(d);
                 }
@@ -677,11 +706,9 @@ impl CType {
                 CType::Binds(n, ts) => {
                     str_parts.push("Binds{");
                     ctype_stack.push(close_brace);
-                    for (i, t) in ts.iter().rev().enumerate() {
+                    for t in ts.iter().rev() {
                         ctype_stack.push(t);
-                        if i != 0 {
-                            ctype_stack.push(comma);
-                        }
+                        ctype_stack.push(comma);
                     }
                     ctype_stack.push(n);
                 }
@@ -724,6 +751,11 @@ impl CType {
                     str_parts.pop();
                     str_parts.push("}");
                 }
+                CType::IntCast(t) => {
+                    str_parts.push("Int{");
+                    ctype_stack.push(close_brace);
+                    ctype_stack.push(t);
+                }
                 CType::Int(i) => {
                     let l = unavoidable_strings.len();
                     unavoidable_strings.push(format!("{}", i));
@@ -731,6 +763,11 @@ impl CType {
                     unsafe {
                         str_parts.push(p.add(l).as_ref().unwrap());
                     }
+                }
+                CType::FloatCast(t) => {
+                    str_parts.push("Float{");
+                    ctype_stack.push(close_brace);
+                    ctype_stack.push(t);
                 }
                 CType::Float(f) => {
                     let l = unavoidable_strings.len();
@@ -740,12 +777,31 @@ impl CType {
                         str_parts.push(p.add(l).as_ref().unwrap());
                     }
                 }
+                CType::BoolCast(t) => {
+                    str_parts.push("Bool{");
+                    ctype_stack.push(close_brace);
+                    ctype_stack.push(t);
+                }
                 CType::Bool(b) => match b {
                     true => str_parts.push("true"),
                     false => str_parts.push("false"),
                 },
-                CType::TString(s) => str_parts.push(s),
+                CType::StringCast(t) => {
+                    str_parts.push("String{");
+                    ctype_stack.push(close_brace);
+                    ctype_stack.push(t);
+                }
+                CType::TString(s) => {
+                    str_parts.push("\"");
+                    str_parts.push(s);
+                    str_parts.push("\"");
+                }
                 CType::Group(t) => ctype_stack.push(t),
+                CType::Unwrap(t) => {
+                    str_parts.push("Unwrap{");
+                    ctype_stack.push(close_brace);
+                    ctype_stack.push(t);
+                }
                 CType::Function(i, o) => {
                     str_parts.push("Function{");
                     ctype_stack.push(close_brace);
@@ -812,8 +868,8 @@ impl CType {
                     ctype_stack.push(close_brace);
                     ctype_stack.push(d);
                 }
-                CType::Node(d) => {
-                    str_parts.push("Node{");
+                CType::Nodejs(d) => {
+                    str_parts.push("Nodejs{");
                     ctype_stack.push(close_brace);
                     ctype_stack.push(d);
                 }
@@ -1162,6 +1218,9 @@ impl CType {
         }
         let string = match &*self {
             CType::Int(_) | CType::Float(_) => format!("_{}", self.clone().to_functional_string()),
+            CType::TString(s) if s.starts_with(|c: char| c.is_ascii_digit()) => {
+                format!("_{}", self.clone().to_functional_string())
+            }
             CType::Type(n, t) => match **t {
                 CType::Int(_) | CType::Float(_) => {
                     format!("_{}", self.clone().to_functional_string())
@@ -1187,6 +1246,81 @@ impl CType {
         callable_strings.insert(self.clone(), string);
         callable_strings.get(&self).unwrap().clone()
     }
+
+    pub fn has_infer(self: Arc<CType>) -> bool {
+        match &*self {
+            CType::Void
+            | CType::IntrinsicGeneric(..)
+            | CType::Int(_)
+            | CType::Float(_)
+            | CType::Bool(_)
+            | CType::TString(_)
+            | CType::Fail(_) => false,
+            CType::Infer(..) => true,
+            CType::Type(_, t)
+            | CType::Generic(_, _, t)
+            | CType::IntCast(t)
+            | CType::FloatCast(t)
+            | CType::BoolCast(t)
+            | CType::StringCast(t)
+            | CType::Group(t)
+            | CType::Unwrap(t)
+            | CType::Infix(t)
+            | CType::Prefix(t)
+            | CType::Method(t)
+            | CType::Property(t)
+            | CType::Cast(t)
+            | CType::Own(t)
+            | CType::Deref(t)
+            | CType::Mut(t)
+            | CType::Rust(t)
+            | CType::Nodejs(t)
+            | CType::From(t)
+            | CType::Array(t)
+            | CType::Field(_, t)
+            | CType::Neg(t)
+            | CType::Len(t)
+            | CType::Size(t)
+            | CType::FileStr(t)
+            | CType::EnvExists(t)
+            | CType::Not(t) => t.clone().has_infer(),
+            CType::Binds(t, ts) | CType::TIf(t, ts) => {
+                t.clone().has_infer() || ts.iter().any(|t| t.clone().has_infer())
+            }
+            CType::Function(a, b)
+            | CType::Call(a, b)
+            | CType::Dependency(a, b)
+            | CType::Import(a, b)
+            | CType::Prop(a, b)
+            | CType::Buffer(a, b)
+            | CType::Concat(a, b) => a.clone().has_infer() || b.clone().has_infer(),
+            CType::Tuple(ts)
+            | CType::Either(ts)
+            | CType::AnyOf(ts)
+            | CType::Add(ts)
+            | CType::Sub(ts)
+            | CType::Mul(ts)
+            | CType::Div(ts)
+            | CType::Mod(ts)
+            | CType::Pow(ts)
+            | CType::Min(ts)
+            | CType::Max(ts)
+            | CType::Env(ts)
+            | CType::And(ts)
+            | CType::Or(ts)
+            | CType::Xor(ts)
+            | CType::Nand(ts)
+            | CType::Nor(ts)
+            | CType::Xnor(ts)
+            | CType::TEq(ts)
+            | CType::Neq(ts)
+            | CType::Lt(ts)
+            | CType::Lte(ts)
+            | CType::Gt(ts)
+            | CType::Gte(ts) => ts.iter().any(|t| t.clone().has_infer()),
+        }
+    }
+
     pub fn degroup(self: Arc<CType>) -> Arc<CType> {
         match &*self {
             CType::Void => self,
@@ -1200,11 +1334,16 @@ impl CType {
                     .collect::<Vec<Arc<CType>>>(),
             )),
             CType::IntrinsicGeneric(..) => self,
+            CType::IntCast(t) => Arc::new(CType::IntCast(t.clone().degroup())),
             CType::Int(_) => self,
+            CType::FloatCast(t) => Arc::new(CType::FloatCast(t.clone().degroup())),
             CType::Float(_) => self,
+            CType::BoolCast(t) => Arc::new(CType::BoolCast(t.clone().degroup())),
             CType::Bool(_) => self,
+            CType::StringCast(t) => Arc::new(CType::StringCast(t.clone().degroup())),
             CType::TString(_) => self,
             CType::Group(t) => t.clone().degroup(),
+            CType::Unwrap(t) => Arc::new(CType::Unwrap(t.clone().degroup())),
             CType::Function(i, o) => {
                 Arc::new(CType::Function(i.clone().degroup(), o.clone().degroup()))
             }
@@ -1221,7 +1360,7 @@ impl CType {
                 Arc::new(CType::Dependency(n.clone().degroup(), v.clone().degroup()))
             }
             CType::Rust(d) => Arc::new(CType::Rust(d.clone().degroup())),
-            CType::Node(d) => Arc::new(CType::Node(d.clone().degroup())),
+            CType::Nodejs(d) => Arc::new(CType::Nodejs(d.clone().degroup())),
             CType::From(d) => Arc::new(CType::From(d.clone().degroup())),
             CType::Import(n, d) => {
                 Arc::new(CType::Import(n.clone().degroup(), d.clone().degroup()))
@@ -1380,6 +1519,7 @@ impl CType {
     // generic type names, we succeed, otherwise we have to fail on being unable to resolve
     // specific generics.
     pub fn infer_generics_inner_loop(
+        scope: &Scope,
         generic_types: &mut HashMap<String, Arc<CType>>,
         arg_type_vec: Vec<(Arc<CType>, Arc<CType>)>,
     ) -> Result<(), Box<dyn std::error::Error>> {
@@ -1472,6 +1612,12 @@ impl CType {
                             .into());
                         }
                     }
+                    (_, CType::IntCast(_)) => {
+                        // Should only be reachable if there's an `infer` in here
+                        // Unfortunately may not infer correctly in this scenario as casting to an
+                        // integer is lossy.
+                        return Err("Cannot infer an integer cast".into());
+                    }
                     (CType::Float(f1), CType::Float(f2)) => {
                         if f1 != f2 {
                             return Err(format!(
@@ -1481,10 +1627,22 @@ impl CType {
                             .into());
                         }
                     }
+                    (_, CType::FloatCast(_)) => {
+                        // Should only be reachable if there's an `infer` in here
+                        // Unfortunately may not infer correctly in this scenario as casting to a
+                        // float is lossy.
+                        return Err("Cannot infer a float cast".into());
+                    }
                     (CType::Bool(b1), CType::Bool(b2)) => {
                         if b1 != b2 {
-                            return Err("Mismatched booleans during inference".to_string().into());
+                            return Err("Mismatched booleans during inference".into());
                         }
+                    }
+                    (_, CType::BoolCast(_)) => {
+                        // Should only be reachable if there's an `infer` in here
+                        // Unfortunately may not infer correctly in this scenario as casting to a
+                        // boolean is lossy.
+                        return Err("Cannot infer a bool cast".into());
                     }
                     (CType::TString(s1), CType::TString(s2)) => {
                         if s1 != s2 {
@@ -1493,6 +1651,28 @@ impl CType {
                                 s1, s2
                             )
                             .into());
+                        }
+                    }
+                    (CType::TString(s), CType::StringCast(sc)) => {
+                        // Should only be reachable if there's an `infer` in here. Fortunately, we
+                        // *can* infer the original type from a string cast by re-parsing the
+                        // string as a type declaration
+                        match &**sc {
+                            CType::Infer(..) => {
+                                // We need to parse the string back into a type and then pass that
+                                // along
+                                let wtol = parse::typeassignables(s).expect("should be impossible");
+                                let t = withtypeoperatorslist_to_ctype(&wtol.1, scope)?;
+                                arg.push(t.clone());
+                                input.push(sc.clone());
+                            }
+                            _ => {
+                                return Err(format!(
+                                    "Mismatched string {} and string cast {:?} during inference",
+                                    s, sc
+                                )
+                                .into());
+                            }
                         }
                     }
                     (CType::Group(g1), CType::Group(g2)) => {
@@ -1571,7 +1751,7 @@ impl CType {
                         arg.push(d1.clone());
                         input.push(d2.clone());
                     }
-                    (CType::Node(d1), CType::Node(d2)) => {
+                    (CType::Nodejs(d1), CType::Nodejs(d2)) => {
                         arg.push(d1.clone());
                         input.push(d2.clone());
                     }
@@ -1600,6 +1780,170 @@ impl CType {
                         }
                         for t2 in ts2 {
                             input.push(t2.clone());
+                        }
+                    }
+                    (CType::Prop(t1, p1), CType::Prop(t2, p2)) => {
+                        arg.push(t1.clone());
+                        arg.push(p1.clone());
+                        input.push(t2.clone());
+                        input.push(p2.clone());
+                    }
+                    (a, CType::Prop(t, p)) => {
+                        // TODO: There's probably a generalized way to handle things like this, but
+                        // for now, just hardwire this particular generic resolution used for the
+                        // GPGPU `map` function
+                        // In this case, the type to infer is the key that gets the
+                        // value from the tuple type so we iterate through the values
+                        // of the Prop tuple for a value that "accepts" the 'a' value
+                        match &**p {
+                            CType::StringCast(sc) => match &**sc {
+                                CType::Infer(..) => match &**t {
+                                    CType::Type(_, it) => match &**it {
+                                        CType::Tuple(tp) => {
+                                            let mut found = false;
+                                            for r in tp {
+                                                if let CType::Field(l, v) = &**r {
+                                                    if Arc::new(a.clone()).accepts(v.clone()) {
+                                                        // We found a match, parse the label back to a
+                                                        // type
+                                                        let wtol = parse::typeassignables(l)
+                                                            .expect("should be impossible");
+                                                        let t = withtypeoperatorslist_to_ctype(
+                                                            &wtol.1, scope,
+                                                        )?;
+                                                        arg.push(t.clone());
+                                                        input.push(sc.clone());
+                                                        found = true;
+                                                    }
+                                                }
+                                            }
+                                            if !found {
+                                                return Err(
+                                                    "Unable to find property during inference"
+                                                        .into(),
+                                                );
+                                            }
+                                        }
+                                        _ => {
+                                            return Err("Property extraction inference only possible on a tuple type".into());
+                                        }
+                                    },
+                                    CType::Tuple(tp) => {
+                                        let mut found = false;
+                                        for r in tp {
+                                            if let CType::Field(l, v) = &**r {
+                                                if Arc::new(a.clone()).accepts(v.clone()) {
+                                                    // We found a match, parse the label back to a
+                                                    // type
+                                                    let wtol = parse::typeassignables(l)
+                                                        .expect("should be impossible");
+                                                    let t = withtypeoperatorslist_to_ctype(
+                                                        &wtol.1, scope,
+                                                    )?;
+                                                    arg.push(t.clone());
+                                                    input.push(sc.clone());
+                                                    found = true;
+                                                }
+                                            }
+                                        }
+                                        if !found {
+                                            return Err(
+                                                "Unable to find property during inference".into()
+                                            );
+                                        }
+                                    }
+                                    _ => {
+                                        return Err("Property extraction inference only possible on a tuple type".into());
+                                    }
+                                },
+                                _ => unreachable!(),
+                            },
+                            // The other path that is being hardwired right now is the version used
+                            // for GBufferTagged. TODO: Figure out a general way to handle this
+                            // kind of type inference and replace the hacks with it.
+                            CType::TString(s) if s == "typeName" => {
+                                match &**t {
+                                    CType::Prop(t, p) => {
+                                        match &**p {
+                                            CType::StringCast(sc) => {
+                                                match &**sc {
+                                                    CType::Infer(..) => match &**t {
+                                                        CType::Type(_, it) => match &**it {
+                                                            CType::Tuple(tp) => {
+                                                                let mut found = false;
+                                                                for r in tp {
+                                                                    if let CType::Field(l, v) = &**r
+                                                                    {
+                                                                        if Arc::new(a.clone())
+                                                                            .accepts(v.clone())
+                                                                        {
+                                                                            // We found a match, parse the label back to a
+                                                                            // type
+                                                                            let wtol = parse::typeassignables(l).expect("should be impossible");
+                                                                            let t = withtypeoperatorslist_to_ctype(&wtol.1, scope)?;
+                                                                            arg.push(t.clone());
+                                                                            input.push(sc.clone());
+                                                                            found = true;
+                                                                        }
+                                                                    }
+                                                                }
+                                                                if !found {
+                                                                    return Err("Unable to find property during inference".into());
+                                                                }
+                                                            }
+                                                            _ => {
+                                                                return Err("Property extraction inference only possible on a tuple type".into());
+                                                            }
+                                                        },
+                                                        CType::Tuple(tp) => {
+                                                            let mut found = false;
+                                                            for r in tp {
+                                                                if let CType::Field(l, v) = &**r {
+                                                                    if Arc::new(a.clone())
+                                                                        .accepts(v.clone())
+                                                                    {
+                                                                        // We found a match, parse the label back to a
+                                                                        // type
+                                                                        let wtol = parse::typeassignables(l).expect("should be impossible");
+                                                                        let t = withtypeoperatorslist_to_ctype(&wtol.1, scope)?;
+                                                                        arg.push(t.clone());
+                                                                        input.push(sc.clone());
+                                                                        found = true;
+                                                                    }
+                                                                }
+                                                            }
+                                                            if !found {
+                                                                return Err("Unable to find property during inference".into());
+                                                            }
+                                                        }
+                                                        _ => {
+                                                            return Err("Property extraction inference only possible on a tuple type".into());
+                                                        }
+                                                    },
+                                                    _ => unreachable!(),
+                                                }
+                                            }
+                                            _ => {
+                                                return Err(format!("Mismatch between {:?} and {:?} during inference", a, i).into());
+                                            }
+                                        }
+                                    }
+                                    _ => {
+                                        return Err(format!(
+                                            "Mismatch between {:?} and {:?} during inference",
+                                            a, i
+                                        )
+                                        .into());
+                                    }
+                                }
+                            }
+                            _ => {
+                                return Err(format!(
+                                    "Mismatch between {:?} and {:?} during inference",
+                                    a, i
+                                )
+                                .into());
+                            }
                         }
                     }
                     (CType::Field(l1, t1), CType::Field(l2, t2)) => {
@@ -2132,16 +2476,20 @@ impl CType {
                             match &**other_type {
                                 CType::AnyOf(ts) => {
                                     for t1 in ts {
-                                        if t1.clone().degroup().to_callable_string()
-                                            == a.clone().degroup().to_callable_string()
+                                        if CType::tunwrap(t1.clone().degroup())
+                                            .to_functional_string()
+                                            == CType::tunwrap(a.clone().degroup())
+                                                .to_functional_string()
                                         {
                                             matched = true;
                                         }
                                     }
                                 }
                                 otherwise => {
-                                    if Arc::new(otherwise.clone()).degroup().to_callable_string()
-                                        == a.clone().degroup().to_callable_string()
+                                    if CType::tunwrap(Arc::new(otherwise.clone()).degroup())
+                                        .to_functional_string()
+                                        == CType::tunwrap(a.clone().degroup())
+                                            .to_functional_string()
                                     {
                                         matched = true;
                                     }
@@ -2153,8 +2501,8 @@ impl CType {
                                 return Err(format!(
                                     "Generic {} matched both {} and {}",
                                     g,
-                                    other_type.clone().to_strict_string(false),
-                                    a.to_strict_string(false)
+                                    other_type.clone().to_functional_string(),
+                                    a.to_functional_string()
                                 )
                                 .into());
                             }
@@ -2171,6 +2519,7 @@ impl CType {
                             .map(|t| {
                                 let mut generic_types_inner = generic_types.clone();
                                 if CType::infer_generics_inner_loop(
+                                    scope,
                                     &mut generic_types_inner,
                                     vec![(t.clone(), i.clone())],
                                 )
@@ -2346,6 +2695,7 @@ impl CType {
             .collect::<Vec<Arc<CType>>>();
         let mut generic_types: HashMap<String, Arc<CType>> = HashMap::new();
         CType::infer_generics_inner_loop(
+            &temp_scope,
             &mut generic_types,
             call_args
                 .iter()
@@ -3502,7 +3852,12 @@ impl CType {
                     .map(|gtr| gtr.clone().swap_subtype(old_type.clone(), new_type.clone()))
                     .collect::<Vec<Arc<CType>>>(),
             )),
+            CType::IntCast(i) => CType::intcast(i.clone().swap_subtype(old_type, new_type)),
+            CType::FloatCast(f) => CType::floatcast(f.clone().swap_subtype(old_type, new_type)),
+            CType::BoolCast(b) => CType::boolcast(b.clone().swap_subtype(old_type, new_type)),
+            CType::StringCast(s) => CType::stringcast(s.clone().swap_subtype(old_type, new_type)),
             CType::Group(g) => g.clone().swap_subtype(old_type, new_type),
+            CType::Unwrap(t) => CType::tunwrap(t.clone().swap_subtype(old_type, new_type)),
             CType::Function(i, o) => Arc::new(CType::Function(
                 i.clone().swap_subtype(old_type.clone(), new_type.clone()),
                 o.clone().swap_subtype(old_type, new_type),
@@ -3526,7 +3881,7 @@ impl CType {
                 v.clone().swap_subtype(old_type, new_type),
             )),
             CType::Rust(d) => Arc::new(CType::Rust(d.clone().swap_subtype(old_type, new_type))),
-            CType::Node(d) => Arc::new(CType::Node(d.clone().swap_subtype(old_type, new_type))),
+            CType::Nodejs(d) => Arc::new(CType::Nodejs(d.clone().swap_subtype(old_type, new_type))),
             CType::From(d) => Arc::new(CType::From(d.clone().swap_subtype(old_type, new_type))),
             CType::Import(n, d) => Arc::new(CType::Import(
                 n.clone().swap_subtype(old_type.clone(), new_type.clone()),
@@ -3546,10 +3901,10 @@ impl CType {
                     .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
                     .collect::<Vec<Arc<CType>>>(),
             )),
-            CType::Prop(t, p) => Arc::new(CType::Prop(
+            CType::Prop(t, p) => CType::prop(
                 t.clone().swap_subtype(old_type.clone(), new_type.clone()),
                 p.clone().swap_subtype(old_type, new_type),
-            )),
+            ),
             CType::AnyOf(ts) => Arc::new(CType::AnyOf(
                 ts.iter()
                     .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
@@ -3708,6 +4063,7 @@ impl CType {
                 .unwrap(),
         }
     }
+
     pub fn binds(args: Vec<Arc<CType>>) -> Arc<CType> {
         let base_type = args[0].clone();
         if matches!(
@@ -3726,6 +4082,78 @@ impl CType {
             );
         }
     }
+
+    pub fn intcast(arg: Arc<CType>) -> Arc<CType> {
+        if arg.clone().has_infer() {
+            Arc::new(CType::IntCast(arg))
+        } else {
+            match &*arg {
+                CType::Int(_) => arg,
+                CType::Float(f) => Arc::new(CType::Int(*f as i128)),
+                CType::Bool(b) => Arc::new(if *b { CType::Int(1) } else { CType::Int(0) }),
+                CType::TString(s) => match s.parse::<i128>() {
+                    Ok(v) => Arc::new(CType::Int(v)),
+                    Err(e) => Arc::new(CType::Fail(format!("{:?}", e))),
+                },
+                _ => Arc::new(CType::Fail("Not implemented".into())),
+            }
+        }
+    }
+
+    pub fn floatcast(arg: Arc<CType>) -> Arc<CType> {
+        if arg.clone().has_infer() {
+            Arc::new(CType::FloatCast(arg))
+        } else {
+            match &*arg {
+                CType::Float(_) => arg,
+                CType::Int(i) => Arc::new(CType::Float(*i as f64)),
+                CType::Bool(b) => Arc::new(if *b {
+                    CType::Float(1.0)
+                } else {
+                    CType::Float(0.0)
+                }),
+                CType::TString(s) => match s.parse::<f64>() {
+                    Ok(v) => Arc::new(CType::Float(v)),
+                    Err(e) => Arc::new(CType::Fail(format!("{:?}", e))),
+                },
+                _ => Arc::new(CType::Fail("Not implemented".into())),
+            }
+        }
+    }
+
+    pub fn boolcast(arg: Arc<CType>) -> Arc<CType> {
+        if arg.clone().has_infer() {
+            Arc::new(CType::BoolCast(arg))
+        } else {
+            match &*arg {
+                CType::Bool(_) => arg,
+                CType::Float(f) => Arc::new(CType::Bool(*f != 0.0)),
+                CType::Int(i) => Arc::new(CType::Bool(*i != 0)),
+                CType::TString(s) => Arc::new(CType::Bool(s == "true")),
+                _ => Arc::new(CType::Fail("Not implemented".into())),
+            }
+        }
+    }
+
+    pub fn stringcast(arg: Arc<CType>) -> Arc<CType> {
+        if arg.clone().has_infer() {
+            Arc::new(CType::StringCast(arg))
+        } else {
+            Arc::new(CType::TString(CType::to_functional_string(arg)))
+        }
+    }
+
+    pub fn tunwrap(arg: Arc<CType>) -> Arc<CType> {
+        if arg.clone().has_infer() {
+            Arc::new(CType::Unwrap(arg))
+        } else {
+            match &*arg {
+                CType::Type(_, t) | CType::Group(t) | CType::Unwrap(t) => t.clone(),
+                _ => arg,
+            }
+        }
+    }
+
     pub fn import(name: Arc<CType>, dep: Arc<CType>) -> Arc<CType> {
         if let CType::Infer(..) = &*name {
             Arc::new(CType::Import(name, dep))
@@ -3769,13 +4197,14 @@ impl CType {
                     }
                 }
                 CType::Dependency(..) => CType::fail("TODO: Alan package import support"),
-                CType::Node(_) | CType::Rust(_) => Arc::new(CType::Import(name, dep)),
-                CType::Type(_, t) if matches!(**t, CType::Node(_) | CType::Rust(_)) => {
+                CType::Nodejs(_) | CType::Rust(_) => Arc::new(CType::Import(name, dep)),
+                CType::Type(_, t) if matches!(**t, CType::Nodejs(_) | CType::Rust(_)) => {
                     Arc::new(CType::Import(name, dep))
                 }
                 otherwise => CType::fail(&format!(
-                    "Invalid import defined {:?} <- {:?}",
-                    name, otherwise
+                    "Invalid import defined {} <- {}",
+                    name.clone().to_functional_string(),
+                    Arc::new(otherwise.clone()).to_functional_string()
                 )),
             }
         }
@@ -3811,13 +4240,12 @@ impl CType {
         Arc::new(CType::Either(out_vec))
     }
     pub fn prop(t: Arc<CType>, p: Arc<CType>) -> Arc<CType> {
-        // Checking the p property type first if it's to be inferred because short-circuiting on
-        // that will simplify follow-up logic
-        if let CType::Infer(..) = &*p {
+        // Check the arguments first to see if they're to be inferred
+        if t.clone().has_infer() || p.clone().has_infer() {
             return Arc::new(CType::Prop(t, p));
         }
         match &*t {
-            CType::Infer(..) => Arc::new(CType::Prop(t, p)),
+            CType::Infer(..) => unreachable!(),
             CType::Type(_, t) => CType::prop(t.clone(), p),
             CType::Group(t) => CType::prop(t.clone(), p),
             CType::Field(n, f) => match &*p {
@@ -3825,18 +4253,23 @@ impl CType {
                     if n == s {
                         f.clone()
                     } else {
-                        CType::fail(&format!("Property {} not found on type {:?}", s, &t))
+                        Arc::new(CType::Fail(format!(
+                            "Property {} not found on type {:?}",
+                            s, &t
+                        )))
                     }
                 }
                 CType::Int(i) => match i {
                     0 => Arc::new(CType::TString(n.to_string())),
                     1 => f.clone(),
-                    _ => CType::fail("Only 0 or 1 are valid integer accesses on a field"),
+                    _ => Arc::new(CType::Fail(
+                        "Only 0 or 1 are valid integer accesses on a field".into(),
+                    )),
                 },
-                otherwise => CType::fail(&format!(
+                otherwise => Arc::new(CType::Fail(format!(
                     "Properties must be a name or integer location, not {:?}",
                     otherwise,
-                )),
+                ))),
             },
             CType::Tuple(ts) | CType::Either(ts) => match &*p {
                 CType::TString(s) => {
@@ -3847,19 +4280,25 @@ impl CType {
                             }
                         }
                     }
-                    CType::fail(&format!("Property {} not found on type {:?}", s, t))
+                    Arc::new(CType::Fail(format!(
+                        "Property {} not found on type {:?}",
+                        s, t
+                    )))
                 }
                 CType::Int(i) => {
                     if (0..ts.len()).contains(&(*i as usize)) {
                         ts[*i as usize].clone()
                     } else {
-                        CType::fail(&format!("{} is out of bounds for type {:?}", i, t))
+                        Arc::new(CType::Fail(format!(
+                            "{} is out of bounds for type {:?}",
+                            i, t
+                        )))
                     }
                 }
-                otherwise => CType::fail(&format!(
+                otherwise => Arc::new(CType::Fail(format!(
                     "Properties must be a name or integer location, not {:?}",
                     otherwise,
-                )),
+                ))),
             },
             CType::TIf(_, tf) => {
                 match &*p {
@@ -4256,7 +4695,7 @@ impl CType {
         })
     }
     pub fn cif(c: Arc<CType>, a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
-        match &*c {
+        match &*CType::tunwrap(c.clone().degroup()) {
             CType::Bool(cond) => match cond {
                 true => a.clone(),
                 false => b.clone(),
@@ -4930,17 +5369,25 @@ pub fn typebaselist_to_ctype(
                                             // coerced from a variable to a string, the second arg
                                             // is treated like normal
                                             if g.typecalllist.len() != 3 {
-                                                CType::fail("The Field generic type accepts only two parameters");
+                                                CType::fail("The Prop generic type accepts only two parameters");
                                             }
                                             args.push(withtypeoperatorslist_to_ctype(&vec![g.typecalllist[0].clone()], scope)?);
                                             match g.typecalllist[0].to_string().parse::<i128>() {
                                                 Ok(i) => args.push(Arc::new(CType::Int(i))),
                                                 Err(_) => {
-                                                    let argstr = g.typecalllist[2].to_string();
-                                                    match argstr.as_str() {
-                                                        "true" => args.push(Arc::new(CType::Bool(true))),
-                                                        "false" => args.push(Arc::new(CType::Bool(false))),
-                                                        _ => args.push(Arc::new(CType::TString(argstr)))
+                                                    if let parse::WithTypeOperators::TypeBaseList(tbl) = &g.typecalllist[2] {
+                                                        if tbl.len() > 1 {
+                                                            args.push(withtypeoperatorslist_to_ctype(&vec![g.typecalllist[2].clone()], scope)?);
+                                                        } else {
+                                                            let argstr = g.typecalllist[2].to_string();
+                                                            match argstr.as_str() {
+                                                                "true" => args.push(Arc::new(CType::Bool(true))),
+                                                                "false" => args.push(Arc::new(CType::Bool(false))),
+                                                                _ => args.push(Arc::new(CType::TString(argstr)))
+                                                            }
+                                                        }
+                                                    } else {
+                                                        CType::fail("huh?")
                                                     }
                                                 }
                                             }
@@ -4960,7 +5407,14 @@ pub fn typebaselist_to_ctype(
                                             if g.typecalllist.len() != 3 {
                                                 CType::fail("The Field generic type accepts only two parameters");
                                             }
-                                            args.push(Arc::new(CType::TString(g.typecalllist[0].to_string())));
+                                            // Special hack to de-stringify the field label if and
+                                            // only if it's trying to cast to a string here
+                                            let label = g.typecalllist[0].to_string();
+                                            if label.starts_with("String{") {
+                                                args.push(withtypeoperatorslist_to_ctype(&vec![g.typecalllist[0].clone()], scope)?);
+                                            } else {
+                                                args.push(Arc::new(CType::TString(label)));
+                                            }
                                             args.push(withtypeoperatorslist_to_ctype(&vec![g.typecalllist[2].clone()], scope)?);
                                         }
                                         _ => CType::fail("Cannot follow method style syntax without an operator in between"),
@@ -5044,7 +5498,12 @@ pub fn typebaselist_to_ctype(
                                     // TODO: Is there a better way to do this?
                                     match name.as_str() {
                                         "Binds" => CType::binds(args),
+                                        "Int" => CType::intcast(args[0].clone()),
+                                        "Float" => CType::floatcast(args[0].clone()),
+                                        "Bool" => CType::boolcast(args[0].clone()),
+                                        "String" => CType::stringcast(args[0].clone()),
                                         "Group" => Arc::new(CType::Group(args[0].clone())),
+                                        "Unwrap" => CType::tunwrap(args[0].clone()),
                                         "Function" => Arc::new(CType::Function(
                                             args[0].clone(),
                                             args[1].clone(),
@@ -5065,7 +5524,7 @@ pub fn typebaselist_to_ctype(
                                             args[1].clone(),
                                         )),
                                         "Rust" => Arc::new(CType::Rust(args[0].clone())),
-                                        "Node" => Arc::new(CType::Node(args[0].clone())),
+                                        "Nodejs" => Arc::new(CType::Nodejs(args[0].clone())),
                                         "From" => Arc::new(CType::From(args[0].clone())),
                                         "Import" => CType::import(args[0].clone(), args[1].clone()),
                                         "Tuple" => CType::tuple(args.clone()),
