@@ -1044,6 +1044,10 @@ export function contextRuntime(context) {
   return f32AsU32(new F32((performance.now() - context.start) / 1000.0));
 }
 
+export function contextCanvas(context, name) {
+  context.canvas = document.getElementById(name.toString());
+}
+
 export function frameContext(frame) {
   return frame.context;
 }
