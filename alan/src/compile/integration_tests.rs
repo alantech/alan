@@ -1059,19 +1059,10 @@ test!(library_testing => r#"
 );
 
 test!(compile_time_buffer_size => r#"
-    // Re-using the HISTSIZE environment variable for this.
-    export fn{Lin || Mac} main {
-      {Buffer{i64, Int{Env{"HISTSIZE"}}}}(0).print;
-    }
-    // Windows doesn't have a HISTSIZE environment variable, so we use a different one
-    export fn{Win} main {
-      {Buffer{i64, Int{Env{"NUMBER_OF_PROCESSORS"}}}}(0).print;
-    }
-    // Compiling to Javascript is a kind of cross-compilation, but there's no way to know the OS
-    // of the *host* that's doing the cross-compilation at the moment, so we are opting out of this
-    // for now. TODO: Add the ability to determine the host OS during compilation.
-    export fn{Js} main {
-      {Buffer{i64, 8}}(0).print;
+    // BUFSIZE is set by the Github Actions test suite. Be sure to set this environment variable
+    // yourself if you run this test locally
+    export fn main {
+      {Buffer{i64, Int{Env{"BUFSIZE"}}}}(0).print;
     }"#;
     stdout_contains "0,";
 );

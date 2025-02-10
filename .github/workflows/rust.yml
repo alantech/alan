@@ -12,6 +12,8 @@ env:
 jobs:
   test:
     runs-on: [self-hosted, linux, X64]
+    env:
+      BUFSIZE: 64
     steps:
     - uses: actions/checkout@v4
     - name: Check formatting
