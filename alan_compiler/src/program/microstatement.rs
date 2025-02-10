@@ -1062,7 +1062,11 @@ pub fn baseassignablelist_to_microstatements<'a>(
                             "Generic type or function {}{}({}) not found",
                             f,
                             g.to_string(),
-                            arg_types.iter().map(|t| t.clone().to_functional_string()).collect::<Vec<String>>().join(", "),
+                            arg_types
+                                .iter()
+                                .map(|t| t.clone().to_functional_string())
+                                .collect::<Vec<String>>()
+                                .join(", "),
                         )
                         .into());
                     }
