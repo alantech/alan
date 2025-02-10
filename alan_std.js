@@ -1058,7 +1058,9 @@ export function frameFramebuffer(frame) {
 
 export async function runWindow(initialContextFn, contextFn, gpgpuShaderFn) {
   // None of this can run before `document.body` exists, so let's wait for that
-  await new Promise((r) => document.addEventListener("DOMContentLoaded", () => r()));
+  if (document.readyState !== "complete" && document.readyState !== "loaded") {
+    await new Promise((r) => document.addEventListener("DOMContentLoaded", () => r()));
+  }
   let context = {
     canvas: undefined,
     start: undefined,
@@ -1083,14 +1085,14 @@ export async function runWindow(initialContextFn, contextFn, gpgpuShaderFn) {
     canvas.style['height'] = '100%';
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-    document.body.addEventListener("resize", () => {
+    window.addEventListener("resize", () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
     });
-    if (!context.cursorVisible) {
-      canvas.style['cursor'] = 'none';
-    }
     context.canvas = canvas;
+  }
+  if (!context.cursorVisible) {
+    context.canvas.style['cursor'] = 'none';
   }
   context.canvas.addEventListener("mousemove", (event) => {
     if (typeof(context.mouseX) !== "undefined" || typeof(context.mouseY) !== "undefined") {
