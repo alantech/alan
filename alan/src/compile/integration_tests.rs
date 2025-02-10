@@ -1058,6 +1058,46 @@ test!(library_testing => r#"
     stdout "2\n";
 );
 
+test!(compile_time_buffer_size => r#"
+    // Re-using the HISTSIZE environment variable for this.
+    export fn{Lin || Mac} main {
+      {Buffer{i64, Int{Env{"HISTSIZE"}}}}(0).print;
+    }
+    // Windows doesn't have a HISTSIZE environment variable, so we use a different one
+    export fn{Win} main {
+      {Buffer{i64, Int{Env{"NUMBER_OF_PROCESSORS"}}}}(0).print;
+    }
+    // Compiling to Javascript is a kind of cross-compilation, but there's no way to know the OS
+    // of the *host* that's doing the cross-compilation at the moment, so we are opting out of this
+    // for now. TODO: Add the ability to determine the host OS during compilation.
+    export fn{Js} main {
+      {Buffer{i64, 8}}(0).print;
+    }"#;
+    stdout_contains "0,";
+);
+
+test!(extend_type => r#"
+    type Foo = bar: "bar";
+    type Foo = Unwrap{Foo}, baz: "baz";
+
+    export fn main {
+      {String{Foo}}().print;
+    }"#;
+    stdout "Tuple{Field{bar, \"bar\"}, Field{baz, \"baz\"}}\n";
+);
+
+test!(what_type => r#"
+    fn whatType{T} = {String{T}}().print;
+
+    export fn main {
+      whatType{1}();
+      whatType{ExitCode}();
+      whatType{Tuple{ExitCode, "ExitCode"}}();
+    }"#;
+    stdout_rs "1\nBinds{\"std::process::ExitCode\"}\nTuple{Binds{\"std::process::ExitCode\"}, \"ExitCode\"}\n";
+    stdout_js "1\nBinds{\"Number\"}\nTuple{Binds{\"Number\"}, \"ExitCode\"}\n";
+);
+
 // Objects
 
 test_compile_error!(object_constructor_compiler_checks => r#"
