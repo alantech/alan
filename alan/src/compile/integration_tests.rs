@@ -1058,6 +1058,37 @@ test!(library_testing => r#"
     stdout "2\n";
 );
 
+test!(compile_time_buffer_size => r#"
+    // BUFSIZE is set by the Github Actions test suite. Be sure to set this environment variable
+    // yourself if you run this test locally
+    export fn main {
+      {Buffer{i64, Int{Env{"BUFSIZE"}}}}(0).print;
+    }"#;
+    stdout_contains "0,";
+);
+
+test!(extend_type => r#"
+    type Foo = bar: "bar";
+    type Foo = Unwrap{Foo}, baz: "baz";
+
+    export fn main {
+      {String{Foo}}().print;
+    }"#;
+    stdout "Tuple{Field{bar, \"bar\"}, Field{baz, \"baz\"}}\n";
+);
+
+test!(what_type => r#"
+    fn whatType{T} = {String{T}}().print;
+
+    export fn main {
+      whatType{1}();
+      whatType{ExitCode}();
+      whatType{Tuple{ExitCode, "ExitCode"}}();
+    }"#;
+    stdout_rs "1\nBinds{\"std::process::ExitCode\"}\nTuple{Binds{\"std::process::ExitCode\"}, \"ExitCode\"}\n";
+    stdout_js "1\nBinds{\"Number\"}\nTuple{Binds{\"Number\"}, \"ExitCode\"}\n";
+);
+
 // Objects
 
 test_compile_error!(object_constructor_compiler_checks => r#"

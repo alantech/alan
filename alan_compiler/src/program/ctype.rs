@@ -3595,13 +3595,29 @@ impl CType {
                     typen: Arc::new(CType::Function(Arc::new(CType::Void), string.clone())),
                     microstatements: vec![Microstatement::Return {
                         value: Some(Box::new(Microstatement::Value {
-                            typen: string,
+                            typen: string.clone(),
                             representation: format!("\"{}\"", s.replace("\"", "\\\"")),
                         })),
                     }],
                     kind: FnKind::Normal,
                     origin_scope_path: scope.path.clone(),
                 }));
+                // Also include the original name if it doesn't match. TODO: Figure out why these
+                // aren't resolving in the same way
+                if constructor_fn_name != name {
+                    fs.push(Arc::new(Function {
+                        name: name.clone(),
+                        typen: Arc::new(CType::Function(Arc::new(CType::Void), string.clone())),
+                        microstatements: vec![Microstatement::Return {
+                            value: Some(Box::new(Microstatement::Value {
+                                typen: string,
+                                representation: format!("\"{}\"", s.replace("\"", "\\\"")),
+                            })),
+                        }],
+                        kind: FnKind::Normal,
+                        origin_scope_path: scope.path.clone(),
+                    }));
+                }
             }
             _ => {} // Don't do anything for other types
         }

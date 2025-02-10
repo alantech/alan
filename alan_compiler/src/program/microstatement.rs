@@ -1059,9 +1059,14 @@ pub fn baseassignablelist_to_microstatements<'a>(
                 match (maybe_type, maybe_generic_function) {
                     (None, None) => {
                         return Err(format!(
-                            "Generic type or function {}{} not found",
+                            "Generic type or function {}{}({}) not found",
                             f,
-                            g.to_string()
+                            g.to_string(),
+                            arg_types
+                                .iter()
+                                .map(|t| t.clone().to_functional_string())
+                                .collect::<Vec<String>>()
+                                .join(", "),
                         )
                         .into());
                     }
