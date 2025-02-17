@@ -1308,6 +1308,7 @@ where
                 }))
                 .unwrap(),
             );
+            println!("Supported texture formats: {:?}", surface.get_capabilities(self.adapter.as_ref().unwrap()).formats);
         }
         if self.device.is_none() {
             // We can do both device and queue here as they're created at the same time
