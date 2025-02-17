@@ -1393,15 +1393,19 @@ where
             WindowEvent::CloseRequested => {
                 // Cleanup the app now that we're caching things
                 self.gpgpu_shaders = None;
-                self.context.buffer_width = None;
+                self.context.window = None;
                 if let Some(b) = &self.buffer {
                     b.destroy();
                 }
                 self.buffer = None;
+                if let Some(b) = &self.context_buffer {
+                    b.destroy();
+                }
                 self.context_buffer = None;
                 self.queue = None;
                 self.device = None;
                 self.adapter = None;
+                self.surface = None;
                 self.instance = None;
                 event_loop.exit();
             }
