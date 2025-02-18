@@ -2018,15 +2018,19 @@ type WgpuTypeMap =
 
 fn gvec2Primitive{I, O}(a: I, b: I) {
   let typename = {O.typeName}();
-  let statement = typename
+  let varName = typename.concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = "var "
+    .concat(varName)
+    .concat(" = ")
+    .concat(typename)
     .concat('(')
     .concat(a.varName)
     .concat(', ')
     .concat(b.varName)
     .concat(')');
-  let statements = a.statements.concat(b.statements);
+  let statements = a.statements.concat(b.statements).concat(Dict(varName, statement));
   let buffers = a.buffers.union(b.buffers);
-  return {O}(statement, statements, buffers);
+  return {O}(varName, statements, buffers);
 }
 
 fn gvec2u() = gvec2u("vec2u()", Dict{string, string}(), Set{GBufferTagged}());
@@ -2051,7 +2055,11 @@ fn gvec2b{T}(a: T) = gvec2b(a, a);
 
 fn gvec3Primitive{I, O}(a: I, b: I, c: I) {
   let typename = {O.typeName}();
-  let statement = typename
+  let varName = typename.concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = "var "
+    .concat(varName)
+    .concat(" = ")
+    .concat(typename)
     .concat('(')
     .concat(a.varName)
     .concat(', ')
@@ -2059,9 +2067,13 @@ fn gvec3Primitive{I, O}(a: I, b: I, c: I) {
     .concat(', ')
     .concat(c.varName)
     .concat(')');
-  let statements = a.statements.concat(b.statements).concat(c.statements);
+  let statements = a
+    .statements
+    .concat(b.statements)
+    .concat(c.statements)
+    .concat(Dict(varName, statement));
   let buffers = a.buffers.union(b.buffers).union(c.buffers);
-  return {O}(statement, statements, buffers);
+  return {O}(varName, statements, buffers);
 }
 
 fn gvec3u() = gvec3u("vec3u()", Dict{string, string}(), Set{GBufferTagged}());
@@ -2086,7 +2098,11 @@ fn gvec3b{T}(a: T) = gvec3b(a, a, a);
 
 fn gvec4Primitive{I, O}(a: I, b: I, c: I, d: I) {
   let typename = {O.typeName}();
-  let statement = typename
+  let varName = typename.concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = "var "
+    .concat(varName)
+    .concat(" = ")
+    .concat(typename)
     .concat('(')
     .concat(a.varName)
     .concat(', ')
@@ -2096,9 +2112,14 @@ fn gvec4Primitive{I, O}(a: I, b: I, c: I, d: I) {
     .concat(', ')
     .concat(d.varName)
     .concat(')');
-  let statements = a.statements.concat(b.statements).concat(c.statements).concat(d.statements);
+  let statements = a
+    .statements
+    .concat(b.statements)
+    .concat(c.statements)
+    .concat(d.statements)
+    .concat(Dict(varName, statement));
   let buffers = a.buffers.union(b.buffers).union(c.buffers).union(d.buffers);
-  return {O}(statement, statements, buffers);
+  return {O}(varName, statements, buffers);
 }
 
 fn gvec4u() = gvec4u("vec4u()", Dict{string, string}(), Set{GBufferTagged}());
@@ -2174,15 +2195,23 @@ type WgpuTypeMap =
 
 fn gmat2x2f() = gmat2x2f("mat2x2f()", Dict{string, string}(), Set{GBufferTagged}());
 fn gmat2x2f(a: gvec2f, b: gvec2f) {
-  let statement = "mat2x2f(".concat(a.varName).concat(", ").concat(b.varName).concat(")");
-  let statements = a.statements.concat(b.statements);
+  let varName = 'mat2x2f'.concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = ')
+    .concat("mat2x2f(")
+    .concat(a.varName)
+    .concat(", ")
+    .concat(b.varName)
+    .concat(")");
+  let statements = a.statements.concat(b.statements).concat(Dict(varName, statement));
   let buffers = a.buffers.union(b.buffers);
-  return gmat2x2f(statement, statements, buffers);
+  return gmat2x2f(varName, statements, buffers);
 }
 fn gmat2x2f{I}(a: I, b: I, c: I, d: I) = gmat2x2f(a.gf32, b.gf32, c.gf32, d.gf32);
 fn gmat2x2f(a: gf32, b: gf32, c: gf32, d: gf32) {
   let varName = "mat2x2f_".concat(uuid().string.replace('-', '_'));
-  let statement = "let "
+  let statement = "var "
     .concat(varName)
     .concat(" = mat2x2f(")
     .concat(a.varName)
@@ -2200,16 +2229,26 @@ fn gmat2x2f(a: gf32, b: gf32, c: gf32, d: gf32) {
 
 fn gmat2x3f() = gmat2x3f("mat2x3f()", Dict{string, string}(), Set{GBufferTagged}());
 fn gmat2x3f(a: gvec3f, b: gvec3f) {
-  let statement = "mat2x3f(".concat(a.varName).concat(", ").concat(b.varName).concat(")");
-  let statements = a.statements.concat(b.statements);
+  let varName = "mat2x3f_".concat(uuid().string.replace('-', '_'));
+  let statement = "var "
+    .concat(varName)
+    .concat(" = mat2x3f(")
+    .concat(a.varName)
+    .concat(", ")
+    .concat(b.varName)
+    .concat(")");
+  let statements = a.statements.concat(b.statements).concat(Dict(varName, statement));
   let buffers = a.buffers.union(b.buffers);
-  return gmat2x3f(statement, statements, buffers);
+  return gmat2x3f(varName, statements, buffers);
 }
 fn gmat2x3f{I}(a: I, b: I, c: I, d: I, e: I, f: I) = gmat2x3f(
   a.gf32, b.gf32, c.gf32, d.gf32, e.gf32, f.gf32
 );
 fn gmat2x3f(a: gf32, b: gf32, c: gf32, d: gf32, e: gf32, f: gf32) {
-  let statement = "mat2x3f("
+  let varName = "mat2x3f_".concat(uuid().string.replace('-', '_'));
+  let statement = "var "
+    .concat(varName)
+    .concat(" = mat2x3f(")
     .concat(a.varName)
     .concat(", ")
     .concat(b.varName)
@@ -2227,28 +2266,39 @@ fn gmat2x3f(a: gf32, b: gf32, c: gf32, d: gf32, e: gf32, f: gf32) {
     .concat(c.statements)
     .concat(d.statements)
     .concat(e.statements)
-    .concat(f.statements);
+    .concat(f.statements)
+    .concat(Dict(varName, statement));
   let buffers = a.buffers
     .union(b.buffers)
     .union(c.buffers)
     .union(d.buffers)
     .union(e.buffers)
     .union(f.buffers);
-  return gmat2x3f(statement, statements, buffers);
+  return gmat2x3f(varName, statements, buffers);
 }
 
 fn gmat2x4f() = gmat2x4f("mat2x4f()", Dict{string, string}(), Set{GBufferTagged}());
 fn gmat2x4f(a: gvec4f, b: gvec4f) {
-  let statement = "mat2x4f(".concat(a.varName).concat(", ").concat(b.varName).concat(")");
-  let statements = a.statements.concat(b.statements);
+  let varName = "mat2x4f_".concat(uuid().string.replace('-', '_'));
+  let statement = "var "
+    .concat(varName)
+    .concat(" = mat2x4f(")
+    .concat(a.varName)
+    .concat(", ")
+    .concat(b.varName)
+    .concat(")");
+  let statements = a.statements.concat(b.statements).concat(Dict(varName, statement));
   let buffers = a.buffers.union(b.buffers);
-  return gmat2x4f(statement, statements, buffers);
+  return gmat2x4f(varName, statements, buffers);
 }
 fn gmat2x4f{I}(a: I, b: I, c: I, d: I, e: I, f: I, g: gf32, h: gf32) = gmat2x4f(
   a.gf32, b.gf32, c.gf32, d.gf32, e.gf32, f.gf32, g.gf32, h.gf32
 );
 fn gmat2x4f(a: gf32, b: gf32, c: gf32, d: gf32, e: gf32, f: gf32, g: gf32, h: gf32) {
-  let statement = "mat2x4f("
+  let varName = "mat2x4f_".concat(uuid().string.replace('-', '_'));
+  let statement = "var "
+    .concat(varName)
+    .concat(" = mat2x4f(")
     .concat(a.varName)
     .concat(", ")
     .concat(b.varName)
@@ -2272,7 +2322,8 @@ fn gmat2x4f(a: gf32, b: gf32, c: gf32, d: gf32, e: gf32, f: gf32, g: gf32, h: gf
     .concat(e.statements)
     .concat(f.statements)
     .concat(g.statements)
-    .concat(h.statements);
+    .concat(h.statements)
+    .concat(Dict(varName, statement));
   let buffers = a.buffers
     .union(b.buffers)
     .union(c.buffers)
@@ -2281,27 +2332,37 @@ fn gmat2x4f(a: gf32, b: gf32, c: gf32, d: gf32, e: gf32, f: gf32, g: gf32, h: gf
     .union(f.buffers)
     .union(g.buffers)
     .union(h.buffers);
-  return gmat2x4f(statement, statements, buffers);
+  return gmat2x4f(varName, statements, buffers);
 }
 
 fn gmat3x2f() = gmat3x2f("mat3x2f()", Dict{string, string}(), Set{GBufferTagged}());
 fn gmat3x2f(a: gvec2f, b: gvec2f, c: gvec2f) {
-  let statement = "mat3x2f("
+  let varName = "mat3x2f_".concat(uuid().string.replace('-', '_'));
+  let statement = "var "
+    .concat(varName)
+    .concat(" = mat3x2f(")
     .concat(a.varName)
     .concat(", ")
     .concat(b.varName)
     .concat(", ")
     .concat(c.varName)
     .concat(")");
-  let statements = a.statements.concat(b.statements).concat(c.statements);
+  let statements = a
+    .statements
+    .concat(b.statements)
+    .concat(c.statements)
+    .concat(Dict(varName, statement));
   let buffers = a.buffers.union(b.buffers).union(c.buffers);
-  return gmat3x2f(statement, statements, buffers);
+  return gmat3x2f(varName, statements, buffers);
 }
 fn gmat3x2f{I}(a: I, b: I, c: I, d: I, e: I, f: I) = gmat3x2f(
   a.gf32, b.gf32, c.gf32, d.gf32, e.gf32, f.gf32
 );
 fn gmat3x2f(a: gf32, b: gf32, c: gf32, d: gf32, e: gf32, f: gf32) {
-  let statement = "mat3x2f("
+  let varName = "mat3x2f_".concat(uuid().string.replace('-', '_'));
+  let statement = "var "
+    .concat(varName)
+    .concat(" = mat3x2f(")
     .concat(a.varName)
     .concat(", ")
     .concat(b.varName)
@@ -2319,26 +2380,34 @@ fn gmat3x2f(a: gf32, b: gf32, c: gf32, d: gf32, e: gf32, f: gf32) {
     .concat(c.statements)
     .concat(d.statements)
     .concat(e.statements)
-    .concat(f.statements);
+    .concat(f.statements)
+    .concat(Dict(varName, statement));
   let buffers = a.buffers
     .union(b.buffers)
     .union(c.buffers)
     .union(d.buffers)
     .union(e.buffers)
     .union(f.buffers);
-  return gmat3x2f(statement, statements, buffers);
+  return gmat3x2f(varName, statements, buffers);
 }
 
 fn gmat3x3f() = gmat3x3f("mat3x3f()", Dict{string, string}(), Set{GBufferTagged}());
 fn gmat3x3f(a: gvec3f, b: gvec3f, c: gvec3f) {
-  let statement = "mat3x3f("
+  let varName = "mat3x3f_".concat(uuid().string.replace('-', '_'));
+  let statement = "var "
+    .concat(varName)
+    .concat(" = mat3x3f(")
     .concat(a.varName)
     .concat(", ")
     .concat(b.varName)
     .concat(", ")
     .concat(c.varName)
     .concat(")");
-  let statements = a.statements.concat(b.statements).concat(c.statements);
+  let statements = a
+    .statements
+    .concat(b.statements)
+    .concat(c.statements)
+    .concat(Dict(varName, statement));
   let buffers = a.buffers.union(b.buffers).union(c.buffers);
   return gmat3x3f(statement, statements, buffers);
 }
@@ -2356,7 +2425,10 @@ fn gmat3x3f(
   h: gf32,
   i: gf32
 ) {
-  let statement = "mat3x3f("
+  let varName = "mat3x3f_".concat(uuid().string.replace('-', '_'));
+  let statement = "var "
+    .concat(varName)
+    .concat(" = mat3x3f(")
     .concat(a.varName)
     .concat(", ")
     .concat(b.varName)
@@ -2383,7 +2455,8 @@ fn gmat3x3f(
     .concat(f.statements)
     .concat(g.statements)
     .concat(h.statements)
-    .concat(i.statements);
+    .concat(i.statements)
+    .concat(Dict(varName, statement));
   let buffers = a.buffers
     .union(b.buffers)
     .union(c.buffers)
@@ -2393,21 +2466,28 @@ fn gmat3x3f(
     .union(g.buffers)
     .union(h.buffers)
     .union(i.buffers);
-  return gmat3x3f(statement, statements, buffers);
+  return gmat3x3f(varName, statements, buffers);
 }
 
 fn gmat3x4f() = gmat3x4f("mat3x4f()", Dict{string, string}(), Set{GBufferTagged}());
 fn gmat3x4f(a: gvec4f, b: gvec4f, c: gvec4f) {
-  let statement = "mat3x4f("
+  let varName = "mat3x4f_".concat(uuid().string.replace('-', '_'));
+  let statement = "var "
+    .concat(varName)
+    .concat(" = mat3x3f(")
     .concat(a.varName)
     .concat(", ")
     .concat(b.varName)
     .concat(", ")
     .concat(c.varName)
     .concat(")");
-  let statements = a.statements.concat(b.statements).concat(c.statements);
+  let statements = a
+    .statements
+    .concat(b.statements)
+    .concat(c.statements)
+    .concat(Dict(varName, statement));
   let buffers = a.buffers.union(b.buffers).union(c.buffers);
-  return gmat3x4f(statement, statements, buffers);
+  return gmat3x4f(varName, statements, buffers);
 }
 fn gmat3x4f{I}(a: I, b: I, c: I, d: I, e: I, f: I, g: I, h: I, i: I, j: I, k: I, l: I) = gmat3x4f(
   a.gf32, b.gf32, c.gf32, d.gf32, e.gf32, f.gf32, g.gf32, h.gf32, i.gf32, j.gf32, k.gf32, l.gf32
@@ -2426,7 +2506,10 @@ fn gmat3x4f(
   k: gf32,
   l: gf32
 ) {
-  let statement = "mat3x4f("
+  let varName = "mat3x4f_".concat(uuid().string.replace('-', '_'));
+  let statement = "var "
+    .concat(varName)
+    .concat(" = mat3x3f(")
     .concat(a.varName)
     .concat(", ")
     .concat(b.varName)
@@ -2462,7 +2545,8 @@ fn gmat3x4f(
     .concat(i.statements)
     .concat(j.statements)
     .concat(k.statements)
-    .concat(l.statements);
+    .concat(l.statements)
+    .concat(Dict(varName, statement));
   let buffers = a.buffers
     .union(b.buffers)
     .union(c.buffers)
@@ -2475,12 +2559,15 @@ fn gmat3x4f(
     .union(j.buffers)
     .union(k.buffers)
     .union(l.buffers);
-  return gmat3x4f(statement, statements, buffers);
+  return gmat3x4f(varName, statements, buffers);
 }
 
 fn gmat4x2f() = gmat4x2f("mat4x2f()", Dict{string, string}(), Set{GBufferTagged}());
 fn gmat4x2f(a: gvec2f, b: gvec2f, c: gvec2f, d: gvec2f) {
-  let statement = "mat4x2f("
+  let varName = "mat4x2f_".concat(uuid().string.replace('-', '_'));
+  let statement = "var "
+    .concat(varName)
+    .concat(" = mat4x2f(")
     .concat(a.varName)
     .concat(", ")
     .concat(b.varName)
@@ -2489,9 +2576,14 @@ fn gmat4x2f(a: gvec2f, b: gvec2f, c: gvec2f, d: gvec2f) {
     .concat(", ")
     .concat(d.varName)
     .concat(")");
-  let statements = a.statements.concat(b.statements).concat(c.statements).concat(d.statements);
+  let statements = a
+    .statements
+    .concat(b.statements)
+    .concat(c.statements)
+    .concat(d.statements)
+    .concat(Dict(varName, statement));
   let buffers = a.buffers.union(b.buffers).union(c.buffers).union(d.buffers);
-  return gmat4x2f(statement, statements, buffers);
+  return gmat4x2f(varName, statements, buffers);
 }
 fn gmat4x2f{I}(a: I, b: I, c: I, d: I, e: I, f: I, g: I, h: I) = gmat4x2f(
   a.gf32, b.gf32, c.gf32, d.gf32, e.gf32, f.gf32, g.gf32, h.gf32
@@ -2506,7 +2598,10 @@ fn gmat4x2f(
   g: gf32,
   h: gf32
 ) {
-  let statement = "mat4x2f("
+  let varName = "mat4x2f_".concat(uuid().string.replace('-', '_'));
+  let statement = "var "
+    .concat(varName)
+    .concat(" = mat4x2f(")
     .concat(a.varName)
     .concat(", ")
     .concat(b.varName)
@@ -2530,7 +2625,8 @@ fn gmat4x2f(
     .concat(e.statements)
     .concat(f.statements)
     .concat(g.statements)
-    .concat(h.statements);
+    .concat(h.statements)
+    .concat(Dict(varName, statement));
   let buffers = a.buffers
     .union(b.buffers)
     .union(c.buffers)
@@ -2539,12 +2635,15 @@ fn gmat4x2f(
     .union(f.buffers)
     .union(g.buffers)
     .union(h.buffers);
-  return gmat4x2f(statement, statements, buffers);
+  return gmat4x2f(varName, statements, buffers);
 }
 
 fn gmat4x3f() = gmat4x3f("mat4x3f()", Dict{string, string}(), Set{GBufferTagged}());
 fn gmat4x3f(a: gvec3f, b: gvec3f, c: gvec3f, d: gvec3f) {
-  let statement = "mat4x3f("
+  let varName = "mat4x3f_".concat(uuid().string.replace('-', '_'));
+  let statement = "var "
+    .concat(varName)
+    .concat(" = mat4x3f(")
     .concat(a.varName)
     .concat(", ")
     .concat(b.varName)
@@ -2553,9 +2652,14 @@ fn gmat4x3f(a: gvec3f, b: gvec3f, c: gvec3f, d: gvec3f) {
     .concat(", ")
     .concat(d.varName)
     .concat(")");
-  let statements = a.statements.concat(b.statements).concat(c.statements).concat(d.statements);
+  let statements = a
+    .statements
+    .concat(b.statements)
+    .concat(c.statements)
+    .concat(d.statements)
+    .concat(Dict(varName, statement));
   let buffers = a.buffers.union(b.buffers).union(c.buffers).union(d.buffers);
-  return gmat4x3f(statement, statements, buffers);
+  return gmat4x3f(varName, statements, buffers);
 }
 fn gmat4x3f{I}(a: I, b: I, c: I, d: I, e: I, f: I, g: I, h: I, i: I, j: I, k: I, l: I) = gmat4x3f(
   a.gf32, b.gf32, c.gf32, d.gf32, e.gf32, f.gf32, g.gf32, h.gf32, i.gf32, j.gf32, k.gf32, l.gf32
@@ -2574,7 +2678,10 @@ fn gmat4x3f(
   k: gf32,
   l: gf32
 ) {
-  let statement = "mat4x3f("
+  let varName = "mat4x3f_".concat(uuid().string.replace('-', '_'));
+  let statement = "var "
+    .concat(varName)
+    .concat("= mat4x3f(")
     .concat(a.varName)
     .concat(", ")
     .concat(b.varName)
@@ -2610,7 +2717,8 @@ fn gmat4x3f(
     .concat(i.statements)
     .concat(j.statements)
     .concat(k.statements)
-    .concat(l.statements);
+    .concat(l.statements)
+    .concat(Dict(varName, statement));
   let buffers = a.buffers
     .union(b.buffers)
     .union(c.buffers)
@@ -2623,12 +2731,15 @@ fn gmat4x3f(
     .union(j.buffers)
     .union(k.buffers)
     .union(l.buffers);
-  return gmat4x3f(statement, statements, buffers);
+  return gmat4x3f(varName, statements, buffers);
 }
 
 fn gmat4x4f() = gmat4x4f("mat4x4f()", Dict{string, string}(), Set{GBufferTagged}());
 fn gmat4x4f(a: gvec4f, b: gvec4f, c: gvec4f, d: gvec4f) {
-  let statement = "mat4x4f("
+  let varName = "mat4x4f_".concat(uuid().string.replace('-', '_'));
+  let statement = "var "
+    .concat(varName)
+    .concat(" = mat4x4f(")
     .concat(a.varName)
     .concat(", ")
     .concat(b.varName)
@@ -2637,9 +2748,14 @@ fn gmat4x4f(a: gvec4f, b: gvec4f, c: gvec4f, d: gvec4f) {
     .concat(", ")
     .concat(d.varName)
     .concat(")");
-  let statements = a.statements.concat(b.statements).concat(c.statements).concat(d.statements);
+  let statements = a
+    .statements
+    .concat(b.statements)
+    .concat(c.statements)
+    .concat(d.statements)
+    .concat(Dict(varName, statement));
   let buffers = a.buffers.union(b.buffers).union(c.buffers).union(d.buffers);
-  return gmat4x4f(statement, statements, buffers);
+  return gmat4x4f(varName, statements, buffers);
 }
 fn gmat4x4f{I}(
   a: I,
@@ -2694,7 +2810,10 @@ fn gmat4x4f(
   o: gf32,
   p: gf32
 ) {
-  let statement = "mat4x4f("
+  let varName = "mat4x4f_".concat(uuid().string.replace('-', '_'));
+  let statement = "var "
+    .concat(varName)
+    .concat(" = mat4x4f(")
     .concat(a.varName)
     .concat(", ")
     .concat(b.varName)
@@ -2742,7 +2861,8 @@ fn gmat4x4f(
     .concat(m.statements)
     .concat(n.statements)
     .concat(o.statements)
-    .concat(p.statements);
+    .concat(p.statements)
+    .concat(Dict(varName, statement));
   let buffers = a.buffers
     .union(b.buffers)
     .union(c.buffers)
@@ -2759,7 +2879,7 @@ fn gmat4x4f(
     .union(n.buffers)
     .union(o.buffers)
     .union(p.buffers);
-  return gmat4x4f(statement, statements, buffers);
+  return gmat4x4f(varName, statements, buffers);
 }
 
 // TODO: Fixed-length buffers within wgsl
@@ -4041,8 +4161,14 @@ fn store{N}(a: WgpuType{N}, b: WgpuType{N}) {
 /// GPGPU Math functions
 
 fn gneg{I}(v: I) {
-  let varName = '(-'.concat(v.varName).concat(')');
-  return {I}(varName, v.statements, v.buffers);
+  let typename = {I.typeName}();
+  let varName = 'neg_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = -')
+    .concat(v.varName);
+  let statements = v.statements.concat(Dict(varName, statement));
+  return {I}(varName, statements, v.buffers);
 }
 fn neg(v: gi32) = gneg{gi32}(v);
 fn neg(v: gf32) = gneg{gf32}(v);
@@ -4054,8 +4180,15 @@ fn neg(v: gvec4i) = gneg{gvec4i}(v);
 fn neg(v: gvec4f) = gneg{gvec4f}(v);
 
 fn gabs{I}(v: I) {
-  let varName = 'abs('.concat(v.varName).concat(')');
-  return {I}(varName, v.statements, v.buffers);
+  let typename = {I.typeName}();
+  let varName = 'abs_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = abs(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
+  return {I}(varName, statements, v.buffers);
 }
 fn abs(v: gi32) = gabs{gi32}(v);
 fn abs(v: gf32) = gabs{gf32}(v);
@@ -4067,8 +4200,15 @@ fn abs(v: gvec4i) = gabs{gvec4i}(v);
 fn abs(v: gvec4f) = gabs{gvec4f}(v);
 
 fn gclz{I}(v: I) {
-  let varName = 'countLeadingZeros('.concat(v.varName).concat(')');
-  return {I}(varName, v.statements, v.buffers);
+  let typename = {I.typeName}();
+  let varName = 'clz_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = countLeadingZeros(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
+  return {I}(varName, statements, v.buffers);
 }
 fn clz(v: gi32) = gclz{gi32}(v);
 fn clz(v: gu32) = gclz{gu32}(v);
@@ -4080,8 +4220,15 @@ fn clz(v: gvec4i) = gclz{gvec4i}(v);
 fn clz(v: gvec4u) = gclz{gvec4u}(v);
 
 fn gones{I}(v: I) {
-  let varName = 'countOneBits('.concat(v.varName).concat(')');
-  return {I}(varName, v.statements, v.buffers);
+  let typename = {I.typeName}();
+  let varName = 'ones_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = countOneBits(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
+  return {I}(varName, statements, v.buffers);
 }
 fn ones(v: gi32) = gones{gi32}(v);
 fn ones(v: gu32) = gones{gu32}(v);
@@ -4093,8 +4240,15 @@ fn ones(v: gvec4i) = gones{gvec4i}(v);
 fn ones(v: gvec4u) = gones{gvec4u}(v);
 
 fn gctz{I}(v: I) {
-  let varName = 'countTrailingZeros('.concat(v.varName).concat(')');
-  return {I}(varName, v.statements, v.buffers);
+  let typename = {I.typeName}();
+  let varName = 'ctz_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = countTrailingZeros(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
+  return {I}(varName, statements, v.buffers);
 }
 fn ctz(v: gi32) = gctz{gi32}(v);
 fn ctz(v: gu32) = gctz{gu32}(v);
@@ -4106,8 +4260,15 @@ fn ctz(v: gvec4i) = gctz{gvec4i}(v);
 fn ctz(v: gvec4u) = gctz{gvec4u}(v);
 
 fn gReverseBits{I}(v: I) {
-  let varName = 'reverseBits('.concat(v.varName).concat(')');
-  return {I}(varName, v.statements, v.buffers);
+  let typename = {I.typeName}();
+  let varName = 'reverseBits_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = reverseBits(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
+  return {I}(varName, statements, v.buffers);
 }
 fn reverseBits(v: gi32) = gReverseBits(v);
 fn reverseBits(v: gu32) = gReverseBits(v);
@@ -4119,14 +4280,22 @@ fn reverseBits(v: gvec4i) = gReverseBits(v);
 fn reverseBits(v: gvec4u) = gReverseBits(v);
 
 fn gExtractBits{I}(v: I, offset: gu32, count: gu32) {
-  let varName = 'extractBits('
+  let typename = {I.typeName}();
+  let varName = 'extractBits_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = extractBits(')
     .concat(v.varName)
     .concat(', ')
     .concat(offset.varName)
     .concat(', ')
     .concat(count.varName)
     .concat(')');
-  let statements = v.statements.concat(offset.statements).concat(count.statements);
+  let statements = v
+    .statements
+    .concat(offset.statements)
+    .concat(count.statements)
+    .concat(Dict(varName, statement));
   let buffers = v.buffers.union(offset.buffers).union(count.buffers);
   return {I}(varName, statements, buffers);
 }
@@ -4136,7 +4305,11 @@ fn extractBits{A, B}(v: gvec3u, offset: A, count: B) = gExtractBits(v, offset.gu
 fn extractBits{A, B}(v: gvec4u, offset: A, count: B) = gExtractBits(v, offset.gu32, count.gu32);
 
 fn gInsertBits{I}(v: I, newbits: I, offset: gu32, count: gu32) {
-  let varName = 'insertBits('
+  let typename = {I.typeName}();
+  let varName = 'insertBits_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = insertBits(')
     .concat(v.varName)
     .concat(', ')
     .concat(newbits.varName)
@@ -4149,7 +4322,8 @@ fn gInsertBits{I}(v: I, newbits: I, offset: gu32, count: gu32) {
     .statements
     .concat(newbits.statements)
     .concat(offset.statements)
-    .concat(count.statements);
+    .concat(count.statements)
+    .concat(Dict(varName, statement));
   let buffers = v.buffers.union(newbits.buffers).union(offset.buffers).union(count.buffers);
   return {I}(varName, statements, buffers);
 }
@@ -4180,15 +4354,29 @@ fn insertBits{A, B, C}(v: gvec4i, newbits: A, offset: B, count: C) = gInsertBits
 
 fn cross(a: gvec3f, b: gvec3f) {
   // Yes, this legitimately only works for this exact type in wgsl
-  let varName = 'cross('.concat(a.varName).concat(', ').concat(b.varName).concat(')');
-  let statements = a.statements.concat(b.statements);
+  let varName = 'cross_'.concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = cross(')
+    .concat(a.varName)
+    .concat(', ')
+    .concat(b.varName)
+    .concat(')');
+  let statements = a.statements.concat(b.statements).concat(Dict(varName, statement));
   let buffers = a.buffers.union(b.buffers);
   return gvec3f(varName, statements, buffers);
 }
 
 fn gTranspose{I, O}(m: I) {
-  let varName = 'transpose('.concat(m.varName).concat(')');
-  return {O}(varName, m.statements, m.buffers);
+  let typename = {O.typeName}();
+  let varName = 'transpose_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = transpose(')
+    .concat(m.varName)
+    .concat(')');
+  let statements = m.statements.concat(Dict(varName, statement));
+  return {O}(varName, statements, m.buffers);
 }
 fn transpose(m: gmat2x2f) = gTranspose{gmat2x2f, gmat2x2f}(m);
 fn transpose(m: gmat2x3f) = gTranspose{gmat2x3f, gmat3x2f}(m);
@@ -4201,8 +4389,16 @@ fn transpose(m: gmat4x3f) = gTranspose{gmat4x3f, gmat3x4f}(m);
 fn transpose(m: gmat4x4f) = gTranspose{gmat4x4f, gmat4x4f}(m);
 
 fn gdot{I, O}(a: I, b: I) {
-  let varName = 'dot('.concat(a.varName).concat(', ').concat(b.varName).concat(')');
-  let statements = a.statements.concat(b.statements);
+  let typename = {O.typeName}();
+  let varName = 'dot_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = dot(')
+    .concat(a.varName)
+    .concat(', ')
+    .concat(b.varName)
+    .concat(')');
+  let statements = a.statements.concat(b.statements).concat(Dict(varName, statement));
   let buffers = a.buffers.union(b.buffers);
   return {O}(varName, statements, buffers);
 }
@@ -4217,8 +4413,15 @@ fn dot(a: gvec3i, b: gvec3i) = gdot{gvec3i, gi32}(a, b);
 fn dot(a: gvec4i, b: gvec4i) = gdot{gvec4i, gi32}(a, b);
 
 fn gMagnitude{I}(v: I) {
-  let varName = 'length('.concat(v.varName).concat(')');
-  return gf32(varName, v.statements, v.buffers);
+  let typename = {I.typeName}();
+  let varName = 'magnitude_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = length(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
+  return gf32(varName, statements, v.buffers);
 }
 fn magnitude(v: gf32) = gMagnitude(v);
 fn magnitude(v: gvec2f) = gMagnitude(v);
@@ -4226,8 +4429,15 @@ fn magnitude(v: gvec3f) = gMagnitude(v);
 fn magnitude(v: gvec4f) = gMagnitude(v);
 
 fn gInverseSqrt{I}(v: I) {
-  let varName = 'inverseSqrt('.concat(v.varName).concat(')');
-  return {I}(varName, v.statements, v.buffers);
+  let typename = {I.typeName}();
+  let varName = 'inverseSqrt_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = inverseSqrt(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
+  return {I}(varName, statements, v.buffers);
 }
 fn inverseSqrt(v: gf32) = gInverseSqrt(v);
 fn inverseSqrt(v: gvec2f) = gInverseSqrt(v);
@@ -4235,16 +4445,30 @@ fn inverseSqrt(v: gvec3f) = gInverseSqrt(v);
 fn inverseSqrt(v: gvec4f) = gInverseSqrt(v);
 
 fn gNormalize{I}(v: I) {
-  let varName = 'normalize('.concat(v.varName).concat(')');
-  return {I}(varName, v.statements, v.buffers);
+  let typename = {I.typeName}();
+  let varName = 'normalize_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = normalize(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
+  return {I}(varName, statements, v.buffers);
 }
 fn normalize(v: gvec2f) = gNormalize(v);
 fn normalize(v: gvec3f) = gNormalize(v);
 fn normalize(v: gvec4f) = gNormalize(v);
 
 fn gRound{I}(v: I) {
-  let varName = 'round('.concat(v.varName).concat(')');
-  return {I}(varName, v.statements, v.buffers);
+  let typename = {I.typeName}();
+  let varName = 'round_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = round(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
+  return {I}(varName, statements, v.buffers);
 }
 fn round(v: gf32) = gRound(v);
 fn round(v: gvec2f) = gRound(v);
@@ -4252,14 +4476,22 @@ fn round(v: gvec3f) = gRound(v);
 fn round(v: gvec4f) = gRound(v);
 
 fn gFma{I}(a: I, b: I, c: I) {
-  let varName = 'fma('
+  let typename = {I.typeName}();
+  let varName = 'fma_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = fma(')
     .concat(a.varName)
     .concat(', ')
     .concat(b.varName)
     .concat(', ')
     .concat(c.varName)
     .concat(')');
-  let statements = a.statements.concat(b.statements).concat(c.statements);
+  let statements = a
+    .statements
+    .concat(b.statements)
+    .concat(c.statements)
+    .concat(Dict(varName, statement));
   let buffers = a.buffers.union(b.buffers).union(c.buffers);
   return {I}(varName, statements, buffers);
 }
@@ -4269,8 +4501,15 @@ fn fma(a: gvec3f, b: gvec3f, c: gvec3f) = gFma(a, b, c);
 fn fma(a: gvec4f, b: gvec4f, c: gvec4f) = gFma(a, b, c);
 
 fn gFract{I}(a: I) {
-  let varName = 'fract('.concat(a.varName).concat(')');
-  return {I}(varName, a.statements, a.buffers);
+  let typename = {I.typeName}();
+  let varName = 'fract_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = fract(')
+    .concat(a.varName)
+    .concat(')');
+  let statements = a.statements.concat(Dict(varName, statement));
+  return {I}(varName, statements, a.buffers);
 }
 fn fract(a: gf32) = gFract(a);
 fn fract(a: gvec2f) = gFract(a);
@@ -4278,16 +4517,30 @@ fn fract(a: gvec3f) = gFract(a);
 fn fract(a: gvec4f) = gFract(a);
 
 fn gDeterminant{I}(m: I) {
-  let varName = 'determinant('.concat(m.varName).concat(')');
-  return gf32(varName, m.statements, m.buffers);
+  let typename = {I.typeName}();
+  let varName = 'determinant_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = determinant(')
+    .concat(m.varName)
+    .concat(')');
+  let statements = m.statements.concat(Dict(varName, statement));
+  return gf32(varName, statements, m.buffers);
 }
 fn determinant(m: gmat2x2f) = gDeterminant(m);
 fn determinant(m: gmat3x3f) = gDeterminant(m);
 fn determinant(m: gmat4x4f) = gDeterminant(m);
 
 fn gadd{A, B}(a: A, b: B) {
-  let varName = '('.concat(a.varName).concat(' + ').concat(b.varName).concat(')');
-  let statements = a.statements.concat(b.statements);
+  let typename = {A.typeName}();
+  let varName = 'add_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = ')
+    .concat(a.varName)
+    .concat(' + ')
+    .concat(b.varName);
+  let statements = a.statements.concat(b.statements).concat(Dict(varName, statement));
   let buffers = a.buffers.union(b.buffers);
   return {A}(varName, statements, buffers);
 }
@@ -4351,14 +4604,28 @@ fn add(a: gmat4x3f, b: gmat4x3f) = gadd(a, b);
 fn add(a: gmat4x4f, b: gmat4x4f) = gadd(a, b);
 
 fn gsub{A, B}(a: A, b: B) {
-  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
-  let statements = a.statements.concat(b.statements);
+  let typename = {A.typeName}();
+  let varName = 'sub_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = ')
+    .concat(a.varName)
+    .concat(' - ')
+    .concat(b.varName);
+  let statements = a.statements.concat(b.statements).concat(Dict(varName, statement));
   let buffers = a.buffers.union(b.buffers);
   return {A}(varName, statements, buffers);
 }
 fn gsubRev{A, B}(a: A, b: B) {
-  let varName = '('.concat(a.varName).concat(' - ').concat(b.varName).concat(')');
-  let statements = a.statements.concat(b.statements);
+  let typename = {B.typeName}();
+  let varName = 'sub_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = ')
+    .concat(a.varName)
+    .concat(' - ')
+    .concat(b.varName);
+  let statements = a.statements.concat(b.statements).concat(Dict(varName, statement));
   let buffers = a.buffers.union(b.buffers);
   return {B}(varName, statements, buffers);
 }
@@ -4421,8 +4688,15 @@ fn sub(a: gmat4x3f, b: gmat4x3f) = gsub(a, b);
 fn sub(a: gmat4x4f, b: gmat4x4f) = gsub(a, b);
 
 fn gmul{A, B, C}(a: A, b: B) {
-  let varName = '('.concat(a.varName).concat(' * ').concat(b.varName).concat(')');
-  let statements = a.statements.concat(b.statements);
+  let typename = {C.typeName}();
+  let varName = 'mul_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = ')
+    .concat(a.varName)
+    .concat(' * ')
+    .concat(b.varName);
+  let statements = a.statements.concat(b.statements).concat(Dict(varName, statement));
   let buffers = a.buffers.union(b.buffers);
   return {C}(varName, statements, buffers);
 }
@@ -4550,14 +4824,28 @@ fn mul(a: gmat4x4f, b: gmat3x4f) = gmul{gmat4x4f, gmat3x4f, gmat3x4f}(a, b);
 fn mul(a: gmat4x4f, b: gmat4x4f) = gmul(a, b);
 
 fn gdiv{A, B}(a: A, b: B) {
-  let varName = '('.concat(a.varName).concat(' / ').concat(b.varName).concat(')');
-  let statements = a.statements.concat(b.statements);
+  let typename = {A.typeName}();
+  let varName = 'div_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = ')
+    .concat(a.varName)
+    .concat(' / ')
+    .concat(b.varName);
+  let statements = a.statements.concat(b.statements).concat(Dict(varName, statement));
   let buffers = a.buffers.union(b.buffers);
   return {A}(varName, statements, buffers);
 }
 fn gdivRev{A, B}(a: A, b: B) {
-  let varName = '('.concat(a.varName).concat(' / ').concat(b.varName).concat(')');
-  let statements = a.statements.concat(b.statements);
+  let typename = {B.typeName}();
+  let varName = 'div_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = ')
+    .concat(a.varName)
+    .concat(' / ')
+    .concat(b.varName);
+  let statements = a.statements.concat(b.statements).concat(Dict(varName, statement));
   let buffers = a.buffers.union(b.buffers);
   return {B}(varName, statements, buffers);
 }
@@ -4610,14 +4898,28 @@ fn div(a: gvec4f, b: gf32) = gdiv(a, b);
 fn div(a: gf32, b: gvec4f) = gdivRev(a, b);
 
 fn gmod{A, B}(a: A, b: B) {
-  let varName = '('.concat(a.varName).concat(' % ').concat(b.varName).concat(')');
-  let statements = a.statements.concat(b.statements);
+  let typename = {A.typeName}();
+  let varName = 'mod_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = ')
+    .concat(a.varName)
+    .concat(' % ')
+    .concat(b.varName);
+  let statements = a.statements.concat(b.statements).concat(Dict(varName, statement));
   let buffers = a.buffers.union(b.buffers);
   return {A}(varName, statements, buffers);
 }
 fn gmodRev{A, B}(a: A, b: B) {
-  let varName = '('.concat(a.varName).concat(' % ').concat(b.varName).concat(')');
-  let statements = a.statements.concat(b.statements);
+  let typename = {B.typeName}();
+  let varName = 'mod_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = ')
+    .concat(a.varName)
+    .concat(' % ')
+    .concat(b.varName);
+  let statements = a.statements.concat(b.statements).concat(Dict(varName, statement));
   let buffers = a.buffers.union(b.buffers);
   return {B}(varName, statements, buffers);
 }
@@ -4670,8 +4972,16 @@ fn mod(a: gvec4f, b: gf32) = gmod(a, b);
 fn mod(a: gf32, b: gvec4f) = gmodRev(a, b);
 
 fn gpow{A, B}(a: A, b: B) {
-  let varName = 'pow('.concat(a.varName).concat(', ').concat(b.varName).concat(')');
-  let statements = a.statements.concat(b.statements);
+  let typename = {A.typeName}();
+  let varName = 'pow_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = pow(')
+    .concat(a.varName)
+    .concat(', ')
+    .concat(b.varName)
+    .concat(')');
+  let statements = a.statements.concat(b.statements).concat(Dict(varName, statement));
   let buffers = a.buffers.union(b.buffers);
   return {A}(varName, statements, buffers);
 }
@@ -4689,8 +4999,16 @@ fn pow{T}(a: gvec4f, b: T) = pow(a, b.gvec4f);
 fn pow{T}(a: T, b: gvec4f) = pow(a.gvec4f, b);
 
 fn gmin{I}(a: I, b: I) {
-  let varName = 'min('.concat(a.varName).concat(', ').concat(b.varName).concat(')');
-  let statements = a.statements.concat(b.statements);
+  let typename = {I.typeName}();
+  let varName = 'min_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = min(')
+    .concat(a.varName)
+    .concat(', ')
+    .concat(b.varName)
+    .concat(')');
+  let statements = a.statements.concat(b.statements).concat(Dict(varName, statement));
   let buffers = a.buffers.union(b.buffers);
   return {I}(varName, statements, buffers);
 }
@@ -4705,8 +5023,16 @@ fn min{A}(a: A, b: gi32) = gmin(a.gi32, b);
 fn min{B}(a: gi32, b: B) = gmin(a, b.gi32);
 
 fn gmax{I}(a: I, b: I) {
-  let varName = 'max('.concat(a.varName).concat(', ').concat(b.varName).concat(')');
-  let statements = a.statements.concat(b.statements);
+  let typename = {I.typeName}();
+  let varName = 'max_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = max(')
+    .concat(a.varName)
+    .concat(', ')
+    .concat(b.varName)
+    .concat(')');
+  let statements = a.statements.concat(b.statements).concat(Dict(varName, statement));
   let buffers = a.buffers.union(b.buffers);
   return {I}(varName, statements, buffers);
 }
@@ -4721,8 +5047,15 @@ fn max{A}(a: A, b: gi32) = gmax(a.gi32, b);
 fn max{B}(a: gi32, b: B) = gmax(a, b.gi32);
 
 fn gsqrt{I}(v: I) {
-  let varName = 'sqrt('.concat(v.varName).concat(')');
-  return {I}(varName, v.statements, v.buffers);
+  let typename = {I.typeName}();
+  let varName = 'sqrt_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = sqrt(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
+  return {I}(varName, statements, v.buffers);
 }
 fn sqrt(v: gf32) = gsqrt{gf32}(v);
 fn sqrt(v: gvec2f) = gsqrt{gvec2f}(v);
@@ -4730,8 +5063,15 @@ fn sqrt(v: gvec3f) = gsqrt{gvec3f}(v);
 fn sqrt(v: gvec4f) = gsqrt{gvec4f}(v);
 
 fn gacos{I}(v: I) {
-  let varName = 'acos('.concat(v.varName).concat(')');
-  return {I}(varName, v.statements, v.buffers);
+  let typename = {I.typeName}();
+  let varName = 'acos_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = acos(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
+  return {I}(varName, statements, v.buffers);
 }
 fn acos(v: gf32) = gacos{gf32}(v);
 fn acos(v: gvec2f) = gacos{gvec2f}(v);
@@ -4739,8 +5079,15 @@ fn acos(v: gvec3f) = gacos{gvec3f}(v);
 fn acos(v: gvec4f) = gacos{gvec4f}(v);
 
 fn gacosh{I}(v: I) {
-  let varName = 'acosh('.concat(v.varName).concat(')');
-  return {I}(varName, v.statements, v.buffers);
+  let typename = {I.typeName}();
+  let varName = 'acosh_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = acosh(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
+  return {I}(varName, statements, v.buffers);
 }
 fn acosh(v: gf32) = gacosh{gf32}(v);
 fn acosh(v: gvec2f) = gacosh{gvec2f}(v);
@@ -4748,8 +5095,15 @@ fn acosh(v: gvec3f) = gacosh{gvec3f}(v);
 fn acosh(v: gvec4f) = gacosh{gvec4f}(v);
 
 fn gasin{I}(v: I) {
-  let varName = 'asin('.concat(v.varName).concat(')');
-  return {I}(varName, v.statements, v.buffers);
+  let typename = {I.typeName}();
+  let varName = 'asin_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = asin(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
+  return {I}(varName, statements, v.buffers);
 }
 fn asin(v: gf32) = gasin{gf32}(v);
 fn asin(v: gvec2f) = gasin{gvec2f}(v);
@@ -4757,8 +5111,15 @@ fn asin(v: gvec3f) = gasin{gvec3f}(v);
 fn asin(v: gvec4f) = gasin{gvec4f}(v);
 
 fn gasinh{I}(v: I) {
-  let varName = 'asinh('.concat(v.varName).concat(')');
-  return {I}(varName, v.statements, v.buffers);
+  let typename = {I.typeName}();
+  let varName = 'asinh_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = asinh(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
+  return {I}(varName, statements, v.buffers);
 }
 fn asinh(v: gf32) = gasinh{gf32}(v);
 fn asinh(v: gvec2f) = gasinh{gvec2f}(v);
@@ -4766,8 +5127,15 @@ fn asinh(v: gvec3f) = gasinh{gvec3f}(v);
 fn asinh(v: gvec4f) = gasinh{gvec4f}(v);
 
 fn gatan{I}(v: I) {
-  let varName = 'atan('.concat(v.varName).concat(')');
-  return {I}(varName, v.statements, v.buffers);
+  let typename = {I.typeName}();
+  let varName = 'atan_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = atan(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
+  return {I}(varName, statements, v.buffers);
 }
 fn atan(v: gf32) = gatan{gf32}(v);
 fn atan(v: gvec2f) = gatan{gvec2f}(v);
@@ -4775,8 +5143,15 @@ fn atan(v: gvec3f) = gatan{gvec3f}(v);
 fn atan(v: gvec4f) = gatan{gvec4f}(v);
 
 fn gatanh{I}(v: I) {
-  let varName = 'atanh('.concat(v.varName).concat(')');
-  return {I}(varName, v.statements, v.buffers);
+  let typename = {I.typeName}();
+  let varName = 'atanh_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = atanh(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
+  return {I}(varName, statements, v.buffers);
 }
 fn atanh(v: gf32) = gatanh{gf32}(v);
 fn atanh(v: gvec2f) = gatanh{gvec2f}(v);
@@ -4784,8 +5159,16 @@ fn atanh(v: gvec3f) = gatanh{gvec3f}(v);
 fn atanh(v: gvec4f) = gatanh{gvec4f}(v);
 
 fn gatan2{I}(a: I, b: I) {
-  let varName = 'atan2('.concat(a.varName).concat(', ').concat(b.varName).concat(')');
-  let statements = a.statements.concat(b.statements);
+  let typename = {I.typeName}();
+  let varName = 'atan2_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = atan2(')
+    .concat(a.varName)
+    .concat(', ')
+    .concat(b.varName)
+    .concat(')');
+  let statements = a.statements.concat(b.statements).concat(Dict(varName, statement));
   let buffers = a.buffers.union(b.buffers);
   return {I}(varName, statements, buffers);
 }
@@ -4803,8 +5186,15 @@ fn atan2{T}(a: gvec4f, b: T) = gatan2{gvec4f}(a, b.gvec4f);
 fn atan2{T}(a: T, b: gvec4f) = gatan2{gvec4f}(a.gvec4f, b);
 
 fn gfloor{I}(v: I) {
-  let varName = 'floor('.concat(v.varName).concat(')');
-  return {I}(varName, v.statements, v.buffers);
+  let typename = {I.typeName}();
+  let varName = 'floor_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = floor(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
+  return {I}(varName, statements, v.buffers);
 }
 fn floor(v: gf32) = gfloor{gf32}(v);
 fn floor(v: gvec2f) = gfloor{gvec2f}(v);
@@ -4812,8 +5202,15 @@ fn floor(v: gvec3f) = gfloor{gvec3f}(v);
 fn floor(v: gvec4f) = gfloor{gvec4f}(v);
 
 fn gceil{I}(v: I) {
-  let varName = 'ceil('.concat(v.varName).concat(')');
-  return {I}(varName, v.statements, v.buffers);
+  let typename = {I.typeName}();
+  let varName = 'ceil_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = ceil(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
+  return {I}(varName, statements, v.buffers);
 }
 fn ceil(v: gf32) = gceil{gf32}(v);
 fn ceil(v: gvec2f) = gceil{gvec2f}(v);
@@ -4821,8 +5218,22 @@ fn ceil(v: gvec3f) = gceil{gvec3f}(v);
 fn ceil(v: gvec4f) = gceil{gvec4f}(v);
 
 fn gclamp{I}(v: I, l: I, h: I) {
-  let varName = 'clamp('.concat(v.varName).concat(', ').concat(l.varName).concat(', ').concat(h.varName).concat(')');
-  let statements = v.statements.concat(l.statements).concat(h.statements);
+  let typename = {I.typeName}();
+  let varName = 'clamp_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = clamp(')
+    .concat(v.varName)
+    .concat(', ')
+    .concat(l.varName)
+    .concat(', ')
+    .concat(h.varName)
+    .concat(')');
+  let statements = v
+    .statements
+    .concat(l.statements)
+    .concat(h.statements)
+    .concat(Dict(varName, statement));
   let buffers = v.buffers.union(l.buffers).union(h.buffers);
   return {I}(varName, statements, buffers);
 }
@@ -4844,8 +5255,15 @@ fn clamp{T}(v: gvec4f, l: gvec4f, h: T) = gclamp{gvec4f}(v, l, h.gvec4f);
 fn clamp{T}(v: gvec4f, l: T, h: gvec4f) = gclamp{gvec4f}(v, l.gvec4f, h);
 
 fn gsaturate{I}(v: I) {
-  let varName = 'saturate('.concat(v.varName).concat(')');
-  return {I}(varName, v.statements, v.buffers);
+  let typename = {I.typeName}();
+  let varName = 'saturate_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = saturate(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
+  return {I}(varName, statements, v.buffers);
 }
 fn saturate(v: gf32) = gsaturate(v);
 fn saturate(v: gvec2f) = gsaturate(v);
@@ -4853,8 +5271,15 @@ fn saturate(v: gvec3f) = gsaturate(v);
 fn saturate(v: gvec4f) = gsaturate(v);
 
 fn gexp{I}(v: I) {
-  let varName = 'exp('.concat(v.varName).concat(')');
-  return {I}(varName, v.statements, v.buffers);
+  let typename = {I.typeName}();
+  let varName = 'exp_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = exp(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
+  return {I}(varName, statements, v.buffers);
 }
 fn exp(v: gf32) = gexp{gf32}(v);
 fn exp(v: gvec2f) = gexp{gvec2f}(v);
@@ -4862,8 +5287,15 @@ fn exp(v: gvec3f) = gexp{gvec3f}(v);
 fn exp(v: gvec4f) = gexp{gvec4f}(v);
 
 fn gln{I}(v: I) {
-  let varName = 'log('.concat(v.varName).concat(')');
-  return {I}(varName, v.statements, v.buffers);
+  let typename = {I.typeName}();
+  let varName = 'log_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = log(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
+  return {I}(varName, statements, v.buffers);
 }
 fn ln(v: gf32) = gln{gf32}(v);
 fn ln(v: gvec2f) = gln{gvec2f}(v);
@@ -4871,8 +5303,15 @@ fn ln(v: gvec3f) = gln{gvec3f}(v);
 fn ln(v: gvec4f) = gln{gvec4f}(v);
 
 fn glog2{I}(v: I) {
-  let varName = 'log2('.concat(v.varName).concat(')');
-  return {I}(varName, v.statements, v.buffers);
+  let typename = {I.typeName}();
+  let varName = 'log2_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = log2(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
+  return {I}(varName, statements, v.buffers);
 }
 fn log2(v: gf32) = glog2{gf32}(v);
 fn log2(v: gvec2f) = glog2{gvec2f}(v);
@@ -4880,8 +5319,15 @@ fn log2(v: gvec3f) = glog2{gvec3f}(v);
 fn log2(v: gvec4f) = glog2{gvec4f}(v);
 
 fn glog10{I}(v: I) {
-  let varName = '(log('.concat(v.varName).concat(') / log(10.0))');
-  return {I}(varName, v.statements, v.buffers);
+  let typename = {I.typeName}();
+  let varName = 'log10_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = (log(')
+    .concat(v.varName)
+    .concat(') / log(10.0))');
+  let statements = v.statements.concat(Dict(varName, statement));
+  return {I}(varName, statements, v.buffers);
 }
 fn log10(v: gf32) = glog10{gf32}(v);
 fn log10(v: gvec2f) = glog10{gvec2f}(v);
@@ -4889,8 +5335,15 @@ fn log10(v: gvec3f) = glog10{gvec3f}(v);
 fn log10(v: gvec4f) = glog10{gvec4f}(v);
 
 fn gcos{I}(v: I) {
-  let varName = 'cos('.concat(v.varName).concat(')');
-  return {I}(varName, v.statements, v.buffers);
+  let typename = {I.typeName}();
+  let varName = 'cos_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = cos(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
+  return {I}(varName, statements, v.buffers);
 }
 fn cos(v: gf32) = gcos{gf32}(v);
 fn cos(v: gvec2f) = gcos{gvec2f}(v);
@@ -4898,8 +5351,15 @@ fn cos(v: gvec3f) = gcos{gvec3f}(v);
 fn cos(v: gvec4f) = gcos{gvec4f}(v);
 
 fn gcosh{I}(v: I) {
-  let varName = 'cosh('.concat(v.varName).concat(')');
-  return {I}(varName, v.statements, v.buffers);
+  let typename = {I.typeName}();
+  let varName = 'cosh_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = cosh(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
+  return {I}(varName, statements, v.buffers);
 }
 fn cosh(v: gf32) = gcosh{gf32}(v);
 fn cosh(v: gvec2f) = gcosh{gvec2f}(v);
@@ -4907,8 +5367,15 @@ fn cosh(v: gvec3f) = gcosh{gvec3f}(v);
 fn cosh(v: gvec4f) = gcosh{gvec4f}(v);
 
 fn gsin{I}(v: I) {
-  let varName = 'sin('.concat(v.varName).concat(')');
-  return {I}(varName, v.statements, v.buffers);
+  let typename = {I.typeName}();
+  let varName = 'sin_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = sin(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
+  return {I}(varName, statements, v.buffers);
 }
 fn sin(v: gf32) = gsin{gf32}(v);
 fn sin(v: gvec2f) = gsin{gvec2f}(v);
@@ -4916,8 +5383,15 @@ fn sin(v: gvec3f) = gsin{gvec3f}(v);
 fn sin(v: gvec4f) = gsin{gvec4f}(v);
 
 fn gsinh{I}(v: I) {
-  let varName = 'sinh('.concat(v.varName).concat(')');
-  return {I}(varName, v.statements, v.buffers);
+  let typename = {I.typeName}();
+  let varName = 'sinh_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = sinh(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
+  return {I}(varName, statements, v.buffers);
 }
 fn sinh(v: gf32) = gsinh{gf32}(v);
 fn sinh(v: gvec2f) = gsinh{gvec2f}(v);
@@ -4925,8 +5399,15 @@ fn sinh(v: gvec3f) = gsinh{gvec3f}(v);
 fn sinh(v: gvec4f) = gsinh{gvec4f}(v);
 
 fn gtan{I}(v: I) {
-  let varName = 'tan('.concat(v.varName).concat(')');
-  return {I}(varName, v.statements, v.buffers);
+  let typename = {I.typeName}();
+  let varName = 'tan_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = tan(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
+  return {I}(varName, statements, v.buffers);
 }
 fn tan(v: gf32) = gtan{gf32}(v);
 fn tan(v: gvec2f) = gtan{gvec2f}(v);
@@ -4934,8 +5415,15 @@ fn tan(v: gvec3f) = gtan{gvec3f}(v);
 fn tan(v: gvec4f) = gtan{gvec4f}(v);
 
 fn gtanh{I}(v: I) {
-  let varName = 'tanh('.concat(v.varName).concat(')');
-  return {I}(varName, v.statements, v.buffers);
+  let typename = {I.typeName}();
+  let varName = 'tanh_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = tanh(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
+  return {I}(varName, statements, v.buffers);
 }
 fn tanh(v: gf32) = gtanh{gf32}(v);
 fn tanh(v: gvec2f) = gtanh{gvec2f}(v);
@@ -5005,8 +5493,15 @@ fn acoth(x: gvec4f) = ln(x.add(gvec4f(1.0)).div(x.sub(gvec4f(1.0)))).div(gvec4f(
 /// GPGPU Comparison functions
 
 fn geq{I, O}(a: I, b: I) {
-  let varName = '('.concat(a.varName).concat(' == ').concat(b.varName).concat(')');
-  let statements = a.statements.concat(b.statements);
+  let typename = {O.typeName}();
+  let varName = 'eq_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = ')
+    .concat(a.varName)
+    .concat(' == ')
+    .concat(b.varName);
+  let statements = a.statements.concat(b.statements).concat(Dict(varName, statement));
   let buffers = a.buffers.union(b.buffers);
   return {O}(varName, statements, buffers);
 }
@@ -5036,8 +5531,15 @@ fn eq(a: gvec4f, b: gvec4f) = geq{gvec4f, gvec4b}(a, b);
 fn eq(a: gvec4b, b: gvec4b) = geq{gvec4b, gvec4b}(a, b);
 
 fn gneq{I, O}(a: I, b: I) {
-  let varName = '('.concat(a.varName).concat(' != ').concat(b.varName).concat(')');
-  let statements = a.statements.concat(b.statements);
+  let typename = {O.typeName}();
+  let varName = 'neq_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = ')
+    .concat(a.varName)
+    .concat(' != ')
+    .concat(b.varName);
+  let statements = a.statements.concat(b.statements).concat(Dict(varName, statement));
   let buffers = a.buffers.union(b.buffers);
   return {O}(varName, statements, buffers);
 }
@@ -5067,8 +5569,15 @@ fn neq(a: gvec4f, b: gvec4f) = gneq{gvec4f, gvec4b}(a, b);
 fn neq(a: gvec4b, b: gvec4b) = gneq{gvec4b, gvec4b}(a, b);
 
 fn glt{I, O}(a: I, b: I) {
-  let varName = '('.concat(a.varName).concat(' < ').concat(b.varName).concat(')');
-  let statements = a.statements.concat(b.statements);
+  let typename = {O.typeName}();
+  let varName = 'lt_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = ')
+    .concat(a.varName)
+    .concat(' < ')
+    .concat(b.varName);
+  let statements = a.statements.concat(b.statements).concat(Dict(varName, statement));
   let buffers = a.buffers.union(b.buffers);
   return {O}(varName, statements, buffers);
 }
@@ -5092,8 +5601,15 @@ fn lt(a: gvec4i, b: gvec4i) = glt{gvec4i, gvec4b}(a, b);
 fn lt(a: gvec4f, b: gvec4f) = glt{gvec4f, gvec4b}(a, b);
 
 fn glte{I, O}(a: I, b: I) {
-  let varName = '('.concat(a.varName).concat(' <= ').concat(b.varName).concat(')');
-  let statements = a.statements.concat(b.statements);
+  let typename = {O.typeName}();
+  let varName = 'lte_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = ')
+    .concat(a.varName)
+    .concat(' <= ')
+    .concat(b.varName);
+  let statements = a.statements.concat(b.statements).concat(Dict(varName, statement));
   let buffers = a.buffers.union(b.buffers);
   return {O}(varName, statements, buffers);
 }
@@ -5117,8 +5633,15 @@ fn lte(a: gvec4i, b: gvec4i) = glte{gvec4i, gvec4b}(a, b);
 fn lte(a: gvec4f, b: gvec4f) = glte{gvec4f, gvec4b}(a, b);
 
 fn ggt{I, O}(a: I, b: I) {
-  let varName = '('.concat(a.varName).concat(' > ').concat(b.varName).concat(')');
-  let statements = a.statements.concat(b.statements);
+  let typename = {O.typeName}();
+  let varName = 'gt_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = ')
+    .concat(a.varName)
+    .concat(' > ')
+    .concat(b.varName);
+  let statements = a.statements.concat(b.statements).concat(Dict(varName, statement));
   let buffers = a.buffers.union(b.buffers);
   return {O}(varName, statements, buffers);
 }
@@ -5142,8 +5665,15 @@ fn gt(a: gvec4i, b: gvec4i) = ggt{gvec4i, gvec4b}(a, b);
 fn gt(a: gvec4f, b: gvec4f) = ggt{gvec4f, gvec4b}(a, b);
 
 fn ggte{I, O}(a: I, b: I) {
-  let varName = '('.concat(a.varName).concat(' >= ').concat(b.varName).concat(')');
-  let statements = a.statements.concat(b.statements);
+  let typename = {O.typeName}();
+  let varName = 'gte_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = ')
+    .concat(a.varName)
+    .concat(' >= ')
+    .concat(b.varName);
+  let statements = a.statements.concat(b.statements).concat(Dict(varName, statement));
   let buffers = a.buffers.union(b.buffers);
   return {O}(varName, statements, buffers);
 }
@@ -5185,8 +5715,13 @@ fn if{T}(c: gbool, t: T, f: T) {
 /// GPU Boolean and Bitwise methods
 
 fn gnot{I}(a: I) {
-  let varName = '(!'.concat(a.varName).concat(')');
-  let statements = a.statements.clone();
+  let typename = {I.typeName}();
+  let varName = 'not_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = !')
+    .concat(a.varName);
+  let statements = a.statements.concat(Dict(varName, statement));
   let buffers = a.buffers.clone();
   return {I}(varName, statements, buffers);
 }
@@ -5204,8 +5739,15 @@ fn not(a: gvec4i) = gnot(a);
 fn not(a: gvec4b) = gnot(a);
 
 fn gor{I}(a: I, b: I) {
-  let varName = '('.concat(a.varName).concat(' | ').concat(b.varName).concat(')');
-  let statements = a.statements.concat(b.statements);
+  let typename = {I.typeName}();
+  let varName = 'or_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = ')
+    .concat(a.varName)
+    .concat(' | ')
+    .concat(b.varName);
+  let statements = a.statements.concat(b.statements).concat(Dict(varName, statement));
   let buffers = a.buffers.union(b.buffers);
   return {I}(varName, statements, buffers);
 }
@@ -5229,8 +5771,15 @@ fn or(a: gvec4i, b: gvec4i) = gor(a, b);
 fn or(a: gvec4b, b: gvec4b) = gor(a, b);
 
 fn gand{I}(a: I, b: I) {
-  let varName = '('.concat(a.varName).concat(' & ').concat(b.varName).concat(')');
-  let statements = a.statements.concat(b.statements);
+  let typename = {I.typeName}();
+  let varName = 'and_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = ')
+    .concat(a.varName)
+    .concat(' & ')
+    .concat(b.varName);
+  let statements = a.statements.concat(b.statements).concat(Dict(varName, statement));
   let buffers = a.buffers.union(b.buffers);
   return {I}(varName, statements, buffers);
 }
@@ -5260,8 +5809,15 @@ fn and(a: gvec4b, b: gvec4b) = gand(a, b);
 
 // There's no xor for bools in wgsl. Do I patch that over or leave it as an exercise to the reader?
 fn gxor{I}(a: I, b: I) {
-  let varName = '('.concat(a.varName).concat(' ^ ').concat(b.varName).concat(')');
-  let statements = a.statements.concat(b.statements);
+  let typename = {I.typeName}();
+  let varName = 'xor_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = ')
+    .concat(a.varName)
+    .concat(' ^ ')
+    .concat(b.varName);
+  let statements = a.statements.concat(b.statements).concat(Dict(varName, statement));
   let buffers = a.buffers.union(b.buffers);
   return {I}(varName, statements, buffers);
 }
@@ -5279,8 +5835,15 @@ fn xor(a: gvec4u, b: gvec4u) = gxor(a, b);
 fn xor(a: gvec4i, b: gvec4i) = gxor(a, b);
 
 fn gshl{I}(a: I, b: I) {
-  let varName = '('.concat(a.varName).concat(' << ').concat(b.varName).concat(')');
-  let statements = a.statements.concat(b.statements);
+  let typename = {I.typeName}();
+  let varName = 'shl_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = ')
+    .concat(a.varName)
+    .concat(' << ')
+    .concat(b.varName);
+  let statements = a.statements.concat(b.statements).concat(Dict(varName, statement));
   let buffers = a.buffers.union(b.buffers);
   return {I}(varName, statements, buffers);
 }
@@ -5298,8 +5861,15 @@ fn shl(a: gvec4u, b: gvec4u) = gshl(a, b);
 fn shl(a: gvec4i, b: gvec4i) = gshl(a, b);
 
 fn gshr{I}(a: I, b: I) {
-  let varName = '('.concat(a.varName).concat(' >> ').concat(b.varName).concat(')');
-  let statements = a.statements.concat(b.statements);
+  let typename = {I.typeName}();
+  let varName = 'shr_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = ')
+    .concat(a.varName)
+    .concat(' >> ')
+    .concat(b.varName);
+  let statements = a.statements.concat(b.statements).concat(Dict(varName, statement));
   let buffers = a.buffers.union(b.buffers);
   return {I}(varName, statements, buffers);
 }
@@ -5319,8 +5889,17 @@ fn shr(a: gvec4i, b: gvec4i) = gshr(a, b);
 /// GPGPU Bitcasting functions
 
 fn gbitcast{I, O}(v: I) {
-  let varName = 'bitcast<'.concat({O.typeName}()).concat('>(').concat(v.varName).concat(')');
-  let statements = v.statements.clone;
+  let typename = {O.typeName}();
+  let varName = 'bitcast_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = ')
+    .concat('bitcast<')
+    .concat(typename)
+    .concat('>(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
   let buffers = v.buffers.clone;
   return {O}(varName, statements, buffers);
 }
@@ -5364,8 +5943,14 @@ fn asVec4f(v: gvec4f) = v;
 /// CPU and GPGPU miscellaneous Vector functions
 
 fn gevery{I}(v: I) {
-  let varName = 'all('.concat(v.varName).concat(')');
-  let statements = v.statements.clone;
+  let typename = {I.typeName}();
+  let varName = 'every_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = all(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
   let buffers = v.buffers.clone;
   return gbool(varName, statements, buffers);
 }
@@ -5374,8 +5959,14 @@ fn every(v: gvec3b) = gevery(v);
 fn every(v: gvec4b) = gevery(v);
 
 fn gsome{I}(v: I) {
-  let varName = 'any('.concat(v.varName).concat(')');
-  let statements = v.statements.clone;
+  let typename = {I.typeName}();
+  let varName = 'some_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = any(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
   let buffers = v.buffers.clone;
   return gbool(varName, statements, buffers);
 }
@@ -5409,8 +6000,13 @@ fn if(c: gvec4b, t: gvec4f, f: gvec4f) = piecewiseIf{gvec4b, gvec4f}(c, t, f);
 fn if(c: gvec4b, t: gvec4b, f: gvec4b) = piecewiseIf{gvec4b, gvec4b}(c, t, f);
 
 fn pack4x8snorm(v: gvec4f) {
-  let varName = 'pack4x8snorm('.concat(v.varName).concat(')');
-  let statements = v.statements.clone;
+  let varName = 'pack4x8snorm_gu32_'.concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = pack4x8snorm(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
   let buffers = v.buffers.clone;
   return gu32(varName, statements, buffers);
 }
@@ -5423,8 +6019,13 @@ fn pack4x8snorm(v: f32[4]) {
 }
 
 fn pack4x8unorm(v: gvec4f) {
-  let varName = 'pack4x8unorm('.concat(v.varName).concat(')');
-  let statements = v.statements.clone;
+  let varName = 'pack4x8unorm_gu32_'.concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = pack4x8unorm(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
   let buffers = v.buffers.clone;
   return gu32(varName, statements, buffers);
 }
@@ -5437,8 +6038,13 @@ fn pack4x8unorm(v: f32[4]) {
 }
 
 fn pack2x16snorm(v: gvec2f) {
-  let varName = 'pack2x16snorm('.concat(v.varName).concat(')');
-  let statements = v.statements.clone;
+  let varName = 'pack2x16snorm_gu32_'.concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = pack2x16snorm(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
   let buffers = v.buffers.clone;
   return gu32(varName, statements, buffers);
 }
@@ -5449,8 +6055,13 @@ fn pack2x16snorm(v: f32[2]) {
 }
 
 fn pack2x16unorm(v: gvec2f) {
-  let varName = 'pack2x16unorm('.concat(v.varName).concat(')');
-  let statements = v.statements.clone;
+  let varName = 'pack2x16unorm_gu32_'.concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = pack2x16unorm(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
   let buffers = v.buffers.clone;
   return gu32(varName, statements, buffers);
 }
@@ -5461,16 +6072,26 @@ fn pack2x16unorm(v: f32[2]) {
 }
 
 fn pack2x16float(v: gvec2f) {
-  let varName = 'pack2x16float('.concat(v.varName).concat(')');
-  let statements = v.statements.clone;
+  let varName = 'pack2x16float_gu32_'.concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = pack2x16float(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
   let buffers = v.buffers.clone;
   return gu32(varName, statements, buffers);
 }
 // No CPU-side equivalent as `f16` is only available in Rust nightly and not at all in JS-land.
 
 fn unpack4x8snorm(v: gu32) {
-  let varName = 'unpack4x8snorm('.concat(v.varName).concat(')');
-  let statements = v.statements.clone;
+  let varName = 'unpack4x8snorm_gvec4f_'.concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = unpack4x8snorm(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
   let buffers = v.buffers.clone;
   return gvec4f(varName, statements, buffers);
 }
@@ -5486,8 +6107,13 @@ fn unpack4x8snorm(v: u32) {
 }
 
 fn unpack4x8unorm(v: gu32) {
-  let varName = 'unpack4x8unorm('.concat(v.varName).concat(')');
-  let statements = v.statements.clone;
+  let varName = 'unpack4x8unorm_gvec4f_'.concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = unpack4x8unorm(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
   let buffers = v.buffers.clone;
   return gvec4f(varName, statements, buffers);
 }
@@ -5504,8 +6130,13 @@ fn unpack4x8unorm(v: u32) {
 
 
 fn unpack2x16snorm(v: gu32) {
-  let varName = 'unpack2x16snorm('.concat(v.varName).concat(')');
-  let statements = v.statements.clone;
+  let varName = 'unpack2x16snorm_gvec2f_'.concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = unpack2x16snorm(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
   let buffers = v.buffers.clone;
   return gvec2f(varName, statements, buffers);
 }
@@ -5517,8 +6148,13 @@ fn unpack2x16snorm(v: u32) {
 }
 
 fn unpack2x16unorm(v: gu32) {
-  let varName = 'unpack2x16unorm('.concat(v.varName).concat(')');
-  let statements = v.statements.clone;
+  let varName = 'unpack2x16unorm_gvec2f_'.concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = unpack2x16unorm(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
   let buffers = v.buffers.clone;
   return gvec2f(varName, statements, buffers);
 }
@@ -5530,8 +6166,13 @@ fn unpack2x16unorm(v: u32) {
 }
 
 fn unpack2x16float(v: gu32) {
-  let varName = 'unpack2x16float('.concat(v.varName).concat(')');
-  let statements = v.statements.clone;
+  let varName = 'unpack2x16float_gvec2f_'.concat(uuid().string.replace('-', '_'));
+  let statement = 'var '
+    .concat(varName)
+    .concat(' = unpack2x16float(')
+    .concat(v.varName)
+    .concat(')');
+  let statements = v.statements.concat(Dict(varName, statement));
   let buffers = v.buffers.clone;
   return gvec2f(varName, statements, buffers);
 }
