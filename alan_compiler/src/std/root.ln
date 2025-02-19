@@ -4776,19 +4776,6 @@ fn or(a: gvec4u, b: gvec4u) = gInfix('|', 'or', a, b);
 fn or(a: gvec4i, b: gvec4i) = gInfix('|', 'or', a, b);
 fn or(a: gvec4b, b: gvec4b) = gInfix('|', 'or', a, b);
 
-fn gand{I}(a: I, b: I) {
-  let typename = {I.typeName}();
-  let varName = 'and_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
-  let statement = 'var '
-    .concat(varName)
-    .concat(' = ')
-    .concat(a.varName)
-    .concat(' & ')
-    .concat(b.varName);
-  let statements = a.statements.concat(b.statements).concat(Dict(varName, statement));
-  let buffers = a.buffers.union(b.buffers);
-  return {I}(varName, statements, buffers);
-}
 fn and(a: gu32, b: gu32) = gInfix('&', 'and', a, b);
 fn and{T}(a: gu32, b: T) = gInfix('&', 'and', a, b.gu32);
 fn and{T}(a: T, b: gu32) = gInfix('&', 'and', a.gu32, b);
