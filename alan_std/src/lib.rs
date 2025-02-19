@@ -1524,6 +1524,7 @@ where
                                     &gg.source,
                                 )),
                             }));
+                        println!("gg.source:\n==========\n\n{}\n\ngg.module:\n==========\n\n{:?}", gg.source, gg.module);
                     }
                     let module = gg.module.as_ref().unwrap();
                     if gg.compute_pipeline.is_none() {
