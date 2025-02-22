@@ -798,9 +798,13 @@ export async function gpu() {
 
 export async function createBufferInit(usage, vals) {
   let g = await gpu();
+  let size = vals.length * (vals[0]?.bits ?? 32) / 8;
+  if (g.device.limits.maxBufferSize < size) {
+    return new AlanError(`Cannot load the array into the GPU, as it is it oo large. GBuffer on your GPU only supports up to ${g.device.limits.maxBufferSize} bytes per buffer`);
+  }
   let b = await g.device.createBuffer({
     mappedAtCreation: true,
-    size: vals.length * (vals[0]?.bits ?? 32) / 8,
+    size,
     usage,
     label: `buffer_${uuidv4().replaceAll('-', '_')}`,
   });
@@ -816,6 +820,9 @@ export async function createBufferInit(usage, vals) {
 
 export async function createEmptyBuffer(usage, size, ValKind) {
   let g = await gpu();
+  if (g.device.limits.maxBufferSize < size) {
+    return new AlanError(`Cannot load the array into the GPU, as it is it oo large. GBuffer on your GPU only supports up to ${g.device.limits.maxBufferSize} bytes per buffer`);
+  }
   let b = await g.device.createBuffer({
     size: size.valueOf() * (ValKind?.bits ?? 32) / 8,
     usage,
