@@ -948,7 +948,11 @@ pub fn create_buffer_init<T>(
     })
 }
 
-pub fn create_empty_buffer(usage: &wgpu::BufferUsages, size: &i64, element_size: &i8) -> Result<GBuffer, AlanError> {
+pub fn create_empty_buffer(
+    usage: &wgpu::BufferUsages,
+    size: &i64,
+    element_size: &i8,
+) -> Result<GBuffer, AlanError> {
     let g = gpu();
     let limits = g.device.limits();
     if limits.max_buffer_size < *size as u64 {
@@ -1144,7 +1148,8 @@ pub fn gpu_run_list(ggs: &mut Vec<GPGPU>) {
 
 pub fn read_buffer<T: std::clone::Clone>(b: &GBuffer) -> Vec<T> {
     let g = gpu();
-    let temp_buffer = create_empty_buffer(&map_read_buffer_type(), &bufferlen(b), &b.element_size).expect("The buffer already exists so a new one the same size should always work");
+    let temp_buffer = create_empty_buffer(&map_read_buffer_type(), &bufferlen(b), &b.element_size)
+        .expect("The buffer already exists so a new one the same size should always work");
     let mut encoder = g
         .device
         .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
@@ -1175,7 +1180,8 @@ pub fn replace_buffer<T>(b: &GBuffer, v: &Vec<T>) -> Result<(), AlanError> {
         Err("The input array is not the same size as the buffer".into())
     } else {
         let g = gpu();
-        let gb = create_buffer_init(&map_write_buffer_type(), &v, &b.element_size).expect("The buffer already exists so a new one the same size should always work");
+        let gb = create_buffer_init(&map_write_buffer_type(), &v, &b.element_size)
+            .expect("The buffer already exists so a new one the same size should always work");
         let mut encoder = g
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });

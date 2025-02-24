@@ -966,7 +966,10 @@ pub fn from_microstatement(
                                         CType::Array(_) => {
                                             return Ok((argstrs[0].clone(), out, deps));
                                         }
-                                        CType::Tuple(ts) if inner_type.clone().to_callable_string() == enum_name => {
+                                        CType::Tuple(ts)
+                                            if inner_type.clone().to_callable_string()
+                                                == enum_name =>
+                                        {
                                             // Special-casing for Option and Result mapping. TODO:
                                             // Make this more centralized
                                             if ts.len() == 2 {
