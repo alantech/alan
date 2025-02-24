@@ -515,7 +515,7 @@ pub fn from_microstatement(
                                     Ok((representation.clone(), out, deps))
                                 }
                                 otherwise => CType::fail(&format!(
-                                    "2. Bound types must be strings or node.js imports: {:?}",
+                                    "Bound types must be strings or node.js imports: {:?}",
                                     otherwise
                                 )),
                             },
@@ -957,20 +957,19 @@ pub fn from_microstatement(
                                     CType::Type(n, _) => Ok(n.clone()),
                                     CType::Array(_) => Ok(enum_type.clone().to_callable_string()),
                                     CType::Binds(..) => Ok(enum_type.clone().to_callable_string()),
+                                    CType::Tuple(_) => Ok(enum_type.clone().to_callable_string()),
                                     otherwise => Err(format!("Cannot generate an constructor function for {} type as the input type has no name?, {:?}", function.name, otherwise)),
                                 }?;
                                 for t in ts {
-                                    let mut inner_type = t.clone().degroup();
-                                    if let CType::Tuple(ts) = &*inner_type {
-                                        if ts.len() == 1 {
-                                            inner_type = ts[0].clone();
-                                        }
-                                    }
+                                    let inner_type = t.clone().degroup();
                                     match &*inner_type {
                                         CType::Array(_) => {
                                             return Ok((argstrs[0].clone(), out, deps));
                                         }
-                                        CType::Field(n, _) if *n == enum_name => {
+                                        CType::Tuple(ts)
+                                            if inner_type.clone().to_callable_string()
+                                                == enum_name =>
+                                        {
                                             // Special-casing for Option and Result mapping. TODO:
                                             // Make this more centralized
                                             if ts.len() == 2 {
@@ -1010,10 +1009,7 @@ pub fn from_microstatement(
                                             }
                                             return Ok((argstrs[0].clone(), out, deps));
                                         }
-                                        CType::Field(_, f)
-                                            if f.clone().to_functional_string()
-                                                == enum_type.clone().to_functional_string() =>
-                                        {
+                                        CType::Field(n, _) if *n == enum_name => {
                                             // Special-casing for Option and Result mapping. TODO:
                                             // Make this more centralized
                                             if ts.len() == 2 {

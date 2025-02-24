@@ -108,7 +108,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     "#);
     build!(t19_gpgpu_1 => r#"
         export fn main {
-          let b = GBuffer(storageBuffer(), filled(2.i32(), 1));
+          let b = GBuffer(storageBuffer(), filled(2.i32(), 1))!!;
           let plan = GPGPU("
             @group(0)
             @binding(0)
@@ -130,7 +130,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     "#);
     build!(t20_gpgpu_10 => r#"
         export fn main {
-          let b = GBuffer(storageBuffer(), filled(2.i32(), 10));
+          let b = GBuffer(storageBuffer(), filled(2.i32(), 10))!!;
           let plan = GPGPU("
             @group(0)
             @binding(0)
@@ -152,7 +152,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     "#);
     build!(t21_gpgpu_100 => r#"
         export fn main {
-          let b = GBuffer(storageBuffer(), filled(2.i32(), 100));
+          let b = GBuffer(storageBuffer(), filled(2.i32(), 100))!!;
           let plan = GPGPU("
             @group(0)
             @binding(0)
@@ -174,7 +174,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     "#);
     build!(t22_gpgpu_1_000 => r#"
         export fn main {
-          let b = GBuffer(storageBuffer(), filled(2.i32(), 1_000));
+          let b = GBuffer(storageBuffer(), filled(2.i32(), 1_000))!!;
           let plan = GPGPU("
             @group(0)
             @binding(0)
@@ -196,7 +196,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     "#);
     build!(t23_gpgpu_10_000 => r#"
         export fn main {
-          let b = GBuffer(storageBuffer(), filled(2.i32(), 10_000));
+          let b = GBuffer(storageBuffer(), filled(2.i32(), 10_000))!!;
           let plan = GPGPU("
             @group(0)
             @binding(0)
@@ -218,7 +218,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     "#);
     build!(t24_gpgpu_100_000 => r#"
         export fn main {
-          let b = GBuffer(storageBuffer(), filled(2.i32(), 100_000));
+          let b = GBuffer(storageBuffer(), filled(2.i32(), 100_000))!!;
           let plan = GPGPU("
             @group(0)
             @binding(0)
@@ -240,7 +240,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     "#);
     build!(t25_gpgpu_1_000_000 => r#"
         export fn main {
-          let b = GBuffer(storageBuffer(), filled(2.i32(), 1_000_000));
+          let b = GBuffer(storageBuffer(), filled(2.i32(), 1_000_000))!!;
           let plan = GPGPU("
             @group(0)
             @binding(0)
@@ -262,7 +262,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     "#);
     build!(t26_gpgpu_10_000_000 => r#"
         export fn main {
-          let b = GBuffer(storageBuffer(), filled(2.i32(), 10_000_000));
+          let b = GBuffer(storageBuffer(), filled(2.i32(), 10_000_000))!!;
           let plan = GPGPU("
             @group(0)
             @binding(0)
@@ -284,7 +284,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     "#);
     build!(t27_gpgpu_100_000_000 => r#"
         export fn main {
-          let b = GBuffer(storageBuffer(), filled(2.i32(), 100_000_000));
+          let b = GBuffer(storageBuffer(), filled(2.i32(), 100_000_000))!!;
           let plan = GPGPU("
             @group(0)
             @binding(0)

@@ -16,7 +16,7 @@ fn bench(l: i64) {
   let t3 = now();
   // My laptop GPU can't handle a billion i32s in a single buffer, so that case is split in two
   if(l <= 100_000_000, fn {
-    let b = GBuffer(storageBuffer(), v);
+    let b = GBuffer(storageBuffer(), v)!!;
     let plan = GPGPU("
       @group(0)
       @binding(0)
@@ -36,7 +36,7 @@ fn bench(l: i64) {
     v3[0];
   }, fn {
     let v2 = filled(2.i32, 500_000_000);
-    let b = GBuffer(storageBuffer(), v2);
+    let b = GBuffer(storageBuffer(), v2)!!;
     let plan = GPGPU("
       @group(0)
       @binding(0)
@@ -53,7 +53,7 @@ fn bench(l: i64) {
     ", b);
     plan.run;
     b.read{i32};
-    let b = GBuffer(storageBuffer(), v2);
+    let b = GBuffer(storageBuffer(), v2)!!;
     let plan = GPGPU("
       @group(0)
       @binding(0)

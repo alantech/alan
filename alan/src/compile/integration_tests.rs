@@ -516,7 +516,7 @@ test!(string_parse => r#"
 
 test_gpgpu!(hello_gpu => r#"
     export fn main {
-      let b = GBuffer(filled(2.i32, 4));
+      let b = GBuffer(filled(2.i32, 4))!!;
       let plan = GPGPU("
         @group(0)
         @binding(0)
@@ -535,7 +535,7 @@ test_gpgpu!(hello_gpu => r#"
 );
 test_gpgpu!(hello_gpu_new => r#"
     export fn main {
-      let b = GBuffer(filled(2.i32, 4));
+      let b = GBuffer(filled(2.i32, 4))!!;
       let idx = gFor(4);
       let compute = b[idx].store(b[idx] * idx.gi32);
       compute.build.run;
@@ -545,8 +545,8 @@ test_gpgpu!(hello_gpu_new => r#"
 );
 test_gpgpu!(list_of_gpu_tasks => r#"
     export fn main {
-      let b1 = GBuffer(filled(2.i32, 8));
-      let b2 = GBuffer(filled(5.i32, 4));
+      let b1 = GBuffer(filled(2.i32, 8))!!;
+      let b2 = GBuffer(filled(5.i32, 4))!!;
       let i1 = gFor(8);
       let i2 = gFor(4);
       let c1 = b1[i1].store(b1[i1] * i1.gi32);
@@ -560,7 +560,7 @@ test_gpgpu!(list_of_gpu_tasks => r#"
 
 test_gpgpu!(hello_gpu_odd => r#"
     export fn main {
-      let b = GBuffer(filled(2.i32, 4));
+      let b = GBuffer(filled(2.i32, 4))!!;
       let idx = gFor(4, 1);
       let compute = b[idx.i].store(b[idx.i] * idx.i.gi32 + 1);
       compute.build.run;
@@ -571,7 +571,7 @@ test_gpgpu!(hello_gpu_odd => r#"
 
 test_gpgpu!(gpu_map => r#"
     export fn main {
-        let b = GBuffer([1.i32, 2.i32, 3.i32, 4.i32]);
+        let b = GBuffer([1.i32, 2.i32, 3.i32, 4.i32])!!;
         let out = b.map(fn (val: gi32) = val + 2);
         out.read.print;
     }"#;
@@ -580,7 +580,7 @@ test_gpgpu!(gpu_map => r#"
 
 test_gpgpu!(gpu_if => r#"
     export fn main {
-        let b = GBuffer([1.i32, 2.i32, 3.i32, 4.i32]);
+        let b = GBuffer([1.i32, 2.i32, 3.i32, 4.i32])!!;
         let out = b.map(fn (val: gi32, i: gu32) = if(
             i % 2 == 0,
             val * i.gi32,
@@ -592,7 +592,7 @@ test_gpgpu!(gpu_if => r#"
 
 test_gpgpu!(gpu_replace => r#"
     export fn main {
-        let b = GBuffer([1.i32, 2.i32, 3.i32, 4.i32]);
+        let b = GBuffer([1.i32, 2.i32, 3.i32, 4.i32])!!;
         b.map(fn (val: gi32) = val + 2).read.print;
         b.replace([2.i32, 4.i32, 6.i32, 8.i32]);
         b.map(fn (val: gi32) = val / 2).read.print;
@@ -602,7 +602,7 @@ test_gpgpu!(gpu_replace => r#"
 
 test_gpgpu!(gpu_abs => r#"
     export fn main {
-        let b = GBuffer([1.i32, -2.i32, -3.i32, 4.i32]);
+        let b = GBuffer([1.i32, -2.i32, -3.i32, 4.i32])!!;
         b.map(fn (val: gi32) = val.abs).read.print;
     }"#;
     stdout "[1, 2, 3, 4]\n";
@@ -610,7 +610,7 @@ test_gpgpu!(gpu_abs => r#"
 
 test_gpgpu!(gpu_clz => r#"
     export fn main {
-        let b = GBuffer([1.i32, -2.i32, -3.i32, 4.i32]);
+        let b = GBuffer([1.i32, -2.i32, -3.i32, 4.i32])!!;
         // Don't need the generic on the `read` call, but leaving it to show it still works
         b.map(fn (val: gi32) = val.clz).read{i32}.print;
     }"#;
@@ -619,7 +619,7 @@ test_gpgpu!(gpu_clz => r#"
 
 test_gpgpu!(gpu_ones => r#"
     export fn main {
-        let b = GBuffer([1.i32, 2.i32, 3.i32, -1.i32]);
+        let b = GBuffer([1.i32, 2.i32, 3.i32, -1.i32])!!;
         b.map(fn (val: gi32) = val.ones).read.print;
     }"#;
     stdout "[1, 1, 2, 32]\n";
@@ -627,7 +627,7 @@ test_gpgpu!(gpu_ones => r#"
 
 test_gpgpu!(gpu_ctz => r#"
     export fn main {
-        let b = GBuffer([0.i32, 1.i32, 2.i32, -2_147_483_648.i32]);
+        let b = GBuffer([0.i32, 1.i32, 2.i32, -2_147_483_648.i32])!!;
         b.map(fn (val: gi32) = val.ctz).read.print;
     }"#;
     stdout "[32, 0, 1, 31]\n";
@@ -637,7 +637,7 @@ test_gpgpu!(gpu_cross => r#"
     // TODO: A nicer test involving `map`
 
     export fn main {
-      let b = GBuffer(filled(0.f32, 2));
+      let b = GBuffer(filled(0.f32, 2))!!;
       let idx = gFor(2);
       let compute = b[idx].store(if(
         idx == 0,
@@ -652,7 +652,7 @@ test_gpgpu!(gpu_cross => r#"
 
 test_gpgpu!(gpu_transpose => r#"
     export fn main {
-      let b = GBuffer([1.i32, 2.i32, 3.i32, 4.i32]);
+      let b = GBuffer([1.i32, 2.i32, 3.i32, 4.i32])!!;
       let m = gmat2x2f(b[0], b[1], b[2], b[3]).transpose;
       let idx = gFor(1);
       [
@@ -669,7 +669,7 @@ test_gpgpu!(gpu_transpose => r#"
 
 test_gpgpu!(gpu_reversebits => r#"
     export fn main {
-        let b = GBuffer([0.i32, 1.i32, 2.i32, (-2_147_483_648).i32]);
+        let b = GBuffer([0.i32, 1.i32, 2.i32, (-2_147_483_648).i32])!!;
         b.map(fn (val: gi32) = val.reverseBits).read.print;
     }"#;
     stdout "[0, -2147483648, 1073741824, 1]\n";
@@ -677,7 +677,7 @@ test_gpgpu!(gpu_reversebits => r#"
 
 test_gpgpu!(gpu_extractbits => r#"
     export fn main {
-        let b = GBuffer([0.u32, 1.u32, 2.u32, 5.u32]);
+        let b = GBuffer([0.u32, 1.u32, 2.u32, 5.u32])!!;
         b.map(fn (val: gu32) = val.extractBits(1, 2)).read.print;
     }"#;
     stdout "[0, 0, 1, 2]\n";
@@ -685,7 +685,7 @@ test_gpgpu!(gpu_extractbits => r#"
 
 test_gpgpu!(gpu_insertbits => r#"
     export fn main {
-        let b = GBuffer([0.u32, 31.u32]);
+        let b = GBuffer([0.u32, 31.u32])!!;
         b.map(fn (val: gu32) = val.insertBits(1, 2, 3)).read.print;
     }"#;
     stdout "[4, 7]\n";
@@ -695,7 +695,7 @@ test_gpgpu!(gpu_round => r#"
     export fn main {
       let b = GBuffer(
         [1.5.f32, 1.75.f32, 2.5.f32, 2.75.f32, (-1.5).f32, (-1.75).f32, (-2.5).f32, (-2.75).f32]
-      );
+      )!!;
       b.map(fn (val: gf32) = val.round).read.print;
     }"#;
     stdout "[2, 2, 2, 3, -2, -2, -2, -3]\n";
@@ -703,10 +703,10 @@ test_gpgpu!(gpu_round => r#"
 
 test_gpgpu!(gpu_magnitude => r#"
     export fn main {
-      let b = GBuffer([2.5.f32, -2.5.f32, 2.5.f32, -2.5.f32]);
+      let b = GBuffer([2.5.f32, -2.5.f32, 2.5.f32, -2.5.f32])!!;
       b.map(fn (val: gf32) = val.magnitude).read.print;
       let id = gFor(1);
-      let out = GBuffer{f32}(1);
+      let out = GBuffer{f32}(1)!!;
       let compute = out[id].store(gvec4f(b[0], b[1], b[2], b[3]).magnitude);
       compute.build.run;
       out.read.print;
@@ -716,9 +716,9 @@ test_gpgpu!(gpu_magnitude => r#"
 
 test_gpgpu!(gpu_normalize => r#"
     export fn main {
-      let b = GBuffer([3.0.f32, 4.0.f32]);
+      let b = GBuffer([3.0.f32, 4.0.f32])!!;
       let id = gFor(1);
-      let out = GBuffer{f32}(2);
+      let out = GBuffer{f32}(2)!!;
       let normal = gvec2f(b[0], b[1]).normalize;
       [out[id].store(normal.x), out[id + 1].store(normal.y)].build.run;
       out.read.map(fn (v: f32) = v.string(1)).join(', ').print;
@@ -728,7 +728,7 @@ test_gpgpu!(gpu_normalize => r#"
 
 test_gpgpu!(gpu_saturate => r#"
     export fn main {
-        let b = GBuffer([(-0.5).f32, 0.0.f32, 0.5.f32, 1.0.f32, 1.5.f32]);
+        let b = GBuffer([(-0.5).f32, 0.0.f32, 0.5.f32, 1.0.f32, 1.5.f32])!!;
         b.map(fn (val: gf32) = val.saturate).read.print;
     }"#;
     stdout "[0, 0, 0.5, 1, 1]\n";
@@ -736,9 +736,9 @@ test_gpgpu!(gpu_saturate => r#"
 
 test_gpgpu!(gpu_dot => r#"
     export fn main {
-      let b = GBuffer([3.0.f32, 4.0.f32]);
+      let b = GBuffer([3.0.f32, 4.0.f32])!!;
       let id = gFor(1);
-      let out = GBuffer{f32}(1);
+      let out = GBuffer{f32}(1)!!;
       let vec = gvec2f(b[0], b[1]);
       out[id].store(vec *. vec).build.run;
       out.read.map(fn (v: f32) = v.string(1)).join(', ').print;
@@ -748,7 +748,7 @@ test_gpgpu!(gpu_dot => r#"
 
 test_gpgpu!(gpu_inverse_sqrt => r#"
     export fn main {
-      let b = GBuffer([4.0.f32, 25.0.f32]);
+      let b = GBuffer([4.0.f32, 25.0.f32])!!;
       b.map(fn (val: gf32) = val.inverseSqrt).read.map(fn (v: f32) = v.string(1)).print;
     }"#;
     stdout "[0.5, 0.2]\n";
@@ -756,9 +756,9 @@ test_gpgpu!(gpu_inverse_sqrt => r#"
 
 test_gpgpu!(gpu_fma => r#"
     export fn main {
-      let b = GBuffer([2.0.f32, 3.0.f32, 4.0.f32]);
+      let b = GBuffer([2.0.f32, 3.0.f32, 4.0.f32])!!;
       let id = gFor(1);
-      let out = GBuffer{f32}(1);
+      let out = GBuffer{f32}(1)!!;
       out[id].store(fma(b[0], b[1], b[2])).build.run;
       (out.read[0]!!).string(1).print;
     }"#;
@@ -767,7 +767,7 @@ test_gpgpu!(gpu_fma => r#"
 
 test_gpgpu!(gpu_fract => r#"
     export fn main {
-      let b = GBuffer([1.0.f32, 3.14.f32]);
+      let b = GBuffer([1.0.f32, 3.14.f32])!!;
       b.map(fn (val: gf32) = val.fract).read.map(fn (v: f32) = v.string(2)).join(", ").print;
     }"#;
     stdout "0.00, 0.14\n";
@@ -775,9 +775,9 @@ test_gpgpu!(gpu_fract => r#"
 
 test_gpgpu!(gpu_determinant => r#"
     export fn main {
-      let b = GBuffer([1.0.f32, 2.0.f32, 3.0.f32, 4.0.f32]);
+      let b = GBuffer([1.0.f32, 2.0.f32, 3.0.f32, 4.0.f32])!!;
       let id = gFor(1);
-      let out = GBuffer{f32}(1);
+      let out = GBuffer{f32}(1)!!;
       out[id].store(gmat2x2f(b[0], b[1], b[2], b[3]).determinant).build.run;
       (out.read[0]!!).string(1).print;
     }"#;
@@ -790,8 +790,8 @@ test_gpgpu!(gpu_storage_barrier => r#"
       // across multiple threads running the same shader, which can let you do some work, then wait
       // to do more work that each thread may depend on the prior output of multiple threads to do
       let id = gFor(3, 3);
-      let temp = GBuffer{f32}(9);
-      let out = GBuffer{f32}(9);
+      let temp = GBuffer{f32}(9)!!;
+      let out = GBuffer{f32}(9)!!;
       let compute = [
         // Something that generates a buffer independently
         temp[id.x + 3 * id.y] = (id.x.gf32 + id.y.gf32),
@@ -815,8 +815,8 @@ test_gpgpu!(gpu_storage_barrier => r#"
       // that this means `storageBarrier` should never have been included in the WebGPU spec, but
       // here we are.
       let id = gFor(3, 3);
-      let temp = GBuffer{f32}(9);
-      let out = GBuffer{f32}(9);
+      let temp = GBuffer{f32}(9)!!;
+      let out = GBuffer{f32}(9)!!;
       let compute = [
         // Something that generates a buffer independently
         build(temp[id.x + 3 * id.y] = (id.x.gf32 + id.y.gf32)),
@@ -1504,43 +1504,43 @@ test_gpgpu!(gpu_trig => r#"
     export fn main {
       'Logarithms and e^x'.print;
       // Contrived way to get the GPU to do this work, don't follow this pattern for real GPU usage
-      GBuffer([e.f32]).map(fn (v: gf32) = exp(v)).read[0].getOrExit.string(2).print;
-      GBuffer([e.f32]).map(fn (v: gf32) = ln(v)).read[0].getOrExit.string(2).print;
-      GBuffer([e.f32]).map(fn (v: gf32) = log10(v)).read[0].getOrExit.string(2).print;
-      GBuffer([e.f32]).map(fn (v: gf32) = log2(v)).read[0].getOrExit.string(2).print;
+      GBuffer([e.f32]).getOrExit.map(fn (v: gf32) = exp(v)).read[0].getOrExit.string(2).print;
+      GBuffer([e.f32]).getOrExit.map(fn (v: gf32) = ln(v)).read[0].getOrExit.string(2).print;
+      GBuffer([e.f32]).getOrExit.map(fn (v: gf32) = log10(v)).read[0].getOrExit.string(2).print;
+      GBuffer([e.f32]).getOrExit.map(fn (v: gf32) = log2(v)).read[0].getOrExit.string(2).print;
 
       'Basic Trig functions'.print;
-      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = sin(v)).read[0].getOrExit.string(2).print;
-      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = cos(v)).read[0].getOrExit.string(2).print;
-      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = tan(v)).read[0].getOrExit.string(2).print;
-      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = sec(v)).read[0].getOrExit.string(2).print;
-      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = csc(v)).read[0].getOrExit.string(2).print;
-      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = cot(v)).read[0].getOrExit.string(2).print;
+      GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = sin(v)).read[0].getOrExit.string(2).print;
+      GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = cos(v)).read[0].getOrExit.string(2).print;
+      GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = tan(v)).read[0].getOrExit.string(2).print;
+      GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = sec(v)).read[0].getOrExit.string(2).print;
+      GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = csc(v)).read[0].getOrExit.string(2).print;
+      GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = cot(v)).read[0].getOrExit.string(2).print;
 
       'Inverse Trig functions'.print;
-      GBuffer([0.0.f32]).map(fn (v: gf32) = asin(v)).read[0].getOrExit.string(2).print;
-      GBuffer([1.0.f32]).map(fn (v: gf32) = acos(v)).read[0].getOrExit.string(2).print;
-      GBuffer([0.0.f32]).map(fn (v: gf32) = atan(v)).read[0].getOrExit.string(2).print;
-      GBuffer([1.0.f32]).map(fn (v: gf32) = atan2(v, 2.0)).read[0].getOrExit.string(2).print;
-      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = asec(v)).read[0].getOrExit.string(2).print;
-      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = acsc(v)).read[0].getOrExit.string(2).print;
-      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = acot(v)).read[0].getOrExit.string(2).print;
+      GBuffer([0.0.f32]).getOrExit.map(fn (v: gf32) = asin(v)).read[0].getOrExit.string(2).print;
+      GBuffer([1.0.f32]).getOrExit.map(fn (v: gf32) = acos(v)).read[0].getOrExit.string(2).print;
+      GBuffer([0.0.f32]).getOrExit.map(fn (v: gf32) = atan(v)).read[0].getOrExit.string(2).print;
+      GBuffer([1.0.f32]).getOrExit.map(fn (v: gf32) = atan2(v, 2.0)).read[0].getOrExit.string(2).print;
+      GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = asec(v)).read[0].getOrExit.string(2).print;
+      GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = acsc(v)).read[0].getOrExit.string(2).print;
+      GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = acot(v)).read[0].getOrExit.string(2).print;
 
       'Hyperbolic Trig functions'.print;
-      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = sinh(v)).read[0].getOrExit.string(2).print;
-      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = cosh(v)).read[0].getOrExit.string(2).print;
-      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = tanh(v)).read[0].getOrExit.string(2).print;
-      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = sech(v)).read[0].getOrExit.string(2).print;
-      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = csch(v)).read[0].getOrExit.string(2).print;
-      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = coth(v)).read[0].getOrExit.string(2).print;
+      GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = sinh(v)).read[0].getOrExit.string(2).print;
+      GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = cosh(v)).read[0].getOrExit.string(2).print;
+      GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = tanh(v)).read[0].getOrExit.string(2).print;
+      GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = sech(v)).read[0].getOrExit.string(2).print;
+      GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = csch(v)).read[0].getOrExit.string(2).print;
+      GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = coth(v)).read[0].getOrExit.string(2).print;
 
       'Inverse Hyperbolic Trig functions'.print;
-      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = asinh(v)).read[0].getOrExit.string(2).print;
-      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = acosh(v)).read[0].getOrExit.string(2).print;
-      GBuffer([pi.f32 / 6.0.f32]).map(fn (v: gf32) = atanh(v)).read[0].getOrExit.string(2).print;
-      GBuffer([0.5.f32]).map(fn (v: gf32) = asech(v)).read[0].getOrExit.string(2).print;
-      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = acsch(v)).read[0].getOrExit.string(2).print;
-      GBuffer([tau.f32 / 6.0.f32]).map(fn (v: gf32) = acoth(v)).read[0].getOrExit.string(2).print;
+      GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = asinh(v)).read[0].getOrExit.string(2).print;
+      GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = acosh(v)).read[0].getOrExit.string(2).print;
+      GBuffer([pi.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = atanh(v)).read[0].getOrExit.string(2).print;
+      GBuffer([0.5.f32]).getOrExit.map(fn (v: gf32) = asech(v)).read[0].getOrExit.string(2).print;
+      GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = acsch(v)).read[0].getOrExit.string(2).print;
+      GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = acoth(v)).read[0].getOrExit.string(2).print;
     }"#;
     stdout r#"Logarithms and e^x
 15.15

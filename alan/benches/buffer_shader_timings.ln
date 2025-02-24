@@ -4,7 +4,7 @@ fn inner(l: i64) {
   let v = filled(1.i32, l);
   "Array creation time:     ".concat(t1.elapsed.f64.string).print;
   let t2 = now();
-  let b = GBuffer(v);
+  let b = GBuffer(v)!!;
   "GPU Buffer load time:    ".concat(t2.elapsed.f64.string).print;
   let t3 = now();
   let yMax = max(1, v.len / 10_000);

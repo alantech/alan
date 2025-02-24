@@ -127,8 +127,8 @@ type Mac = Env{"ALAN_PLATFORM"} == "macos";
 type Browser = Env{"ALAN_PLATFORM"} == "browser"; // Technically not necessary, always also Js
 
 // Importing the Root Scope backing implementation and supporting 3rd party libraries
-type{Rs} RootBacking = Rust{"alan_std" @ "https://github.com/alantech/alan.git"};
-type{Js} RootBacking = Nodejs{"alan_std" @ "https://github.com/alantech/alan.git"};
+type{Rs} RootBacking = Rust{"alan_std" @ "https://github.com/alantech/alan.git#safer-gbuffer"};
+type{Js} RootBacking = Nodejs{"alan_std" @ "https://github.com/alantech/alan.git#safer-gbuffer"};
 
 // Defining derived types
 type void = ();
@@ -258,6 +258,8 @@ fn{Js} Error{T} "new alan_std.AlanError" <- RootBacking :: string -> T!;
 fn{Js} Error "new alan_std.AlanError" <- RootBacking :: string -> Error;
 fn{Rs} exists{T} (m: T?) = {Method{"is_some"} :: T? -> bool}(m);
 fn{Js} exists{T} (m: T?) = {"((a) => new alan_std.Bool(a !== null))" <- RootBacking :: T? -> bool}(m);
+fn{Rs} exists{T} (m: T!) = {Method{"is_ok"} :: T! -> bool}(m);
+fn{Js} exists{T} (m: T!) = {"((a) => new alan_std.Bool(!(a instanceof alan_std.AlanError)))" <- RootBacking :: T! -> bool}(m);
 fn{Rs} string(e: Error) = {"format!" :: ("{}", Error) -> string}(e);
 fn{Js} string Property{"message"} :: Error -> string;
 
@@ -1812,10 +1814,30 @@ fn{Rs} mapWriteBuffer "alan_std::map_write_buffer_type" <- RootBacking :: () -> 
 fn{Js} mapWriteBuffer "alan_std.mapWriteBufferType" <- RootBacking :: () -> BufferUsages;
 fn{Rs} storageBuffer "alan_std::storage_buffer_type" <- RootBacking :: () -> BufferUsages;
 fn{Js} storageBuffer "alan_std.storageBufferType" <- RootBacking :: () -> BufferUsages;
-fn{Rs} GBuffer{T}(bu: BufferUsages, arr: T[]) = GBuffer{T}({"alan_std::create_buffer_init" <- RootBacking :: (BufferUsages, T[], i8) -> GBufferRaw}(bu, arr, {Size{T}}().i8));
-fn{Js} GBuffer{T}(bu: BufferUsages, arr: T[]) = GBuffer{T}({"alan_std.createBufferInit" <- RootBacking :: (BufferUsages, T[]) -> GBufferRaw}(bu, arr));
-fn{Rs} GBuffer{T}(bu: BufferUsages, size: i64) = GBuffer{T}({"alan_std::create_empty_buffer" <- RootBacking :: (BufferUsages, i64, i8) -> GBufferRaw}(bu, size, {Size{T}}().i8));
-fn{Js} GBuffer{T}(bu: BufferUsages, size: i64) = GBuffer{T}({"alan_std.createEmptyBuffer" <- RootBacking :: (BufferUsages, i32) -> GBufferRaw}(bu, size.i32));
+fn{Rs} GBuffer{T}(bu: BufferUsages, arr: T[]) {
+  let fallibleRawBuffer = {"alan_std::create_buffer_init" <- RootBacking :: (BufferUsages, T[], i8) -> Fallible{GBufferRaw}}(bu, arr, {Size{T}}().i8);
+  return if(fallibleRawBuffer.exists,
+    fn = Fallible{GBuffer{T}}(GBuffer{T}(fallibleRawBuffer.getOrExit)),
+    fn = Error{GBuffer{T}}(fallibleRawBuffer.Error.getOrExit.string));
+}
+fn{Js} GBuffer{T}(bu: BufferUsages, arr: T[]) {
+  let fallibleRawBuffer = {"alan_std.createBufferInit" <- RootBacking :: (BufferUsages, T[]) -> Fallible{GBufferRaw}}(bu, arr);
+  return if(fallibleRawBuffer.exists,
+    fn = Fallible{GBuffer{T}}(GBuffer{T}(fallibleRawBuffer.getOrExit)),
+    fn = Error{GBuffer{T}}(fallibleRawBuffer.Error.getOrExit.string));
+}
+fn{Rs} GBuffer{T}(bu: BufferUsages, size: i64) {
+  let fallibleRawBuffer = {"alan_std::create_empty_buffer" <- RootBacking :: (BufferUsages, i64, i8) -> GBufferRaw!}(bu, size, {Size{T}}().i8);
+  return if(fallibleRawBuffer.exists,
+    fn = Fallible{GBuffer{T}}(GBuffer{T}(fallibleRawBuffer.getOrExit)),
+    fn = Error{GBuffer{T}}(fallibleRawBuffer.Error.getOrExit.string));
+}
+fn{Js} GBuffer{T}(bu: BufferUsages, size: i64) {
+  let fallibleRawBuffer = {"alan_std.createEmptyBuffer" <- RootBacking :: (BufferUsages, i32) -> GBufferRaw!}(bu, size.i32);
+  return if(fallibleRawBuffer.exists,
+    fn = Fallible{GBuffer{T}}(GBuffer{T}(fallibleRawBuffer.getOrExit)),
+    fn = Error{GBuffer{T}}(fallibleRawBuffer.Error.getOrExit.string));
+}
 fn GBuffer{T}(vals: T[]) = GBuffer{T}(storageBuffer(), vals);
 fn GBuffer{T}(size: i64) = GBuffer{T}(storageBuffer(), size);
 fn{Rs} cpulen{T}(b: GBuffer{T}) = {"alan_std::bufferlen" <- RootBacking :: GBufferRaw -> i64}(b.rawBuffer);
@@ -5014,7 +5036,7 @@ fn storageBarrier() = WgpuType{"storageBarrier"}(
 fn map{G, G2}(gb: GBuffer{G}, f: Prop{WgpuTypeMap, String{G}} -> Prop{WgpuTypeMap, String{G2}}) {
   let idx = gFor(gb.cpulen);
   let val = gb[idx];
-  let out = GBuffer{G2}(gb.cpulen);
+  let out = GBuffer{G2}(gb.cpulen)!!;
   let compute = out[idx].store(f(val));
   compute.build.run;
   return out;
@@ -5022,7 +5044,7 @@ fn map{G, G2}(gb: GBuffer{G}, f: Prop{WgpuTypeMap, String{G}} -> Prop{WgpuTypeMa
 fn map{G, G2}(gb: GBuffer{G}, f: (Prop{WgpuTypeMap, String{G}}, gu32) -> Prop{WgpuTypeMap, String{G2}}) {
   let idx = gFor(gb.cpulen);
   let val = gb[idx];
-  let out = GBuffer{G2}(gb.cpulen);
+  let out = GBuffer{G2}(gb.cpulen)!!;
   let compute = out[idx].store(f(val, idx));
   compute.build.run;
   return out;

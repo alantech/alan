@@ -68,6 +68,9 @@ pub fn ctype_to_rtype(
         .into()),
         CType::Type(_, t) => match &**t {
             CType::Either(ts) => {
+                if ts.len() == 2 && (matches!(*ts[1], CType::Void) || matches!(&*ts[1], CType::Type(n, _) if n == "Error")) {
+                    return Ok(("".to_string(), deps));
+                }
                 let mut enum_type_strs = Vec::new();
                 for t in ts {
                     match &**t {
@@ -98,7 +101,8 @@ pub fn ctype_to_rtype(
                                 deps = res.1;
                                 out.push(s);
                             }
-                            enum_type_strs.push(format!("({})", out.join(", ")));
+                            let name = t.clone().to_callable_string();
+                            enum_type_strs.push(format!("{}({})", name, out.join(", ")));
                         }
                         _otherwise => {
                             let res = ctype_to_rtype(t.clone(), in_function_type, deps)?;

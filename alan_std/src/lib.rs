@@ -924,13 +924,17 @@ pub fn create_buffer_init<T>(
     usage: &wgpu::BufferUsages,
     vals: &Vec<T>,
     element_size: &i8,
-) -> GBuffer {
+) -> Result<GBuffer, AlanError> {
     let g = gpu();
     let val_slice = &vals[..];
     let val_ptr = val_slice.as_ptr();
     let val_u8_len = vals.len() * (*element_size as usize);
+    let limits = g.device.limits();
+    if limits.max_buffer_size < val_u8_len as u64 {
+        return Err(AlanError { message: format!("Cannot load the array into the GPU, as it is too large. GBuffer on your GPU only supports up to {} bytes per buffer", limits.max_buffer_size), });
+    }
     let val_u8: &[u8] = unsafe { std::slice::from_raw_parts(val_ptr as *const u8, val_u8_len) };
-    GBuffer {
+    Ok(GBuffer {
         buffer: Rc::new(wgpu::util::DeviceExt::create_buffer_init(
             &g.device,
             &wgpu::util::BufferInitDescriptor {
@@ -941,12 +945,20 @@ pub fn create_buffer_init<T>(
         )),
         id: format!("buffer_{}", format!("{}", Uuid::new_v4()).replace("-", "_")),
         element_size: *element_size,
-    }
+    })
 }
 
-pub fn create_empty_buffer(usage: &wgpu::BufferUsages, size: &i64, element_size: &i8) -> GBuffer {
+pub fn create_empty_buffer(
+    usage: &wgpu::BufferUsages,
+    size: &i64,
+    element_size: &i8,
+) -> Result<GBuffer, AlanError> {
     let g = gpu();
-    GBuffer {
+    let limits = g.device.limits();
+    if limits.max_buffer_size < *size as u64 {
+        return Err(AlanError { message: format!("Cannot load the array into the GPU, as it is too large. GBuffer on your GPU only supports up to {} bytes per buffer", limits.max_buffer_size), });
+    }
+    Ok(GBuffer {
         buffer: Rc::new(g.device.create_buffer(&wgpu::BufferDescriptor {
             label: None, // TODO: Add a label for easier debugging?
             size: (*size as u64) * (*element_size as u64),
@@ -955,7 +967,7 @@ pub fn create_empty_buffer(usage: &wgpu::BufferUsages, size: &i64, element_size:
         })),
         id: format!("buffer_{}", format!("{}", Uuid::new_v4()).replace("-", "_")),
         element_size: *element_size,
-    }
+    })
 }
 
 // TODO: Either add the ability to bind to const values, or come up with a better solution. For
@@ -1136,7 +1148,8 @@ pub fn gpu_run_list(ggs: &mut Vec<GPGPU>) {
 
 pub fn read_buffer<T: std::clone::Clone>(b: &GBuffer) -> Vec<T> {
     let g = gpu();
-    let temp_buffer = create_empty_buffer(&map_read_buffer_type(), &bufferlen(b), &b.element_size);
+    let temp_buffer = create_empty_buffer(&map_read_buffer_type(), &bufferlen(b), &b.element_size)
+        .expect("The buffer already exists so a new one the same size should always work");
     let mut encoder = g
         .device
         .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
@@ -1167,7 +1180,8 @@ pub fn replace_buffer<T>(b: &GBuffer, v: &Vec<T>) -> Result<(), AlanError> {
         Err("The input array is not the same size as the buffer".into())
     } else {
         let g = gpu();
-        let gb = create_buffer_init(&map_write_buffer_type(), &v, &b.element_size);
+        let gb = create_buffer_init(&map_write_buffer_type(), v, &b.element_size)
+            .expect("The buffer already exists so a new one the same size should always work");
         let mut encoder = g
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });

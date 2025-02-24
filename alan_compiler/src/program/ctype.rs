@@ -3415,7 +3415,13 @@ impl CType {
                     // Create a constructor fn
                     fs.push(Arc::new(Function {
                         name: constructor_fn_name.clone(),
-                        typen: Arc::new(CType::Function(e.clone(), t.clone())),
+                        typen: Arc::new(CType::Function(
+                            Arc::new(CType::Tuple(vec![Arc::new(CType::Field(
+                                "arg0".to_string(),
+                                e.clone(),
+                            ))])),
+                            t.clone(),
+                        )),
                         microstatements: Vec::new(),
                         kind: FnKind::Derived,
                         origin_scope_path: scope.path.clone(),
