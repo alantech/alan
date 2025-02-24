@@ -259,7 +259,7 @@ fn{Js} Error "new alan_std.AlanError" <- RootBacking :: string -> Error;
 fn{Rs} exists{T} (m: T?) = {Method{"is_some"} :: T? -> bool}(m);
 fn{Js} exists{T} (m: T?) = {"((a) => new alan_std.Bool(a !== null))" <- RootBacking :: T? -> bool}(m);
 fn{Rs} exists{T} (m: T!) = {Method{"is_ok"} :: T! -> bool}(m);
-fn{Js} exists{T} (m: T!) = {"((a) => new alan_std.Bool(!(a instanceof alan_std.AlanError))" <- RootBacking :: T! -> bool}(m);
+fn{Js} exists{T} (m: T!) = {"((a) => new alan_std.Bool(!(a instanceof alan_std.AlanError)))" <- RootBacking :: T! -> bool}(m);
 fn{Rs} string(e: Error) = {"format!" :: ("{}", Error) -> string}(e);
 fn{Js} string Property{"message"} :: Error -> string;
 
