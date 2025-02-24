@@ -1180,7 +1180,7 @@ pub fn replace_buffer<T>(b: &GBuffer, v: &Vec<T>) -> Result<(), AlanError> {
         Err("The input array is not the same size as the buffer".into())
     } else {
         let g = gpu();
-        let gb = create_buffer_init(&map_write_buffer_type(), &v, &b.element_size)
+        let gb = create_buffer_init(&map_write_buffer_type(), v, &b.element_size)
             .expect("The buffer already exists so a new one the same size should always work");
         let mut encoder = g
             .device
