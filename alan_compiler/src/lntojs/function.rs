@@ -515,7 +515,7 @@ pub fn from_microstatement(
                                     Ok((representation.clone(), out, deps))
                                 }
                                 otherwise => CType::fail(&format!(
-                                    "2. Bound types must be strings or node.js imports: {:?}",
+                                    "Bound types must be strings or node.js imports: {:?}",
                                     otherwise
                                 )),
                             },
@@ -780,7 +780,7 @@ pub fn from_microstatement(
                                     CType::Type(n, _) => Ok(n.clone()),
                                     CType::Array(_) => Ok(enum_type.to_callable_string()),
                                     CType::Binds(..) => Ok(enum_type.to_callable_string()),
-                                    otherwise => Err(format!("1. Cannot generate an constructor function for {} type as the input type has no name? {:?}", ret_name, otherwise)),
+                                    otherwise => Err(format!("Cannot generate an constructor function for {} type as the input type has no name? {:?}", ret_name, otherwise)),
                                 }?;
                                 for t in ts {
                                     let inner_type = t.clone().degroup();
