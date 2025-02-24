@@ -18,6 +18,9 @@ pub fn ctype_to_jtype(
         .into()),
         CType::Type(n, t) => match &**t {
             CType::Either(ts) => {
+                if ts.len() == 2 && (matches!(*ts[1], CType::Void) || matches!(&*ts[1], CType::Type(n, _) if n == "Error")) {
+                    return Ok(("".to_string(), deps));
+                }
                 for t in ts {
                     match &**t {
                         CType::Field(_, v) => {
