@@ -130,7 +130,9 @@ export class FuzzySet {
 }
 
 export function clone(v) {
-  if (v instanceof Array) {
+  if (v === null) {
+      return null;
+  } else if (v instanceof Array) {
     return v.map(clone);
   } else if (v instanceof FuzzySet) {
     return v.union(new FuzzySet());

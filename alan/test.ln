@@ -1250,6 +1250,13 @@ export fn{Test} main {
       test
         .assert(eq, maybe5.exists, true)
         .assert(eq, maybeNot.exists, false);
+    })
+    .it('can be cloned', fn (test: Mut{Testing}) {
+      const maybe5 = Maybe{i64}(5);
+      const maybeNot = Maybe{i64}();
+      test
+        .assert(eq, maybe5.clone.exists, true)
+        .assert(eq, maybeNot.clone.exists, false);
     });
 
   test.describe("Tree")
