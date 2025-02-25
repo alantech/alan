@@ -3572,26 +3572,23 @@ impl CType {
                 // A special exception exists for a few booleans that are created *before* the bool
                 // type is created in the root scope. TODO: Find a better solution for this so they
                 // have accessor functions defined for run-time code to use them.
-                match scope.resolve_type("bool") {
-                    Some(boolt) => {
-                        let booln = boolt.clone();
-                        fs.push(Arc::new(Function {
-                            name: constructor_fn_name.clone(),
-                            typen: Arc::new(CType::Function(Arc::new(CType::Void), booln.clone())),
-                            microstatements: vec![Microstatement::Return {
-                                value: Some(Box::new(Microstatement::Value {
-                                    typen: booln,
-                                    representation: match b {
-                                        true => "true".to_string(),
-                                        false => "false".to_string(),
-                                    },
-                                })),
-                            }],
-                            kind: FnKind::Normal,
-                            origin_scope_path: scope.path.clone(),
-                        }));
-                    }
-                    None => {}
+                if let Some(boolt) = scope.resolve_type("bool") {
+                    let booln = boolt.clone();
+                    fs.push(Arc::new(Function {
+                        name: constructor_fn_name.clone(),
+                        typen: Arc::new(CType::Function(Arc::new(CType::Void), booln.clone())),
+                        microstatements: vec![Microstatement::Return {
+                            value: Some(Box::new(Microstatement::Value {
+                                typen: booln,
+                                representation: match b {
+                                    true => "true".to_string(),
+                                    false => "false".to_string(),
+                                },
+                            })),
+                        }],
+                        kind: FnKind::Normal,
+                        origin_scope_path: scope.path.clone(),
+                    }));
                 }
             }
             CType::TString(s) => {
@@ -3942,42 +3939,42 @@ impl CType {
             CType::Add(ts) => ts
                 .iter()
                 .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
-                .reduce(|a, b| CType::add(a, b))
+                .reduce(CType::add)
                 .unwrap(),
             CType::Sub(ts) => ts
                 .iter()
                 .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
-                .reduce(|a, b| CType::sub(a, b))
+                .reduce(CType::sub)
                 .unwrap(),
             CType::Mul(ts) => ts
                 .iter()
                 .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
-                .reduce(|a, b| CType::mul(a, b))
+                .reduce(CType::mul)
                 .unwrap(),
             CType::Div(ts) => ts
                 .iter()
                 .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
-                .reduce(|a, b| CType::div(a, b))
+                .reduce(CType::div)
                 .unwrap(),
             CType::Mod(ts) => ts
                 .iter()
                 .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
-                .reduce(|a, b| CType::cmod(a, b))
+                .reduce(CType::cmod)
                 .unwrap(),
             CType::Pow(ts) => ts
                 .iter()
                 .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
-                .reduce(|a, b| CType::pow(a, b))
+                .reduce(CType::pow)
                 .unwrap(),
             CType::Min(ts) => ts
                 .iter()
                 .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
-                .reduce(|a, b| CType::min(a, b))
+                .reduce(CType::min)
                 .unwrap(),
             CType::Max(ts) => ts
                 .iter()
                 .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
-                .reduce(|a, b| CType::max(a, b))
+                .reduce(CType::max)
                 .unwrap(),
             CType::Neg(t) => CType::neg(t.clone().swap_subtype(old_type, new_type)),
             CType::Len(t) => CType::len(t.clone().swap_subtype(old_type, new_type)),
@@ -4025,63 +4022,63 @@ impl CType {
             CType::And(ts) => ts
                 .iter()
                 .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
-                .reduce(|a, b| CType::and(a, b))
+                .reduce(CType::and)
                 .unwrap(),
             CType::Or(ts) => ts
                 .iter()
                 .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
-                .reduce(|a, b| CType::or(a, b))
+                .reduce(CType::or)
                 .unwrap(),
             CType::Xor(ts) => ts
                 .iter()
                 .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
-                .reduce(|a, b| CType::xor(a, b))
+                .reduce(CType::xor)
                 .unwrap(),
             CType::Not(t) => CType::not(t.clone().swap_subtype(old_type, new_type)),
             CType::Nand(ts) => ts
                 .iter()
                 .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
-                .reduce(|a, b| CType::nand(a, b))
+                .reduce(CType::nand)
                 .unwrap(),
             CType::Nor(ts) => ts
                 .iter()
                 .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
-                .reduce(|a, b| CType::nor(a, b))
+                .reduce(CType::nor)
                 .unwrap(),
             CType::Xnor(ts) => ts
                 .iter()
                 .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
-                .reduce(|a, b| CType::xnor(a, b))
+                .reduce(CType::xnor)
                 .unwrap(),
             CType::TEq(ts) => ts
                 .iter()
                 .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
-                .reduce(|a, b| CType::eq(a, b))
+                .reduce(CType::eq)
                 .unwrap(),
             CType::Neq(ts) => ts
                 .iter()
                 .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
-                .reduce(|a, b| CType::neq(a, b))
+                .reduce(CType::neq)
                 .unwrap(),
             CType::Lt(ts) => ts
                 .iter()
                 .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
-                .reduce(|a, b| CType::lt(a, b))
+                .reduce(CType::lt)
                 .unwrap(),
             CType::Lte(ts) => ts
                 .iter()
                 .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
-                .reduce(|a, b| CType::lte(a, b))
+                .reduce(CType::lte)
                 .unwrap(),
             CType::Gt(ts) => ts
                 .iter()
                 .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
-                .reduce(|a, b| CType::gt(a, b))
+                .reduce(CType::gt)
                 .unwrap(),
             CType::Gte(ts) => ts
                 .iter()
                 .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
-                .reduce(|a, b| CType::gte(a, b))
+                .reduce(CType::gte)
                 .unwrap(),
         }
     }
@@ -5371,10 +5368,7 @@ pub fn typebaselist_to_ctype(
                 // For the simpler case when it's *just* a reference to a prior variable, it just
                 // becomes a `Type` CType providing an alias for the named type.
                 let mut args = Vec::new();
-                match &prior_value {
-                    Some(val) => args.push(val.clone()),
-                    None => {}
-                };
+                if let Some(val) = &prior_value { args.push(val.clone()) };
                 prior_value = Some(match scope.resolve_type(var) {
                     Some(t) => {
                         // TODO: Once interfaces are a thing, there needs to be a built-in

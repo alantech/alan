@@ -420,7 +420,7 @@ pub fn ctype_to_rtype(
                                     }
                                     otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
                                 }
-                                Ok((format!("Result<{}, {}>", s, "alan_std::AlanError".to_string()), deps))
+                                Ok((format!("Result<{}, {}>", s, "alan_std::AlanError"), deps))
                             }
                             _ => Ok((Arc::new(CType::Either(ts.clone())).to_callable_string(), deps)),
                         }
@@ -467,7 +467,7 @@ pub fn ctype_to_rtype(
                                         }
                                         otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
                                     }
-                                    Ok((format!("Result<{}, {}>", s, "alan_std::AlanError".to_string()), deps))
+                                    Ok((format!("Result<{}, {}>", s, "alan_std::AlanError"), deps))
                                 }
                                 _ => Ok((Arc::new(CType::Either(ts.clone())).to_callable_string(), deps)),
                             }
