@@ -1713,23 +1713,24 @@ fn parent{T}(n: Node{T}) {
 
 fn children{T}(n: Node{T}) = if(
   n.tree.len > n.id,
-  fn () {
+  fn {
     let childIds = n.tree.children[n.id] ?? Array{i64}();
     return childIds
-      .filter(fn (id: i64) = n.tree.parents[id] ?? -1 == n.id)
-      .map(fn (id: i64) = Node{T}(id, n.tree));
+      .filter(fn (id: i64) = n.tree.parents[id]!! ?? -1 == n.id)
+      .map(fn (id: i64) = Node{T}(id, n.tree.clone)); // TODO: Eliminate this clone
   },
-  fn () = Array{Node{T}}());
+  fn = Array{Node{T}}());
 
 fn children{T}(t: Tree{T}) = t.rootNode.children;
 
 fn addChild{T}(n: Node{T}, val: T) {
-  let idx = n.tree.len;
+  let tree = n.tree;
+  let idx = tree.len;
   let parentIdx = n.id;
-  n.tree.vals.push(val);
-  n.tree.parents.push(Maybe{i64}(parentIdx));
-  n.tree.children.push(Array{i64}());
-  return Node{T}(idx, n.tree);
+  tree.vals.push(val);
+  tree.parents.push(Maybe{i64}(parentIdx));
+  tree.children.push(Array{i64}());
+  return Node{T}(idx, n.tree.clone);
 }
 fn addChild{T}(n: Node{T}, t: Tree{T}) {
   let idxOffset = n.tree.len;
@@ -1747,16 +1748,50 @@ fn addChild{T}(n: Node{T}, t: Tree{T}) {
 }
 fn addChild{T}(t: Tree{T}, val: T) = t.rootNode.addChild(val);
 
+fn delete{T}(n: Node{T}) {
+  // TODO: Actually drop the node value after the tree has too many dead values.
+  let nodeId = n.id;
+  let parentId = n.tree.parents[n.id].getOrExit;
+  let children = n.children;
+  // First, update the children to point at their grandparent
+  children.map(fn (childNode: Node{T}) {
+    n.tree.parents.store(childNode.id, parentId.clone);
+  });
+  // Next, update the current node's parent to no longer count the node as a child, assuming there
+  // is a parent
+  if(parentId.exists, fn {
+    let parentsChildren = n.tree
+      .children[parentId.getOrExit]
+      .getOrExit
+      .filter(fn (childId: i64) = childId != nodeId);
+    n.tree.children.store(parentId.getOrExit, parentsChildren);
+  });
+}
+
+fn prune{T}(n: Node{T}) {
+  // TODO: Actually drop the sub-tree after the tree has too many dead values.
+  // Update the current node's parent to no longer count the node as a child, assuming there is a
+  // parent
+  let tree = n.tree;
+  let nodeId = n.id;
+  let parentId = tree.parents[n.id].getOrExit;
+  if(parentId.exists, fn {
+    let parentsChildren = tree
+      .children[parentId.getOrExit]
+      .getOrExit
+      .filter(fn (childId: i64) = childId != nodeId);
+    tree.children.store(parentId.getOrExit, parentsChildren);
+  });
+}
 
 // TODO: Implement `addChild` when the child is itself a `Node{T}`
-
-// TODO: Implement `prune` to pull a node out of the tree and re-attach its children to its own
-// parent.
 
 // TODO: Implement `subtree` to create a new tree consisting of the specified node as its root and
 // only its own children as the children of the tree.
 
 fn getOr{T}(n: Node{T}, t: T) = n.tree.vals[n.id] ?? t;
+
+fn getOrExit{T}(n: Node{T}) = n.tree.vals[n.id].getOrExit;
 
 fn Array{T}(t: Tree{T}) = t.vals.map(
   fn (_: T, i: i64) = Node{T}(t, i)!!);

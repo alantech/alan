@@ -1276,6 +1276,26 @@ export fn{Test} main {
         // TODO: Get these tests working
         // test.assert(eq, bayNode.parent!! ?? 'wrong', 'bar');
         // test.assert(eq, myTree.children.map(fn (c: Node{string}) = c ?? 'wrong').join(', '), 'bar, baz');
+    })
+    .it('prune', fn (test: Mut{Testing}) {
+      let myTree = Tree('foo');
+      const barNode = myTree.addChild('bar');
+      const bazNode = barNode.addChild('baz');
+      const bayNode = barNode.addChild('bay');
+
+      barNode.prune;
+
+      test.assert(eq, myTree.rootNode.children.map(fn (c: Node{string}) = c ?? 'wrong').join(', '), '');
+    })
+    .it('delete', fn (test: Mut{Testing}) {
+      let myTree = Tree('foo');
+      const barNode = myTree.addChild('bar');
+      const bazNode = barNode.addChild('baz');
+      const bayNode = barNode.addChild('bay');
+
+      barNode.delete;
+
+      test.assert(eq, myTree.children.map(fn (c: Node{string}) = c!!).join(', '), 'baz, bay');
     });
 
   test.describe('Pack and Unpack')
