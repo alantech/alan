@@ -128,7 +128,7 @@ type Browser = Env{"ALAN_PLATFORM"} == "browser"; // Technically not necessary, 
 
 // Importing the Root Scope backing implementation and supporting 3rd party libraries
 type{Rs} RootBacking = Rust{"alan_std" @ "https://github.com/alantech/alan.git"};
-type{Js} RootBacking = Nodejs{"alan_std" @ "https://github.com/alantech/alan.git#clone-empty-maybe-js"};
+type{Js} RootBacking = Nodejs{"alan_std" @ "https://github.com/alantech/alan.git"};
 
 // Defining derived types
 type void = ();
