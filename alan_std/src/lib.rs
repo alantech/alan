@@ -168,7 +168,9 @@ pub fn parmap_onearg<
                 }
                 for handle in handles {
                     let res = handle.join();
-                    if let Err(e) = res { panic!("{:?}", e) }
+                    if let Err(e) = res {
+                        panic!("{:?}", e)
+                    }
                 }
             } else {
                 // We have more values than CPU cores, so let's divvy this up in batches per core
@@ -199,7 +201,9 @@ pub fn parmap_onearg<
                 }
                 for handle in handles {
                     let res = handle.join();
-                    if let Err(e) = res { panic!("{:?}", e) }
+                    if let Err(e) = res {
+                        panic!("{:?}", e)
+                    }
                 }
             }
             // We need to tweak the len, the values are there but the Vec doesn't know that
@@ -215,18 +219,13 @@ pub fn parmap_onearg<
 /// returning a new vector
 #[inline(always)]
 pub fn filter_onearg<A: std::clone::Clone>(v: &[A], mut f: impl FnMut(&A) -> bool) -> Vec<A> {
-    v.iter()
-        .filter(|val| f(val)).cloned()
-        .collect::<Vec<A>>()
+    v.iter().filter(|val| f(val)).cloned().collect::<Vec<A>>()
 }
 
 /// `filter_twoarg` runs the provided function each element of the vector plus its index,
 /// returning a new vector
 #[inline(always)]
-pub fn filter_twoarg<A: std::clone::Clone>(
-    v: &[A],
-    mut f: impl FnMut(&A, i64) -> bool,
-) -> Vec<A> {
+pub fn filter_twoarg<A: std::clone::Clone>(v: &[A], mut f: impl FnMut(&A, i64) -> bool) -> Vec<A> {
     v.iter()
         .enumerate()
         .filter(|(i, val)| f(val, *i as i64))
@@ -236,10 +235,7 @@ pub fn filter_twoarg<A: std::clone::Clone>(
 
 /// `reduce_sametype` runs the provided function to reduce the vector into a singular value
 #[inline(always)]
-pub fn reduce_sametype<A: std::clone::Clone>(
-    v: &[A],
-    mut f: impl FnMut(&A, &A) -> A,
-) -> Option<A> {
+pub fn reduce_sametype<A: std::clone::Clone>(v: &[A], mut f: impl FnMut(&A, &A) -> A) -> Option<A> {
     // The built-in iter `reduce` is awkward for our use case
     if v.is_empty() {
         None
@@ -780,8 +776,7 @@ pub fn symmetric_differenceset<V: std::clone::Clone + std::hash::Hash + Eq>(
     a: &HashSet<V>,
     b: &HashSet<V>,
 ) -> HashSet<V> {
-    a.symmetric_difference(b).cloned()
-        .collect::<HashSet<V>>()
+    a.symmetric_difference(b).cloned().collect::<HashSet<V>>()
 }
 
 /// `productset` returns the product of the original two sets (a set of tuples of all combinations

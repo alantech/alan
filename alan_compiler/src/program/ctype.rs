@@ -5368,7 +5368,9 @@ pub fn typebaselist_to_ctype(
                 // For the simpler case when it's *just* a reference to a prior variable, it just
                 // becomes a `Type` CType providing an alias for the named type.
                 let mut args = Vec::new();
-                if let Some(val) = &prior_value { args.push(val.clone()) };
+                if let Some(val) = &prior_value {
+                    args.push(val.clone())
+                };
                 prior_value = Some(match scope.resolve_type(var) {
                     Some(t) => {
                         // TODO: Once interfaces are a thing, there needs to be a built-in
