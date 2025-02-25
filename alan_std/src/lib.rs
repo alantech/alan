@@ -47,7 +47,7 @@ impl From<String> for AlanError {
     }
 }
 
-//! String-related functions
+//// String-related functions
 
 /// Converts anything that implements ToString into a string. Needed to convert all errors into
 /// AlanError since it doesn't seem possible to `impl From<dyn std::error::Error>`
@@ -90,7 +90,7 @@ pub fn indexstring(a: &String, b: &String) -> Result<i64, AlanError> {
     })
 }
 
-//! Boolean-related functions
+//// Boolean-related functions
 
 /// `ifbool` executes the true function on true, and the false function on false, returning the
 /// value returned by either function
@@ -103,7 +103,7 @@ pub fn ifbool<T>(c: &bool, mut t: impl FnMut() -> T, mut f: impl FnMut() -> T) -
     }
 }
 
-//! Array-related functions
+//// Array-related functions
 
 /// `getarray` returns a value from an array at the location specified
 #[inline(always)]
@@ -463,7 +463,7 @@ pub fn sortarray<T>(a: &mut Vec<T>, mut sorter: impl FnMut(&T, &T) -> i8) {
     a.sort_by(|a, b| sorter(a, b).cmp(&0));
 }
 
-//! Buffer-related functions
+//// Buffer-related functions
 
 /// `getbuffer` returns the value at the given index presuming it exists
 #[inline(always)]
@@ -672,7 +672,7 @@ pub fn sortbuffer<T, const S: usize>(a: &mut [T; S], mut sorter: impl FnMut(&T, 
     a.sort_by(|a, b| sorter(a, b).cmp(&0));
 }
 
-//! Dictionary-related bindings
+//// Dictionary-related bindings
 
 /// `getdict` returns the value for the given key, if it exists
 #[inline(always)]
@@ -730,7 +730,7 @@ pub fn concatdict<K: std::clone::Clone + std::hash::Hash + Eq, V: std::clone::Cl
     out
 }
 
-//! Set-related bindings
+//// Set-related bindings
 
 /// `arrayset` returns an array of values in the set
 #[inline(always)]
@@ -795,7 +795,7 @@ pub fn productset<V: std::clone::Clone + std::hash::Hash + Eq>(
     out
 }
 
-//! Vector-related functions
+//// Vector-related functions
 
 pub fn cross_f32(a: &[f32; 3], b: &[f32; 3]) -> [f32; 3] {
     [
@@ -813,7 +813,7 @@ pub fn cross_f64(a: &[f64; 3], b: &[f64; 3]) -> [f64; 3] {
     ]
 }
 
-//! GPU-related functions and types
+//// GPU-related functions and types
 
 pub struct GPU {
     pub adapter: wgpu::Adapter,
