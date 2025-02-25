@@ -1752,18 +1752,21 @@ fn delete{T}(n: Node{T}) {
   // TODO: Actually drop the node value after the tree has too many dead values.
   let nodeId = n.id;
   let parentId = n.tree.parents[n.id].getOrExit;
-  let children = n.children;
+  let childrenIds = n.children.map(fn (childNode: Node{T}) = childNode.id);
+  childrenIds.print;
   // First, update the children to point at their grandparent
-  children.map(fn (childNode: Node{T}) {
-    n.tree.parents.store(childNode.id, parentId.clone);
+  childrenIds.map(fn (childId: i64) {
+    n.tree.parents.store(childId, parentId.clone);
   });
   // Next, update the current node's parent to no longer count the node as a child, assuming there
-  // is a parent
+  // is a parent, and attach the children
   if(parentId.exists, fn {
     let parentsChildren = n.tree
       .children[parentId.getOrExit]
       .getOrExit
       .filter(fn (childId: i64) = childId != nodeId);
+    parentsChildren.append(childrenIds);
+    parentsChildren.print;
     n.tree.children.store(parentId.getOrExit, parentsChildren);
   });
 }
