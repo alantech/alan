@@ -8,6 +8,7 @@ use crate::lntojs::typen;
 use crate::parse::{booln, integer, real};
 use crate::program::{ArgKind, CType, FnKind, Function, Microstatement, Program, Scope};
 
+#[allow(clippy::type_complexity)]
 pub fn from_microstatement(
     microstatement: &Microstatement,
     scope: &Scope,
@@ -1397,6 +1398,7 @@ pub fn from_microstatement(
     }
 }
 
+#[allow(clippy::type_complexity)]
 pub fn generate(
     jsname: String,
     function: &Function,

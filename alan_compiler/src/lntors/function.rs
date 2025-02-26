@@ -7,6 +7,7 @@ use ordered_hash_map::OrderedHashMap;
 use crate::lntors::typen;
 use crate::program::{ArgKind, CType, FnKind, Function, Microstatement, Program, Scope};
 
+#[allow(clippy::type_complexity)]
 pub fn from_microstatement(
     microstatement: &Microstatement,
     parent_fn: &Function,
@@ -845,14 +846,12 @@ pub fn from_microstatement(
                                                         let (okrustname, d) =
                                                             typen::ctype_to_rtype(
                                                                 ts[0].clone(),
-                                                                true,
                                                                 deps,
                                                             )?;
                                                         deps = d;
                                                         let (errrustname, d) =
                                                             typen::ctype_to_rtype(
                                                                 ts[1].clone(),
-                                                                true,
                                                                 deps,
                                                             )?;
                                                         deps = d;
@@ -967,14 +966,12 @@ pub fn from_microstatement(
                                                         let (okrustname, d) =
                                                             typen::ctype_to_rtype(
                                                                 ts[0].clone(),
-                                                                true,
                                                                 deps,
                                                             )?;
                                                         deps = d;
                                                         let (errrustname, d) =
                                                             typen::ctype_to_rtype(
                                                                 ts[1].clone(),
-                                                                true,
                                                                 deps,
                                                             )?;
                                                         deps = d;
@@ -1159,14 +1156,12 @@ pub fn from_microstatement(
                                                         let (okrustname, d) =
                                                             typen::ctype_to_rtype(
                                                                 ts[0].clone(),
-                                                                true,
                                                                 deps,
                                                             )?;
                                                         deps = d;
                                                         let (errrustname, d) =
                                                             typen::ctype_to_rtype(
                                                                 ts[1].clone(),
-                                                                true,
                                                                 deps,
                                                             )?;
                                                         deps = d;
@@ -1247,14 +1242,12 @@ pub fn from_microstatement(
                                                         let (okrustname, d) =
                                                             typen::ctype_to_rtype(
                                                                 ts[0].clone(),
-                                                                true,
                                                                 deps,
                                                             )?;
                                                         deps = d;
                                                         let (errrustname, d) =
                                                             typen::ctype_to_rtype(
                                                                 ts[1].clone(),
-                                                                true,
                                                                 deps,
                                                             )?;
                                                         deps = d;
@@ -1340,14 +1333,12 @@ pub fn from_microstatement(
                                                             let (okrustname, d) =
                                                                 typen::ctype_to_rtype(
                                                                     ts[0].clone(),
-                                                                    true,
                                                                     deps,
                                                                 )?;
                                                             deps = d;
                                                             let (errrustname, d) =
                                                                 typen::ctype_to_rtype(
                                                                     ts[1].clone(),
-                                                                    true,
                                                                     deps,
                                                                 )?;
                                                             deps = d;
@@ -1468,14 +1459,12 @@ pub fn from_microstatement(
                                                                 let (okrustname, d) =
                                                                     typen::ctype_to_rtype(
                                                                         ts[0].clone(),
-                                                                        true,
                                                                         deps,
                                                                     )?;
                                                                 deps = d;
                                                                 let (errrustname, d) =
                                                                     typen::ctype_to_rtype(
                                                                         ts[1].clone(),
-                                                                        true,
                                                                         deps,
                                                                     )?;
                                                                 deps = d;
@@ -1560,14 +1549,12 @@ pub fn from_microstatement(
                                                         let (okrustname, d) =
                                                             typen::ctype_to_rtype(
                                                                 ts[0].clone(),
-                                                                true,
                                                                 deps,
                                                             )?;
                                                         deps = d;
                                                         let (errrustname, d) =
                                                             typen::ctype_to_rtype(
                                                                 ts[1].clone(),
-                                                                true,
                                                                 deps,
                                                             )?;
                                                         deps = d;
@@ -1764,6 +1751,7 @@ pub fn from_microstatement(
     }
 }
 
+#[allow(clippy::type_complexity)]
 pub fn generate(
     rustname: String,
     function: &Function,

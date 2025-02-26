@@ -8,8 +8,8 @@ use nom::{
     IResult, Parser,
 };
 
-/// Macros to make building nom functions nicer (for me). For now they always make everything
-/// public for easier usage of this file. Also `#[derive(Debug)]` is added to all structs and enums
+// Macros to make building nom functions nicer (for me). For now they always make everything
+// public for easier usage of this file. Also `#[derive(Debug)]` is added to all structs and enums
 
 /// The `build` macro provides the function wrapper and naming for the function in question
 macro_rules! build {
@@ -132,6 +132,7 @@ macro_rules! named_and {
 /// surprised that I can't find something like this in `nom` already?
 macro_rules! named_or {
   ( $fn_name:ident: $enum_name:ident => $( $option_name:ident: $option_type:ty as $rule:expr ),+ $(,)? ) => {
+    #[allow(clippy::large_enum_variant)]
     #[derive(Debug, PartialEq, Clone)]
     pub enum $enum_name {
       $($option_name($option_type),)+

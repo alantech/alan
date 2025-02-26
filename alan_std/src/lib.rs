@@ -57,7 +57,7 @@ pub fn stringify<T: std::string::ToString>(v: T) -> String {
 
 /// `splitstring` creates a vector of strings split by the specified separator string
 #[inline(always)]
-pub fn splitstring(a: &String, b: &String) -> Vec<String> {
+pub fn splitstring(a: &str, b: &str) -> Vec<String> {
     // For now, special handling if the split string is an empty string to make it behave as
     // expected as creating a character array
     if b.is_empty() {
@@ -69,7 +69,7 @@ pub fn splitstring(a: &String, b: &String) -> Vec<String> {
 
 /// `getstring` returns the character at the specified index (TODO: What is a "character" in Alan?)
 #[inline(always)]
-pub fn getstring(a: &String, i: &i64) -> Result<String, AlanError> {
+pub fn getstring(a: &str, i: &i64) -> Result<String, AlanError> {
     a.chars()
         .nth(*i as usize)
         .map(String::from)
@@ -243,8 +243,8 @@ pub fn reduce_sametype<A: std::clone::Clone>(v: &[A], mut f: impl FnMut(&A, &A) 
         Some(v[0].clone())
     } else {
         let mut out = v[0].clone();
-        for i in 1..v.len() {
-            out = f(&out, &v[i]);
+        for val in v.iter().skip(1) {
+            out = f(&out, val);
         }
         Some(out)
     }
@@ -263,8 +263,8 @@ pub fn reduce_sametype_idx<A: std::clone::Clone>(
         Some(v[0].clone())
     } else {
         let mut out = v[0].clone();
-        for i in 1..v.len() {
-            out = f(&out, &v[i], &(i as i64));
+        for (i, val) in v.iter().enumerate().skip(1) {
+            out = f(&out, val, &(i as i64));
         }
         Some(out)
     }
@@ -279,8 +279,8 @@ pub fn reduce_difftype<A: std::clone::Clone, B: std::clone::Clone>(
     mut f: impl FnMut(&B, &A) -> B,
 ) -> B {
     let mut out = i.clone();
-    for i in 0..v.len() {
-        out = f(&out, &v[i]);
+    for val in v {
+        out = f(&out, val);
     }
     out
 }
@@ -294,8 +294,8 @@ pub fn reduce_difftype_idx<A: std::clone::Clone, B: std::clone::Clone>(
     mut f: impl FnMut(&B, &A, &i64) -> B,
 ) -> B {
     let mut out = i.clone();
-    for i in 0..v.len() {
-        out = f(&out, &v[i], &(i as i64));
+    for (i, val) in v.iter().enumerate() {
+        out = f(&out, val, &(i as i64));
     }
     out
 }
@@ -304,11 +304,11 @@ pub fn reduce_difftype_idx<A: std::clone::Clone, B: std::clone::Clone>(
 #[inline(always)]
 pub fn concat<A: std::clone::Clone>(a: &[A], b: &[A]) -> Vec<A> {
     let mut out = Vec::new();
-    for i in 0..a.len() {
-        out.push(a[i].clone());
+    for v in a {
+        out.push(v.clone());
     }
-    for i in 0..b.len() {
-        out.push(b[i].clone());
+    for v in b {
+        out.push(v.clone());
     }
     out
 }
@@ -316,8 +316,8 @@ pub fn concat<A: std::clone::Clone>(a: &[A], b: &[A]) -> Vec<A> {
 /// `append` mutates the first vector copying the second vector into it
 #[inline(always)]
 pub fn append<A: std::clone::Clone>(a: &mut Vec<A>, b: &[A]) {
-    for i in 0..b.len() {
-        a.push(b[i].clone());
+    for v in b {
+        a.push(v.clone());
     }
 }
 
@@ -412,7 +412,7 @@ pub fn deletearray<T: std::clone::Clone>(a: &mut Vec<T>, i: &i64) -> Result<T, A
 /// `swaparray` swaps the values at the specified indicies (or fails if either index is out of
 /// bounds). It returns a Fallible void value.
 #[inline(always)]
-pub fn swaparray<T>(a: &mut Vec<T>, i: &i64, j: &i64) -> Result<(), AlanError> {
+pub fn swaparray<T>(a: &mut [T], i: &i64, j: &i64) -> Result<(), AlanError> {
     if *i < 0 {
         return Err(format!(
             "Provided array index {} is beyond the bounds of the array",
@@ -459,7 +459,7 @@ pub fn swaparray<T>(a: &mut Vec<T>, i: &i64, j: &i64) -> Result<(), AlanError> {
 /// `sortarray` is a thin wrapper around `sort_by` allowing for the sort decision to be done by
 /// numeric operation rather than the `Ordering` enum, which is not exposed
 #[inline(always)]
-pub fn sortarray<T>(a: &mut Vec<T>, mut sorter: impl FnMut(&T, &T) -> i8) {
+pub fn sortarray<T>(a: &mut [T], mut sorter: impl FnMut(&T, &T) -> i8) {
     a.sort_by(|a, b| sorter(a, b).cmp(&0));
 }
 
@@ -506,8 +506,8 @@ pub fn reducebuffer_sametype<A: std::clone::Clone, const S: usize>(
         Some(b[0].clone())
     } else {
         let mut out = b[0].clone();
-        for i in 1..b.len() {
-            out = f(&out, &b[i]);
+        for v in b.iter().skip(1) {
+            out = f(&out, v);
         }
         Some(out)
     }
@@ -522,8 +522,8 @@ pub fn reducebuffer_difftype<A: std::clone::Clone, const S: usize, B: std::clone
     mut f: impl FnMut(&B, &A) -> B,
 ) -> B {
     let mut out = i.clone();
-    for i in 0..b.len() {
-        out = f(&out, &b[i]);
+    for v in b {
+        out = f(&out, v);
     }
     out
 }
@@ -913,8 +913,7 @@ pub fn create_buffer_init<T>(
     element_size: &i8,
 ) -> Result<GBuffer, AlanError> {
     let g = gpu();
-    let val_slice = &vals[..];
-    let val_ptr = val_slice.as_ptr();
+    let val_ptr = vals.as_ptr();
     let val_u8_len = vals.len() * (*element_size as usize);
     let limits = g.device.limits();
     if limits.max_buffer_size < val_u8_len as u64 {
@@ -1042,6 +1041,7 @@ pub fn gpu_run(gg: &mut GPGPU) {
             let bind_group_layout = compute_pipeline.get_bind_group_layout(i.try_into().unwrap());
             let bind_group_buffers = &gg.buffers[i];
             let mut bind_group_entries = Vec::new();
+            #[allow(clippy::needless_range_loop)] // Not needless clippy
             for j in 0..bind_group_buffers.len() {
                 bind_group_entries.push(wgpu::BindGroupEntry {
                     binding: j.try_into().unwrap(),
@@ -1055,6 +1055,7 @@ pub fn gpu_run(gg: &mut GPGPU) {
             });
             bind_groups.push(bind_group);
         }
+        #[allow(clippy::needless_range_loop)] // Not needless clippy
         for i in 0..gg.buffers.len() {
             // The Rust borrow checker is forcing my hand here
             cpass.set_bind_group(i.try_into().unwrap(), &bind_groups[i], &[]);
@@ -1106,6 +1107,7 @@ pub fn gpu_run_list(ggs: &mut Vec<GPGPU>) {
                     compute_pipeline.get_bind_group_layout(i.try_into().unwrap());
                 let bind_group_buffers = &gg.buffers[i];
                 let mut bind_group_entries = Vec::new();
+                #[allow(clippy::needless_range_loop)] // Not needless clippy
                 for j in 0..bind_group_buffers.len() {
                     bind_group_entries.push(wgpu::BindGroupEntry {
                         binding: j.try_into().unwrap(),
@@ -1119,6 +1121,7 @@ pub fn gpu_run_list(ggs: &mut Vec<GPGPU>) {
                 });
                 bind_groups.push(bind_group);
             }
+            #[allow(clippy::needless_range_loop)] // Not needless clippy
             for i in 0..gg.buffers.len() {
                 // The Rust borrow checker is forcing my hand here
                 cpass.set_bind_group(i.try_into().unwrap(), &bind_groups[i], &[]);

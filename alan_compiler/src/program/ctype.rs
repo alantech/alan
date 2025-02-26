@@ -4421,6 +4421,7 @@ impl CType {
             _ => CType::fail("Fail passed a type that does not resolve into a message string"),
         }
     }
+    #[allow(clippy::should_implement_trait)]
     pub fn neg(t: Arc<CType>) -> Arc<CType> {
         match &*t {
             CType::Int(v) => Arc::new(CType::Int(-v)),
@@ -4587,6 +4588,7 @@ impl CType {
         Program::return_program(program);
         Arc::new(out)
     }
+    #[allow(clippy::should_implement_trait)]
     pub fn not(b: Arc<CType>) -> Arc<CType> {
         Arc::new(match &*b {
             CType::Bool(b) => CType::Bool(!*b),
@@ -4625,6 +4627,7 @@ impl CType {
             ),
         })
     }
+    #[allow(clippy::should_implement_trait)]
     pub fn add(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
         Arc::new(match (&*a, &*b) {
             (&CType::Int(a), &CType::Int(b)) => CType::Int(a + b),
@@ -4640,6 +4643,7 @@ impl CType {
             ),
         })
     }
+    #[allow(clippy::should_implement_trait)]
     pub fn sub(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
         Arc::new(match (&*a, &*b) {
             (&CType::Int(a), &CType::Int(b)) => CType::Int(a - b),
@@ -4655,6 +4659,7 @@ impl CType {
             ),
         })
     }
+    #[allow(clippy::should_implement_trait)]
     pub fn mul(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
         Arc::new(match (&*a, &*b) {
             (&CType::Int(a), &CType::Int(b)) => CType::Int(a * b),
@@ -4670,6 +4675,7 @@ impl CType {
             ),
         })
     }
+    #[allow(clippy::should_implement_trait)]
     pub fn div(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
         Arc::new(match (&*a, &*b) {
             (&CType::Int(a), &CType::Int(b)) => CType::Int(a / b),
