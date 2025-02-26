@@ -47,7 +47,7 @@ impl From<String> for AlanError {
     }
 }
 
-/// String-related functions
+// String-related functions
 
 /// Converts anything that implements ToString into a string. Needed to convert all errors into
 /// AlanError since it doesn't seem possible to `impl From<dyn std::error::Error>`
@@ -72,7 +72,7 @@ pub fn splitstring(a: &String, b: &String) -> Vec<String> {
 pub fn getstring(a: &String, i: &i64) -> Result<String, AlanError> {
     a.chars()
         .nth(*i as usize)
-        .map(|c| String::from(c))
+        .map(String::from)
         .ok_or(AlanError {
             message: format!(
                 "Index {} is out-of-bounds for a string length of {}",
@@ -90,7 +90,7 @@ pub fn indexstring(a: &String, b: &String) -> Result<i64, AlanError> {
     })
 }
 
-/// Boolean-related functions
+// Boolean-related functions
 
 /// `ifbool` executes the true function on true, and the false function on false, returning the
 /// value returned by either function
@@ -103,11 +103,11 @@ pub fn ifbool<T>(c: &bool, mut t: impl FnMut() -> T, mut f: impl FnMut() -> T) -
     }
 }
 
-/// Array-related functions
+// Array-related functions
 
 /// `getarray` returns a value from an array at the location specified
 #[inline(always)]
-pub fn getarray<T: Clone>(a: &Vec<T>, i: &i64) -> Option<T> {
+pub fn getarray<T: Clone>(a: &[T], i: &i64) -> Option<T> {
     a.get(*i as usize).cloned()
 }
 
@@ -120,14 +120,14 @@ pub fn filled<V: std::clone::Clone>(i: &V, l: &i64) -> Vec<V> {
 /// `map_onearg` runs the provided single-argument function on each element of the vector,
 /// returning a new vector
 #[inline(always)]
-pub fn map_onearg<A, B>(v: &Vec<A>, mut m: impl FnMut(&A) -> B) -> Vec<B> {
-    v.iter().map(|val| m(val)).collect::<Vec<B>>()
+pub fn map_onearg<A, B>(v: &[A], m: impl FnMut(&A) -> B) -> Vec<B> {
+    v.iter().map(m).collect::<Vec<B>>()
 }
 
 /// `map_twoarg` runs the provided two-argument (value, index) function on each element of the
 /// vector, returning a new vector
 #[inline(always)]
-pub fn map_twoarg<A, B>(v: &Vec<A>, mut m: impl FnMut(&A, i64) -> B) -> Vec<B> {
+pub fn map_twoarg<A, B>(v: &[A], mut m: impl FnMut(&A, i64) -> B) -> Vec<B> {
     v.iter()
         .enumerate()
         .map(|(i, val)| m(val, i as i64))
@@ -140,7 +140,7 @@ pub fn parmap_onearg<
     A: std::marker::Sync + 'static,
     B: std::marker::Send + std::clone::Clone + 'static,
 >(
-    v: &Vec<A>,
+    v: &[A],
     m: fn(&A) -> B,
 ) -> Vec<B> {
     let par = std::thread::available_parallelism();
@@ -161,16 +161,15 @@ pub fn parmap_onearg<
                     let v_ptr = v.as_ptr() as usize;
                     let o_ptr = out.as_ptr() as usize;
                     handles.push(std::thread::spawn(move || unsafe {
-                        let val = (v_ptr as *const A).offset(i as isize).as_ref().unwrap();
-                        let out = (o_ptr as *mut B).offset(i as isize);
+                        let val = (v_ptr as *const A).add(i).as_ref().unwrap();
+                        let out = (o_ptr as *mut B).add(i);
                         out.write(m(val));
                     }));
                 }
                 for handle in handles {
                     let res = handle.join();
-                    match res {
-                        Err(e) => panic!("{:?}", e),
-                        Ok(_) => {}
+                    if let Err(e) = res {
+                        panic!("{:?}", e)
                     }
                 }
             } else {
@@ -202,9 +201,8 @@ pub fn parmap_onearg<
                 }
                 for handle in handles {
                     let res = handle.join();
-                    match res {
-                        Err(e) => panic!("{:?}", e),
-                        Ok(_) => {}
+                    if let Err(e) = res {
+                        panic!("{:?}", e)
                     }
                 }
             }
@@ -220,20 +218,14 @@ pub fn parmap_onearg<
 /// `filter_onearg` runs the provided single-argument function on each element of the vector,
 /// returning a new vector
 #[inline(always)]
-pub fn filter_onearg<A: std::clone::Clone>(v: &Vec<A>, mut f: impl FnMut(&A) -> bool) -> Vec<A> {
-    v.iter()
-        .filter(|val| f(val))
-        .map(|val| val.clone())
-        .collect::<Vec<A>>()
+pub fn filter_onearg<A: std::clone::Clone>(v: &[A], mut f: impl FnMut(&A) -> bool) -> Vec<A> {
+    v.iter().filter(|val| f(val)).cloned().collect::<Vec<A>>()
 }
 
 /// `filter_twoarg` runs the provided function each element of the vector plus its index,
 /// returning a new vector
 #[inline(always)]
-pub fn filter_twoarg<A: std::clone::Clone>(
-    v: &Vec<A>,
-    mut f: impl FnMut(&A, i64) -> bool,
-) -> Vec<A> {
+pub fn filter_twoarg<A: std::clone::Clone>(v: &[A], mut f: impl FnMut(&A, i64) -> bool) -> Vec<A> {
     v.iter()
         .enumerate()
         .filter(|(i, val)| f(val, *i as i64))
@@ -243,12 +235,9 @@ pub fn filter_twoarg<A: std::clone::Clone>(
 
 /// `reduce_sametype` runs the provided function to reduce the vector into a singular value
 #[inline(always)]
-pub fn reduce_sametype<A: std::clone::Clone>(
-    v: &Vec<A>,
-    mut f: impl FnMut(&A, &A) -> A,
-) -> Option<A> {
+pub fn reduce_sametype<A: std::clone::Clone>(v: &[A], mut f: impl FnMut(&A, &A) -> A) -> Option<A> {
     // The built-in iter `reduce` is awkward for our use case
-    if v.len() == 0 {
+    if v.is_empty() {
         None
     } else if v.len() == 1 {
         Some(v[0].clone())
@@ -264,11 +253,11 @@ pub fn reduce_sametype<A: std::clone::Clone>(
 /// `reduce_sametype_idx` runs the provided function to reduce the vector into a singular value
 #[inline(always)]
 pub fn reduce_sametype_idx<A: std::clone::Clone>(
-    v: &Vec<A>,
+    v: &[A],
     mut f: impl FnMut(&A, &A, &i64) -> A,
 ) -> Option<A> {
     // The built-in iter `reduce` is awkward for our use case
-    if v.len() == 0 {
+    if v.is_empty() {
         None
     } else if v.len() == 1 {
         Some(v[0].clone())
@@ -285,7 +274,7 @@ pub fn reduce_sametype_idx<A: std::clone::Clone>(
 /// singular value. Because an initial value is provided, it always returns at least that value
 #[inline(always)]
 pub fn reduce_difftype<A: std::clone::Clone, B: std::clone::Clone>(
-    v: &Vec<A>,
+    v: &[A],
     i: &B,
     mut f: impl FnMut(&B, &A) -> B,
 ) -> B {
@@ -300,7 +289,7 @@ pub fn reduce_difftype<A: std::clone::Clone, B: std::clone::Clone>(
 /// singular value. Because an initial value is provided, it always returns at least that value
 #[inline(always)]
 pub fn reduce_difftype_idx<A: std::clone::Clone, B: std::clone::Clone>(
-    v: &Vec<A>,
+    v: &[A],
     i: &B,
     mut f: impl FnMut(&B, &A, &i64) -> B,
 ) -> B {
@@ -313,7 +302,7 @@ pub fn reduce_difftype_idx<A: std::clone::Clone, B: std::clone::Clone>(
 
 /// `concat` returns a new vector combining the two vectors provided
 #[inline(always)]
-pub fn concat<A: std::clone::Clone>(a: &Vec<A>, b: &Vec<A>) -> Vec<A> {
+pub fn concat<A: std::clone::Clone>(a: &[A], b: &[A]) -> Vec<A> {
     let mut out = Vec::new();
     for i in 0..a.len() {
         out.push(a[i].clone());
@@ -326,7 +315,7 @@ pub fn concat<A: std::clone::Clone>(a: &Vec<A>, b: &Vec<A>) -> Vec<A> {
 
 /// `append` mutates the first vector copying the second vector into it
 #[inline(always)]
-pub fn append<A: std::clone::Clone>(a: &mut Vec<A>, b: &Vec<A>) {
+pub fn append<A: std::clone::Clone>(a: &mut Vec<A>, b: &[A]) {
     for i in 0..b.len() {
         a.push(b[i].clone());
     }
@@ -334,51 +323,51 @@ pub fn append<A: std::clone::Clone>(a: &mut Vec<A>, b: &Vec<A>) {
 
 /// `hasfnarray` returns true if the check function returns true for any element of the vector
 #[inline(always)]
-pub fn hasfnarray<T>(a: &Vec<T>, mut f: impl FnMut(&T) -> bool) -> bool {
+pub fn hasfnarray<T>(a: &[T], mut f: impl FnMut(&T) -> bool) -> bool {
     for v in a {
         if f(v) {
             return true;
         }
     }
-    return false;
+    false
 }
 
 /// `findarray` returns the first value from the vector that matches the check function, if any
 #[inline(always)]
-pub fn findarray<T: std::clone::Clone>(a: &Vec<T>, mut f: impl FnMut(&T) -> bool) -> Option<T> {
+pub fn findarray<T: std::clone::Clone>(a: &[T], mut f: impl FnMut(&T) -> bool) -> Option<T> {
     for v in a {
         if f(v) {
             return Some(v.clone());
         }
     }
-    return None;
+    None
 }
 
 /// `everyarray` returns true if every value in the vector matches the check function
 #[inline(always)]
-pub fn everyarray<T>(a: &Vec<T>, mut f: impl FnMut(&T) -> bool) -> bool {
+pub fn everyarray<T>(a: &[T], mut f: impl FnMut(&T) -> bool) -> bool {
     for v in a {
         if !f(v) {
             return false;
         }
     }
-    return true;
+    true
 }
 
 /// `somearray` returns true if any value in the vector matches the check function
 #[inline(always)]
-pub fn somearray<T>(a: &Vec<T>, mut f: impl FnMut(&T) -> bool) -> bool {
+pub fn somearray<T>(a: &[T], mut f: impl FnMut(&T) -> bool) -> bool {
     for v in a {
         if f(v) {
             return true;
         }
     }
-    return false;
+    false
 }
 
 /// `repeatarray` returns a new array with the original array repeated N times
 #[inline(always)]
-pub fn repeatarray<T: std::clone::Clone>(a: &Vec<T>, c: &i64) -> Vec<T> {
+pub fn repeatarray<T: std::clone::Clone>(a: &[T], c: &i64) -> Vec<T> {
     let mut out = Vec::new();
     for _ in 0..*c {
         for v in a {
@@ -474,7 +463,7 @@ pub fn sortarray<T>(a: &mut Vec<T>, mut sorter: impl FnMut(&T, &T) -> i8) {
     a.sort_by(|a, b| sorter(a, b).cmp(&0));
 }
 
-/// Buffer-related functions
+// Buffer-related functions
 
 /// `getbuffer` returns the value at the given index presuming it exists
 #[inline(always)]
@@ -511,7 +500,7 @@ pub fn reducebuffer_sametype<A: std::clone::Clone, const S: usize>(
     mut f: impl FnMut(&A, &A) -> A,
 ) -> Option<A> {
     // The built-in iter `reduce` is awkward for our use case
-    if b.len() == 0 {
+    if b.is_empty() {
         None
     } else if b.len() == 1 {
         Some(b[0].clone())
@@ -547,7 +536,7 @@ pub fn hasbuffer<T: std::cmp::PartialEq, const S: usize>(a: &[T; S], v: &T) -> b
             return true;
         }
     }
-    return false;
+    false
 }
 
 /// `hasfnbuffer` returns true if the check function returns true for any element of the array
@@ -558,7 +547,7 @@ pub fn hasfnbuffer<T, const S: usize>(a: &[T; S], mut f: impl FnMut(&T) -> bool)
             return true;
         }
     }
-    return false;
+    false
 }
 
 /// `findbuffer` returns the first value from the buffer that matches the check function, if any
@@ -572,7 +561,7 @@ pub fn findbuffer<T: std::clone::Clone, const S: usize>(
             return Some(v.clone());
         }
     }
-    return None;
+    None
 }
 
 /// `everybuffer` returns true if every value in the array matches the check function
@@ -583,7 +572,7 @@ pub fn everybuffer<T, const S: usize>(a: &[T; S], mut f: impl FnMut(&T) -> bool)
             return false;
         }
     }
-    return true;
+    true
 }
 
 /// `concatbuffer` mutates the first buffer given with the values of the other two. It depends on
@@ -683,7 +672,7 @@ pub fn sortbuffer<T, const S: usize>(a: &mut [T; S], mut sorter: impl FnMut(&T, 
     a.sort_by(|a, b| sorter(a, b).cmp(&0));
 }
 
-/// Dictionary-related bindings
+// Dictionary-related bindings
 
 /// `getdict` returns the value for the given key, if it exists
 #[inline(always)]
@@ -697,13 +686,13 @@ pub fn getdict<K: std::hash::Hash + Eq, V: std::clone::Clone>(
 /// `keysdict` returns an array of keys from the dictionary
 #[inline(always)]
 pub fn keysdict<K: std::clone::Clone, V>(d: &OrderedHashMap<K, V>) -> Vec<K> {
-    d.keys().map(|k| k.clone()).collect::<Vec<K>>()
+    d.keys().cloned().collect::<Vec<K>>()
 }
 
 /// `valsdict` returns an array of values from the dictionary
 #[inline(always)]
 pub fn valsdict<K, V: std::clone::Clone>(d: &OrderedHashMap<K, V>) -> Vec<V> {
-    d.values().map(|v| v.clone()).collect::<Vec<V>>()
+    d.values().cloned().collect::<Vec<V>>()
 }
 
 /// `arraydict` returns an array of key-value tuples representing the dictionary
@@ -741,12 +730,12 @@ pub fn concatdict<K: std::clone::Clone + std::hash::Hash + Eq, V: std::clone::Cl
     out
 }
 
-/// Set-related bindings
+// Set-related bindings
 
 /// `arrayset` returns an array of values in the set
 #[inline(always)]
 pub fn arrayset<V: std::clone::Clone>(s: &HashSet<V>) -> Vec<V> {
-    s.iter().map(|v| v.clone()).collect::<Vec<V>>()
+    s.iter().cloned().collect::<Vec<V>>()
 }
 
 /// `unionset` returns a new set that is the union of the original two sets
@@ -759,7 +748,7 @@ pub fn unionset<V: std::clone::Clone + std::hash::Hash + Eq>(
     // is much more efficient in certain circumstances, but it doesn't appear to implement all of
     // the functions of a `HashSet`, so I am only using it internally to generate a new `HashSet`
     // that I can be sure is usable everywhere.
-    a.union(b).map(|v| v.clone()).collect::<HashSet<V>>()
+    a.union(b).cloned().collect::<HashSet<V>>()
 }
 
 /// `intersectset` returns a new set that is the intersection of the original two sets
@@ -768,7 +757,7 @@ pub fn intersectset<V: std::clone::Clone + std::hash::Hash + Eq>(
     a: &HashSet<V>,
     b: &HashSet<V>,
 ) -> HashSet<V> {
-    a.intersection(b).map(|v| v.clone()).collect::<HashSet<V>>()
+    a.intersection(b).cloned().collect::<HashSet<V>>()
 }
 
 /// `differenceset` returns the difference of the original two sets (values in A not in B)
@@ -777,7 +766,7 @@ pub fn differenceset<V: std::clone::Clone + std::hash::Hash + Eq>(
     a: &HashSet<V>,
     b: &HashSet<V>,
 ) -> HashSet<V> {
-    a.difference(b).map(|v| v.clone()).collect::<HashSet<V>>()
+    a.difference(b).cloned().collect::<HashSet<V>>()
 }
 
 /// `symmetric_differenceset` returns the symmetric difference of the original two sets (values in
@@ -787,9 +776,7 @@ pub fn symmetric_differenceset<V: std::clone::Clone + std::hash::Hash + Eq>(
     a: &HashSet<V>,
     b: &HashSet<V>,
 ) -> HashSet<V> {
-    a.symmetric_difference(b)
-        .map(|v| v.clone())
-        .collect::<HashSet<V>>()
+    a.symmetric_difference(b).cloned().collect::<HashSet<V>>()
 }
 
 /// `productset` returns the product of the original two sets (a set of tuples of all combinations
@@ -808,7 +795,7 @@ pub fn productset<V: std::clone::Clone + std::hash::Hash + Eq>(
     out
 }
 
-/// Vector-related functions
+// Vector-related functions
 
 pub fn cross_f32(a: &[f32; 3], b: &[f32; 3]) -> [f32; 3] {
     [
@@ -826,7 +813,7 @@ pub fn cross_f64(a: &[f64; 3], b: &[f64; 3]) -> [f64; 3] {
     ]
 }
 
-/// GPU-related functions and types
+// GPU-related functions and types
 
 pub struct GPU {
     pub adapter: wgpu::Adapter,
@@ -878,7 +865,7 @@ impl GPU {
 static GPUS: OnceLock<Vec<GPU>> = OnceLock::new();
 
 fn gpu() -> &'static GPU {
-    match GPUS.get_or_init(|| GPU::init(GPU::list())).get(0) {
+    match GPUS.get_or_init(|| GPU::init(GPU::list())).first() {
         Some(g) => g,
         None => panic!(
             "This program requires a GPU but there are no WebGPU-compliant GPUs on this machine"
@@ -922,7 +909,7 @@ impl DerefMut for GBuffer {
 
 pub fn create_buffer_init<T>(
     usage: &wgpu::BufferUsages,
-    vals: &Vec<T>,
+    vals: &[T],
     element_size: &i8,
 ) -> Result<GBuffer, AlanError> {
     let g = gpu();
@@ -1175,7 +1162,7 @@ pub fn read_buffer<T: std::clone::Clone>(b: &GBuffer) -> Vec<T> {
 }
 
 #[allow(clippy::ptr_arg)]
-pub fn replace_buffer<T>(b: &GBuffer, v: &Vec<T>) -> Result<(), AlanError> {
+pub fn replace_buffer<T>(b: &GBuffer, v: &[T]) -> Result<(), AlanError> {
     if v.len() as i64 != bufferlen(b) {
         Err("The input array is not the same size as the buffer".into())
     } else {
@@ -1318,7 +1305,7 @@ where
                 pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
                     power_preference: wgpu::PowerPreference::default(), // TODO: Configure this
                     force_fallback_adapter: false,
-                    compatible_surface: Some(&surface),
+                    compatible_surface: Some(surface),
                 }))
                 .unwrap(),
             );
