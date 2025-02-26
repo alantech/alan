@@ -129,7 +129,7 @@ edition = "2021"
         match create_dir_all(project_dir.clone()) {
             Ok(a) => Ok(a),
             Err(e) => {
-                lockfile.unlock()?;
+                fs2::FileExt::unlock(&lockfile)?;
                 Err(e)
             }
         }?;
@@ -141,7 +141,7 @@ edition = "2021"
         match create_dir_all(src_path.clone()) {
             Ok(a) => Ok(a),
             Err(e) => {
-                lockfile.unlock()?;
+                fs2::FileExt::unlock(&lockfile)?;
                 Err(e)
             }
         }?;
@@ -154,14 +154,14 @@ edition = "2021"
         match write(hello_path.clone(), hello_ln) {
             Ok(a) => Ok(a),
             Err(e) => {
-                lockfile.unlock()?;
+                fs2::FileExt::unlock(&lockfile)?;
                 Err(e)
             }
         }?;
         let (rs_str, deps) = match lntors(hello_path.to_string_lossy().to_string()) {
             Ok(a) => Ok(a),
             Err(e) => {
-                lockfile.unlock()?;
+                fs2::FileExt::unlock(&lockfile)?;
                 Err(e)
             }
         }?;
@@ -194,7 +194,7 @@ edition = "2021"
         ) {
             Ok(a) => Ok(a),
             Err(e) => {
-                lockfile.unlock()?;
+                fs2::FileExt::unlock(&lockfile)?;
                 Err(e)
             }
         }?;
@@ -206,14 +206,14 @@ edition = "2021"
         match write(main_path, rs_str) {
             Ok(a) => Ok(a),
             Err(e) => {
-                lockfile.unlock()?;
+                fs2::FileExt::unlock(&lockfile)?;
                 Err(e)
             }
         }?;
         match remove_file(hello_path) {
             Ok(a) => Ok(a),
             Err(e) => {
-                lockfile.unlock()?;
+                fs2::FileExt::unlock(&lockfile)?;
                 Err(e)
             }
         }?;
@@ -227,7 +227,7 @@ edition = "2021"
         {
             Ok(a) => Ok(a),
             Err(e) => {
-                lockfile.unlock()?;
+                fs2::FileExt::unlock(&lockfile)?;
                 Err(e)
             }
         }?;
@@ -244,7 +244,7 @@ edition = "2021"
     {
         Ok(a) => Ok(a),
         Err(e) => {
-            lockfile.unlock()?;
+            fs2::FileExt::unlock(&lockfile)?;
             Err(e)
         }
     }?;
@@ -260,7 +260,7 @@ edition = "2021"
     let (rs_str, deps) = match lntors(source_file.clone()) {
         Ok(s) => Ok(s),
         Err(e) => {
-            lockfile.unlock()?;
+            fs2::FileExt::unlock(&lockfile)?;
             Err(e)
         }
     }?;
@@ -291,7 +291,7 @@ edition = "2021"
     ) {
         Ok(a) => Ok(a),
         Err(e) => {
-            lockfile.unlock()?;
+            fs2::FileExt::unlock(&lockfile)?;
             Err(e)
         }
     }?;
@@ -304,7 +304,7 @@ edition = "2021"
     match write(rs_path, rs_str) {
         Ok(a) => Ok(a),
         Err(e) => {
-            lockfile.unlock()?;
+            fs2::FileExt::unlock(&lockfile)?;
             Err(e)
         }
     }?;
@@ -319,12 +319,12 @@ edition = "2021"
         {
             Ok(a) => Ok(a),
             Err(e) => {
-                lockfile.unlock()?;
+                fs2::FileExt::unlock(&lockfile)?;
                 Err(e)
             }
         }?;
         if cfg!(windows) {
-            lockfile.unlock()?;
+            fs2::FileExt::unlock(&lockfile)?;
         } // Why is this necessary?
         write(
             lockfile_path.clone(),
@@ -357,7 +357,7 @@ edition = "2021"
             _ => Ok(o),
         },
         Err(e) => {
-            lockfile.unlock()?;
+            fs2::FileExt::unlock(&lockfile)?;
             Err(format!("{}", e))
         }
     }?;
@@ -381,12 +381,12 @@ edition = "2021"
     {
         Ok(a) => Ok(a),
         Err(e) => {
-            lockfile.unlock()?;
+            fs2::FileExt::unlock(&lockfile)?;
             Err(e)
         }
     }?;
     // Drop the lockfile
-    lockfile.unlock()?;
+    fs2::FileExt::unlock(&lockfile)?;
     Ok(project_name_str)
 }
 
@@ -549,7 +549,7 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
         match create_dir_all(project_dir.clone()) {
             Ok(a) => Ok(a),
             Err(e) => {
-                lockfile.unlock()?;
+                fs2::FileExt::unlock(&lockfile)?;
                 Err(format!("Could not create the project directory {:?}", e))
             }
         }?;
@@ -565,7 +565,7 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
     {
         Ok(a) => Ok(a),
         Err(e) => {
-            lockfile.unlock()?;
+            fs2::FileExt::unlock(&lockfile)?;
             Err(format!("Could not delete the prior bundle.js file {:?}", e))
         }
     }?;
@@ -573,7 +573,7 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
     let (js_str, deps) = match lntojs(source_file.clone()) {
         Ok(s) => Ok(s),
         Err(e) => {
-            lockfile.unlock()?;
+            fs2::FileExt::unlock(&lockfile)?;
             Err(format!("Could not generate the Javascript code {:?}", e))
         }
     }?;
@@ -593,7 +593,7 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
     ) {
         Ok(a) => Ok(a),
         Err(e) => {
-            lockfile.unlock()?;
+            fs2::FileExt::unlock(&lockfile)?;
             Err(format!("Could not create the package.json file {:?}", e))
         }
     }?;
@@ -606,7 +606,7 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
     match write(js_path, js_str) {
         Ok(a) => Ok(a),
         Err(e) => {
-            lockfile.unlock()?;
+            fs2::FileExt::unlock(&lockfile)?;
             Err(format!(
                 "Could not save the generated Javascript to disk {:?}",
                 e
@@ -626,7 +626,7 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
     {
         Ok(a) => Ok(a),
         Err(e) => {
-            lockfile.unlock()?;
+            fs2::FileExt::unlock(&lockfile)?;
             Err(format!("Could not clear package-lock.json {:?}", e))
         }
     }?;
@@ -645,7 +645,7 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
     {
         Ok(a) => Ok(a),
         Err(e) => {
-            lockfile.unlock()?;
+            fs2::FileExt::unlock(&lockfile)?;
             Err(format!("Could not run npm install {:?}", e))
         }
     }?;
@@ -696,7 +696,7 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
             _ => Ok(o),
         },
         Err(e) => {
-            lockfile.unlock()?;
+            fs2::FileExt::unlock(&lockfile)?;
             Err(format!("Could not generate the bundle.js file {:?}", e))
         }
     }?;
@@ -720,7 +720,7 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
     {
         Ok(a) => Ok(a),
         Err(e) => {
-            lockfile.unlock()?;
+            fs2::FileExt::unlock(&lockfile)?;
             Err(format!(
                 "Could not copy the bundled Javascript to the PWD {:?}",
                 e
@@ -728,7 +728,7 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
         }
     }?;
     // Drop the lockfile
-    lockfile.unlock()?;
+    fs2::FileExt::unlock(&lockfile)?;
     Ok(project_name_str)
 }
 
