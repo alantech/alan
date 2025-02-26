@@ -266,6 +266,7 @@ pub fn ctype_to_jtype(
     }
 }
 
+#[allow(clippy::type_complexity)]
 pub fn generate(
     typen: Arc<CType>,
     mut out: OrderedHashMap<String, String>,
