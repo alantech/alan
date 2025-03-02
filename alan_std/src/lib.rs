@@ -836,8 +836,7 @@ impl GPU {
         let mut out = Vec::new();
         for adapter in adapters {
             let features = adapter.features();
-            // let limits = adapter.limits();
-            let limits = wgpu::Limits::default();
+            let limits = adapter.limits();
             let info = adapter.get_info();
             let device_future = adapter.request_device(
                 &wgpu::DeviceDescriptor {
@@ -859,6 +858,7 @@ impl GPU {
                 Err(_) => { /* Do nothing */ }
             };
         }
+        println!("out {:?}", out);
         out
     }
 }
