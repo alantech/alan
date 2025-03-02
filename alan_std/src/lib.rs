@@ -815,6 +815,7 @@ pub fn cross_f64(a: &[f64; 3], b: &[f64; 3]) -> [f64; 3] {
 
 // GPU-related functions and types
 
+#[derive(Debug)]
 pub struct GPU {
     pub adapter: wgpu::Adapter,
     pub device: wgpu::Device,
