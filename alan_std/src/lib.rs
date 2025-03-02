@@ -825,7 +825,7 @@ impl GPU {
     pub fn list() -> Vec<wgpu::Adapter> {
         let instance = wgpu::Instance::default();
         let mut out = Vec::new();
-        for adapter in instance.enumerate_adapters(wgpu::Backends::GL) {
+        for adapter in instance.enumerate_adapters(wgpu::Backends::all()) {
             if adapter.get_downlevel_capabilities().is_webgpu_compliant() {
                 out.push(adapter);
             }
@@ -836,7 +836,8 @@ impl GPU {
         let mut out = Vec::new();
         for adapter in adapters {
             let features = adapter.features();
-            let limits = adapter.limits();
+            // let limits = adapter.limits();
+            let limits = wgpu::Limits::default();
             let info = adapter.get_info();
             let device_future = adapter.request_device(
                 &wgpu::DeviceDescriptor {
