@@ -3142,7 +3142,7 @@ impl CType {
                     }));
                 }
             }
-            CType::Type(n, _) => {
+            CType::Type(n, t) => {
                 // This is just an alias
                 fs.push(Arc::new(Function {
                     name: constructor_fn_name.clone(),
@@ -3762,10 +3762,10 @@ impl CType {
                     name_fn_pairs.insert(f.name.clone(), vec![f.clone()]);
                 }
             }
-            for (name, fns) in name_fn_pairs.drain() {
+            for (name, mut fns) in name_fn_pairs.drain() {
                 if scope.functions.contains_key(&name) {
                     let func_vec = scope.functions.get_mut(&name).unwrap();
-                    func_vec.splice(0..0, fns);
+                    func_vec.append(&mut fns);
                 } else {
                     scope.functions.insert(name, fns);
                 }
