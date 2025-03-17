@@ -1724,14 +1724,14 @@ fn children{T}(n: Node{T}) = if(
 fn children{T}(t: Tree{T}) = t.rootNode.children;
 
 fn addChild{T}(n: Node{T}, val: T) {
-  let tree = n.tree;
-  let idx = tree.len;
+  let idx = n.tree.len;
   let parentIdx = n.id;
-  tree.vals.push(val);
-  tree.parents.push(Maybe{i64}(parentIdx));
-  tree.children.push(Array{i64}());
+  n.tree.vals.push(val);
+  n.tree.parents.push(Maybe{i64}(parentIdx));
+  n.tree.children.push(Array{i64}());
   return Node{T}(idx, n.tree.clone);
 }
+
 fn addChild{T}(n: Node{T}, t: Tree{T}) {
   let idxOffset = n.tree.len;
   let idx = idxOffset.clone(); // TODO: Lower stage of compiler should be doing this
@@ -1753,7 +1753,6 @@ fn delete{T}(n: Node{T}) {
   let nodeId = n.id;
   let parentId = n.tree.parents[n.id].getOrExit;
   let childrenIds = n.children.map(fn (childNode: Node{T}) = childNode.id);
-  childrenIds.print;
   // First, update the children to point at their grandparent
   childrenIds.map(fn (childId: i64) {
     n.tree.parents.store(childId, parentId.clone);
