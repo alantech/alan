@@ -698,7 +698,7 @@ impl Function {
                 });
                 if scope.functions.contains_key(&f.name) {
                     let func_vec = scope.functions.get_mut(&f.name).unwrap();
-                    func_vec.insert(0, f.clone());
+                    func_vec.push(f.clone());
                 } else {
                     scope.functions.insert(f.name.clone(), vec![f.clone()]);
                 }
@@ -806,7 +806,7 @@ impl Function {
                 });
                 if scope.functions.contains_key(&f.name) {
                     let func_vec = scope.functions.get_mut(&f.name).unwrap();
-                    func_vec.insert(0, f.clone());
+                    func_vec.push(f.clone());
                 } else {
                     scope.functions.insert(f.name.clone(), vec![f.clone()]);
                 }
