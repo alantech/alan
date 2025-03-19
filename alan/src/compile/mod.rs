@@ -73,6 +73,10 @@ pub fn build(source_file: String) -> Result<String, Box<dyn std::error::Error>> 
 name = "alan_generated_bin"
 edition = "2021"
 
+# To continue supporting earlier versions of Rust
+[patch.crates-io]
+bytemuck_derive = { git = "https://github.com/Lokathor/bytemuck", tag = "bytemuck_derive-v1.8.1" }
+
 [dependencies]"#;
     let cargo_path = {
         let mut c = project_dir.clone();
