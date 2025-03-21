@@ -3142,18 +3142,20 @@ impl CType {
                     }));
                 }
             }
-            CType::Type(n, t) => {
-                // This is just an alias
-                fs.push(Arc::new(Function {
-                    name: constructor_fn_name.clone(),
-                    typen: Arc::new(CType::Function(
-                        Arc::new(CType::Field(n.clone(), self.clone())),
-                        t.clone(),
-                    )),
-                    microstatements: Vec::new(),
-                    kind: FnKind::Derived,
-                    origin_scope_path: scope.path.clone(),
-                }));
+            CType::Type(n, _) => {
+                // This is just an alias, but avoid circular derives
+                if name != constructor_fn_name {
+                    fs.push(Arc::new(Function {
+                        name: constructor_fn_name.clone(),
+                        typen: Arc::new(CType::Function(
+                            Arc::new(CType::Field(n.clone(), self.clone())),
+                            t.clone(),
+                        )),
+                        microstatements: Vec::new(),
+                        kind: FnKind::Derived,
+                        origin_scope_path: scope.path.clone(),
+                    }));
+                }
             }
             CType::Tuple(ts) => {
                 // The constructor function needs to grab the types from all
@@ -3762,10 +3764,10 @@ impl CType {
                     name_fn_pairs.insert(f.name.clone(), vec![f.clone()]);
                 }
             }
-            for (name, mut fns) in name_fn_pairs.drain() {
+            for (name, fns) in name_fn_pairs.drain() {
                 if scope.functions.contains_key(&name) {
                     let func_vec = scope.functions.get_mut(&name).unwrap();
-                    func_vec.append(&mut fns);
+                    func_vec.splice(0..0, fns);
                 } else {
                     scope.functions.insert(name, fns);
                 }

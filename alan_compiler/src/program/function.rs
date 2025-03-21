@@ -697,13 +697,13 @@ impl Function {
                 });
                 if scope.functions.contains_key(&f.name) {
                     let func_vec = scope.functions.get_mut(&f.name).unwrap();
-                    func_vec.push(f.clone());
+                    func_vec.insert(0, f.clone());
                 } else {
                     scope.functions.insert(f.name.clone(), vec![f.clone()]);
                 }
                 let res = match scope.functions.get(&f.name) {
                     None => Err("This should be impossible. Cannot get the function we just added to the scope"),
-                    Some(fs) => Ok(fs.last().unwrap().clone()), // We know it's the last one
+                    Some(fs) => Ok(fs.first().unwrap().clone()), // We know it's the first one
                                                                 // because we just put it there
                 }?;
                 Ok((scope, res))
@@ -805,13 +805,13 @@ impl Function {
                 });
                 if scope.functions.contains_key(&f.name) {
                     let func_vec = scope.functions.get_mut(&f.name).unwrap();
-                    func_vec.push(f.clone());
+                    func_vec.insert(0, f.clone());
                 } else {
                     scope.functions.insert(f.name.clone(), vec![f.clone()]);
                 }
                 let res = match scope.functions.get(&f.name) {
                     None => Err("This should be impossible. Cannot get the function we just added to the scope"),
-                    Some(fs) => Ok(fs.last().unwrap().clone()), // We know it's the last one
+                    Some(fs) => Ok(fs.first().unwrap().clone()), // We know it's the first one
                                                                 // because we just put it there
                 }?;
                 Ok((scope, res))
