@@ -1672,8 +1672,8 @@ fn mul{V}(a: Set{V}, b: Set{V}) = product(a, b);
 // `void` if it has no parent and a positive integer otherwise.
 type Tree{T} =
   vals: Array{T},
-  parents: Array{Maybe{i64}},
-  children: Array{Array{i64}};
+  parentIdxs: Array{Maybe{i64}},
+  childrenIdxs: Array{Array{i64}};
 
 // The Node type simply holds the index to look into the tree for a particular value-parent-children
 // triplet, where that index is reffered to as a node ID. This allows node-based code to be written
@@ -1691,7 +1691,7 @@ fn Tree{T}(n: Node{T}) = n.tree;
 // TODO: This is a more correct solution, but any Tree constructed by us will always have the root
 // node be the first element of the array, so we're just doing that so we don't have a `Maybe` here
 /*export fn rootNode{T}(t: Tree{T}) -> Maybe{Node{T}} {
-  let rootIdx = t.parents.index(Maybe{i64}());
+  let rootIdx = t.parentIdxs.index(Maybe{i64}());
   return if(
     rootIdx.exists,
     fn () -> Node{T} = Node{T}(rootIdx.getOrExit, t)
@@ -1704,7 +1704,7 @@ fn len{T}(t: Tree{T}) = t.vals.len;
 fn Node{T}(t: Tree{T}, i: i64) = if(t.len > i, fn () = Node{T}(i, t));
 
 fn parent{T}(n: Node{T}) {
-  let parentId = n.tree.parents[n.id];
+  let parentId = n.tree.parentIdxs[n.id];
   return if(parentId.exists,
     if(exists(parentId!!),
       fn () = Node{T}(parentId.getOrExit.getOrExit, n.tree)),
@@ -1714,9 +1714,9 @@ fn parent{T}(n: Node{T}) {
 fn children{T}(n: Node{T}) = if(
   n.tree.len > n.id,
   fn {
-    let childIds = n.tree.children[n.id] ?? Array{i64}();
+    let childIds = n.tree.childrenIdxs[n.id] ?? Array{i64}();
     return childIds
-      .filter(fn (id: i64) = n.tree.parents[id]!! ?? -1 == n.id)
+      .filter(fn (id: i64) = n.tree.parentIdxs[id]!! ?? -1 == n.id)
       .map(fn (id: i64) = Node{T}(id, n.tree.clone)); // TODO: Eliminate this clone
   },
   fn = Array{Node{T}}());
@@ -1727,8 +1727,8 @@ fn addChild{T}(n: Node{T}, val: T) {
   let idx = n.tree.len;
   let parentIdx = n.id;
   n.tree.vals.push(val);
-  n.tree.parents.push(Maybe{i64}(parentIdx));
-  n.tree.children.push(Array{i64}());
+  n.tree.parentIdxs.push(Maybe{i64}(parentIdx));
+  n.tree.childrenIdxs.push(Array{i64}());
   return Node{T}(idx, n.tree.clone);
 }
 
@@ -1737,11 +1737,11 @@ fn addChild{T}(n: Node{T}, t: Tree{T}) {
   let idx = idxOffset.clone(); // TODO: Lower stage of compiler should be doing this
   let parentIdx = n.id;
   n.tree.vals.append(t.vals);
-  n.tree.parents.append(t.parents.map(fn (pId: Maybe{i64}) = if(pId.exists,
+  n.tree.parentIdxs.append(t.parentIdxs.map(fn (pId: Maybe{i64}) = if(pId.exists,
     fn () = Maybe{i64}(pId!! + idxOffset),
     fn () = Maybe{i64}(idx))));
-  n.tree.children.append(
-    t.children.map(
+  n.tree.childrenIdxs.append(
+    t.childrenIdxs.map(
       fn (ids: Array{i64}) = ids.map(
         fn (id: i64) = id + idxOffset)));
   return Node{T}(idx, n.tree);
@@ -1751,22 +1751,22 @@ fn addChild{T}(t: Tree{T}, val: T) = t.rootNode.addChild(val);
 fn delete{T}(n: Node{T}) {
   // TODO: Actually drop the node value after the tree has too many dead values.
   let nodeId = n.id;
-  let parentId = n.tree.parents[n.id].getOrExit;
+  let parentId = n.tree.parentIdxs[n.id].getOrExit;
   let childrenIds = n.children.map(fn (childNode: Node{T}) = childNode.id);
   // First, update the children to point at their grandparent
   childrenIds.map(fn (childId: i64) {
-    n.tree.parents.store(childId, parentId.clone);
+    n.tree.parentIdxs.store(childId, parentId.clone);
   });
   // Next, update the current node's parent to no longer count the node as a child, assuming there
   // is a parent, and attach the children
   if(parentId.exists, fn {
     let parentsChildren = n.tree
-      .children[parentId.getOrExit]
+      .childrenIdxs[parentId.getOrExit]
       .getOrExit
       .filter(fn (childId: i64) = childId != nodeId);
     parentsChildren.append(childrenIds);
     parentsChildren.print;
-    n.tree.children.store(parentId.getOrExit, parentsChildren);
+    n.tree.childrenIdxs.store(parentId.getOrExit, parentsChildren);
   });
 }
 
@@ -1776,13 +1776,13 @@ fn prune{T}(n: Node{T}) {
   // parent
   let tree = n.tree;
   let nodeId = n.id;
-  let parentId = tree.parents[n.id].getOrExit;
+  let parentId = tree.parentIdxs[n.id].getOrExit;
   if(parentId.exists, fn {
     let parentsChildren = tree
-      .children[parentId.getOrExit]
+      .childrenIdxs[parentId.getOrExit]
       .getOrExit
       .filter(fn (childId: i64) = childId != nodeId);
-    tree.children.store(parentId.getOrExit, parentsChildren);
+    tree.childrenIdxs.store(parentId.getOrExit, parentsChildren);
   });
 }
 
@@ -1800,12 +1800,12 @@ fn Array{T}(t: Tree{T}) = t.vals.map(
 
 fn map{T, U}(t: Tree{T}, mapper: (Node{T}) -> Node{U}) = Tree{U}(
   t.Array.map(mapper),
-  t.parents.clone(),
-  t.children.clone());
+  t.parentIdxs.clone(),
+  t.childrenIdxs.clone());
 fn map{T, U}(t: Tree{T}, mapper: (Node{T}, i64) -> Node{U}) = Tree{U}(
   t.Array.map(mapper),
-  t.parents,
-  t.children);
+  t.parentIdxs,
+  t.childrenIdxs);
 
 fn every{T}(t: Tree{T}, f: (Node{T}) -> bool) = t.Array.every(f);
 
