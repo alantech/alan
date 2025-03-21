@@ -2582,33 +2582,33 @@ fn gFn16{A, O}(
 
 fn gPrimitiveConvert{A, O}(a: A) = gFn1{A, O}({O.typeName}(), a);
 
+fn gu32{T}(u: T) = gu32(u.u32);
 fn gu32(u: u32) = gu32(u.string.concat('u'), Dict{string, string}(), Set{GBufferTagged}());
 fn gu32(gu: gu32) = gu;
 fn gu32(gi: gi32) = gPrimitiveConvert{gi32, gu32}(gi);
 fn gu32(gf: gf32) = gPrimitiveConvert{gf32, gu32}(gf);
 fn gu32(gb: gbool) = gPrimitiveConvert{gbool, gu32}(gb);
-fn gu32{T}(u: T) = gu32(u.u32);
 
+fn gi32{T}(i: T) = gi32(i.i32);
 fn gi32(i: i32) = gi32(i.string, Dict{string, string}(), Set{GBufferTagged}());
 fn gi32(gu: gu32) = gPrimitiveConvert{gu32, gi32}(gu);
 fn gi32(gi: gi32) = gi;
 fn gi32(gf: gf32) = gPrimitiveConvert{gf32, gi32}(gf);
 fn gi32(gb: gbool) = gPrimitiveConvert{gbool, gi32}(gb);
-fn gi32{T}(i: T) = gi32(i.i32);
 
+fn gf32{T}(f: T) = gf32(f.f32);
 fn gf32(f: f32) = gf32(if(f.string.eq(f.i32.string), f.string(1), f.string), Dict{string, string}(), Set{GBufferTagged}());
 fn gf32(gu: gu32) = gPrimitiveConvert{gu32, gf32}(gu);
 fn gf32(gi: gi32) = gPrimitiveConvert{gi32, gf32}(gi);
 fn gf32(gf: gf32) = gf;
 fn gf32(gb: gbool) = gPrimitiveConvert{gbool, gf32}(gb);
-fn gf32{T}(f: T) = gf32(f.f32);
 
+fn gbool{T}(b: T) = gbool(b.bool);
 fn gbool(b: bool) = gbool(b.string, Dict{string, string}(), Set{GBufferTagged}());
 fn gbool(gu: gu32) = gPrimitiveConvert{gu32, gbool}(gu);
 fn gbool(gi: gi32) = gPrimitiveConvert{gi32, gbool}(gi);
 fn gbool(gf: gf32) = gPrimitiveConvert{gf32, gbool}(gf);
 fn gbool(gb: gbool) = gb;
-fn gbool{T}(b: T) = gbool(b.bool);
 
 fn len{T}(gb: GBuffer{T}) = gu32(
   'arrayLength(&'.concat(gb.id).concat(')'),
@@ -2694,31 +2694,23 @@ fn gvec3b{T}(a: T) = gvec3b(a, a, a);
 fn gvec4Primitive{I, O}(a: I, b: I, c: I, d: I) = gFn4{I, O}({O.typeName}(), a, b, c, d);
 
 fn gvec4u() = gFn0{gvec4u}({gvec4u.typeName}());
-fn gvec4u(a: gu32, b: gu32, c: gu32, d: gu32) = gvec4Primitive{gu32, gvec4u}(
-  a, b, c, d
-);
+fn gvec4u(a: gu32, b: gu32, c: gu32, d: gu32) = gvec4Primitive{gu32, gvec4u}(a, b, c, d);
 fn gvec4u{T}(a: T, b: T, c: T, d: T) = gvec4u(a.gu32, b.gu32, c.gu32, d.gu32);
 fn gvec4u{T}(a: T) = gvec4u(a, a, a, a);
 
 fn gvec4i() = gFn0{gvec4i}({gvec4i.typeName}());
-fn gvec4i(a: gi32, b: gi32, c: gi32, d: gi32) = gvec4Primitive{gi32, gvec4i}(
-  a, b, c, d
-);
+fn gvec4i(a: gi32, b: gi32, c: gi32, d: gi32) = gvec4Primitive{gi32, gvec4i}(a, b, c, d);
 fn gvec4i{T}(a: T, b: T, c: T, d: T) = gvec4i(a.gi32, b.gi32, c.gi32, d.gi32);
 fn gvec4i{T}(a: T) = gvec4i(a, a, a, a);
 
 fn gvec4f() = gFn0{gvec4f}({gvec4f.typeName}());
 fn gvec4f{A, B, C, D}(a: A, b: B, c: C, d: D) = gvec4f(a.gf32, b.gf32, c.gf32, d.gf32);
-fn gvec4f(a: gf32, b: gf32, c: gf32, d: gf32) = gvec4Primitive{gf32, gvec4f}(
-  a, b, c, d
-);
+fn gvec4f(a: gf32, b: gf32, c: gf32, d: gf32) = gvec4Primitive{gf32, gvec4f}(a, b, c, d);
 fn gvec4f{T}(a: T, b: T, c: T, d: T) = gvec4f(a.gf32, b.gf32, c.gf32, d.gf32);
 fn gvec4f{T}(a: T) = gvec4f(a, a, a, a);
 
 fn gvec4b() = gFn0{gvec4b}({gvec4b.typeName}());
-fn gvec4b(a: gbool, b: gbool, c: gbool, d: gbool) = gvec4Primitive{gbool, gvec4b}(
-  a, b, c, d
-);
+fn gvec4b(a: gbool, b: gbool, c: gbool, d: gbool) = gvec4Primitive{gbool, gvec4b}(a, b, c, d);
 fn gvec4b{T}(a: T, b: T, c: T, d: T) = gvec4b(a.gbool, b.gbool, c.gbool, d.gbool);
 fn gvec4b{T}(a: T) = gvec4b(a, a, a, a);
 
