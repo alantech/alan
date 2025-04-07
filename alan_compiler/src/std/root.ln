@@ -21,6 +21,7 @@ ctype AnyOf{A, B}; // The AnyOf type is kinda like a Tuple, in that all sub-type
 
 /// Host types
 ctype Binds{T}; // A direct reference into the platform language's type system
+ctype BindsAs{A, B}; // Specify that the first type should be *treated* as the second within Alan. Useful for binding special types in Rust
 ctype Call{N, F}; // A reference to a function call (or method, etc) in the platform language
 ctype Infix{O}; // A reference to a native infix operation in the platform language
 ctype Prefix{O}; // A reference to a native prefix operation in the platform language
@@ -193,6 +194,12 @@ type{Rs} Dict{K, V} = Binds{"alan_std::OrderedHashMap" <- RootBacking, K, V};
 type{Js} Dict{K, V} = Binds{"Map", K, V};
 type{Rs} Set{V} = Binds{"std::collections::HashSet", V};
 type{Js} Set{V} = Binds{"alan_std.FuzzySet" <- RootBacking, V};
+
+// Binding the Arc, RwLock and creating the Shared types
+type{Rs} Arc{T} = Binds{"std::sync::Arc", T};
+type{Rs} RwLock{T} = Binds{"std::sync::RwLock", T};
+type{Rs} Shared{T} = Arc{RwLock{T}};
+type{Js} Shared{T} = T; // TODO: Better solution here
 
 // Basic trig constants (this language is meant for GPGPU, this makes sense in the root scope)
 const e = 2.718281828459045;
@@ -1665,15 +1672,23 @@ fn{Rs} product{V} "alan_std::productset" <- RootBacking :: (Set{V}, Set{V}) -> S
 fn{Js} product{V} (a: Set{V}, b: Set{V}) = {Method{"product"} :: (Set{V}, Set{V}) -> Set{(V, V)}}(a, b);
 fn mul{V}(a: Set{V}, b: Set{V}) = product(a, b);
 
+/// Shared implementation
+fn{Rs} Shared{T}(v: T) = {"std::sync::Arc::new" :: (arg: Own{RwLock{T}}) -> Arc{RwLock{T}}}({"std::sync::RwLock::new" :: (arg: Own{T}) -> RwLock{T}}(v));
+fn{Rs} read{T}(v: Shared{T}) = {Method{"read().unwrap"} :: (arg: Shared{T}) -> BindsAs{Binds{"std::sync::RwLockReadGuard", T}, T}}(v); // TODO: Expose this Result type when multithreading is accessible in the language
+fn{Rs} write{T}(v: Shared{T}) = {Method{"write().unwrap"} :: (arg: Shared{T}) -> BindsAs{Binds{"std::sync::RwLockWriteGuard", T}, T}}(v); // TODO: Expose this Result type when multithreading is accessible in the language
+fn{Rs} close{T}(v: T) = {Method{"drop"} :: (arg: T) -> ()}(v); // TODO: How would this even work in JS?
+
 /// Tree implementation
 
-// The Tree type houses all of the values attached to a tree in an array and two secondary arrays to
-// hold the metadata on which value is the parent and which are children, if any. The parent value
-// `void` if it has no parent and a positive integer otherwise.
-type Tree{T} =
+// The TreeInner type houses all of the values attached to a tree in an array and two secondary
+// arrays to hold the metadata on which value is the parent and which are children, if any. The
+// parent value `void` if it has no parent and a positive integer otherwise.
+type TreeInner{T} =
   vals: Array{T},
   parentIdxs: Array{Maybe{i64}},
   childrenIdxs: Array{Array{i64}};
+
+type Tree{T} = Shared{TreeInner{T}};
 
 // The Node type simply holds the index to look into the tree for a particular value-parent-children
 // triplet, where that index is reffered to as a node ID. This allows node-based code to be written
@@ -1682,10 +1697,10 @@ type Node{T} =
   id: i64,
   tree: Tree{T};
 
-fn Tree{T}(rootVal: T) = Tree{T}(
+fn Tree{T}(rootVal: T) = Shared(TreeInner{T}(
   Array{T}(rootVal),
   Array{Maybe{i64}}(Maybe{i64}()),
-  Array{Array{i64}}(Array{i64}()));
+  Array{Array{i64}}(Array{i64}())));
 fn Tree{T}(n: Node{T}) = n.tree;
 
 // TODO: This is a more correct solution, but any Tree constructed by us will always have the root
@@ -1699,12 +1714,12 @@ fn Tree{T}(n: Node{T}) = n.tree;
 }*/
 fn rootNode{T}(t: Tree{T}) = Node{T}(0, t);
 
-fn len{T}(t: Tree{T}) = t.vals.len;
+fn len{T}(t: Tree{T}) = t.read.vals.len;
 
 fn Node{T}(t: Tree{T}, i: i64) = if(t.len > i, fn () = Node{T}(i, t));
 
 fn parent{T}(n: Node{T}) {
-  let parentId = n.tree.parentIdxs[n.id];
+  let parentId = n.tree.read.parentIdxs[n.id];
   return if(parentId.exists,
     if(exists(parentId!!),
       fn () = Node{T}(parentId.getOrExit.getOrExit, n.tree)),
@@ -1714,10 +1729,11 @@ fn parent{T}(n: Node{T}) {
 fn children{T}(n: Node{T}) = if(
   n.tree.len > n.id,
   fn {
-    let childIds = n.tree.childrenIdxs[n.id] ?? Array{i64}();
+    let tree = n.tree.read;
+    let childIds = tree.childrenIdxs[n.id] ?? Array{i64}();
     return childIds
-      .filter(fn (id: i64) = n.tree.parentIdxs[id]!! ?? -1 == n.id)
-      .map(fn (id: i64) = Node{T}(id, n.tree.clone)); // TODO: Eliminate this clone
+      .filter(fn (id: i64) = tree.parentIdxs[id]!! ?? -1 == n.id)
+      .map(fn (id: i64) = Node{T}(id, n.tree.clone));
   },
   fn = Array{Node{T}}());
 
@@ -1726,9 +1742,10 @@ fn children{T}(t: Tree{T}) = t.rootNode.children;
 fn addChild{T}(n: Node{T}, val: T) {
   let idx = n.tree.len;
   let parentIdx = n.id;
-  n.tree.vals.push(val);
-  n.tree.parentIdxs.push(Maybe{i64}(parentIdx));
-  n.tree.childrenIdxs.push(Array{i64}());
+  let tree = n.tree.write;
+  tree.vals.push(val);
+  tree.parentIdxs.push(Maybe{i64}(parentIdx));
+  tree.childrenIdxs.push(Array{i64}());
   return Node{T}(idx, n.tree.clone);
 }
 
@@ -1736,11 +1753,12 @@ fn addChild{T}(n: Node{T}, t: Tree{T}) {
   let idxOffset = n.tree.len;
   let idx = idxOffset.clone(); // TODO: Lower stage of compiler should be doing this
   let parentIdx = n.id;
-  n.tree.vals.append(t.vals);
-  n.tree.parentIdxs.append(t.parentIdxs.map(fn (pId: Maybe{i64}) = if(pId.exists,
+  let tree = n.tree.write;
+  tree.vals.append(t.vals);
+  tree.parentIdxs.append(t.parentIdxs.map(fn (pId: Maybe{i64}) = if(pId.exists,
     fn () = Maybe{i64}(pId!! + idxOffset),
     fn () = Maybe{i64}(idx))));
-  n.tree.childrenIdxs.append(
+  tree.childrenIdxs.append(
     t.childrenIdxs.map(
       fn (ids: Array{i64}) = ids.map(
         fn (id: i64) = id + idxOffset)));
@@ -1751,22 +1769,23 @@ fn addChild{T}(t: Tree{T}, val: T) = t.rootNode.addChild(val);
 fn delete{T}(n: Node{T}) {
   // TODO: Actually drop the node value after the tree has too many dead values.
   let nodeId = n.id;
-  let parentId = n.tree.parentIdxs[n.id].getOrExit;
+  let tree = n.tree.write;
+  let parentId = tree.parentIdxs[n.id].getOrExit;
   let childrenIds = n.children.map(fn (childNode: Node{T}) = childNode.id);
   // First, update the children to point at their grandparent
   childrenIds.map(fn (childId: i64) {
-    n.tree.parentIdxs.store(childId, parentId.clone);
+    tree.parentIdxs.store(childId, parentId.clone);
   });
   // Next, update the current node's parent to no longer count the node as a child, assuming there
   // is a parent, and attach the children
   if(parentId.exists, fn {
-    let parentsChildren = n.tree
+    let parentsChildren = tree
       .childrenIdxs[parentId.getOrExit]
       .getOrExit
       .filter(fn (childId: i64) = childId != nodeId);
     parentsChildren.append(childrenIds);
     parentsChildren.print;
-    n.tree.childrenIdxs.store(parentId.getOrExit, parentsChildren);
+    tree.childrenIdxs.store(parentId.getOrExit, parentsChildren);
   });
 }
 
@@ -1791,21 +1810,21 @@ fn prune{T}(n: Node{T}) {
 // TODO: Implement `subtree` to create a new tree consisting of the specified node as its root and
 // only its own children as the children of the tree.
 
-fn getOr{T}(n: Node{T}, t: T) = n.tree.vals[n.id] ?? t;
+fn getOr{T}(n: Node{T}, t: T) = n.tree.read.vals[n.id] ?? t;
 
-fn getOrExit{T}(n: Node{T}) = n.tree.vals[n.id].getOrExit;
+fn getOrExit{T}(n: Node{T}) = n.tree.read.vals[n.id].getOrExit;
 
-fn Array{T}(t: Tree{T}) = t.vals.map(
+fn Array{T}(t: Tree{T}) = t.read.vals.map(
   fn (_: T, i: i64) = Node{T}(t, i)!!);
 
 fn map{T, U}(t: Tree{T}, mapper: (Node{T}) -> Node{U}) = Tree{U}(
   t.Array.map(mapper),
-  t.parentIdxs.clone(),
-  t.childrenIdxs.clone());
+  t.read.parentIdxs.clone(),
+  t.read.childrenIdxs.clone());
 fn map{T, U}(t: Tree{T}, mapper: (Node{T}, i64) -> Node{U}) = Tree{U}(
   t.Array.map(mapper),
-  t.parentIdxs,
-  t.childrenIdxs);
+  t.read.parentIdxs,
+  t.read.childrenIdxs);
 
 fn every{T}(t: Tree{T}, f: (Node{T}) -> bool) = t.Array.every(f);
 

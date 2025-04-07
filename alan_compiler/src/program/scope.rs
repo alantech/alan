@@ -88,7 +88,7 @@ impl<'a> Scope<'a> {
                         | "Prefix" | "Method" | "Property" | "Cast" | "Own" | "Deref" | "Mut"
                         | "Rust" | "Nodejs" | "From" | "Array" | "Fail" | "Neg" | "Len" | "Size"
                         | "FileStr" | "Env" | "EnvExists" | "Not") => s = CType::from_generic(s, g, 1),
-                        g @ ("Function" | "Call" | "Dependency" | "Import" | "Field"
+                        g @ ("BindsAs" | "Function" | "Call" | "Dependency" | "Import" | "Field"
                         | "Prop" | "Buffer" | "Add" | "Sub" | "Mul" | "Div" | "Mod"
                         | "Pow" | "Min" | "Max" | "Concat" | "And" | "Or" | "Xor" | "Nand"
                         | "Nor" | "Xnor" | "Eq" | "Neq" | "Lt" | "Lte" | "Gt" | "Gte") => s = CType::from_generic(s, g, 2),
