@@ -283,6 +283,7 @@ pub fn ctype_to_rtype(
                 _ => CType::fail("Bound types must be strings or rust imports"),
             }
         }
+        CType::BindsAs(a, _b) => ctype_to_rtype(a.clone(), deps),
         CType::IntrinsicGeneric(name, _) => Ok((name.clone(), deps)), // How would this even be reached?
         CType::Int(i) => Ok((i.to_string(), deps)),
         CType::Float(f) => Ok((f.to_string(), deps)),

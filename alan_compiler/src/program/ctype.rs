@@ -22,6 +22,7 @@ pub enum CType {
     Type(String, Arc<CType>),
     Generic(String, Vec<String>, Arc<CType>),
     Binds(Arc<CType>, Vec<Arc<CType>>),
+    BindsAs(Arc<CType>, Arc<CType>),
     IntrinsicGeneric(String, usize),
     IntCast(Arc<CType>),
     Int(i128),
@@ -220,6 +221,13 @@ impl CType {
                         ctype_stack.push(comma);
                     }
                     ctype_stack.push(n);
+                }
+                CType::BindsAs(a, b) => {
+                    str_parts.push("BindsAs{");
+                    ctype_stack.push(close_brace);
+                    ctype_stack.push(b);
+                    ctype_stack.push(comma);
+                    ctype_stack.push(a);
                 }
                 CType::IntrinsicGeneric(s, l) => {
                     str_parts.push(s);
@@ -721,6 +729,13 @@ impl CType {
                         ctype_stack.push(comma);
                     }
                     ctype_stack.push(n);
+                }
+                CType::BindsAs(a, b) => {
+                    str_parts.push("BindsAs{");
+                    ctype_stack.push(close_brace);
+                    ctype_stack.push(b);
+                    ctype_stack.push(comma);
+                    ctype_stack.push(a);
                 }
                 CType::IntrinsicGeneric(s, u) => {
                     str_parts.push(s);
@@ -1337,7 +1352,8 @@ impl CType {
             CType::Binds(t, ts) | CType::TIf(t, ts) => {
                 t.clone().has_infer() || ts.iter().any(|t| t.clone().has_infer())
             }
-            CType::Function(a, b)
+            CType::BindsAs(a, b)
+            | CType::Function(a, b)
             | CType::Call(a, b)
             | CType::Dependency(a, b)
             | CType::Import(a, b)
@@ -1384,6 +1400,7 @@ impl CType {
                     .map(|t| t.clone().degroup())
                     .collect::<Vec<Arc<CType>>>(),
             )),
+            CType::BindsAs(a, b) => Arc::new(CType::BindsAs(a.clone().degroup(), b.clone().degroup())),
             CType::IntrinsicGeneric(..) => self,
             CType::IntCast(t) => Arc::new(CType::IntCast(t.clone().degroup())),
             CType::Int(_) => self,
@@ -2772,6 +2789,7 @@ impl CType {
     }
     pub fn accepts(self: Arc<CType>, arg: Arc<CType>) -> bool {
         match (&*self, &*arg) {
+            (_a, CType::BindsAs(_b, c)) => self.accepts(c.clone()),
             (_a, CType::AnyOf(ts)) => {
                 for t in ts {
                     if self.clone().accepts(t.clone()) {
@@ -4022,6 +4040,10 @@ impl CType {
                     .iter()
                     .map(|gtr| gtr.clone().swap_subtype(old_type.clone(), new_type.clone()))
                     .collect::<Vec<Arc<CType>>>(),
+            )),
+            CType::BindsAs(a, b) => Arc::new(CType::BindsAs(
+                a.clone().swap_subtype(old_type.clone(), new_type.clone()),
+                b.clone().swap_subtype(old_type, new_type),
             )),
             CType::IntCast(i) => CType::intcast(i.clone().swap_subtype(old_type, new_type)),
             CType::FloatCast(f) => CType::floatcast(f.clone().swap_subtype(old_type, new_type)),
@@ -5941,6 +5963,7 @@ pub fn typebaselist_to_ctype(
                                     // TODO: Is there a better way to do this?
                                     match name.as_str() {
                                         "Binds" => CType::binds(args),
+                                        "BindsAs" => Arc::new(CType::BindsAs(args[0].clone(), args[1].clone())),
                                         "Int" => CType::intcast(args[0].clone()),
                                         "Float" => CType::floatcast(args[0].clone()),
                                         "Bool" => CType::boolcast(args[0].clone()),
