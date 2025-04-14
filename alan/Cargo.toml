@@ -18,7 +18,7 @@ dirs = "6.0.0"
 fs2 = "0.4.3"
 
 [dev-dependencies]
-divan = "0.1.18"
+divan = "0.1.21"
 
 [[bench]]
 name = "map"
