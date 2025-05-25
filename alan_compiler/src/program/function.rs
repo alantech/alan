@@ -704,7 +704,7 @@ impl Function {
                 }
                 let res = match scope.functions.get(&f.name) {
                     None => Err("This should be impossible. Cannot get the function we just added to the scope"),
-                    Some(fs) => Ok(fs.last().unwrap().clone()), // We know it's the last one
+                    Some(fs) => Ok(fs.first().unwrap().clone()), // We know it's the first one
                                                                 // because we just put it there
                 }?;
                 Ok((scope, res))
@@ -812,7 +812,7 @@ impl Function {
                 }
                 let res = match scope.functions.get(&f.name) {
                     None => Err("This should be impossible. Cannot get the function we just added to the scope"),
-                    Some(fs) => Ok(fs.last().unwrap().clone()), // We know it's the last one
+                    Some(fs) => Ok(fs.first().unwrap().clone()), // We know it's the first one
                                                                 // because we just put it there
                 }?;
                 Ok((scope, res))
