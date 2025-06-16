@@ -838,15 +838,13 @@ impl GPU {
             let features = adapter.features();
             let limits = adapter.limits();
             let info = adapter.get_info();
-            let device_future = adapter.request_device(
-                &wgpu::DeviceDescriptor {
-                    label: Some(&format!("{} on {}", info.name, info.backend.to_str())),
-                    required_features: features,
-                    required_limits: limits,
-                    memory_hints: wgpu::MemoryHints::Performance,
-                    trace: wgpu::Trace::Off,
-                },
-            );
+            let device_future = adapter.request_device(&wgpu::DeviceDescriptor {
+                label: Some(&format!("{} on {}", info.name, info.backend.to_str())),
+                required_features: features,
+                required_limits: limits,
+                memory_hints: wgpu::MemoryHints::Performance,
+                trace: wgpu::Trace::Off,
+            });
             match futures::executor::block_on(device_future) {
                 Ok((device, queue)) => {
                     out.push(GPU {
@@ -1316,16 +1314,15 @@ where
         if self.device.is_none() {
             // We can do both device and queue here as they're created at the same time
             let adapter = self.adapter.as_ref().unwrap();
-            let (device, queue) = pollster::block_on(adapter.request_device(
-                &wgpu::DeviceDescriptor {
+            let (device, queue) =
+                pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
                     label: None,
                     required_features: adapter.features(),
                     required_limits: adapter.limits(),
                     memory_hints: wgpu::MemoryHints::MemoryUsage,
                     trace: wgpu::Trace::Off,
-                },
-            ))
-            .unwrap();
+                }))
+                .unwrap();
             self.device = Some(device);
             self.queue = Some(queue);
         }
