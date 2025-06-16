@@ -1005,6 +1005,8 @@ impl GPGPU {
 
 pub fn gpu_run(gg: &mut GPGPU) {
     let g = gpu();
+    // Wait for any prior operation (if any) to complete
+    g.device.poll(wgpu::MaintainBase::wait()).unwrap();
     if gg.module.is_none() {
         gg.module = Some(g.device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: None,
@@ -1069,6 +1071,8 @@ pub fn gpu_run(gg: &mut GPGPU) {
 
 pub fn gpu_run_list(ggs: &mut Vec<GPGPU>) {
     let g = gpu();
+    // Wait for any prior operation (if any) to complete
+    g.device.poll(wgpu::MaintainBase::wait()).unwrap();
     let mut encoder = g
         .device
         .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
