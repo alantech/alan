@@ -1142,11 +1142,11 @@ pub fn read_buffer<T: std::clone::Clone>(b: &GBuffer) -> Vec<T> {
         .device
         .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
     encoder.copy_buffer_to_buffer(b, 0, &temp_buffer, 0, b.size());
-    g.queue.submit(Some(encoder.finish()));
+    let submission_index = g.queue.submit(Some(encoder.finish()));
     let temp_slice = temp_buffer.slice(..);
     let (sender, receiver) = flume::bounded(1);
     temp_slice.map_async(wgpu::MapMode::Read, move |v| sender.send(v).unwrap());
-    g.device.poll(wgpu::MaintainBase::wait()).unwrap();
+    g.device.poll(wgpu::MaintainBase::wait_for(submission_index)).unwrap();
     if let Ok(Ok(())) = receiver.recv() {
         let data = temp_slice.get_mapped_range();
         let data_ptr = data.as_ptr();
