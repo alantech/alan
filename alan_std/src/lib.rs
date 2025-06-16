@@ -1066,7 +1066,12 @@ pub fn gpu_run(gg: &mut GPGPU) {
             gg.workgroup_sizes[2].try_into().unwrap(),
         );
     }
-    g.queue.submit(Some(encoder.finish()));
+    // This shouldn't be necessary, but there seems to be some sort of race condition occassionally
+    // triggered on older hardware
+    let submission_index = g.queue.submit(Some(encoder.finish()));
+    g.device
+        .poll(wgpu::MaintainBase::wait_for(submission_index))
+        .unwrap();
 }
 
 pub fn gpu_run_list(ggs: &mut Vec<GPGPU>) {
@@ -1135,7 +1140,12 @@ pub fn gpu_run_list(ggs: &mut Vec<GPGPU>) {
             );
         }
     }
-    g.queue.submit(Some(encoder.finish()));
+    // This shouldn't be necessary, but there seems to be some sort of race condition occassionally
+    // triggered on older hardware
+    let submission_index = g.queue.submit(Some(encoder.finish()));
+    g.device
+        .poll(wgpu::MaintainBase::wait_for(submission_index))
+        .unwrap();
 }
 
 pub fn read_buffer<T: std::clone::Clone>(b: &GBuffer) -> Vec<T> {
