@@ -844,8 +844,8 @@ impl GPU {
                     required_features: features,
                     required_limits: limits,
                     memory_hints: wgpu::MemoryHints::Performance,
+                    trace: wgpu::Trace::Off,
                 },
-                None,
             );
             match futures::executor::block_on(device_future) {
                 Ok((device, queue)) => {
@@ -1148,7 +1148,7 @@ pub fn read_buffer<T: std::clone::Clone>(b: &GBuffer) -> Vec<T> {
     let temp_slice = temp_buffer.slice(..);
     let (sender, receiver) = flume::bounded(1);
     temp_slice.map_async(wgpu::MapMode::Read, move |v| sender.send(v).unwrap());
-    g.device.poll(wgpu::Maintain::wait()).panic_on_timeout();
+    g.device.poll(wgpu::MaintainBase::wait()).unwrap();
     if let Ok(Ok(())) = receiver.recv() {
         let data = temp_slice.get_mapped_range();
         let data_ptr = data.as_ptr();
@@ -1322,8 +1322,8 @@ where
                     required_features: adapter.features(),
                     required_limits: adapter.limits(),
                     memory_hints: wgpu::MemoryHints::MemoryUsage,
+                    trace: wgpu::Trace::Off,
                 },
-                None,
             ))
             .unwrap();
             self.device = Some(device);
