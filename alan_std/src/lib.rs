@@ -1155,24 +1155,21 @@ pub fn read_buffer<T: std::clone::Clone>(b: &GBuffer) -> Vec<T> {
     encoder.copy_buffer_to_buffer(b, 0, &temp_buffer, 0, b.size());
     let submission_index = g.queue.submit(Some(encoder.finish()));
     let temp_slice = temp_buffer.slice(..);
-    let (sender, receiver) = flume::bounded(1);
+    temp_slice.map_async(
+        wgpu::MapMode::Read,
+        |_| { /* Not needed for us; single threaded GPU access in Alan (for now) */ },
+    );
     g.device
         .poll(wgpu::MaintainBase::wait_for(submission_index))
         .unwrap();
-    temp_slice.map_async(wgpu::MapMode::Read, move |v| sender.send(v).unwrap());
-    if let Ok(Ok(())) = receiver.recv() {
-        let data = temp_slice.get_mapped_range();
-        let data_ptr = data.as_ptr();
-        let data_len = bufferlen(b) as usize;
-        let data_slice: &[T] =
-            unsafe { std::slice::from_raw_parts(data_ptr as *const T, data_len) };
-        let result = data_slice.to_vec();
-        drop(data);
-        temp_buffer.unmap();
-        result
-    } else {
-        panic!("Failed to run compute on gpu!")
-    }
+    let data = temp_slice.get_mapped_range();
+    let data_ptr = data.as_ptr();
+    let data_len = bufferlen(b) as usize;
+    let data_slice: &[T] = unsafe { std::slice::from_raw_parts(data_ptr as *const T, data_len) };
+    let result = data_slice.to_vec();
+    drop(data);
+    temp_buffer.unmap();
+    result
 }
 
 #[allow(clippy::ptr_arg)]
