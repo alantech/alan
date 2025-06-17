@@ -930,8 +930,6 @@ pub fn create_buffer_init<T>(
         id: format!("buffer_{}", format!("{}", Uuid::new_v4()).replace("-", "_")),
         element_size: *element_size,
     };
-    // Wait for any prior operation (if any) to complete
-    g.device.poll(wgpu::MaintainBase::wait()).unwrap();
     Ok(buf)
 }
 
@@ -1008,8 +1006,6 @@ impl GPGPU {
 
 pub fn gpu_run(gg: &mut GPGPU) {
     let g = gpu();
-    // Wait for any prior operation (if any) to complete
-    g.device.poll(wgpu::MaintainBase::wait()).unwrap();
     if gg.module.is_none() {
         gg.module = Some(g.device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: None,
@@ -1079,8 +1075,6 @@ pub fn gpu_run(gg: &mut GPGPU) {
 
 pub fn gpu_run_list(ggs: &mut Vec<GPGPU>) {
     let g = gpu();
-    // Wait for any prior operation (if any) to complete
-    g.device.poll(wgpu::MaintainBase::wait()).unwrap();
     let mut encoder = g
         .device
         .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
@@ -1153,8 +1147,6 @@ pub fn gpu_run_list(ggs: &mut Vec<GPGPU>) {
 
 pub fn read_buffer<T: std::clone::Clone>(b: &GBuffer) -> Vec<T> {
     let g = gpu();
-    // Wait for any prior operation (if any) to complete
-    g.device.poll(wgpu::MaintainBase::wait()).unwrap();
     let temp_buffer = create_empty_buffer(&map_read_buffer_type(), &bufferlen(b), &b.element_size)
         .expect("The buffer already exists so a new one the same size should always work");
     let mut encoder = g
@@ -1164,10 +1156,10 @@ pub fn read_buffer<T: std::clone::Clone>(b: &GBuffer) -> Vec<T> {
     let submission_index = g.queue.submit(Some(encoder.finish()));
     let temp_slice = temp_buffer.slice(..);
     let (sender, receiver) = flume::bounded(1);
-    temp_slice.map_async(wgpu::MapMode::Read, move |v| sender.send(v).unwrap());
     g.device
         .poll(wgpu::MaintainBase::wait_for(submission_index))
         .unwrap();
+    temp_slice.map_async(wgpu::MapMode::Read, move |v| sender.send(v).unwrap());
     if let Ok(Ok(())) = receiver.recv() {
         let data = temp_slice.get_mapped_range();
         let data_ptr = data.as_ptr();
@@ -1189,8 +1181,6 @@ pub fn replace_buffer<T>(b: &GBuffer, v: &[T]) -> Result<(), AlanError> {
         Err("The input array is not the same size as the buffer".into())
     } else {
         let g = gpu();
-        // Wait for any prior operation (if any) to complete
-        g.device.poll(wgpu::MaintainBase::wait()).unwrap();
         let gb = create_buffer_init(&map_write_buffer_type(), v, &b.element_size)
             .expect("The buffer already exists so a new one the same size should always work");
         let mut encoder = g
