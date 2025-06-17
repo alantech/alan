@@ -1197,7 +1197,10 @@ pub fn replace_buffer<T>(b: &GBuffer, v: &[T]) -> Result<(), AlanError> {
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
         encoder.copy_buffer_to_buffer(&gb, 0, b, 0, b.size());
-        g.queue.submit(Some(encoder.finish()));
+        let submission_index = g.queue.submit(Some(encoder.finish()));
+        g.device
+            .poll(wgpu::MaintainBase::wait_for(submission_index))
+            .unwrap();
         gb.destroy();
         Ok(())
     }
