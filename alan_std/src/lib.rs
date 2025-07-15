@@ -854,9 +854,9 @@ impl GPU {
                 continue;
             }
             
-            // For ARM Mali, only skip software renderers, allow hardware GPUs
-            if is_arm_mali && info.name.to_lowercase().contains("llvmpipe") {
-                eprintln!("Skipping software renderer on ARM: {}", info.name);
+            // For ARM Mali, prefer software renderer for consistency, skip hardware GPUs
+            if is_arm_mali && !info.name.to_lowercase().contains("llvmpipe") {
+                eprintln!("Skipping hardware GPU on ARM for consistency: {}", info.name);
                 continue;
             }
             
