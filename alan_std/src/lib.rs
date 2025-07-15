@@ -838,6 +838,12 @@ impl GPU {
             let features = adapter.features();
             let limits = adapter.limits();
             let info = adapter.get_info();
+            
+            // Check if this is an ARM Mali GPU
+            let is_arm_mali = info.name.to_lowercase().contains("mali") || 
+                              info.name.to_lowercase().contains("arm") ||
+                              cfg!(target_arch = "aarch64");
+            
             let device_future = adapter.request_device(&wgpu::DeviceDescriptor {
                 label: Some(&format!("{} on {}", info.name, info.backend.to_str())),
                 required_features: features,
@@ -852,6 +858,12 @@ impl GPU {
                         device,
                         queue,
                     });
+                    
+                    // Log ARM Mali detection
+                    if is_arm_mali {
+                        eprintln!("Detected ARM Mali GPU: {}", info.name);
+                        eprintln!("Backend: {}", info.backend.to_str());
+                    }
                 }
                 Err(_) => { /* Do nothing */ }
             };
@@ -1007,14 +1019,20 @@ impl GPGPU {
 pub fn gpu_run(gg: &mut GPGPU) {
     let g = gpu();
     if gg.module.is_none() {
-        gg.module = Some(g.device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        let module_result = g.device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: None,
             source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(&gg.source)),
-        }));
+        });
+        // Check for shader compilation errors
+        if let Err(e) = module_result {
+            eprintln!("Shader compilation failed: {:?}", e);
+            panic!("Shader compilation failed on ARM GPU");
+        }
+        gg.module = Some(module_result.unwrap());
     }
     let module = gg.module.as_ref().unwrap();
     if gg.compute_pipeline.is_none() {
-        gg.compute_pipeline = Some(g.device.create_compute_pipeline(
+        let pipeline_result = g.device.create_compute_pipeline(
             &wgpu::ComputePipelineDescriptor {
                 label: None,
                 layout: None,
@@ -1023,7 +1041,13 @@ pub fn gpu_run(gg: &mut GPGPU) {
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
                 cache: None,
             },
-        ));
+        );
+        // Check for pipeline creation errors
+        if let Err(e) = pipeline_result {
+            eprintln!("Pipeline creation failed: {:?}", e);
+            panic!("Pipeline creation failed on ARM GPU");
+        }
+        gg.compute_pipeline = Some(pipeline_result.unwrap());
     }
     let compute_pipeline = gg.compute_pipeline.as_ref().unwrap();
     let mut bind_groups = Vec::new();
