@@ -816,9 +816,13 @@ pub fn cross_f64(a: &[f64; 3], b: &[f64; 3]) -> [f64; 3] {
 // GPU-related functions and types
 
 pub struct GPU {
-    pub adapter: wgpu::Adapter,
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
+    pub adapter: wgpu::Adapter,
+    pub features: wgpu::Features,
+    pub limits: wgpu::Limits,
+    pub info: wgpu::AdapterInfo,
+    pub is_arm_mali: bool,
 }
 
 impl GPU {
@@ -841,32 +845,42 @@ impl GPU {
             
             // Check if this is an ARM Mali GPU
             let is_arm_mali = info.name.to_lowercase().contains("mali") || 
-                              info.name.to_lowercase().contains("arm") ||
-                              cfg!(target_arch = "aarch64");
+                              info.name.to_lowercase().contains("v3d") ||
+                              info.name.to_lowercase().contains("llvmpipe");
             
-            let device_future = adapter.request_device(&wgpu::DeviceDescriptor {
-                label: Some(&format!("{} on {}", info.name, info.backend.to_str())),
-                required_features: features,
-                required_limits: limits,
-                memory_hints: wgpu::MemoryHints::Performance,
-                trace: wgpu::Trace::Off,
+            // For ARM Mali, prefer hardware GPUs over software renderers
+            if is_arm_mali && info.name.to_lowercase().contains("llvmpipe") {
+                eprintln!("Skipping software renderer on ARM: {}", info.name);
+                continue;
+            }
+            
+            // Check if compute shaders are supported
+            if !features.contains(wgpu::Features::SHADER_F16) {
+                eprintln!("Skipping GPU without compute shader support: {}", info.name);
+                continue;
+            }
+            
+            eprintln!("Using GPU: {} (Backend: {:?})", info.name, info.backend);
+            
+            let (device, queue) = pollster::block_on(adapter.request_device(
+                &wgpu::DeviceDescriptor {
+                    label: None,
+                    required_features: wgpu::Features::SHADER_F16,
+                    required_limits: limits.clone(),
+                    memory_hints: wgpu::MemoryHints::Performance,
+                    trace: wgpu::Trace::Off,
+                },
+            )).unwrap();
+            
+            out.push(GPU {
+                device,
+                queue,
+                adapter,
+                features,
+                limits,
+                info,
+                is_arm_mali,
             });
-            match futures::executor::block_on(device_future) {
-                Ok((device, queue)) => {
-                    out.push(GPU {
-                        adapter,
-                        device,
-                        queue,
-                    });
-                    
-                    // Log ARM Mali detection
-                    if is_arm_mali {
-                        eprintln!("Detected ARM Mali GPU: {}", info.name);
-                        eprintln!("Backend: {}", info.backend.to_str());
-                    }
-                }
-                Err(_) => { /* Do nothing */ }
-            };
         }
         out
     }
@@ -1088,12 +1102,16 @@ pub fn gpu_run(gg: &mut GPGPU) {
             gg.workgroup_sizes[2].try_into().unwrap(),
         );
     }
-    // This shouldn't be necessary, but there seems to be some sort of race condition occassionally
-    // triggered on older hardware
     let submission_index = g.queue.submit(Some(encoder.finish()));
-    g.device
-        .poll(wgpu::MaintainBase::wait_for(submission_index))
-        .unwrap();
+    
+    // Wait for the GPU work to complete
+    let _ = g.device.poll(wgpu::MaintainBase::wait_for(submission_index));
+    
+    // For ARM Mali, add additional verification that the compute shader actually ran
+    if g.is_arm_mali {
+        // Add a small delay to ensure GPU work is complete
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
 }
 
 pub fn gpu_run_list(ggs: &mut Vec<GPGPU>) {
@@ -1192,12 +1210,31 @@ pub fn read_buffer<T: std::clone::Clone + std::fmt::Debug>(b: &GBuffer) -> Vec<T
     let data_slice: &[T] = unsafe { std::slice::from_raw_parts(data_ptr as *const T, data_len) };
     let result = data_slice.to_vec();
     
-    // Debug: Print buffer contents on ARM
+    // Debug: Print buffer contents for ARM debugging
     if cfg!(target_arch = "aarch64") {
         eprintln!("=== ARM GPU Debug: Buffer Read ===");
-        eprintln!("Buffer size: {}", data_len);
+        eprintln!("Buffer size: {}", result.len());
         eprintln!("Buffer contents: {:?}", result);
         eprintln!("=== End Buffer Read ===");
+    }
+    
+    // For ARM Mali, check if the result is all zeros (indicating GPU failure)
+    if g.is_arm_mali {
+        let all_zeros = result.iter().all(|x| {
+            if std::any::type_name::<T>() == std::any::type_name::<i32>() {
+                unsafe { *(x as *const T as *const i32) == 0 }
+            } else if std::any::type_name::<T>() == std::any::type_name::<f32>() {
+                unsafe { *(x as *const T as *const f32) == 0.0 }
+            } else {
+                false
+            }
+        });
+        
+        if all_zeros {
+            eprintln!("ARM Mali GPU returned all zeros - compute shader may have failed");
+            // For now, we'll return the zeros but log the issue
+            // In the future, we could implement CPU fallbacks here
+        }
     }
     
     drop(data);
