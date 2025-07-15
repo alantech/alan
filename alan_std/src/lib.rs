@@ -854,9 +854,9 @@ impl GPU {
                 continue;
             }
             
-            // Check if compute shaders are supported
-            if !features.contains(wgpu::Features::SHADER_F16) {
-                eprintln!("Skipping GPU without compute shader support: {}", info.name);
+            // For ARM Mali, only skip software renderers, allow hardware GPUs
+            if is_arm_mali && info.name.to_lowercase().contains("llvmpipe") {
+                eprintln!("Skipping software renderer on ARM: {}", info.name);
                 continue;
             }
             
@@ -865,7 +865,7 @@ impl GPU {
             let (device, queue) = pollster::block_on(adapter.request_device(
                 &wgpu::DeviceDescriptor {
                     label: None,
-                    required_features: wgpu::Features::SHADER_F16,
+                    required_features: features,
                     required_limits: limits.clone(),
                     memory_hints: wgpu::MemoryHints::Performance,
                     trace: wgpu::Trace::Off,
