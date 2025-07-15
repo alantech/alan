@@ -973,6 +973,10 @@ pub fn create_buffer_init<T>(
     
     if g.is_arm_mali {
         eprintln!("Buffer created with ID: {}", buf.id);
+        eprintln!("Ensuring buffer initialization is complete...");
+        // Ensure buffer initialization is complete before returning
+        g.device.poll(wgpu::MaintainBase::wait()).unwrap();
+        eprintln!("Buffer initialization completed");
         eprintln!("=== End ARM Mali Buffer Init Debug ===");
     }
     
