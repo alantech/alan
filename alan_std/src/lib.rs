@@ -1168,7 +1168,7 @@ pub fn gpu_run_list(ggs: &mut Vec<GPGPU>) {
         .unwrap();
 }
 
-pub fn read_buffer<T: std::clone::Clone>(b: &GBuffer) -> Vec<T> {
+pub fn read_buffer<T: std::clone::Clone + std::fmt::Debug>(b: &GBuffer) -> Vec<T> {
     let g = gpu();
     g.device.poll(wgpu::MaintainBase::wait()).unwrap();
     let temp_buffer = create_empty_buffer(&map_read_buffer_type(), &bufferlen(b), &b.element_size)
