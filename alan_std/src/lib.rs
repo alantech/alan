@@ -1019,20 +1019,25 @@ impl GPGPU {
 pub fn gpu_run(gg: &mut GPGPU) {
     let g = gpu();
     if gg.module.is_none() {
-        let module_result = g.device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        // Debug: Print the WGSL shader source for ARM debugging
+        if cfg!(target_arch = "aarch64") {
+            eprintln!("=== ARM GPU Debug: WGSL Shader Source ===");
+            eprintln!("{}", gg.source);
+            eprintln!("=== End WGSL Shader Source ===");
+        }
+        
+        // Note: create_shader_module doesn't return Result, so we can't catch compilation errors here
+        // The shader compilation errors would be caught at pipeline creation time
+        gg.module = Some(g.device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: None,
             source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(&gg.source)),
-        });
-        // Check for shader compilation errors
-        if let Err(e) = module_result {
-            eprintln!("Shader compilation failed: {:?}", e);
-            panic!("Shader compilation failed on ARM GPU");
-        }
-        gg.module = Some(module_result.unwrap());
+        }));
     }
     let module = gg.module.as_ref().unwrap();
     if gg.compute_pipeline.is_none() {
-        let pipeline_result = g.device.create_compute_pipeline(
+        // Note: create_compute_pipeline doesn't return Result, so we can't catch compilation errors here
+        // The shader compilation errors would be caught at pipeline creation time
+        gg.compute_pipeline = Some(g.device.create_compute_pipeline(
             &wgpu::ComputePipelineDescriptor {
                 label: None,
                 layout: None,
@@ -1041,13 +1046,7 @@ pub fn gpu_run(gg: &mut GPGPU) {
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
                 cache: None,
             },
-        );
-        // Check for pipeline creation errors
-        if let Err(e) = pipeline_result {
-            eprintln!("Pipeline creation failed: {:?}", e);
-            panic!("Pipeline creation failed on ARM GPU");
-        }
-        gg.compute_pipeline = Some(pipeline_result.unwrap());
+        ));
     }
     let compute_pipeline = gg.compute_pipeline.as_ref().unwrap();
     let mut bind_groups = Vec::new();
@@ -1187,14 +1186,20 @@ pub fn read_buffer<T: std::clone::Clone>(b: &GBuffer) -> Vec<T> {
     g.device
         .poll(wgpu::MaintainBase::wait_for(submission_index))
         .unwrap();
-    // Suggested that this poll may still return before the `map_async` callback is actually called
-    // in some drivers. Adding a temporary sleep of 100ms to see if that helps on ARM
-    std::thread::sleep(std::time::Duration::from_millis(100));
     let data = temp_slice.get_mapped_range();
     let data_ptr = data.as_ptr();
     let data_len = bufferlen(b) as usize;
     let data_slice: &[T] = unsafe { std::slice::from_raw_parts(data_ptr as *const T, data_len) };
     let result = data_slice.to_vec();
+    
+    // Debug: Print buffer contents on ARM
+    if cfg!(target_arch = "aarch64") {
+        eprintln!("=== ARM GPU Debug: Buffer Read ===");
+        eprintln!("Buffer size: {}", data_len);
+        eprintln!("Buffer contents: {:?}", result);
+        eprintln!("=== End Buffer Read ===");
+    }
+    
     drop(data);
     temp_buffer.unmap();
     result
