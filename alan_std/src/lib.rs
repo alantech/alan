@@ -1163,6 +1163,9 @@ pub fn read_buffer<T: std::clone::Clone>(b: &GBuffer) -> Vec<T> {
     g.device
         .poll(wgpu::MaintainBase::wait_for(submission_index))
         .unwrap();
+    // Suggested that this poll may still return before the `map_async` callback is actually called
+    // in some drivers. Adding a temporary sleep of 10ms to see if that helps on ARM
+    std::thread::sleep(std::time::Duration::from_millis(10));
     let data = temp_slice.get_mapped_range();
     let data_ptr = data.as_ptr();
     let data_len = bufferlen(b) as usize;
