@@ -937,6 +937,20 @@ pub fn create_buffer_init<T>(
     element_size: &i8,
 ) -> Result<GBuffer, AlanError> {
     let g = gpu();
+    
+    // ARM Mali debug logging for buffer initialization
+    if g.is_arm_mali {
+        eprintln!("=== ARM Mali Buffer Init Debug ===");
+        eprintln!("Creating buffer with {} elements", vals.len());
+        if std::any::type_name::<T>() == std::any::type_name::<i32>() {
+            let int_vals: &[i32] = unsafe { std::slice::from_raw_parts(vals.as_ptr() as *const i32, vals.len()) };
+            eprintln!("Initial values: {:?}", int_vals);
+        } else if std::any::type_name::<T>() == std::any::type_name::<f32>() {
+            let float_vals: &[f32] = unsafe { std::slice::from_raw_parts(vals.as_ptr() as *const f32, vals.len()) };
+            eprintln!("Initial values: {:?}", float_vals);
+        }
+    }
+    
     let val_ptr = vals.as_ptr();
     let val_u8_len = vals.len() * (*element_size as usize);
     let limits = g.device.limits();
@@ -956,6 +970,12 @@ pub fn create_buffer_init<T>(
         id: format!("buffer_{}", format!("{}", Uuid::new_v4()).replace("-", "_")),
         element_size: *element_size,
     };
+    
+    if g.is_arm_mali {
+        eprintln!("Buffer created with ID: {}", buf.id);
+        eprintln!("=== End ARM Mali Buffer Init Debug ===");
+    }
+    
     Ok(buf)
 }
 
