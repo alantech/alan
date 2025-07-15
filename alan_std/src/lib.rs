@@ -854,9 +854,9 @@ impl GPU {
                 continue;
             }
             
-            // For ARM Mali, prefer software renderer for consistency, skip hardware GPUs
-            if is_arm_mali && !info.name.to_lowercase().contains("llvmpipe") {
-                eprintln!("Skipping hardware GPU on ARM for consistency: {}", info.name);
+            // For ARM Mali, only skip software renderers, allow hardware GPUs
+            if is_arm_mali && info.name.to_lowercase().contains("llvmpipe") {
+                eprintln!("Skipping software renderer on ARM: {}", info.name);
                 continue;
             }
             
@@ -1032,6 +1032,16 @@ impl GPGPU {
 
 pub fn gpu_run(gg: &mut GPGPU) {
     let g = gpu();
+    
+    // ARM Mali debug logging
+    if g.is_arm_mali {
+        eprintln!("=== ARM Mali GPU Run Debug ===");
+        eprintln!("GPU: {} (Backend: {:?})", g.info.name, g.info.backend);
+        eprintln!("Workgroup sizes: {:?}", gg.workgroup_sizes);
+        eprintln!("Buffer count: {}", gg.buffers.len());
+        eprintln!("Entry point: {}", gg.entrypoint);
+    }
+    
     if gg.module.is_none() {
         // Debug: Print the WGSL shader source for ARM debugging
         if cfg!(target_arch = "aarch64") {
@@ -1102,24 +1112,50 @@ pub fn gpu_run(gg: &mut GPGPU) {
             gg.workgroup_sizes[2].try_into().unwrap(),
         );
     }
+    
+    if g.is_arm_mali {
+        eprintln!("Submitting compute work to GPU...");
+    }
+    
     let submission_index = g.queue.submit(Some(encoder.finish()));
+    
+    if g.is_arm_mali {
+        eprintln!("Waiting for GPU work to complete (submission index: {:?})...", submission_index);
+    }
     
     // Wait for the GPU work to complete
     let _ = g.device.poll(wgpu::MaintainBase::wait_for(submission_index));
     
-    // For ARM Mali, add additional verification that the compute shader actually ran
     if g.is_arm_mali {
+        eprintln!("GPU work completed, adding additional delay...");
         // Add a small delay to ensure GPU work is complete
         std::thread::sleep(std::time::Duration::from_millis(10));
+        eprintln!("=== End ARM Mali GPU Run Debug ===");
     }
 }
 
 pub fn gpu_run_list(ggs: &mut Vec<GPGPU>) {
     let g = gpu();
+    
+    // ARM Mali debug logging
+    if g.is_arm_mali {
+        eprintln!("=== ARM Mali GPU Run List Debug ===");
+        eprintln!("GPU: {} (Backend: {:?})", g.info.name, g.info.backend);
+        eprintln!("Running {} GPU operations", ggs.len());
+    }
+    
     let mut encoder = g
         .device
         .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-    for gg in ggs {
+    let ggs_len = ggs.len();
+    for (i, gg) in ggs.iter_mut().enumerate() {
+        if g.is_arm_mali {
+            eprintln!("Setting up GPU operation {} of {}", i + 1, ggs_len);
+            eprintln!("  Workgroup sizes: {:?}", gg.workgroup_sizes);
+            eprintln!("  Buffer count: {}", gg.buffers.len());
+            eprintln!("  Entry point: {}", gg.entrypoint);
+        }
+        
         if gg.module.is_none() {
             gg.module = Some(g.device.create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: None,
@@ -1178,12 +1214,27 @@ pub fn gpu_run_list(ggs: &mut Vec<GPGPU>) {
             );
         }
     }
+    
+    if g.is_arm_mali {
+        eprintln!("Submitting all GPU work to queue...");
+    }
+    
     // This shouldn't be necessary, but there seems to be some sort of race condition occassionally
     // triggered on older hardware
     let submission_index = g.queue.submit(Some(encoder.finish()));
+    
+    if g.is_arm_mali {
+        eprintln!("Waiting for GPU work to complete (submission index: {:?})...", submission_index);
+    }
+    
     g.device
         .poll(wgpu::MaintainBase::wait_for(submission_index))
         .unwrap();
+    
+    if g.is_arm_mali {
+        eprintln!("All GPU work completed");
+        eprintln!("=== End ARM Mali GPU Run List Debug ===");
+    }
 }
 
 pub fn read_buffer<T: std::clone::Clone + std::fmt::Debug>(b: &GBuffer) -> Vec<T> {
