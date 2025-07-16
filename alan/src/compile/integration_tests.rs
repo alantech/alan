@@ -346,7 +346,17 @@ macro_rules! stdout {
         } else {
             String::from_utf8($real_val.stdout.clone())?
         };
-        assert_eq!($test_val, &std_out, "{}", if $in_rs { format!("Rust: {} == {}", $test_val, &std_out) } else { format!("JS: {} === {}", $test_val, &std_out) });
+        let std_err = if cfg!(windows) {
+            String::from_utf8($real_val.stderr.clone())?.replace("\r\n", "\n")
+        } else {
+            String::from_utf8($real_val.stderr.clone())?
+        };
+        let err_info = if std_err.is_empty() {
+            "".to_string()
+        } else {
+            format!(" (stderr: {})", std_err)
+        };
+        assert_eq!($test_val, &std_out, "{}{}", if $in_rs { format!("Rust: {} == {}", $test_val, &std_out) } else { format!("JS: {} === {}", $test_val, &std_out) }, err_info);
     };
 }
 #[cfg(test)]
@@ -358,7 +368,17 @@ macro_rules! stdout_rs {
             } else {
                 String::from_utf8($real_val.stdout.clone())?
             };
-            assert_eq!($test_val, &std_out, "Rust: {} == {}", $test_val, &std_out);
+            let std_err = if cfg!(windows) {
+                String::from_utf8($real_val.stderr.clone())?.replace("\r\n", "\n")
+            } else {
+                String::from_utf8($real_val.stderr.clone())?
+            };
+            let err_info = if std_err.is_empty() {
+                "".to_string()
+            } else {
+                format!(" (stderr: {})", std_err)
+            };
+            assert_eq!($test_val, &std_out, "Rust: {} == {}{}", $test_val, &std_out, err_info);
         }
     };
 }
@@ -371,7 +391,17 @@ macro_rules! stdout_js {
             } else {
                 String::from_utf8($real_val.stdout.clone())?
             };
-            assert_eq!($test_val, &std_out, "JS: {} == {}", $test_val, &std_out);
+            let std_err = if cfg!(windows) {
+                String::from_utf8($real_val.stderr.clone())?.replace("\r\n", "\n")
+            } else {
+                String::from_utf8($real_val.stderr.clone())?
+            };
+            let err_info = if std_err.is_empty() {
+                "".to_string()
+            } else {
+                format!(" (stderr: {})", std_err)
+            };
+            assert_eq!($test_val, &std_out, "JS: {} == {}{}", $test_val, &std_out, err_info);
         }
     };
 }
@@ -383,7 +413,17 @@ macro_rules! stdout_contains {
         } else {
             String::from_utf8($real_val.stdout.clone())?
         };
-        assert_eq!(std_out.contains($test_val), true, "{}", if $in_rs { format!("Rust: {} contained in {}", $test_val, &std_out) } else { format!("JS: {} contained in {}", $test_val, &std_out) });
+        let std_err = if cfg!(windows) {
+            String::from_utf8($real_val.stderr.clone())?.replace("\r\n", "\n")
+        } else {
+            String::from_utf8($real_val.stderr.clone())?
+        };
+        let err_info = if std_err.is_empty() {
+            "".to_string()
+        } else {
+            format!(" (stderr: {})", std_err)
+        };
+        assert_eq!(std_out.contains($test_val), true, "{}{}", if $in_rs { format!("Rust: {} contained in {}", $test_val, &std_out) } else { format!("JS: {} contained in {}", $test_val, &std_out) }, err_info);
     };
 }
 #[cfg(test)]
