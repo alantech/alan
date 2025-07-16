@@ -3,6 +3,8 @@
   <h2>The Alan Programming Language</h2>
 </div>
 
+Just forcing a rerun of the test suite on current main.
+
 [![CI](https://github.com/alantech/alan/actions/workflows/rust.yml/badge.svg)](https://github.com/alantech/alan/actions/workflows/rust.yml)
 [![Docs](https://img.shields.io/badge/docs-mdbook-blue)](https://docs.alan-lang.org)
 [![Discord](https://img.shields.io/badge/discord-alanlang-purple)](https://discord.gg/XatB9we)
