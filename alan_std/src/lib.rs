@@ -842,7 +842,8 @@ impl GPU {
             let limits = adapter.limits();
             let info = adapter.get_info();
             
-            let (device, queue) = pollster::block_on(adapter.request_device(
+            // Try to request the device, but handle device lost errors gracefully
+            match pollster::block_on(adapter.request_device(
                 &wgpu::DeviceDescriptor {
                     label: None,
                     required_features: features,
@@ -850,16 +851,28 @@ impl GPU {
                     memory_hints: wgpu::MemoryHints::Performance,
                     trace: wgpu::Trace::Off,
                 },
-            )).unwrap();
-            
-            out.push(GPU {
-                device,
-                queue,
-                adapter,
-                features,
-                limits,
-                info,
-            });
+            )) {
+                Ok((device, queue)) => {
+                    out.push(GPU {
+                        device,
+                        queue,
+                        adapter,
+                        features,
+                        limits,
+                        info,
+                    });
+                }
+                Err(wgpu::RequestDeviceError { inner: wgpu::RequestDeviceErrorInner::Core(wgpu::CoreError::Device(device_error)) }) => {
+                    // Log the device error but continue to try other adapters
+                    eprintln!("Failed to initialize GPU adapter {}: {:?}", info.name, device_error);
+                    continue;
+                }
+                Err(e) => {
+                    // For other errors, also log but continue
+                    eprintln!("Failed to initialize GPU adapter {}: {:?}", info.name, e);
+                    continue;
+                }
+            }
         }
         out
     }
@@ -870,9 +883,19 @@ static GPUS: OnceLock<Vec<GPU>> = OnceLock::new();
 fn gpu() -> &'static GPU {
     match GPUS.get_or_init(|| GPU::init(GPU::list())).first() {
         Some(g) => g,
-        None => panic!(
-            "This program requires a GPU but there are no WebGPU-compliant GPUs on this machine"
-        ),
+        None => {
+            // Check if we had adapters but they all failed to initialize
+            let adapters = GPU::list();
+            if adapters.is_empty() {
+                panic!(
+                    "This program requires a GPU but there are no WebGPU-compliant GPUs on this machine"
+                );
+            } else {
+                panic!(
+                    "This program requires a GPU but all available GPU adapters failed to initialize. This may be due to device lost errors on Intel Mac systems."
+                );
+            }
+        }
     }
 }
 
