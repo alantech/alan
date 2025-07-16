@@ -887,7 +887,7 @@ fn gpu() -> &'static GPU {
                 );
             } else {
                 panic!(
-                    "This program requires a GPU but all available GPU adapters failed to initialize. This may be due to device lost errors on Intel Mac systems."
+                    "This program requires a GPU but all available GPU adapters failed to initialize."
                 );
             }
         }
