@@ -862,13 +862,8 @@ impl GPU {
                         info,
                     });
                 }
-                Err(wgpu::RequestDeviceError { inner: wgpu::RequestDeviceErrorInner::Core(wgpu::CoreError::Device(device_error)) }) => {
-                    // Log the device error but continue to try other adapters
-                    eprintln!("Failed to initialize GPU adapter {}: {:?}", info.name, device_error);
-                    continue;
-                }
                 Err(e) => {
-                    // For other errors, also log but continue
+                    // Log the device error but continue to try other adapters
                     eprintln!("Failed to initialize GPU adapter {}: {:?}", info.name, e);
                     continue;
                 }
