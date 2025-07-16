@@ -180,15 +180,7 @@ macro_rules! test_gpgpu {
                     Err(e) => Err(format!("Could not run the test binary {:?}", e)),
                 }?;
                 
-                // Print stderr for debugging ARM GPU issues
-                if cfg!(target_arch = "aarch64") {
-                    let stderr = String::from_utf8_lossy(&run.stderr);
-                    if !stderr.is_empty() {
-                        eprintln!("=== Test {} stderr ===", stringify!($rule));
-                        eprintln!("{}", stderr);
-                        eprintln!("=== End stderr ===");
-                    }
-                }
+
                 
                 $( $type!($test_val, true, &run); )+
                 match std::fs::remove_file(&cmd) {
@@ -255,15 +247,7 @@ macro_rules! test_gpgpu {
                             Err(e) => Err(format!("Could not run the test JS code {:?}", e)),
                         }?;
                     
-                    // Print stderr for debugging ARM GPU issues (JS tests)
-                    if cfg!(target_arch = "aarch64") {
-                        let stderr = String::from_utf8_lossy(&run.stderr);
-                        if !stderr.is_empty() {
-                            eprintln!("=== Test {} JS stderr ===", stringify!($rule));
-                            eprintln!("{}", stderr);
-                            eprintln!("=== End JS stderr ===");
-                        }
-                    }
+
                     
                     $( $type!($test_val, false, &run); )+
                     match std::fs::remove_file(&jsfile) {
