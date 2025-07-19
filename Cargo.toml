@@ -1,5 +1,5 @@
 [workspace]
-members = [ "alan", "alan_compiler", "alan_std", "web_compiler", "example_24_0_3", "example_24_0_5", "example_25_0_0", "example_25_0_2", "example_26_0_0", "example_26_0_1" ]
+members = [ "alan", "alan_compiler", "alan_std", "web_compiler", "example_24_0_3", "example_24_0_5", "example_25_0_0", "example_25_0_2", "example_26_0_0", "example_26_0_1", "example_dfellis_trunk" ]
 resolver = "2"
 
 [workspace.package]

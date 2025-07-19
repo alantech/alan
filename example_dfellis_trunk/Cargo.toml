@@ -1,0 +1,14 @@
+[package]
+name = "example_dfellis_trunk"
+description = "Example Test App using wgpu fork of trunk"
+license.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+repository.workspace = true
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+
+[dependencies]
+futures = "0.3.31"
+wgpu = { git = "https://github.com/dfellis/wgpu", branch = "trunk" }
