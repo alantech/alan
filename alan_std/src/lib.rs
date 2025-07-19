@@ -816,9 +816,12 @@ pub fn cross_f64(a: &[f64; 3], b: &[f64; 3]) -> [f64; 3] {
 // GPU-related functions and types
 
 pub struct GPU {
-    pub adapter: wgpu::Adapter,
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
+    pub adapter: wgpu::Adapter,
+    pub features: wgpu::Features,
+    pub limits: wgpu::Limits,
+    pub info: wgpu::AdapterInfo,
 }
 
 impl GPU {
@@ -838,25 +841,34 @@ impl GPU {
             let features = adapter.features();
             let limits = adapter.limits();
             let info = adapter.get_info();
-            let device_future = adapter.request_device(
+            
+            // Try to request the device, but handle device lost errors gracefully
+            match pollster::block_on(adapter.request_device(
                 &wgpu::DeviceDescriptor {
-                    label: Some(&format!("{} on {}", info.name, info.backend.to_str())),
+                    label: None,
                     required_features: features,
-                    required_limits: limits,
+                    required_limits: limits.clone(),
                     memory_hints: wgpu::MemoryHints::Performance,
+                    trace: wgpu::Trace::Off,
                 },
-                None,
-            );
-            match futures::executor::block_on(device_future) {
+            )) {
                 Ok((device, queue)) => {
+                    eprintln!("Successfully initialized GPU: {} (Backend: {:?})", info.name, info.backend);
                     out.push(GPU {
-                        adapter,
                         device,
                         queue,
+                        adapter,
+                        features,
+                        limits,
+                        info,
                     });
                 }
-                Err(_) => { /* Do nothing */ }
-            };
+                Err(e) => {
+                    // Log the device error but continue to try other adapters
+                    eprintln!("Failed to initialize GPU adapter {}: {:?}", info.name, e);
+                    continue;
+                }
+            }
         }
         out
     }
@@ -867,9 +879,19 @@ static GPUS: OnceLock<Vec<GPU>> = OnceLock::new();
 fn gpu() -> &'static GPU {
     match GPUS.get_or_init(|| GPU::init(GPU::list())).first() {
         Some(g) => g,
-        None => panic!(
-            "This program requires a GPU but there are no WebGPU-compliant GPUs on this machine"
-        ),
+        None => {
+            // Check if we had adapters but they all failed to initialize
+            let adapters = GPU::list();
+            if adapters.is_empty() {
+                panic!(
+                    "This program requires a GPU but there are no WebGPU-compliant GPUs on this machine"
+                );
+            } else {
+                panic!(
+                    "This program requires a GPU but all available GPU adapters failed to initialize."
+                );
+            }
+        }
     }
 }
 
@@ -913,25 +935,53 @@ pub fn create_buffer_init<T>(
     element_size: &i8,
 ) -> Result<GBuffer, AlanError> {
     let g = gpu();
+    
+
+    
     let val_ptr = vals.as_ptr();
     let val_u8_len = vals.len() * (*element_size as usize);
     let limits = g.device.limits();
     if limits.max_buffer_size < val_u8_len as u64 {
         return Err(AlanError { message: format!("Cannot load the array into the GPU, as it is too large. GBuffer on your GPU only supports up to {} bytes per buffer", limits.max_buffer_size), });
     }
-    let val_u8: &[u8] = unsafe { std::slice::from_raw_parts(val_ptr as *const u8, val_u8_len) };
-    Ok(GBuffer {
-        buffer: Rc::new(wgpu::util::DeviceExt::create_buffer_init(
-            &g.device,
-            &wgpu::util::BufferInitDescriptor {
-                label: None, // TODO: Add a label for easier debugging?
-                contents: val_u8,
-                usage: *usage,
-            },
-        )),
+    
+    // Create an empty buffer first
+    let buf = GBuffer {
+        buffer: Rc::new(g.device.create_buffer(&wgpu::BufferDescriptor {
+            label: None,
+            size: val_u8_len as u64,
+            usage: *usage | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        })),
         id: format!("buffer_{}", format!("{}", Uuid::new_v4()).replace("-", "_")),
         element_size: *element_size,
-    })
+    };
+    
+    // Create a staging buffer with the data
+    let val_u8: &[u8] = unsafe { std::slice::from_raw_parts(val_ptr as *const u8, val_u8_len) };
+    let staging_buffer = g.device.create_buffer(&wgpu::BufferDescriptor {
+        label: None,
+        size: val_u8_len as u64,
+        usage: wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::MAP_WRITE,
+        mapped_at_creation: true,
+    });
+    
+    // Write data to staging buffer
+    {
+        let view = staging_buffer.slice(..);
+        view.get_mapped_range_mut().copy_from_slice(val_u8);
+    }
+    staging_buffer.unmap();
+    
+    // Copy from staging buffer to target buffer
+    let mut encoder = g.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+    encoder.copy_buffer_to_buffer(&staging_buffer, 0, &buf, 0, val_u8_len as u64);
+    
+    // Submit and wait for the copy to complete
+    let submission_index = g.queue.submit(Some(encoder.finish()));
+    g.device.poll(wgpu::MaintainBase::wait_for(submission_index)).unwrap();
+    
+    Ok(buf)
 }
 
 pub fn create_empty_buffer(
@@ -1007,7 +1057,12 @@ impl GPGPU {
 
 pub fn gpu_run(gg: &mut GPGPU) {
     let g = gpu();
+    
     if gg.module.is_none() {
+
+        
+        // Note: create_shader_module doesn't return Result, so we can't catch compilation errors here
+        // The shader compilation errors would be caught at pipeline creation time
         gg.module = Some(g.device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: None,
             source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(&gg.source)),
@@ -1015,6 +1070,8 @@ pub fn gpu_run(gg: &mut GPGPU) {
     }
     let module = gg.module.as_ref().unwrap();
     if gg.compute_pipeline.is_none() {
+        // Note: create_compute_pipeline doesn't return Result, so we can't catch compilation errors here
+        // The shader compilation errors would be caught at pipeline creation time
         gg.compute_pipeline = Some(g.device.create_compute_pipeline(
             &wgpu::ComputePipelineDescriptor {
                 label: None,
@@ -1066,15 +1123,21 @@ pub fn gpu_run(gg: &mut GPGPU) {
             gg.workgroup_sizes[2].try_into().unwrap(),
         );
     }
-    g.queue.submit(Some(encoder.finish()));
+    
+    let submission_index = g.queue.submit(Some(encoder.finish()));
+    
+    // Wait for the GPU work to complete
+    let _ = g.device.poll(wgpu::MaintainBase::wait_for(submission_index));
 }
 
 pub fn gpu_run_list(ggs: &mut Vec<GPGPU>) {
     let g = gpu();
+    
     let mut encoder = g
         .device
         .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-    for gg in ggs {
+    for gg in ggs.iter_mut() {
+        
         if gg.module.is_none() {
             gg.module = Some(g.device.create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: None,
@@ -1133,35 +1196,45 @@ pub fn gpu_run_list(ggs: &mut Vec<GPGPU>) {
             );
         }
     }
-    g.queue.submit(Some(encoder.finish()));
+    
+    // This shouldn't be necessary, but there seems to be some sort of race condition occassionally
+    // triggered on older hardware
+    let submission_index = g.queue.submit(Some(encoder.finish()));
+    
+    g.device
+        .poll(wgpu::MaintainBase::wait_for(submission_index))
+        .unwrap();
 }
 
-pub fn read_buffer<T: std::clone::Clone>(b: &GBuffer) -> Vec<T> {
+pub fn read_buffer<T: std::clone::Clone + std::fmt::Debug>(b: &GBuffer) -> Vec<T> {
     let g = gpu();
+    g.device.poll(wgpu::MaintainBase::wait()).unwrap();
     let temp_buffer = create_empty_buffer(&map_read_buffer_type(), &bufferlen(b), &b.element_size)
         .expect("The buffer already exists so a new one the same size should always work");
     let mut encoder = g
         .device
         .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
     encoder.copy_buffer_to_buffer(b, 0, &temp_buffer, 0, b.size());
-    g.queue.submit(Some(encoder.finish()));
+    let submission_index = g.queue.submit(Some(encoder.finish()));
     let temp_slice = temp_buffer.slice(..);
-    let (sender, receiver) = flume::bounded(1);
-    temp_slice.map_async(wgpu::MapMode::Read, move |v| sender.send(v).unwrap());
-    g.device.poll(wgpu::Maintain::wait()).panic_on_timeout();
-    if let Ok(Ok(())) = receiver.recv() {
-        let data = temp_slice.get_mapped_range();
-        let data_ptr = data.as_ptr();
-        let data_len = bufferlen(b) as usize;
-        let data_slice: &[T] =
-            unsafe { std::slice::from_raw_parts(data_ptr as *const T, data_len) };
-        let result = data_slice.to_vec();
-        drop(data);
-        temp_buffer.unmap();
-        result
-    } else {
-        panic!("Failed to run compute on gpu!")
-    }
+    temp_slice.map_async(
+        wgpu::MapMode::Read,
+        |_| { /* Not needed for us; single threaded GPU access in Alan (for now) */ },
+    );
+    g.device
+        .poll(wgpu::MaintainBase::wait_for(submission_index))
+        .unwrap();
+    let data = temp_slice.get_mapped_range();
+    let data_ptr = data.as_ptr();
+    let data_len = bufferlen(b) as usize;
+    let data_slice: &[T] = unsafe { std::slice::from_raw_parts(data_ptr as *const T, data_len) };
+    let result = data_slice.to_vec();
+    
+
+    
+    drop(data);
+    temp_buffer.unmap();
+    result
 }
 
 #[allow(clippy::ptr_arg)]
@@ -1176,7 +1249,10 @@ pub fn replace_buffer<T>(b: &GBuffer, v: &[T]) -> Result<(), AlanError> {
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
         encoder.copy_buffer_to_buffer(&gb, 0, b, 0, b.size());
-        g.queue.submit(Some(encoder.finish()));
+        let submission_index = g.queue.submit(Some(encoder.finish()));
+        g.device
+            .poll(wgpu::MaintainBase::wait_for(submission_index))
+            .unwrap();
         gb.destroy();
         Ok(())
     }
@@ -1316,16 +1392,15 @@ where
         if self.device.is_none() {
             // We can do both device and queue here as they're created at the same time
             let adapter = self.adapter.as_ref().unwrap();
-            let (device, queue) = pollster::block_on(adapter.request_device(
-                &wgpu::DeviceDescriptor {
+            let (device, queue) =
+                pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
                     label: None,
                     required_features: adapter.features(),
                     required_limits: adapter.limits(),
                     memory_hints: wgpu::MemoryHints::MemoryUsage,
-                },
-                None,
-            ))
-            .unwrap();
+                    trace: wgpu::Trace::Off,
+                }))
+                .unwrap();
             self.device = Some(device);
             self.queue = Some(queue);
         }
