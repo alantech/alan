@@ -1,0 +1,14 @@
+[package]
+name = "example_25_0_0"
+description = "Example Test App using wgpu 25.0.0"
+license.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+repository.workspace = true
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+
+[dependencies]
+futures = "0.3.31"
+wgpu = "25.0.0"
