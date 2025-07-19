@@ -853,6 +853,7 @@ impl GPU {
                 },
             )) {
                 Ok((device, queue)) => {
+                    eprintln!("Successfully initialized GPU: {} (Backend: {:?})", info.name, info.backend);
                     out.push(GPU {
                         device,
                         queue,
