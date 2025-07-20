@@ -919,19 +919,44 @@ pub fn create_buffer_init<T>(
     if limits.max_buffer_size < val_u8_len as u64 {
         return Err(AlanError { message: format!("Cannot load the array into the GPU, as it is too large. GBuffer on your GPU only supports up to {} bytes per buffer", limits.max_buffer_size), });
     }
-    let val_u8: &[u8] = unsafe { std::slice::from_raw_parts(val_ptr as *const u8, val_u8_len) };
-    Ok(GBuffer {
-        buffer: Rc::new(wgpu::util::DeviceExt::create_buffer_init(
-            &g.device,
-            &wgpu::util::BufferInitDescriptor {
-                label: None, // TODO: Add a label for easier debugging?
-                contents: val_u8,
-                usage: *usage,
-            },
-        )),
+    
+    // Create an empty buffer first
+    let buf = GBuffer {
+        buffer: Rc::new(g.device.create_buffer(&wgpu::BufferDescriptor {
+            label: None,
+            size: val_u8_len as u64,
+            usage: *usage | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        })),
         id: format!("buffer_{}", format!("{}", Uuid::new_v4()).replace("-", "_")),
         element_size: *element_size,
-    })
+    };
+    
+    // Create a staging buffer with the data
+    let val_u8: &[u8] = unsafe { std::slice::from_raw_parts(val_ptr as *const u8, val_u8_len) };
+    let staging_buffer = g.device.create_buffer(&wgpu::BufferDescriptor {
+        label: None,
+        size: val_u8_len as u64,
+        usage: wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::MAP_WRITE,
+        mapped_at_creation: true,
+    });
+    
+    // Write data to staging buffer
+    {
+        let view = staging_buffer.slice(..);
+        view.get_mapped_range_mut().copy_from_slice(val_u8);
+    }
+    staging_buffer.unmap();
+    
+    // Copy from staging buffer to target buffer
+    let mut encoder = g.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+    encoder.copy_buffer_to_buffer(&staging_buffer, 0, &buf, 0, val_u8_len as u64);
+    
+    // Submit and wait for the copy to complete
+    let submission_index = g.queue.submit(Some(encoder.finish()));
+    g.device.poll(wgpu::MaintainBase::wait_for(submission_index)).panic_on_timeout();
+    
+    Ok(buf)
 }
 
 pub fn create_empty_buffer(
