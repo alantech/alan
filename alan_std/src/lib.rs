@@ -1110,7 +1110,7 @@ pub fn gpu_run_list(ggs: &mut Vec<GPGPU>) {
     let mut encoder = g
         .device
         .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-    for gg in ggs {
+    for gg in ggs.iter_mut() {
         if gg.module.is_none() {
             gg.module = Some(g.device.create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: None,
