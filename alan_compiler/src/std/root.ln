@@ -127,7 +127,7 @@ type Mac = Env{"ALAN_PLATFORM"} == "macos";
 type Browser = Env{"ALAN_PLATFORM"} == "browser"; // Technically not necessary, always also Js
 
 // Importing the Root Scope backing implementation and supporting 3rd party libraries
-type{Rs} RootBacking = Rust{"alan_std" @ "https://github.com/alantech/alan.git"};
+type{Rs} RootBacking = Rust{"alan_std" @ "https://github.com/alantech/alan.git#fix-arm-linux"};
 type{Js} RootBacking = Nodejs{"alan_std" @ "https://github.com/alantech/alan.git"};
 
 // Defining derived types
