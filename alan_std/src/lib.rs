@@ -1095,7 +1095,11 @@ pub fn gpu_run(gg: &mut GPGPU) {
             gg.workgroup_sizes[2].try_into().unwrap(),
         );
     }
-    g.queue.submit(Some(encoder.finish()));
+
+    let _submission_index = g.queue.submit(Some(encoder.finish()));
+
+    // Wait for the GPU work to complete
+    //let _ = g.device.poll(wgpu::MaintainBase::wait_for(submission_index));
 }
 
 pub fn gpu_run_list(ggs: &mut Vec<GPGPU>) {
@@ -1162,7 +1166,11 @@ pub fn gpu_run_list(ggs: &mut Vec<GPGPU>) {
             );
         }
     }
-    g.queue.submit(Some(encoder.finish()));
+    let _submission_index = g.queue.submit(Some(encoder.finish()));
+
+    /*g.device
+    .poll(wgpu::MaintainBase::wait_for(submission_index))
+    .panic_on_timeout();*/
 }
 
 pub fn read_buffer<T: std::clone::Clone>(b: &GBuffer) -> Vec<T> {
@@ -1177,11 +1185,13 @@ pub fn read_buffer<T: std::clone::Clone>(b: &GBuffer) -> Vec<T> {
         .device
         .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
     encoder.copy_buffer_to_buffer(b, 0, &temp_buffer, 0, b.size());
-    g.queue.submit(Some(encoder.finish()));
+    let submission_index = g.queue.submit(Some(encoder.finish()));
     let temp_slice = temp_buffer.slice(..);
     let (sender, receiver) = flume::bounded(1);
     temp_slice.map_async(wgpu::MapMode::Read, move |v| sender.send(v).unwrap());
-    g.device.poll(wgpu::Maintain::wait()).panic_on_timeout();
+    g.device
+        .poll(wgpu::Maintain::wait_for(submission_index))
+        .panic_on_timeout();
     if let Ok(Ok(())) = receiver.recv() {
         let data = temp_slice.get_mapped_range();
         let data_ptr = data.as_ptr();
