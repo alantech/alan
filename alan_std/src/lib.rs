@@ -919,19 +919,48 @@ pub fn create_buffer_init<T>(
     if limits.max_buffer_size < val_u8_len as u64 {
         return Err(AlanError { message: format!("Cannot load the array into the GPU, as it is too large. GBuffer on your GPU only supports up to {} bytes per buffer", limits.max_buffer_size), });
     }
-    let val_u8: &[u8] = unsafe { std::slice::from_raw_parts(val_ptr as *const u8, val_u8_len) };
-    Ok(GBuffer {
-        buffer: Rc::new(wgpu::util::DeviceExt::create_buffer_init(
-            &g.device,
-            &wgpu::util::BufferInitDescriptor {
-                label: None, // TODO: Add a label for easier debugging?
-                contents: val_u8,
-                usage: *usage,
-            },
-        )),
+
+    // Create an empty buffer first
+    let buf = GBuffer {
+        buffer: Rc::new(g.device.create_buffer(&wgpu::BufferDescriptor {
+            label: None,
+            size: val_u8_len as u64,
+            usage: *usage | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        })),
         id: format!("buffer_{}", format!("{}", Uuid::new_v4()).replace("-", "_")),
         element_size: *element_size,
-    })
+    };
+
+    // Create a staging buffer with the data
+    let val_u8: &[u8] = unsafe { std::slice::from_raw_parts(val_ptr as *const u8, val_u8_len) };
+    let staging_buffer = g.device.create_buffer(&wgpu::BufferDescriptor {
+        label: None,
+        size: val_u8_len as u64,
+        usage: wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::MAP_WRITE,
+        mapped_at_creation: true,
+    });
+
+    // Write data to staging buffer
+    {
+        let view = staging_buffer.slice(..);
+        view.get_mapped_range_mut().copy_from_slice(val_u8);
+    }
+    staging_buffer.unmap();
+
+    // Copy from staging buffer to target buffer
+    let mut encoder = g
+        .device
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+    encoder.copy_buffer_to_buffer(&staging_buffer, 0, &buf, 0, val_u8_len as u64);
+
+    // Submit and wait for the copy to complete
+    let submission_index = g.queue.submit(Some(encoder.finish()));
+    g.device
+        .poll(wgpu::MaintainBase::wait_for(submission_index))
+        .panic_on_timeout();
+
+    Ok(buf)
 }
 
 pub fn create_empty_buffer(
@@ -1066,6 +1095,7 @@ pub fn gpu_run(gg: &mut GPGPU) {
             gg.workgroup_sizes[2].try_into().unwrap(),
         );
     }
+
     g.queue.submit(Some(encoder.finish()));
 }
 
@@ -1133,35 +1163,39 @@ pub fn gpu_run_list(ggs: &mut Vec<GPGPU>) {
             );
         }
     }
+
     g.queue.submit(Some(encoder.finish()));
 }
 
 pub fn read_buffer<T: std::clone::Clone>(b: &GBuffer) -> Vec<T> {
     let g = gpu();
+
+    // Wait for all work to finish before reading out to avoid race conditions
+    g.device.poll(wgpu::MaintainBase::wait()).panic_on_timeout();
+
     let temp_buffer = create_empty_buffer(&map_read_buffer_type(), &bufferlen(b), &b.element_size)
         .expect("The buffer already exists so a new one the same size should always work");
     let mut encoder = g
         .device
         .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
     encoder.copy_buffer_to_buffer(b, 0, &temp_buffer, 0, b.size());
-    g.queue.submit(Some(encoder.finish()));
+    let submission_index = g.queue.submit(Some(encoder.finish()));
     let temp_slice = temp_buffer.slice(..);
-    let (sender, receiver) = flume::bounded(1);
-    temp_slice.map_async(wgpu::MapMode::Read, move |v| sender.send(v).unwrap());
-    g.device.poll(wgpu::Maintain::wait()).panic_on_timeout();
-    if let Ok(Ok(())) = receiver.recv() {
-        let data = temp_slice.get_mapped_range();
-        let data_ptr = data.as_ptr();
-        let data_len = bufferlen(b) as usize;
-        let data_slice: &[T] =
-            unsafe { std::slice::from_raw_parts(data_ptr as *const T, data_len) };
-        let result = data_slice.to_vec();
-        drop(data);
-        temp_buffer.unmap();
-        result
-    } else {
-        panic!("Failed to run compute on gpu!")
-    }
+    temp_slice.map_async(
+        wgpu::MapMode::Read,
+        |_| { /* Not needed for us; single threaded GPU access in Alan (for now) */ },
+    );
+    g.device
+        .poll(wgpu::Maintain::wait_for(submission_index))
+        .panic_on_timeout();
+    let data = temp_slice.get_mapped_range();
+    let data_ptr = data.as_ptr();
+    let data_len = bufferlen(b) as usize;
+    let data_slice: &[T] = unsafe { std::slice::from_raw_parts(data_ptr as *const T, data_len) };
+    let result = data_slice.to_vec();
+    drop(data);
+    temp_buffer.unmap();
+    result
 }
 
 #[allow(clippy::ptr_arg)]
@@ -1176,7 +1210,10 @@ pub fn replace_buffer<T>(b: &GBuffer, v: &[T]) -> Result<(), AlanError> {
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
         encoder.copy_buffer_to_buffer(&gb, 0, b, 0, b.size());
-        g.queue.submit(Some(encoder.finish()));
+        let submission_index = g.queue.submit(Some(encoder.finish()));
+        g.device
+            .poll(wgpu::MaintainBase::wait_for(submission_index))
+            .panic_on_timeout();
         gb.destroy();
         Ok(())
     }
