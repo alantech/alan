@@ -1167,6 +1167,12 @@ pub fn gpu_run_list(ggs: &mut Vec<GPGPU>) {
 
 pub fn read_buffer<T: std::clone::Clone>(b: &GBuffer) -> Vec<T> {
     let g = gpu();
+
+    // Wait for all work to finish before reading out to avoid race conditions
+    g.device
+        .poll(wgpu::MaintainBase::wait())
+        .panic_on_timeout();
+
     let temp_buffer = create_empty_buffer(&map_read_buffer_type(), &bufferlen(b), &b.element_size)
         .expect("The buffer already exists so a new one the same size should always work");
     let mut encoder = g
