@@ -1100,7 +1100,9 @@ pub fn gpu_run(gg: &mut GPGPU) {
 
     // Wait for the compute to finish (some GPUs don't properly `wait` on the generic wait, it
     // seems)
-    let _ = g.device.poll(wgpu::MaintainBase::wait_for(submission_index));
+    let _ = g
+        .device
+        .poll(wgpu::MaintainBase::wait_for(submission_index));
 }
 
 pub fn gpu_run_list(ggs: &mut Vec<GPGPU>) {
@@ -1172,8 +1174,8 @@ pub fn gpu_run_list(ggs: &mut Vec<GPGPU>) {
     // Wait for the compute to finish (some GPUs don't properly `wait` on the generic wait, it
     // seems)
     g.device
-    .poll(wgpu::MaintainBase::wait_for(submission_index))
-    .panic_on_timeout();
+        .poll(wgpu::MaintainBase::wait_for(submission_index))
+        .panic_on_timeout();
 }
 
 pub fn read_buffer<T: std::clone::Clone>(b: &GBuffer) -> Vec<T> {
