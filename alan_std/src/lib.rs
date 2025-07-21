@@ -1096,14 +1096,6 @@ pub fn gpu_run(gg: &mut GPGPU) {
         );
     }
 
-    /*let submission_index = g.queue.submit(Some(encoder.finish()));
-
-    // Wait for the compute to finish (some GPUs don't properly `wait` on the generic wait, it
-    // seems)
-    let _ = g
-        .device
-        .poll(wgpu::MaintainBase::wait_for(submission_index));*/
-
     g.queue.submit(Some(encoder.finish()));
 }
 
@@ -1171,14 +1163,6 @@ pub fn gpu_run_list(ggs: &mut Vec<GPGPU>) {
             );
         }
     }
-
-    /*let submission_index = g.queue.submit(Some(encoder.finish()));
-
-    // Wait for the compute to finish (some GPUs don't properly `wait` on the generic wait, it
-    // seems)
-    g.device
-        .poll(wgpu::MaintainBase::wait_for(submission_index))
-        .panic_on_timeout();*/
 
     g.queue.submit(Some(encoder.finish()));
 }
