@@ -97,7 +97,7 @@ impl<'a> Scope<'a> {
                             s = CType::from_generic(s, g, 0)
                         }
                         unknown => {
-                            panic!("Unknown ctype {} defined in root scope. There's something wrong with the compiler.", unknown);
+                            panic!("Unknown ctype {unknown} defined in root scope. There's something wrong with the compiler.");
                         }
                     }
                 }

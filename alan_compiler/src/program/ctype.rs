@@ -223,7 +223,7 @@ impl CType {
                     str_parts.push("{");
                     for i in 0..*l {
                         let l = unavoidable_strings.len();
-                        unavoidable_strings.push(format!("arg{}", i));
+                        unavoidable_strings.push(format!("arg{i}"));
                         let p = unavoidable_strings.as_ptr();
                         unsafe {
                             str_parts.push(p.add(l).as_ref().unwrap());
@@ -240,7 +240,7 @@ impl CType {
                 }
                 CType::Int(i) => {
                     let l = unavoidable_strings.len();
-                    unavoidable_strings.push(format!("{}", i));
+                    unavoidable_strings.push(format!("{i}"));
                     let p = unavoidable_strings.as_ptr();
                     unsafe {
                         str_parts.push(p.add(l).as_ref().unwrap());
@@ -253,7 +253,7 @@ impl CType {
                 }
                 CType::Float(f) => {
                     let l = unavoidable_strings.len();
-                    unavoidable_strings.push(format!("{}", f));
+                    unavoidable_strings.push(format!("{f}"));
                     let p = unavoidable_strings.as_ptr();
                     unsafe {
                         str_parts.push(p.add(l).as_ref().unwrap());
@@ -758,7 +758,7 @@ impl CType {
                 }
                 CType::Int(i) => {
                     let l = unavoidable_strings.len();
-                    unavoidable_strings.push(format!("{}", i));
+                    unavoidable_strings.push(format!("{i}"));
                     let p = unavoidable_strings.as_ptr();
                     unsafe {
                         str_parts.push(p.add(l).as_ref().unwrap());
@@ -771,7 +771,7 @@ impl CType {
                 }
                 CType::Float(f) => {
                     let l = unavoidable_strings.len();
-                    unavoidable_strings.push(format!("{}", f));
+                    unavoidable_strings.push(format!("{f}"));
                     let p = unavoidable_strings.as_ptr();
                     unsafe {
                         str_parts.push(p.add(l).as_ref().unwrap());
@@ -1534,8 +1534,7 @@ impl CType {
                     }
                     (CType::Infer(s, _), _) => {
                         return Err(format!(
-                            "While attempting to infer generics found an inference type {} as an input somehow",
-                            s
+                            "While attempting to infer generics found an inference type {s} as an input somehow"
                         )
                         .into());
                     }
@@ -1560,8 +1559,7 @@ impl CType {
                     }
                     (CType::Generic(..), _) => {
                         return Err(format!(
-                            "Ran into an unresolved generic in the arguments list: {:?}",
-                            arg
+                            "Ran into an unresolved generic in the arguments list: {arg:?}"
                         )
                         .into());
                     }
@@ -1597,8 +1595,7 @@ impl CType {
                     (CType::IntrinsicGeneric(n1, s1), CType::IntrinsicGeneric(n2, s2)) => {
                         if !(n1 == n2 && s1 == s2) {
                             return Err(format!(
-                                "Mismatched generics {} and {} during inference",
-                                n1, n2
+                                "Mismatched generics {n1} and {n2} during inference"
                             )
                             .into());
                         }
@@ -1606,8 +1603,7 @@ impl CType {
                     (CType::Int(i1), CType::Int(i2)) => {
                         if i1 != i2 {
                             return Err(format!(
-                                "Mismatched integers {} and {} during inference",
-                                i1, i2
+                                "Mismatched integers {i1} and {i2} during inference"
                             )
                             .into());
                         }
@@ -1621,8 +1617,7 @@ impl CType {
                     (CType::Float(f1), CType::Float(f2)) => {
                         if f1 != f2 {
                             return Err(format!(
-                                "Mismatched floats {} and {} during inference",
-                                f1, f2
+                                "Mismatched floats {f1} and {f2} during inference"
                             )
                             .into());
                         }
@@ -1647,8 +1642,7 @@ impl CType {
                     (CType::TString(s1), CType::TString(s2)) => {
                         if s1 != s2 {
                             return Err(format!(
-                                "Mismatched strings {} and {} during inference",
-                                s1, s2
+                                "Mismatched strings {s1} and {s2} during inference"
                             )
                             .into());
                         }
@@ -1668,8 +1662,7 @@ impl CType {
                             }
                             _ => {
                                 return Err(format!(
-                                    "Mismatched string {} and string cast {:?} during inference",
-                                    s, sc
+                                    "Mismatched string {s} and string cast {sc:?} during inference"
                                 )
                                 .into());
                             }
@@ -1924,14 +1917,13 @@ impl CType {
                                                 }
                                             }
                                             _ => {
-                                                return Err(format!("Mismatch between {:?} and {:?} during inference", a, i).into());
+                                                return Err(format!("Mismatch between {a:?} and {i:?} during inference").into());
                                             }
                                         }
                                     }
                                     _ => {
                                         return Err(format!(
-                                            "Mismatch between {:?} and {:?} during inference",
-                                            a, i
+                                            "Mismatch between {a:?} and {i:?} during inference"
                                         )
                                         .into());
                                     }
@@ -1939,8 +1931,7 @@ impl CType {
                             }
                             _ => {
                                 return Err(format!(
-                                    "Mismatch between {:?} and {:?} during inference",
-                                    a, i
+                                    "Mismatch between {a:?} and {i:?} during inference"
                                 )
                                 .into());
                             }
@@ -1950,8 +1941,7 @@ impl CType {
                         // TODO: Allow out-of-order listing based on Field labels
                         if l1 != l2 {
                             return Err(format!(
-                                "Mismatched fields {} and {} during inference",
-                                l1, l2
+                                "Mismatched fields {l1} and {l2} during inference"
                             )
                             .into());
                         }
@@ -2670,7 +2660,7 @@ impl CType {
                         }
                     }
                     _ => {
-                        return Err(format!("Mismatch between {:?} and {:?}", a, i).into());
+                        return Err(format!("Mismatch between {a:?} and {i:?}").into());
                     }
                 }
             }
@@ -2707,7 +2697,7 @@ impl CType {
         for (generic_name, _) in generics {
             output_types.push(match generic_types.get(generic_name) {
                 Some(t) => Ok(t.clone()),
-                None => Err(format!("No inferred type found for {}", generic_name)),
+                None => Err(format!("No inferred type found for {generic_name}")),
             }?);
         }
         Ok(output_types)
@@ -2755,7 +2745,7 @@ impl CType {
                     let other_scope = program.scope_by_file(dep_name).unwrap();
                     match &**n {
                         CType::TString(name) => match other_scope.functions.get(name) {
-                            None => CType::fail(&format!("{} not found in {}", name, dep_name)),
+                            None => CType::fail(&format!("{name} not found in {dep_name}")),
                             Some(dep_fs) => {
                                 fs.append(&mut dep_fs.clone());
                             }
@@ -2801,7 +2791,7 @@ impl CType {
                                     name: name.clone(),
                                     value: Box::new(Microstatement::Value {
                                         typen: typen.clone(),
-                                        representation: format!("*{}", name),
+                                        representation: format!("*{name}"),
                                     }),
                                 })
                             }
@@ -2828,11 +2818,11 @@ impl CType {
                                                 match &**typen {
                                                     CType::Int(i) => {
                                                         trimmed_args = true;
-                                                        format!("{}", i)
+                                                        format!("{i}")
                                                     }
                                                     CType::Float(f) => {
                                                         trimmed_args = true;
-                                                        format!("{}", f)
+                                                        format!("{f}")
                                                     }
                                                     CType::Bool(b) => {
                                                         trimmed_args = true;
@@ -2867,11 +2857,11 @@ impl CType {
                                             match &*args[0].2 {
                                                 CType::Int(i) => {
                                                     trimmed_args = true;
-                                                    format!("{}", i)
+                                                    format!("{i}")
                                                 }
                                                 CType::Float(f) => {
                                                     trimmed_args = true;
-                                                    format!("{}", f)
+                                                    format!("{f}")
                                                 }
                                                 CType::Bool(b) => {
                                                     trimmed_args = true;
@@ -2890,11 +2880,11 @@ impl CType {
                                             match &*args[1].2 {
                                                 CType::Int(i) => {
                                                     trimmed_args = true;
-                                                    format!("{}", i)
+                                                    format!("{i}")
                                                 }
                                                 CType::Float(f) => {
                                                     trimmed_args = true;
-                                                    format!("{}", f)
+                                                    format!("{f}")
                                                 }
                                                 CType::Bool(b) => {
                                                     trimmed_args = true;
@@ -2914,8 +2904,7 @@ impl CType {
                                 });
                             }
                             otherwise => CType::fail(&format!(
-                                "Unsupported native operator declaration {:?}",
-                                otherwise
+                                "Unsupported native operator declaration {otherwise:?}"
                             )),
                         },
                         CType::Prefix(o) => match &**o {
@@ -2932,11 +2921,11 @@ impl CType {
                                             match &*args[0].2 {
                                                 CType::Int(i) => {
                                                     trimmed_args = true;
-                                                    format!("{}", i)
+                                                    format!("{i}")
                                                 }
                                                 CType::Float(f) => {
                                                     trimmed_args = true;
-                                                    format!("{}", f)
+                                                    format!("{f}")
                                                 }
                                                 CType::Bool(b) => {
                                                     trimmed_args = true;
@@ -2956,8 +2945,7 @@ impl CType {
                                 });
                             }
                             otherwise => CType::fail(&format!(
-                                "Unsupported native operator declaration {:?}",
-                                otherwise
+                                "Unsupported native operator declaration {otherwise:?}"
                             )),
                         },
                         CType::Method(f) => match &**f {
@@ -2972,11 +2960,11 @@ impl CType {
                                             match &*arg_car.2 {
                                                 CType::Int(i) => {
                                                     trimmed_args = true;
-                                                    format!("{}", i)
+                                                    format!("{i}")
                                                 }
                                                 CType::Float(f) => {
                                                     trimmed_args = true;
-                                                    format!("{}", f)
+                                                    format!("{f}")
                                                 }
                                                 CType::Bool(b) => {
                                                     trimmed_args = true;
@@ -2997,11 +2985,11 @@ impl CType {
                                                 .map(|a| match &*a.2 {
                                                     CType::Int(i) => {
                                                         trimmed_args = true;
-                                                        format!("{}", i)
+                                                        format!("{i}")
                                                     }
                                                     CType::Float(f) => {
                                                         trimmed_args = true;
-                                                        format!("{}", f)
+                                                        format!("{f}")
                                                     }
                                                     CType::Bool(b) => {
                                                         trimmed_args = true;
@@ -3023,14 +3011,13 @@ impl CType {
                                 });
                             }
                             otherwise => CType::fail(&format!(
-                                "Unsupported native method declaration {:?}",
-                                otherwise
+                                "Unsupported native method declaration {otherwise:?}"
                             )),
                         },
                         CType::Property(p) => match &**p {
                             CType::TString(s) => {
                                 if args.len() > 1 {
-                                    CType::fail(&format!("Property bindings may only have one argument, the value the property is accessed from. Not {:?}", args))
+                                    CType::fail(&format!("Property bindings may only have one argument, the value the property is accessed from. Not {args:?}"))
                                 } else {
                                     let arg_car = args[0].clone();
                                     microstatements.push(Microstatement::Return {
@@ -3041,11 +3028,11 @@ impl CType {
                                                 match &*arg_car.2 {
                                                     CType::Int(i) => {
                                                         trimmed_args = true;
-                                                        format!("{}", i)
+                                                        format!("{i}")
                                                     }
                                                     CType::Float(f) => {
                                                         trimmed_args = true;
-                                                        format!("{}", f)
+                                                        format!("{f}")
                                                     }
                                                     CType::Bool(b) => {
                                                         trimmed_args = true;
@@ -3067,8 +3054,7 @@ impl CType {
                                 }
                             }
                             otherwise => CType::fail(&format!(
-                                "Unsupported native method declaration {:?}",
-                                otherwise
+                                "Unsupported native method declaration {otherwise:?}"
                             )),
                         },
                         CType::Cast(t) => match &**t {
@@ -3086,11 +3072,11 @@ impl CType {
                                             match &*args[0].2 {
                                                 CType::Int(i) => {
                                                     trimmed_args = true;
-                                                    format!("{}", i)
+                                                    format!("{i}")
                                                 }
                                                 CType::Float(f) => {
                                                     trimmed_args = true;
-                                                    format!("{}", f)
+                                                    format!("{f}")
                                                 }
                                                 CType::Bool(b) => {
                                                     trimmed_args = true;
@@ -3111,13 +3097,11 @@ impl CType {
                                 });
                             }
                             otherwise => CType::fail(&format!(
-                                "Unsupported native cast declaration {:?}",
-                                otherwise
+                                "Unsupported native cast declaration {otherwise:?}"
                             )),
                         },
                         otherwise => CType::fail(&format!(
-                            "Unsupported native operator declaration {:?}",
-                            otherwise
+                            "Unsupported native operator declaration {otherwise:?}"
                         )),
                     }
                     if trimmed_args {
@@ -3218,7 +3202,7 @@ impl CType {
                                         typen: Arc::new(CType::Function(t.clone(), int64.clone())),
                                         microstatements: vec![Microstatement::Value {
                                             typen: int64,
-                                            representation: format!("{}", i),
+                                            representation: format!("{i}"),
                                         }],
                                         kind: FnKind::Static,
                                         origin_scope_path: scope.path.clone(),
@@ -3237,7 +3221,7 @@ impl CType {
                                         )),
                                         microstatements: vec![Microstatement::Value {
                                             typen: float64,
-                                            representation: format!("{}", f),
+                                            representation: format!("{f}"),
                                         }],
                                         kind: FnKind::Static,
                                         origin_scope_path: scope.path.clone(),
@@ -3297,7 +3281,7 @@ impl CType {
                         _otherwise => {
                             // Create an `<N>` function accepting the tuple by field number
                             fs.push(Arc::new(Function {
-                                name: format!("{}", i),
+                                name: format!("{i}"),
                                 typen: Arc::new(CType::Function(t.clone(), ti.clone())),
                                 microstatements: Vec::new(),
                                 kind: FnKind::Derived,
@@ -3348,7 +3332,7 @@ impl CType {
                             typen: Arc::new(CType::Function(t.clone(), int64.clone())),
                             microstatements: vec![Microstatement::Value {
                                 typen: int64,
-                                representation: format!("{}", i),
+                                representation: format!("{i}"),
                             }],
                             kind: FnKind::Static,
                             origin_scope_path: scope.path.clone(),
@@ -3364,7 +3348,7 @@ impl CType {
                             typen: Arc::new(CType::Function(t.clone(), float64.clone())),
                             microstatements: vec![Microstatement::Value {
                                 typen: float64,
-                                representation: format!("{}", f),
+                                representation: format!("{f}"),
                             }],
                             kind: FnKind::Static,
                             origin_scope_path: scope.path.clone(),
@@ -3512,7 +3496,7 @@ impl CType {
                 // Also include accessor functions for each
                 for i in 0..size {
                     fs.push(Arc::new(Function {
-                        name: format!("{}", i),
+                        name: format!("{i}"),
                         typen: Arc::new(CType::Function(t.clone(), b.clone())),
                         microstatements: Vec::new(),
                         kind: FnKind::Derived,
@@ -3545,7 +3529,7 @@ impl CType {
                     microstatements: vec![Microstatement::Return {
                         value: Some(Box::new(Microstatement::Value {
                             typen: int64,
-                            representation: format!("{}", i),
+                            representation: format!("{i}"),
                         })),
                     }],
                     kind: FnKind::Normal,
@@ -3561,7 +3545,7 @@ impl CType {
                     microstatements: vec![Microstatement::Return {
                         value: Some(Box::new(Microstatement::Value {
                             typen: float64,
-                            representation: format!("{}", f),
+                            representation: format!("{f}"),
                         })),
                     }],
                     kind: FnKind::Normal,
@@ -3641,12 +3625,12 @@ impl CType {
             let generic_call = withtypeoperatorslist_to_ctype(&generics.typecalllist, &scope)?;
             match &*generic_call {
                 CType::Bool(b) => match b {
-                    false => return Ok((scope, CType::Fail(format!("{} is not supposed to be compiled because the conditional compilation generic value is false", name)))),
+                    false => return Ok((scope, CType::Fail(format!("{name} is not supposed to be compiled because the conditional compilation generic value is false")))),
                     true => { /* Do nothing */ }
                 },
                 CType::Type(n, c) => match &**c {
                     CType::Bool(b) => match b {
-                        false => return Ok((scope, CType::Fail(format!("{} is not supposed to be compiled because {} is false", name, n)))),
+                        false => return Ok((scope, CType::Fail(format!("{name} is not supposed to be compiled because {n} is false")))),
                         true => { /* Do nothing */ }
                     },
                     _ => {
@@ -3710,7 +3694,7 @@ impl CType {
                                 CType::TString(n) => {
                                     inner_type = match scope.types.get(n) {
                                         None => {
-                                            CType::fail(&format!("{} not found in {}", n, dep_name))
+                                            CType::fail(&format!("{n} not found in {dep_name}"))
                                         }
                                         Some(t) => match &**t {
                                             CType::Type(_, t) => t.clone(),
@@ -4112,7 +4096,7 @@ impl CType {
                 CType::Bool(b) => Arc::new(if *b { CType::Int(1) } else { CType::Int(0) }),
                 CType::TString(s) => match s.parse::<i128>() {
                     Ok(v) => Arc::new(CType::Int(v)),
-                    Err(e) => Arc::new(CType::Fail(format!("{:?}", e))),
+                    Err(e) => Arc::new(CType::Fail(format!("{e:?}"))),
                 },
                 _ => Arc::new(CType::Fail("Not implemented".into())),
             }
@@ -4133,7 +4117,7 @@ impl CType {
                 }),
                 CType::TString(s) => match s.parse::<f64>() {
                     Ok(v) => Arc::new(CType::Float(v)),
-                    Err(e) => Arc::new(CType::Fail(format!("{:?}", e))),
+                    Err(e) => Arc::new(CType::Fail(format!("{e:?}"))),
                 },
                 _ => Arc::new(CType::Fail("Not implemented".into())),
             }
@@ -4185,12 +4169,12 @@ impl CType {
                 CType::TString(s) => {
                     // Load the dependency
                     if let Err(e) = Program::load(s.clone()) {
-                        CType::fail(&format!("Failed to load dependency {}: {:?}", s, e))
+                        CType::fail(&format!("Failed to load dependency {s}: {e:?}"))
                     } else {
                         let program = Program::get_program();
                         let out = match program.scope_by_file(s) {
                             Err(e) => {
-                                CType::fail(&format!("Failed to load dependency {}: {:?}", s, e))
+                                CType::fail(&format!("Failed to load dependency {s}: {e:?}"))
                             }
                             Ok(dep_scope) => {
                                 // Currently can only import types and functions. Constants and
@@ -4201,7 +4185,7 @@ impl CType {
                                     let found = dep_scope.types.contains_key(n)
                                         || dep_scope.functions.contains_key(n);
                                     if !found {
-                                        CType::fail(&format!("{} not found in {}", n, s))
+                                        CType::fail(&format!("{n} not found in {s}"))
                                     } else {
                                         // We're good
                                         Arc::new(CType::Import(name, dep))
@@ -4286,8 +4270,7 @@ impl CType {
                     )),
                 },
                 otherwise => Arc::new(CType::Fail(format!(
-                    "Properties must be a name or integer location, not {:?}",
-                    otherwise,
+                    "Properties must be a name or integer location, not {otherwise:?}",
                 ))),
             },
             CType::Tuple(ts) | CType::Either(ts) => match &*p {
@@ -4300,8 +4283,7 @@ impl CType {
                         }
                     }
                     Arc::new(CType::Fail(format!(
-                        "Property {} not found on type {:?}",
-                        s, t
+                        "Property {s} not found on type {t:?}"
                     )))
                 }
                 CType::Int(i) => {
@@ -4309,14 +4291,12 @@ impl CType {
                         ts[*i as usize].clone()
                     } else {
                         Arc::new(CType::Fail(format!(
-                            "{} is out of bounds for type {:?}",
-                            i, t
+                            "{i} is out of bounds for type {t:?}"
                         )))
                     }
                 }
                 otherwise => Arc::new(CType::Fail(format!(
-                    "Properties must be a name or integer location, not {:?}",
-                    otherwise,
+                    "Properties must be a name or integer location, not {otherwise:?}",
                 ))),
             },
             CType::TIf(_, tf) => {
@@ -4346,14 +4326,12 @@ impl CType {
                         }
                     }
                     otherwise => CType::fail(&format!(
-                        "Properties must be a name or integer location, not {:?}",
-                        otherwise,
+                        "Properties must be a name or integer location, not {otherwise:?}",
                     )),
                 }
             }
             otherwise => CType::fail(&format!(
-                "Properties cannot be accessed from type {:?}",
-                otherwise
+                "Properties cannot be accessed from type {otherwise:?}"
             )),
         }
     }
@@ -4403,8 +4381,7 @@ impl CType {
                     }
                 }
                 otherwise => CType::fail(&format!(
-                    "The buffer size must be a positive integer {:?}",
-                    otherwise
+                    "The buffer size must be a positive integer {otherwise:?}"
                 )),
             }
         }
@@ -4412,7 +4389,7 @@ impl CType {
     // Implementation of the ctypes that aren't storage but compute into another CType
     pub fn fail(message: &str) -> ! {
         // TODO: Include more information on where this compiler exit is coming from
-        eprintln!("{}", message);
+        eprintln!("{message}");
         std::process::exit(1);
     }
     pub fn cfail(message: Arc<CType>) -> Arc<CType> {
@@ -4475,7 +4452,7 @@ impl CType {
                         CType::TString(n) if n == "u64" => CType::Int(8),
                         CType::TString(n) if n == "f64" => CType::Int(8),
                         CType::TString(n) => {
-                            CType::fail(&format!("Cannot determine the size of {}", n))
+                            CType::fail(&format!("Cannot determine the size of {n}"))
                         }
                         _ => CType::fail(&format!(
                             "Cannot determine the size of {}",
@@ -4549,7 +4526,7 @@ impl CType {
     pub fn filestr(f: Arc<CType>) -> Arc<CType> {
         match &*f {
             CType::TString(s) => match std::fs::read_to_string(s) {
-                Err(e) => CType::fail(&format!("Failed to read {}: {:?}", s, e)),
+                Err(e) => CType::fail(&format!("Failed to read {s}: {e:?}")),
                 Ok(s) => Arc::new(CType::TString(s)),
             },
             CType::Infer(..) => f,
@@ -4560,7 +4537,7 @@ impl CType {
         match (&*a, &*b) {
             (CType::Infer(..), _) | (_, CType::Infer(..)) => Arc::new(CType::Concat(a, b)),
             (CType::TString(a), CType::TString(b)) => {
-                Arc::new(CType::TString(format!("{}{}", a, b)))
+                Arc::new(CType::TString(format!("{a}{b}")))
             }
             _ => CType::fail("Concat{A, B} must be given strings to concatenate"),
         }
@@ -4569,7 +4546,7 @@ impl CType {
         let program = Program::get_program();
         let out = match &*k {
             CType::TString(s) => match program.env.get(s) {
-                None => CType::fail(&format!("Failed to load environment variable {}", s,)),
+                None => CType::fail(&format!("Failed to load environment variable {s}",)),
                 Some(s) => CType::TString(s.clone()),
             },
             CType::Infer(..) => CType::Env(vec![k.clone()]),
@@ -5037,7 +5014,7 @@ pub fn withtypeoperatorslist_to_ctype(
                 let operatorname = &o.op;
                 let operator = match scope.resolve_typeoperator(operatorname) {
                     Some(o) => Ok(o),
-                    None => Err(format!("Operator {} not found", operatorname)),
+                    None => Err(format!("Operator {operatorname} not found")),
                 }?;
                 let level = match &operator {
                     TypeOperatorMapping::Prefix { level, .. } => level,
@@ -5058,7 +5035,7 @@ pub fn withtypeoperatorslist_to_ctype(
             };
             let operator = match scope.resolve_typeoperator(operatorname) {
                 Some(o) => Ok(o),
-                None => Err(format!("Operator {} not found", operatorname)),
+                None => Err(format!("Operator {operatorname} not found")),
             }?;
             let functionname = match operator {
                 TypeOperatorMapping::Prefix { functionname, .. } => functionname.clone(),
@@ -5081,8 +5058,7 @@ pub fn withtypeoperatorslist_to_ctype(
                 let first_arg = match match queue.get(largest_operator_index as usize - 1) {
                     Some(val) => Ok(val),
                     None => Err(format!(
-                        "Operator {} is an infix operator but missing a left-hand side value",
-                        operatorname
+                        "Operator {operatorname} is an infix operator but missing a left-hand side value"
                     )),
                 }? {
                     parse::WithTypeOperators::TypeBaseList(typebaselist) => Ok(typebaselist),
@@ -5093,7 +5069,7 @@ pub fn withtypeoperatorslist_to_ctype(
                 }?;
                 let second_arg = match match queue.get(largest_operator_index as usize + 1) {
                     Some(val) => Ok(val),
-                    None => Err(format!("Operator {} is an infix operator but missing a right-hand side value", operatorname)),
+                    None => Err(format!("Operator {operatorname} is an infix operator but missing a right-hand side value")),
                 }? {
                     parse::WithTypeOperators::TypeBaseList(typebaselist) => Ok(typebaselist),
                     parse::WithTypeOperators::Operators(o) => Err(format!("Operator{} is an infix operator but followed by a lower precedence operator {}", operatorname, o.op)),
@@ -5133,8 +5109,7 @@ pub fn withtypeoperatorslist_to_ctype(
                 let arg = match match queue.get(largest_operator_index as usize + 1) {
                     Some(val) => Ok(val),
                     None => Err(format!(
-                        "Operator {} is a prefix operator but missing a right-hand side value",
-                        operatorname
+                        "Operator {operatorname} is a prefix operator but missing a right-hand side value"
                     )),
                 }? {
                     parse::WithTypeOperators::TypeBaseList(typebaselist) => Ok(typebaselist),
@@ -5166,8 +5141,7 @@ pub fn withtypeoperatorslist_to_ctype(
                 let arg = match match queue.get(largest_operator_index as usize - 1) {
                     Some(val) => Ok(val),
                     None => Err(format!(
-                        "Operator {} is a postfix operator but missing a left-hand side value",
-                        operatorname
+                        "Operator {operatorname} is a postfix operator but missing a left-hand side value"
                     )),
                 }? {
                     parse::WithTypeOperators::TypeBaseList(typebaselist) => Ok(typebaselist),
@@ -5201,19 +5175,17 @@ pub fn withtypeoperatorslist_to_ctype(
             // We have no more typeoperators, there should only be one reworked typebaselist now
             if queue.len() != 1 {
                 // No idea how such a wonky thing could occur. TODO: Improve error message
-                return Err(format!("Invalid syntax: {:?}", withtypeoperatorslist).into());
+                return Err(format!("Invalid syntax: {withtypeoperatorslist:?}").into());
             }
             let typebaselist = match match queue.pop() {
                 Some(v) => Ok(v),
                 None => Err(format!(
-                    "Somehow we collapsed the statement into nothing? {:?}",
-                    withtypeoperatorslist
+                    "Somehow we collapsed the statement into nothing? {withtypeoperatorslist:?}"
                 )),
             }? {
                 parse::WithTypeOperators::TypeBaseList(b) => Ok(b),
                 _ => Err(format!(
-                    "Somehow we collapse the statement into a solitary operator? {:?}",
-                    withtypeoperatorslist
+                    "Somehow we collapse the statement into a solitary operator? {withtypeoperatorslist:?}"
                 )),
             }?;
             out_ctype = Some(typebaselist_to_ctype(&typebaselist, scope)?);
@@ -5221,7 +5193,7 @@ pub fn withtypeoperatorslist_to_ctype(
     }
     match out_ctype {
         Some(ctype) => Ok(ctype),
-        None => Err(format!("Never resolved a type from {:?}", withtypeoperatorslist).into()),
+        None => Err(format!("Never resolved a type from {withtypeoperatorslist:?}").into()),
     }
 }
 
@@ -5317,7 +5289,7 @@ pub fn typebaselist_to_ctype(
                                     }
                                     match out {
                                         Some(o) => o,
-                                        None => CType::fail(&format!("{:?} does not have a property named {}", ts, s)),
+                                        None => CType::fail(&format!("{ts:?} does not have a property named {s}")),
                                     }
                                 }
                                 CType::Function(i, o) => match s.as_str() {
@@ -5325,7 +5297,7 @@ pub fn typebaselist_to_ctype(
                                     "output" => o.clone(),
                                     _ => CType::fail("Function types only have \"input\" and \"output\" properties"),
                                 }
-                                other => CType::fail(&format!("String properties are not allowed on {:?}", other)),
+                                other => CType::fail(&format!("String properties are not allowed on {other:?}")),
                             });
                         }
                         parse::Constants::Num(n) => {
@@ -5342,20 +5314,17 @@ pub fn typebaselist_to_ctype(
                                         CType::Tuple(ts) => match ts.get(idx) {
                                             Some(t) => t.clone(),
                                             None => CType::fail(&format!(
-                                                "{} is larger than the size of {:?}",
-                                                idx, ts
+                                                "{idx} is larger than the size of {ts:?}"
                                             )),
                                         },
                                         CType::Either(ts) => match ts.get(idx) {
                                             Some(t) => t.clone(),
                                             None => CType::fail(&format!(
-                                                "{} is larger than the size of {:?}",
-                                                idx, ts
+                                                "{idx} is larger than the size of {ts:?}"
                                             )),
                                         },
                                         other => CType::fail(&format!(
-                                            "{:?} cannot be indexed by an integer",
-                                            other
+                                            "{other:?} cannot be indexed by an integer"
                                         )),
                                     });
                                 }
@@ -5585,7 +5554,7 @@ pub fn typebaselist_to_ctype(
                                                     args[2].clone(),
                                                 )
                                             } else {
-                                                CType::fail(&format!("Invalid arguments provided to `If{{...}}`: {:?}", args))
+                                                CType::fail(&format!("Invalid arguments provided to `If{{...}}`: {args:?}"))
                                             }
                                         }
                                         "And" => CType::and(args[0].clone(), args[1].clone()),
@@ -5601,8 +5570,7 @@ pub fn typebaselist_to_ctype(
                                         "Gt" => CType::gt(args[0].clone(), args[1].clone()),
                                         "Gte" => CType::gte(args[0].clone(), args[1].clone()),
                                         unknown => CType::fail(&format!(
-                                            "Unknown ctype {} accessed. How did this happen?",
-                                            unknown
+                                            "Unknown ctype {unknown} accessed. How did this happen?"
                                         )),
                                     }
                                 }
@@ -5614,14 +5582,13 @@ pub fn typebaselist_to_ctype(
                                     Arc::new(others.clone())
                                 } else {
                                     CType::fail(&format!(
-                                        "{} is used as a generic type but is not one: {:?}, {:?}",
-                                        var, others, prior_value,
+                                        "{var} is used as a generic type but is not one: {others:?}, {prior_value:?}",
                                     ))
                                 }
                             }
                         }
                     }
-                    None => CType::fail(&format!("{} is not a valid type name", var)),
+                    None => CType::fail(&format!("{var} is not a valid type name")),
                 })
             }
             parse::TypeBase::GnCall(_) => { /* We always process GnCall in the Variable path */ }

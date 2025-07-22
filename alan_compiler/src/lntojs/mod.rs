@@ -60,7 +60,7 @@ pub fn lntojs(
         format!(
             "{}\n{}\n{}",
             deps.keys()
-                .map(|k| format!("import * as {} from \"{}\";", k, k))
+                .map(|k| format!("import * as {k} from \"{k}\";"))
                 .collect::<Vec<String>>()
                 .join("\n"),
             fns.into_values().collect::<Vec<String>>().join("\n"),

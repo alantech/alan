@@ -12,8 +12,7 @@ pub fn ctype_to_jtype(
         CType::Mut(t) => ctype_to_jtype(t.clone(), deps),
         CType::Void => Ok(("".to_string(), deps)),
         CType::Infer(s, _) => Err(format!(
-            "Inferred type matching {} was not realized before code generation",
-            s
+            "Inferred type matching {s} was not realized before code generation"
         )
         .into()),
         CType::Type(n, t) => match &**t {
@@ -51,7 +50,7 @@ pub fn ctype_to_jtype(
                             deps = res.1;
                         }
                         otherwise => {
-                            return Err(format!("TODO: What is this? {:?}", otherwise).into());
+                            return Err(format!("TODO: What is this? {otherwise:?}").into());
                         }
                     }
                 }
@@ -77,7 +76,7 @@ pub fn ctype_to_jtype(
                         _otherwise => {
                             let res = ctype_to_jtype(t.clone(), deps)?;
                             deps = res.1;
-                            out.push(format!("arg{}", i));
+                            out.push(format!("arg{i}"));
                         }
                     }
                 }
@@ -87,7 +86,7 @@ pub fn ctype_to_jtype(
                         n.replace("\"", "_"), // TODO: How is this happening?
                         out.join(", "),
                         out.iter()
-                            .map(|s| format!("    this.{} = {};", s, s))
+                            .map(|s| format!("    this.{s} = {s};"))
                             .collect::<Vec<String>>()
                             .join("\n")
                     ),
@@ -113,7 +112,7 @@ pub fn ctype_to_jtype(
                                     }
                                     _ => CType::fail("Node.js dependencies must be declared with the dependency syntax"),
                                 }
-                                otherwise => CType::fail(&format!("Native imports compiled to Javascript *must* be declared Nodejs{{D}} dependencies: {:?}", otherwise))
+                                otherwise => CType::fail(&format!("Native imports compiled to Javascript *must* be declared Nodejs{{D}} dependencies: {otherwise:?}"))
                             }
                             CType::Nodejs(d) => match &**d {
                                 CType::Dependency(n, v) => {
@@ -129,7 +128,7 @@ pub fn ctype_to_jtype(
                                 }
                                 _ => CType::fail("Node.js dependencies must be declared with dependency syntax"),
                             }
-                            otherwise => CType::fail(&format!("Native imports compiled to Javascript *must* be declared Nodejs{{D}} dependencies: {:?}", otherwise))
+                            otherwise => CType::fail(&format!("Native imports compiled to Javascript *must* be declared Nodejs{{D}} dependencies: {otherwise:?}"))
                         }
                     match &**n {
                         CType::TString(s) => s.clone(),
@@ -138,8 +137,7 @@ pub fn ctype_to_jtype(
                     Ok(("".to_string(), deps))
                 }
                 otherwise => CType::fail(&format!(
-                    "Bound types must be strings or node.js imports: {:?}",
-                    otherwise
+                    "Bound types must be strings or node.js imports: {otherwise:?}"
                 )),
             },
             _ => Ok(("".to_string(), deps)), // TODO: Is this correct?
@@ -169,7 +167,7 @@ pub fn ctype_to_jtype(
                                 }
                                 _ => CType::fail("Node.js dependencies must be declared with the dependency syntax"),
                             }
-                            otherwise => CType::fail(&format!("Native imports compiled to Javascript must be declared Nodejs{{D}} dependencies: {:?}", otherwise))
+                            otherwise => CType::fail(&format!("Native imports compiled to Javascript must be declared Nodejs{{D}} dependencies: {otherwise:?}"))
                         }
                         CType::Nodejs(d) => match &**d {
                             CType::Dependency(n, v) => {
@@ -185,7 +183,7 @@ pub fn ctype_to_jtype(
                             }
                             _ => CType::fail("Node.js dependencies must be declared with the dependency syntax"),
                         }
-                        otherwise => CType::fail(&format!("Native imports compiled to Javascript must be declared Nodejs{{D}} dependencies: {:?}", otherwise))
+                        otherwise => CType::fail(&format!("Native imports compiled to Javascript must be declared Nodejs{{D}} dependencies: {otherwise:?}"))
                     }
                     let native_type = match &**n {
                         CType::TString(s) => s.clone(),
@@ -194,8 +192,7 @@ pub fn ctype_to_jtype(
                     Ok((native_type, deps))
                 }
                 otherwise => CType::fail(&format!(
-                    "Bound types must be strings or node.js imports: {:?}",
-                    otherwise
+                    "Bound types must be strings or node.js imports: {otherwise:?}"
                 )),
             }
         }
@@ -219,7 +216,7 @@ pub fn ctype_to_jtype(
             let s = res.0;
             deps = res.1;
             if !s.is_empty() {
-                Ok((format!("({})", s), deps))
+                Ok((format!("({s})"), deps))
             } else {
                 Ok(("".to_string(), deps))
             }

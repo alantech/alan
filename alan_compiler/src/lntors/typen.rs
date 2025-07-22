@@ -17,7 +17,7 @@ pub fn ctype_to_rtype(
                     let res = ctype_to_rtype(o.clone(), deps)?;
                     let s = res.0;
                     deps = res.1;
-                    Ok((format!("impl FnMut() -> {}", s), deps))
+                    Ok((format!("impl FnMut() -> {s}"), deps))
                 } else {
                     Ok((format!(
                         "impl FnMut(&{}) -> {}",
@@ -29,7 +29,7 @@ pub fn ctype_to_rtype(
                                     let s = res.0;
                                     deps = res.1;
                                     out.push(match &**t {
-                                        CType::Mut(_) => format!("mut {}", s),
+                                        CType::Mut(_) => format!("mut {s}"),
                                         _ => s,
                                     });
                                 }
@@ -40,7 +40,7 @@ pub fn ctype_to_rtype(
                                 let s = res.0;
                                 deps = res.1;
                                 match &otherwise {
-                                    CType::Mut(_) => format!("mut {}", s),
+                                    CType::Mut(_) => format!("mut {s}"),
                                     _ => s,
                                 }
                             }
@@ -61,8 +61,7 @@ pub fn ctype_to_rtype(
         }
         CType::Void => Ok(("void".to_string(), deps)),
         CType::Infer(s, _) => Err(format!(
-            "Inferred type matching {} was not realized before code generation",
-            s
+            "Inferred type matching {s} was not realized before code generation"
         )
         .into()),
         CType::Type(_, t) => match &**t {
@@ -77,13 +76,13 @@ pub fn ctype_to_rtype(
                             let res = ctype_to_rtype(v.clone(), deps)?;
                             let s = res.0;
                             deps = res.1;
-                            enum_type_strs.push(format!("{}({})", k, s));
+                            enum_type_strs.push(format!("{k}({s})"));
                         }
                         CType::Type(n, t) => {
                             let res = ctype_to_rtype(t.clone(), deps)?;
                             let s = res.0;
                             deps = res.1;
-                            enum_type_strs.push(format!("{}({})", n, s));
+                            enum_type_strs.push(format!("{n}({s})"));
                         }
                         CType::Group(g) => {
                             let res = ctype_to_rtype(g.clone(), deps)?;
@@ -108,7 +107,7 @@ pub fn ctype_to_rtype(
                             let s = res.0;
                             deps = res.1;
                             let name = t.clone().to_callable_string();
-                            enum_type_strs.push(format!("{}({})", name, s));
+                            enum_type_strs.push(format!("{name}({s})"));
                         }
                     }
                 }
@@ -177,7 +176,7 @@ pub fn ctype_to_rtype(
                                     }
                                     _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
                                 }
-                                otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
+                                otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {otherwise:?}"))
                             }
                             CType::Rust(d) => match &**d {
                                 CType::Dependency(n, v) => {
@@ -193,7 +192,7 @@ pub fn ctype_to_rtype(
                                 }
                                 _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
                             }
-                            otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
+                            otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {otherwise:?}"))
                         }
                         let native_type = match &**n {
                             CType::TString(s) => s.clone(),
@@ -250,7 +249,7 @@ pub fn ctype_to_rtype(
                                 }
                                 _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
                             }
-                            otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
+                            otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {otherwise:?}"))
                         }
                         CType::Rust(d) => match &**d {
                             CType::Dependency(n, v) => {
@@ -266,7 +265,7 @@ pub fn ctype_to_rtype(
                             }
                             _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
                         }
-                        otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
+                        otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {otherwise:?}"))
                     }
                     let native_type = match &**n {
                         CType::TString(s) => s.clone(),
@@ -298,14 +297,14 @@ pub fn ctype_to_rtype(
             let res = ctype_to_rtype(g.clone(), deps)?;
             let s = res.0;
             deps = res.1;
-            Ok((format!("({})", s), deps))
+            Ok((format!("({s})"), deps))
         }
         CType::Function(i, o) => {
             if let CType::Void = **i {
                 let res = ctype_to_rtype(o.clone(), deps)?;
                 let s = res.0;
                 deps = res.1;
-                Ok((format!("impl Fn() -> {}", s), deps))
+                Ok((format!("impl Fn() -> {s}"), deps))
             } else {
                 Ok((format!(
                     "impl Fn(&{}) -> {}",
@@ -365,7 +364,7 @@ pub fn ctype_to_rtype(
             let res = ctype_to_rtype(v.clone(), deps)?;
             let s = res.0;
             deps = res.1;
-            Ok((format!("/* {} */ {}", k, s), deps))
+            Ok((format!("/* {k} */ {s}"), deps))
         }
         CType::Either(ts) => {
             // Special handling to convert `Either{T, void}` to `Option<T>` and `Either{T, Error}`
@@ -377,7 +376,7 @@ pub fn ctype_to_rtype(
                         let res = ctype_to_rtype(ts[0].clone(), deps)?;
                         let s = res.0;
                         deps = res.1;
-                        Ok((format!("Option<{}>", s), deps))
+                        Ok((format!("Option<{s}>"), deps))
                     }
                     CType::Binds(rustname, _) => match &**rustname {
                         CType::Import(n, d) => match &**n {
@@ -401,7 +400,7 @@ pub fn ctype_to_rtype(
                                             }
                                             _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
                                         }
-                                        otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
+                                        otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {otherwise:?}"))
                                     }
                                     CType::Rust(d) => match &**d {
                                         CType::Dependency(n, v) => {
@@ -417,7 +416,7 @@ pub fn ctype_to_rtype(
                                         }
                                         _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
                                     }
-                                    otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
+                                    otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {otherwise:?}"))
                                 }
                                 Ok((format!("Result<{}, {}>", s, "alan_std::AlanError"), deps))
                             }
@@ -448,7 +447,7 @@ pub fn ctype_to_rtype(
                                                 }
                                                 _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
                                             }
-                                            otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
+                                            otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {otherwise:?}"))
                                         }
                                         CType::Rust(d) => match &**d {
                                             CType::Dependency(n, v) => {
@@ -464,7 +463,7 @@ pub fn ctype_to_rtype(
                                             }
                                             _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
                                         }
-                                        otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
+                                        otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {otherwise:?}"))
                                     }
                                     Ok((format!("Result<{}, {}>", s, "alan_std::AlanError"), deps))
                                 }
@@ -504,7 +503,7 @@ pub fn ctype_to_rtype(
             let res = ctype_to_rtype(t.clone(), deps)?;
             let s = res.0;
             deps = res.1;
-            Ok((format!("Vec<{}>", s), deps))
+            Ok((format!("Vec<{s}>"), deps))
         }
         CType::Fail(m) => CType::fail(m),
         _otherwise => CType::fail(&format!("Lower stage of the compiler received unresolved algebraic type {}, cannot deal with it here. Please report this error.", ctype.clone().to_functional_string())),
@@ -563,7 +562,7 @@ pub fn generate(
                                 }
                                 _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
                             }
-                            otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
+                            otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {otherwise:?}"))
                         }
                         CType::Rust(d) => match &**d {
                             CType::Dependency(n, v) => {
@@ -579,7 +578,7 @@ pub fn generate(
                             }
                             _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
                         }
-                        otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
+                        otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {otherwise:?}"))
                     }
                     let native_type = match &**n {
                         CType::TString(s) => s.clone(),
