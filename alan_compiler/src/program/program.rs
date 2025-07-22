@@ -84,7 +84,7 @@ impl<'a> Program<'a> {
     pub fn scope_by_file(&self, path: &str) -> Result<&Scope<'a>, Box<dyn std::error::Error>> {
         match self.scopes_by_file.get(path) {
             Some((_, _, s)) => Ok(s),
-            None => Err(format!("Could not find a scope for file {}", path).into()),
+            None => Err(format!("Could not find a scope for file {path}").into()),
         }
     }
 

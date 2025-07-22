@@ -101,18 +101,18 @@ impl OperatorMapping {
         if is_export {
             scope.exports.insert(
                 match &opmap {
-                    OperatorMapping::Prefix { .. } => format!("prefix{}", name),
-                    OperatorMapping::Infix { .. } => format!("infix{}", name),
-                    OperatorMapping::Postfix { .. } => format!("postfix{}", name),
+                    OperatorMapping::Prefix { .. } => format!("prefix{name}"),
+                    OperatorMapping::Infix { .. } => format!("infix{name}"),
+                    OperatorMapping::Postfix { .. } => format!("postfix{name}"),
                 },
                 Export::OpMap,
             );
         }
         scope.operatormappings.insert(
             match &opmap {
-                OperatorMapping::Prefix { .. } => format!("prefix{}", name),
-                OperatorMapping::Infix { .. } => format!("infix{}", name),
-                OperatorMapping::Postfix { .. } => format!("postfix{}", name),
+                OperatorMapping::Prefix { .. } => format!("prefix{name}"),
+                OperatorMapping::Infix { .. } => format!("infix{name}"),
+                OperatorMapping::Postfix { .. } => format!("postfix{name}"),
             },
             opmap,
         );

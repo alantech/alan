@@ -86,7 +86,7 @@ pub fn getstring(a: &str, i: &i64) -> Result<String, AlanError> {
 #[inline(always)]
 pub fn indexstring(a: &String, b: &String) -> Result<i64, AlanError> {
     a.find(b).map(|v| v as i64).ok_or(AlanError {
-        message: format!("Could not find {} in {}", b, a),
+        message: format!("Could not find {b} in {a}"),
     })
 }
 
@@ -169,7 +169,7 @@ pub fn parmap_onearg<
                 for handle in handles {
                     let res = handle.join();
                     if let Err(e) = res {
-                        panic!("{:?}", e)
+                        panic!("{e:?}")
                     }
                 }
             } else {
@@ -202,7 +202,7 @@ pub fn parmap_onearg<
                 for handle in handles {
                     let res = handle.join();
                     if let Err(e) = res {
-                        panic!("{:?}", e)
+                        panic!("{e:?}")
                     }
                 }
             }
@@ -383,11 +383,9 @@ pub fn repeatarray<T: std::clone::Clone>(a: &[T], c: &i64) -> Vec<T> {
 #[inline(always)]
 pub fn storearray<T: std::clone::Clone>(a: &mut Vec<T>, i: &i64, v: &T) -> Result<(), AlanError> {
     match (*i as usize) > a.len() {
-        true => Err(format!(
-            "Provided array index {} is greater than the length of the array",
-            i
-        )
-        .into()),
+        true => {
+            Err(format!("Provided array index {i} is greater than the length of the array").into())
+        }
         false => {
             a.insert(*i as usize, v.clone());
             Ok(())
@@ -400,11 +398,7 @@ pub fn storearray<T: std::clone::Clone>(a: &mut Vec<T>, i: &i64, v: &T) -> Resul
 #[inline(always)]
 pub fn deletearray<T: std::clone::Clone>(a: &mut Vec<T>, i: &i64) -> Result<T, AlanError> {
     match (*i as usize) >= a.len() {
-        true => Err(format!(
-            "Provided array index {} is beyond the bounds of the array",
-            i
-        )
-        .into()),
+        true => Err(format!("Provided array index {i} is beyond the bounds of the array").into()),
         false => Ok(a.remove(*i as usize).clone()),
     }
 }
@@ -414,34 +408,18 @@ pub fn deletearray<T: std::clone::Clone>(a: &mut Vec<T>, i: &i64) -> Result<T, A
 #[inline(always)]
 pub fn swaparray<T>(a: &mut [T], i: &i64, j: &i64) -> Result<(), AlanError> {
     if *i < 0 {
-        return Err(format!(
-            "Provided array index {} is beyond the bounds of the array",
-            i
-        )
-        .into());
+        return Err(format!("Provided array index {i} is beyond the bounds of the array").into());
     }
     if *j < 0 {
-        return Err(format!(
-            "Provided array index {} is beyond the bounds of the array",
-            j
-        )
-        .into());
+        return Err(format!("Provided array index {j} is beyond the bounds of the array").into());
     }
     let i = *i as usize;
     let j = *j as usize;
     if i >= a.len() {
-        return Err(format!(
-            "Provided array index {} is beyond the bounds of the array",
-            i
-        )
-        .into());
+        return Err(format!("Provided array index {i} is beyond the bounds of the array").into());
     }
     if j >= a.len() {
-        return Err(format!(
-            "Provided array index {} is beyond the bounds of the array",
-            j
-        )
-        .into());
+        return Err(format!("Provided array index {j} is beyond the bounds of the array").into());
     }
     if i == j {
         return Ok(());
@@ -609,11 +587,9 @@ pub fn storebuffer<T: std::clone::Clone, const S: usize>(
     v: &T,
 ) -> Result<T, AlanError> {
     match (*i as usize) < a.len() {
-        false => Err(format!(
-            "The provided index {} is out-of-bounds for the specified buffer",
-            i
-        )
-        .into()),
+        false => {
+            Err(format!("The provided index {i} is out-of-bounds for the specified buffer").into())
+        }
         true => Ok(std::mem::replace(a.each_mut()[*i as usize], v.clone())),
     }
 }
@@ -623,34 +599,18 @@ pub fn storebuffer<T: std::clone::Clone, const S: usize>(
 #[inline(always)]
 pub fn swapbuffer<T, const S: usize>(a: &mut [T; S], i: &i64, j: &i64) -> Result<(), AlanError> {
     if *i < 0 {
-        return Err(format!(
-            "Provided buffer index {} is beyond the bounds of the buffer",
-            i
-        )
-        .into());
+        return Err(format!("Provided buffer index {i} is beyond the bounds of the buffer").into());
     }
     if *j < 0 {
-        return Err(format!(
-            "Provided buffer index {} is beyond the bounds of the buffer",
-            j
-        )
-        .into());
+        return Err(format!("Provided buffer index {j} is beyond the bounds of the buffer").into());
     }
     let i = *i as usize;
     let j = *j as usize;
     if i >= a.len() {
-        return Err(format!(
-            "Provided buffer index {} is beyond the bounds of the buffer",
-            i
-        )
-        .into());
+        return Err(format!("Provided buffer index {i} is beyond the bounds of the buffer").into());
     }
     if j >= a.len() {
-        return Err(format!(
-            "Provided buffer index {} is beyond the bounds of the buffer",
-            j
-        )
-        .into());
+        return Err(format!("Provided buffer index {j} is beyond the bounds of the buffer").into());
     }
     if i == j {
         return Ok(());
@@ -1712,7 +1672,7 @@ where
     match event_loop.run_app(&mut app) {
         Ok(_) => Ok(()),
         Err(e) => Err(AlanError {
-            message: format!("{:?}", e),
+            message: format!("{e:?}"),
         }),
     }
 }

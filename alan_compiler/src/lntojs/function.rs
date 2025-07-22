@@ -46,9 +46,9 @@ pub fn from_microstatement(
                 name.as_str()
             };
             if *mutable {
-                Ok((format!("let {} = {}", n, val), out, deps))
+                Ok((format!("let {n} = {val}"), out, deps))
             } else {
-                Ok((format!("const {} = {}", n, val), out, deps))
+                Ok((format!("const {n} = {val}"), out, deps))
             }
         }
         Microstatement::Closure { function } => {
@@ -92,9 +92,9 @@ pub fn from_microstatement(
             CType::Type(n, _) if n == "i64" || n == "u64" => {
                 if all_consuming(integer).parse(representation).is_ok() {
                     if n == "i64" {
-                        Ok((format!("new alan_std.I64({}n)", representation), out, deps))
+                        Ok((format!("new alan_std.I64({representation}n)"), out, deps))
                     } else {
-                        Ok((format!("new alan_std.U64({}n)", representation), out, deps))
+                        Ok((format!("new alan_std.U64({representation}n)"), out, deps))
                     }
                 } else {
                     Ok((representation.clone(), out, deps))
@@ -102,14 +102,14 @@ pub fn from_microstatement(
             }
             CType::Type(n, _) if n == "f64" => {
                 if all_consuming(real).parse(representation).is_ok() {
-                    Ok((format!("new alan_std.F64({})", representation), out, deps))
+                    Ok((format!("new alan_std.F64({representation})"), out, deps))
                 } else {
                     Ok((representation.clone(), out, deps))
                 }
             }
             CType::Type(n, _) if n == "bool" => {
                 if all_consuming(booln).parse(representation).is_ok() {
-                    Ok((format!("new alan_std.Bool({})", representation), out, deps))
+                    Ok((format!("new alan_std.Bool({representation})"), out, deps))
                 } else {
                     Ok((representation.clone(), out, deps))
                 }
@@ -133,7 +133,7 @@ pub fn from_microstatement(
                                 }
                                 _ => CType::fail("Node.js dependencies must be declared with the dependency syntax"),
                             }
-                            otherwise => CType::fail(&format!("Native imports compiled to Javascript must be declared Nodejs{{D}} dependencies: {:?}", otherwise))
+                            otherwise => CType::fail(&format!("Native imports compiled to Javascript must be declared Nodejs{{D}} dependencies: {otherwise:?}"))
                         }
                         CType::Nodejs(d) => match &**d {
                             CType::Dependency(n, v) => {
@@ -149,7 +149,7 @@ pub fn from_microstatement(
                             }
                             _ => CType::fail("Node.js dependencies must be declared with the dependency syntax")
                         }
-                        otherwise => CType::fail(&format!("Native imports compiled to Javascript must be declared Nodejs{{D}} dependencies: {:?}", otherwise))
+                        otherwise => CType::fail(&format!("Native imports compiled to Javascript must be declared Nodejs{{D}} dependencies: {otherwise:?}"))
                     }
                     match &**n {
                         CType::TString(_) => { /* Do nothing */ }
@@ -158,8 +158,7 @@ pub fn from_microstatement(
                     Ok((representation.clone(), out, deps))
                 }
                 otherwise => CType::fail(&format!(
-                    "Bound types must be strings or node.js imports: {:?}",
-                    otherwise
+                    "Bound types must be strings or node.js imports: {otherwise:?}"
                 )),
             },
             CType::Function(..) => {
@@ -196,8 +195,7 @@ pub fn from_microstatement(
                             }
                         }
                         Err(format!(
-                            "Somehow can't find a definition for function {}, {:?}",
-                            representation, typen
+                            "Somehow can't find a definition for function {representation}, {typen:?}"
                         )
                         .into())
                     }
@@ -233,7 +231,7 @@ pub fn from_microstatement(
                                                 }
                                                 _ => CType::fail("Node.js dependencies must be declared with the dependency syntax"),
                                             }
-                                            otherwise => CType::fail(&format!("Native imports compiled to Javascript *must* be declared Nodejs{{D}} dependencies: {:?}", otherwise))
+                                            otherwise => CType::fail(&format!("Native imports compiled to Javascript *must* be declared Nodejs{{D}} dependencies: {otherwise:?}"))
                                         }
                                         CType::Nodejs(d) => match &**d {
                                             CType::Dependency(n, v) => {
@@ -249,7 +247,7 @@ pub fn from_microstatement(
                                             }
                                             _ => CType::fail("Node.js dependencies must be declared with the dependency syntax"),
                                         }
-                                        otherwise => CType::fail(&format!("Native imports compiled to Javascript *must* be declared Nodejs{{D}} dependencies: {:?}", otherwise))
+                                        otherwise => CType::fail(&format!("Native imports compiled to Javascript *must* be declared Nodejs{{D}} dependencies: {otherwise:?}"))
                                     }
                             }
                             Ok((jsname, out, deps))
@@ -277,7 +275,7 @@ pub fn from_microstatement(
                                                 }
                                                 _ => CType::fail("Node.js dependencies must be declared with the dependency syntax"),
                                             }
-                                            otherwise => CType::fail(&format!("Native imports compiled to Javascript *must* be declared Nodejs{{D}} dependencies: {:?}", otherwise))
+                                            otherwise => CType::fail(&format!("Native imports compiled to Javascript *must* be declared Nodejs{{D}} dependencies: {otherwise:?}"))
                                         }
                                         CType::Nodejs(d) => match &**d {
                                             CType::Dependency(n, v) => {
@@ -293,7 +291,7 @@ pub fn from_microstatement(
                                             }
                                             _ => CType::fail("Node.js dependencies must be declared with the dependency syntax"),
                                         }
-                                        otherwise => CType::fail(&format!("Native imports compiled to Javascript *must* be declared Nodejs{{D}} dependencies: {:?}", otherwise))
+                                        otherwise => CType::fail(&format!("Native imports compiled to Javascript *must* be declared Nodejs{{D}} dependencies: {otherwise:?}"))
                                     }
                             }
                             Ok((jsname.clone(), out, deps))
@@ -385,7 +383,7 @@ pub fn from_microstatement(
                                     }
                                     _ => CType::fail("Node.js dependencies must be declared with the dependency syntax"),
                                 }
-                                otherwise => CType::fail(&format!("Native imports compiled to Javascript must be declared Nodejs{{D}} dependencies: {:?}", otherwise))
+                                otherwise => CType::fail(&format!("Native imports compiled to Javascript must be declared Nodejs{{D}} dependencies: {otherwise:?}"))
                             }
                             CType::Nodejs(d) => match &**d {
                                 CType::Dependency(n, v) => {
@@ -401,7 +399,7 @@ pub fn from_microstatement(
                                 }
                                 _ => CType::fail("Node.js dependencies must be declared with the dependency syntax"),
                             }
-                            otherwise => CType::fail(&format!("Native imports compiled to Javascript must be declared Nodejs{{D}} dependencies: {:?}", otherwise))
+                            otherwise => CType::fail(&format!("Native imports compiled to Javascript must be declared Nodejs{{D}} dependencies: {otherwise:?}"))
                         }
                     }
                     Ok((
@@ -439,7 +437,7 @@ pub fn from_microstatement(
                                     }
                                     _ => CType::fail("Node.js dependencies must be declared with the dependency syntax"),
                                 }
-                                otherwise => CType::fail(&format!("Native imports compiled to Javascript must be declared Nodejs{{D}} dependencies: {:?}", otherwise))
+                                otherwise => CType::fail(&format!("Native imports compiled to Javascript must be declared Nodejs{{D}} dependencies: {otherwise:?}"))
                             }
                             CType::Nodejs(d) => match &**d {
                                 CType::Dependency(n, v) => {
@@ -455,7 +453,7 @@ pub fn from_microstatement(
                                 }
                                 _ => CType::fail("Node dependencies must be declared with the dependency syntax"),
                             }
-                            otherwise => CType::fail(&format!("Native imports compiled to Javascript must be declared Nodejs{{D}} dependencies: {:?}", otherwise))
+                            otherwise => CType::fail(&format!("Native imports compiled to Javascript must be declared Nodejs{{D}} dependencies: {otherwise:?}"))
                         }
                     }
                     Ok((
@@ -491,7 +489,7 @@ pub fn from_microstatement(
                                                 }
                                                 _ => CType::fail("Node.js dependencies must be declared with the dependency syntax"),
                                             }
-                                            otherwise => CType::fail(&format!("Native imports compiled to Javascript must be declared Nodejs{{D}} dependencies: {:?}", otherwise))
+                                            otherwise => CType::fail(&format!("Native imports compiled to Javascript must be declared Nodejs{{D}} dependencies: {otherwise:?}"))
                                         }
                                         CType::Nodejs(d) => match &**d {
                                             CType::Dependency(n, v) => {
@@ -507,7 +505,7 @@ pub fn from_microstatement(
                                             }
                                             _ => CType::fail("Node.js dependencies must be declared with the dependency syntax"),
                                         }
-                                        otherwise => CType::fail(&format!("Native imports compiled to Javascript must be declared Nodejs{{D}} dependencies: {:?}", otherwise))
+                                        otherwise => CType::fail(&format!("Native imports compiled to Javascript must be declared Nodejs{{D}} dependencies: {otherwise:?}"))
                                     }
                                     match &**n {
                                         CType::TString(_) => { /* Do nothing */ }
@@ -516,21 +514,20 @@ pub fn from_microstatement(
                                     Ok((representation.clone(), out, deps))
                                 }
                                 otherwise => CType::fail(&format!(
-                                    "Bound types must be strings or node.js imports: {:?}",
-                                    otherwise
+                                    "Bound types must be strings or node.js imports: {otherwise:?}"
                                 )),
                             },
                             CType::Type(n, _) if n == "string" => {
-                                Ok((format!("new alan_std.Str({})", representation), out, deps))
+                                Ok((format!("new alan_std.Str({representation})"), out, deps))
                             }
                             CType::Type(n, _) if n == "bool" => {
-                                Ok((format!("new alan_std.Bool({})", representation), out, deps))
+                                Ok((format!("new alan_std.Bool({representation})"), out, deps))
                             }
                             CType::Type(n, _) if n == "i64" => {
-                                Ok((format!("new alan_std.I64({})", representation), out, deps))
+                                Ok((format!("new alan_std.I64({representation})"), out, deps))
                             }
                             CType::Type(n, _) if n == "f64" => {
-                                Ok((format!("new alan_std.F64({})", representation), out, deps))
+                                Ok((format!("new alan_std.F64({representation})"), out, deps))
                             }
                             _ => Ok((representation.clone(), out, deps)),
                         },
@@ -616,7 +613,7 @@ pub fn from_microstatement(
                                             }
                                         }
                                         _ => {
-                                            if format!("arg{}", i) == function.name {
+                                            if format!("arg{i}") == function.name {
                                                 accessor_field = Some(function.name.clone());
                                             }
                                         }
@@ -781,7 +778,7 @@ pub fn from_microstatement(
                                     CType::Type(n, _) => Ok(n.clone()),
                                     CType::Array(_) => Ok(enum_type.to_callable_string()),
                                     CType::Binds(..) => Ok(enum_type.to_callable_string()),
-                                    otherwise => Err(format!("Cannot generate an constructor function for {} type as the input type has no name? {:?}", ret_name, otherwise)),
+                                    otherwise => Err(format!("Cannot generate an constructor function for {ret_name} type as the input type has no name? {otherwise:?}")),
                                 }?;
                                 for t in ts {
                                     let inner_type = t.clone().degroup();
@@ -911,7 +908,7 @@ pub fn from_microstatement(
                                         _ => {}
                                     }
                                 }
-                                return Err(format!("Cannot assign a value of the {} type as it is not part of the {} type", enum_name, ret_name).into());
+                                return Err(format!("Cannot assign a value of the {enum_name} type as it is not part of the {ret_name} type").into());
                             }
                             _ => return Err("How did this path get triggered?".into()),
                         }
@@ -1157,7 +1154,7 @@ pub fn from_microstatement(
                                                                 }
                                                                 _ => CType::fail("Node.js dependencies must be declared with the dependency syntax"),
                                                             }
-                                                            otherwise => CType::fail(&format!("Native imports compiled to Javascript must be declared Nodejs{{D}} dependencies: {:?}", otherwise))
+                                                            otherwise => CType::fail(&format!("Native imports compiled to Javascript must be declared Nodejs{{D}} dependencies: {otherwise:?}"))
                                                         }
                                                         CType::Nodejs(d) => match &**d {
                                                             CType::Dependency(n, v) => {
@@ -1173,7 +1170,7 @@ pub fn from_microstatement(
                                                             }
                                                             _ => CType::fail("Node.js dependencies must be declared with the dependency syntax"),
                                                         }
-                                                        otherwise => CType::fail(&format!("Native imports compiled to Javascript must be declared Nodejs{{D}} dependencies: {:?}", otherwise))
+                                                        otherwise => CType::fail(&format!("Native imports compiled to Javascript must be declared Nodejs{{D}} dependencies: {otherwise:?}"))
                                                     }
                                                     // Special-casing for Option and Result mapping. TODO:
                                                     // Make this more centralized
@@ -1332,7 +1329,7 @@ pub fn from_microstatement(
                                                         "  {}: {}",
                                                         match &***t {
                                                             CType::Field(n, _) => n.clone(),
-                                                            _ => format!("arg{}", i),
+                                                            _ => format!("arg{i}"),
                                                         },
                                                         a
                                                     ))
@@ -1360,7 +1357,7 @@ pub fn from_microstatement(
                                 return Ok((argstrs.join(", "), out, deps));
                             }
                             otherwise => {
-                                return Err(format!("How did you get here? Trying to create a constructor function {:?} for {:?}", function, otherwise).into());
+                                return Err(format!("How did you get here? Trying to create a constructor function {function:?} for {otherwise:?}").into());
                             }
                         }
                     }
@@ -1391,7 +1388,7 @@ pub fn from_microstatement(
                 let (retval, o, d) = from_microstatement(val, scope, parent_fn, out, deps)?;
                 out = o;
                 deps = d;
-                Ok((format!("return {}", retval), out, deps))
+                Ok((format!("return {retval}"), out, deps))
             }
             None => Ok(("return".to_string(), out, deps)),
         },
@@ -1449,9 +1446,9 @@ pub fn generate(
         let (stmt, o, d) = from_microstatement(microstatement, scope, function, out, deps)?;
         out = o;
         deps = d;
-        fn_string = format!("{}    {};\n", fn_string, stmt);
+        fn_string = format!("{fn_string}    {stmt};\n");
     }
-    fn_string = format!("{}}}", fn_string);
+    fn_string = format!("{fn_string}}}");
     out.insert(jsname, fn_string);
     Ok((out, deps))
 }

@@ -32,10 +32,10 @@ pub fn type_to_args(t: Arc<CType>) -> Vec<(String, ArgKind, Arc<CType>)> {
                                 CType::Mut(t) => (argname.clone(), ArgKind::Mut, t.clone()),
                                 _otherwise => (argname.clone(), ArgKind::Ref, t.clone()),
                             },
-                            CType::Own(t) => (format!("arg{}", i), ArgKind::Own, t.clone()),
-                            CType::Deref(t) => (format!("arg{}", i), ArgKind::Deref, t.clone()),
-                            CType::Mut(t) => (format!("arg{}", i), ArgKind::Mut, t.clone()),
-                            _otherwise => (format!("arg{}", i), ArgKind::Ref, t.clone()),
+                            CType::Own(t) => (format!("arg{i}"), ArgKind::Own, t.clone()),
+                            CType::Deref(t) => (format!("arg{i}"), ArgKind::Deref, t.clone()),
+                            CType::Mut(t) => (format!("arg{i}"), ArgKind::Mut, t.clone()),
+                            _otherwise => (format!("arg{i}"), ArgKind::Ref, t.clone()),
                         });
                     }
                 }
@@ -63,10 +63,10 @@ pub fn type_to_args(t: Arc<CType>) -> Vec<(String, ArgKind, Arc<CType>)> {
                         CType::Mut(t) => (argname.clone(), ArgKind::Mut, t.clone()),
                         _otherwise => (argname.clone(), ArgKind::Ref, t.clone()),
                     },
-                    CType::Own(t) => (format!("arg{}", i), ArgKind::Own, t.clone()),
-                    CType::Deref(t) => (format!("arg{}", i), ArgKind::Deref, t.clone()),
-                    CType::Mut(t) => (format!("arg{}", i), ArgKind::Mut, t.clone()),
-                    _otherwise => (format!("arg{}", i), ArgKind::Ref, t.clone()),
+                    CType::Own(t) => (format!("arg{i}"), ArgKind::Own, t.clone()),
+                    CType::Deref(t) => (format!("arg{i}"), ArgKind::Deref, t.clone()),
+                    CType::Mut(t) => (format!("arg{i}"), ArgKind::Mut, t.clone()),
+                    _otherwise => (format!("arg{i}"), ArgKind::Ref, t.clone()),
                 });
             }
             args
@@ -252,7 +252,7 @@ impl Function {
                             }
                             (a, b, c, d) => {
                                 // Any other patterns are invalid
-                                return Err(format!("Unexpected generic type definition, failure to parse at {:?} {:?} {:?} {:?}", a, b, c, d).into());
+                                return Err(format!("Unexpected generic type definition, failure to parse at {a:?} {b:?} {c:?} {d:?}").into());
                             }
                         }
                     }
@@ -295,8 +295,7 @@ impl Function {
                             _ => CType::fail("TODO: Support more than bare function calls for generic function binding"),
                         }
                         otherwise => CType::fail(&format!(
-                            "A declaration-only function must be a binding Call{{N, F}}: {:?}",
-                            otherwise
+                            "A declaration-only function must be a binding Call{{N, F}}: {otherwise:?}"
                         )),
                     };
                     // In case there were any created functions (eg constructor or accessor
@@ -429,7 +428,7 @@ impl Function {
                         }
                         (a, b, c, d) => {
                             // Any other patterns are invalid
-                            return Err(format!("Unexpected generic type definition, failure to parse at {:?} {:?} {:?} {:?}", a, b, c, d).into());
+                            return Err(format!("Unexpected generic type definition, failure to parse at {a:?} {b:?} {c:?} {d:?}").into());
                         }
                     }
                 }

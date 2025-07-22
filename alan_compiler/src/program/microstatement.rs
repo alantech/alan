@@ -386,7 +386,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                 // It could be a constant
                                 let maybe_c = scope.resolve_const(v);
                                 match maybe_c {
-                                    None => Err(format!("Couldn't find variable {}", v).into()),
+                                    None => Err(format!("Couldn't find variable {v}").into()),
                                     Some(c) => {
                                         // TODO: Confirm the specified typename matches the
                                         // actual typename of the value
@@ -445,9 +445,9 @@ pub fn baseassignablelist_to_microstatements<'a>(
                 // better
                 let inner_type = array_vals[0].get_type();
                 let inner_type_str = inner_type.clone().to_callable_string();
-                let array_type_name = format!("Array_{}_", inner_type_str);
+                let array_type_name = format!("Array_{inner_type_str}_");
                 let array_type = Arc::new(CType::Array(inner_type));
-                let type_str = format!("type {} = {}[];", array_type_name, inner_type_str);
+                let type_str = format!("type {array_type_name} = {inner_type_str}[];");
                 let parse_type = parse::types(&type_str);
                 let res = CType::from_ast(scope, &parse_type.unwrap().1, false)?;
                 scope = res.0;
@@ -1190,9 +1190,9 @@ pub fn withoperatorslist_to_microstatements<'a>(
             // others.
             if let parse::WithOperators::Operators(o) = assignable_or_operator {
                 let operatorname = o.trim();
-                let prefix_op = scope.resolve_operator(&format!("prefix{}", operatorname));
-                let infix_op = scope.resolve_operator(&format!("infix{}", operatorname));
-                let postfix_op = scope.resolve_operator(&format!("postfix{}", operatorname));
+                let prefix_op = scope.resolve_operator(&format!("prefix{operatorname}"));
+                let infix_op = scope.resolve_operator(&format!("infix{operatorname}"));
+                let postfix_op = scope.resolve_operator(&format!("postfix{operatorname}"));
                 let mut level = -1;
                 let mut operator = None;
                 for local_op in [&prefix_op, &infix_op, &postfix_op] {
@@ -1425,19 +1425,17 @@ pub fn withoperatorslist_to_microstatements<'a>(
             // We have no more operators, there should only be one reworked baseassignablelist now
             if queue.len() != 1 {
                 // No idea how such a wonky thing could occur. TODO: Improve error message
-                return Err(format!("Invalid syntax: {:?}", withoperatorslist).into());
+                return Err(format!("Invalid syntax: {withoperatorslist:?}").into());
             }
             let baseassignablelist = match match queue.pop() {
                 Some(v) => Ok(v),
                 None => Err(format!(
-                    "Somehow we collapsed the statement into nothing? {:?}",
-                    withoperatorslist
+                    "Somehow we collapsed the statement into nothing? {withoperatorslist:?}"
                 )),
             }? {
                 parse::WithOperators::BaseAssignableList(b) => Ok(b),
                 _ => Err(format!(
-                    "Somehow we collapse the statement into a solitary operator? {:?}",
-                    withoperatorslist
+                    "Somehow we collapse the statement into a solitary operator? {withoperatorslist:?}"
                 )),
             }?;
             let res = baseassignablelist_to_microstatements(

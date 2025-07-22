@@ -34,12 +34,12 @@ pub fn from_microstatement(
                     // alias it
                     ArgKind::Own => Ok(("".to_string(), out, deps)), // We already own the value
                     ArgKind::Ref => Ok((
-                        format!("let mut {} = {}.clone()", name, name), // TODO: not always mutable
+                        format!("let mut {name} = {name}.clone()"), // TODO: not always mutable
                         out,
                         deps,
                     )), // TODO: Should these two be distinguished?
                     ArgKind::Deref => Ok((
-                        format!("let mut {} = *{}", name, name), // TODO: not always mutable
+                        format!("let mut {name} = *{name}"), // TODO: not always mutable
                         out,
                         deps,
                     )),
@@ -76,7 +76,7 @@ pub fn from_microstatement(
                 .args()
                 .into_iter()
                 .map(|(n, k, _)| match k {
-                    ArgKind::Mut => format!("mut {}", n),
+                    ArgKind::Mut => format!("mut {n}"),
                     _ => n,
                 })
                 .collect::<Vec<String>>();
@@ -102,7 +102,7 @@ pub fn from_microstatement(
             representation,
         } => match &**typen {
             CType::Type(n, _) if n == "string" => Ok((
-                format!("{}.to_string()", representation).to_string(),
+                format!("{representation}.to_string()").to_string(),
                 out,
                 deps,
             )),
@@ -110,7 +110,7 @@ pub fn from_microstatement(
                 CType::TString(s) => {
                     if s == "String" {
                         Ok((
-                            format!("{}.to_string()", representation).to_string(),
+                            format!("{representation}.to_string()").to_string(),
                             out,
                             deps,
                         ))
@@ -135,7 +135,7 @@ pub fn from_microstatement(
                                 }
                                 _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
                             }
-                            otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
+                            otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {otherwise:?}"))
                         }
                         CType::Rust(d) => match &**d {
                             CType::Dependency(n, v) => {
@@ -151,7 +151,7 @@ pub fn from_microstatement(
                             }
                             _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
                         }
-                        otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
+                        otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {otherwise:?}"))
                     }
                     match &**n {
                         CType::TString(_) => { /* Do nothing */ }
@@ -196,8 +196,7 @@ pub fn from_microstatement(
                             }
                         }
                         Err(format!(
-                            "Somehow can't find a definition for function {}, {:?}",
-                            representation, typen
+                            "Somehow can't find a definition for function {representation}, {typen:?}"
                         )
                         .into())
                     }
@@ -237,7 +236,7 @@ pub fn from_microstatement(
                                                 }
                                                 _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
                                             }
-                                            otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
+                                            otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {otherwise:?}"))
                                         }
                                         CType::Rust(d) => match &**d {
                                             CType::Dependency(n, v) => {
@@ -253,7 +252,7 @@ pub fn from_microstatement(
                                             }
                                             _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
                                         }
-                                        otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
+                                        otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {otherwise:?}"))
                                     }
                                 }
                                 Ok((rustname, out, deps))
@@ -281,7 +280,7 @@ pub fn from_microstatement(
                                                 }
                                                 _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
                                             }
-                                            otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
+                                            otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {otherwise:?}"))
                                         }
                                         CType::Rust(d) => match &**d {
                                             CType::Dependency(n, v) => {
@@ -297,7 +296,7 @@ pub fn from_microstatement(
                                             }
                                             _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
                                         }
-                                        otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
+                                        otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {otherwise:?}"))
                                     }
                                 }
                                 Ok((rustname.clone(), out, deps))
@@ -335,7 +334,7 @@ pub fn from_microstatement(
                     out = res.1;
                     deps = res.2;
                     return Ok((
-                        format!("if {} {}", conditional, successblock).to_string(),
+                        format!("if {conditional} {successblock}").to_string(),
                         out,
                         deps,
                     ));
@@ -353,8 +352,7 @@ pub fn from_microstatement(
                     out = res.1;
                     deps = res.2;
                     return Ok((
-                        format!("if {} {} else {}", conditional, successblock, failblock)
-                            .to_string(),
+                        format!("if {conditional} {successblock} else {failblock}").to_string(),
                         out,
                         deps,
                     ));
@@ -371,7 +369,7 @@ pub fn from_microstatement(
                     out = res.1;
                     deps = res.2;
                     return Ok((
-                        format!("while {} {}", conditional, loopblock).to_string(),
+                        format!("while {conditional} {loopblock}").to_string(),
                         out,
                         deps,
                     ));
@@ -418,11 +416,11 @@ pub fn from_microstatement(
                                             }
                                         }
                                     }
-                                    argstrs.push(format!("{}{}", prefix, a));
+                                    argstrs.push(format!("{prefix}{a}"));
                                 }
                                 // Because we create clones for these two right now, we always need
                                 // this
-                                ArgKind::Ref | ArgKind::Deref => argstrs.push(format!("&{}", a)),
+                                ArgKind::Ref | ArgKind::Deref => argstrs.push(format!("&{a}")),
                                 ArgKind::Own => argstrs.push(a.clone()),
                             },
                         }
@@ -444,7 +442,7 @@ pub fn from_microstatement(
                                     }
                                     _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
                                 }
-                                otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
+                                otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {otherwise:?}"))
                             }
                             CType::Rust(d) => match &**d {
                                 CType::Dependency(n, v) => {
@@ -460,7 +458,7 @@ pub fn from_microstatement(
                                 }
                                 _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
                             }
-                            otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
+                            otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {otherwise:?}"))
                         }
                     }
                     Ok((
@@ -491,11 +489,11 @@ pub fn from_microstatement(
                                             }
                                         }
                                     }
-                                    argstrs.push(format!("{}{}", prefix, a));
+                                    argstrs.push(format!("{prefix}{a}"));
                                 }
                                 // Because we create clones for these two right now, we always need
                                 // this
-                                ArgKind::Ref | ArgKind::Deref => argstrs.push(format!("&{}", a)),
+                                ArgKind::Ref | ArgKind::Deref => argstrs.push(format!("&{a}")),
                                 ArgKind::Own => argstrs.push(a.clone()),
                             },
                         }
@@ -517,7 +515,7 @@ pub fn from_microstatement(
                                     }
                                     _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
                                 }
-                                otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
+                                otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {otherwise:?}"))
                             }
                             CType::Rust(d) => match &**d {
                                 CType::Dependency(n, v) => {
@@ -533,7 +531,7 @@ pub fn from_microstatement(
                                 }
                                 _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
                             }
-                            otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
+                            otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {otherwise:?}"))
                         }
                     }
                     Ok((
@@ -551,7 +549,7 @@ pub fn from_microstatement(
                             typen,
                         } => match &**typen {
                             CType::Type(n, _) if n == "string" => Ok((
-                                format!("{}.to_string()", representation).to_string(),
+                                format!("{representation}.to_string()").to_string(),
                                 out,
                                 deps,
                             )),
@@ -559,7 +557,7 @@ pub fn from_microstatement(
                                 CType::TString(s) => {
                                     if s == "String" {
                                         Ok((
-                                            format!("{}.to_string()", representation).to_string(),
+                                            format!("{representation}.to_string()").to_string(),
                                             out,
                                             deps,
                                         ))
@@ -584,7 +582,7 @@ pub fn from_microstatement(
                                                 }
                                                 _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
                                             }
-                                            otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
+                                            otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {otherwise:?}"))
                                         }
                                         CType::Rust(d) => match &**d {
                                             CType::Dependency(n, v) => {
@@ -600,7 +598,7 @@ pub fn from_microstatement(
                                             }
                                             _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
                                         }
-                                        otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
+                                        otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {otherwise:?}"))
                                     }
                                     match &**n {
                                         CType::TString(_) => { /* Do nothing */ }
@@ -796,7 +794,7 @@ pub fn from_microstatement(
                                 let enum_name = match &*enum_type {
                                     CType::Field(n, _) => Ok(n.clone()),
                                     CType::Type(n, _) => Ok(n.clone()),
-                                    _ => Err(format!("Cannot generate an constructor function for {} type as the input type has no name?", ret_name)),
+                                    _ => Err(format!("Cannot generate an constructor function for {ret_name} type as the input type has no name?")),
                                 }?;
                                 for t in ts {
                                     let inner_type = t.clone().degroup();
@@ -1044,7 +1042,7 @@ pub fn from_microstatement(
                                         _ => {}
                                     }
                                 }
-                                return Err(format!("Cannot assign a value of the {} type as it is not part of the {} type", enum_name, ret_name).into());
+                                return Err(format!("Cannot assign a value of the {enum_name} type as it is not part of the {ret_name} type").into());
                             }
                             _ => return Err("How did this path get triggered?".into()),
                         }
@@ -1410,7 +1408,7 @@ pub fn from_microstatement(
                                                                 }
                                                                 _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
                                                             }
-                                                            otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
+                                                            otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {otherwise:?}"))
                                                         }
                                                         CType::Rust(d) => match &**d {
                                                             CType::Dependency(n, v) => {
@@ -1426,7 +1424,7 @@ pub fn from_microstatement(
                                                             }
                                                             _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
                                                         }
-                                                        otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {:?}", otherwise))
+                                                        otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {otherwise:?}"))
                                                     }
                                                     // Special-casing for Option and Result mapping. TODO:
                                                     // Make this more centralized
@@ -1691,7 +1689,7 @@ pub fn from_microstatement(
                                 return Ok((argstrs.join(", "), out, deps));
                             }
                             otherwise => {
-                                return Err(format!("How did you get here? Trying to create a constructor function {:?} for {:?}", function, otherwise).into());
+                                return Err(format!("How did you get here? Trying to create a constructor function {function:?} for {otherwise:?}").into());
                             }
                         }
                     }
@@ -1719,7 +1717,7 @@ pub fn from_microstatement(
                     _ => argstrs.push(if a.starts_with("&mut ") {
                         a
                     } else {
-                        format!("&mut {}", a)
+                        format!("&mut {a}")
                     }),
                 }
             }
@@ -1785,15 +1783,15 @@ pub fn generate(
         deps = d;
         if t_str.starts_with("impl") || t_str.starts_with("&") {
             if t_str.contains("FnMut") {
-                arg_strs.push(format!("mut {}: {}", l, t_str));
+                arg_strs.push(format!("mut {l}: {t_str}"));
             } else {
-                arg_strs.push(format!("{}: {}", l, t_str));
+                arg_strs.push(format!("{l}: {t_str}"));
             }
         } else {
             match k {
-                ArgKind::Mut => arg_strs.push(format!("{}: &mut {}", l, t_str)),
-                ArgKind::Own => arg_strs.push(format!("{}: {}", l, t_str)),
-                _ => arg_strs.push(format!("{}: &{}", l, t_str)),
+                ArgKind::Mut => arg_strs.push(format!("{l}: &mut {t_str}")),
+                ArgKind::Own => arg_strs.push(format!("{l}: {t_str}")),
+                _ => arg_strs.push(format!("{l}: &{t_str}")),
             }
         }
     }
@@ -1823,7 +1821,7 @@ pub fn generate(
         rustname.clone(),
         arg_strs.join(", "),
         match opt_ret_str {
-            Some(rettype) => format!(" -> {}", rettype).to_string(),
+            Some(rettype) => format!(" -> {rettype}").to_string(),
             None => "".to_string(),
         },
     )
@@ -1832,9 +1830,9 @@ pub fn generate(
         let (stmt, o, d) = from_microstatement(microstatement, function, scope, out, deps)?;
         out = o;
         deps = d;
-        fn_string = format!("{}    {};\n", fn_string, stmt);
+        fn_string = format!("{fn_string}    {stmt};\n");
     }
-    fn_string = format!("{}}}", fn_string);
+    fn_string = format!("{fn_string}}}");
     out.insert(rustname, fn_string);
     Ok((out, deps))
 }

@@ -186,10 +186,10 @@ bytemuck_derive = { git = "https://github.com/Lokathor/bytemuck", tag = "bytemuc
                             } else {
                                 // We'll assume there's only one part, since the alternative
                                 // wouldn't parse properly. If it blows up, it's on them.
-                                format!("{} = {{ git = \"{}\" }}", k, v)
+                                format!("{k} = {{ git = \"{v}\" }}")
                             }
                         } else {
-                            format!("{} = \"{}\"", k, v)
+                            format!("{k} = \"{v}\"")
                         }
                     })
                     .collect::<Vec<String>>()
@@ -286,7 +286,7 @@ bytemuck_derive = { git = "https://github.com/Lokathor/bytemuck", tag = "bytemuc
                     } else {
                         // We'll assume there's only one part, since the alternative
                         // wouldn't parse properly. If it blows up, it's on them.
-                        format!("{} = {{ git = \"{}\" }}", k, v)
+                        format!("{k} = {{ git = \"{v}\" }}")
                     }
                 })
                 .collect::<Vec<String>>()
@@ -362,7 +362,7 @@ bytemuck_derive = { git = "https://github.com/Lokathor/bytemuck", tag = "bytemuc
         },
         Err(e) => {
             fs2::FileExt::unlock(&lockfile)?;
-            Err(format!("{}", e))
+            Err(format!("{e}"))
         }
     }?;
     // Copy the binary from the temp directory to the current directory
@@ -426,14 +426,14 @@ pub fn test(source_file: String, js: bool) -> Result<(), Box<dyn std::error::Err
         let jsfile = web(source_file)?;
         let mut run = Command::new("node")
             .current_dir(current_dir()?)
-            .arg(format!("{}.js", jsfile))
+            .arg(format!("{jsfile}.js"))
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
             .spawn()?;
         let ecode = run.wait()?;
         Command::new("rm")
             .current_dir(current_dir()?)
-            .arg(format!("{}.js", jsfile))
+            .arg(format!("{jsfile}.js"))
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .output()?;
@@ -442,7 +442,7 @@ pub fn test(source_file: String, js: bool) -> Result<(), Box<dyn std::error::Err
         }
     } else {
         let binary = build(source_file)?;
-        let mut run = Command::new(format!("./{}", binary))
+        let mut run = Command::new(format!("./{binary}"))
             .current_dir(current_dir()?)
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
@@ -519,7 +519,7 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
             .as_bytes(),
         ) {
             Ok(a) => Ok(a),
-            Err(e) => Err(format!("Failed to write to lockfile: {:?}", e)),
+            Err(e) => Err(format!("Failed to write to lockfile: {e:?}")),
         }?;
     }
     let lockfile = File::open(lockfile_path.as_path())?;
@@ -545,7 +545,7 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
     } else {
         match lockfile.lock_exclusive() {
             Ok(a) => Ok(a),
-            Err(e) => Err(format!("Could not acquire the lock {:?}", e)),
+            Err(e) => Err(format!("Could not acquire the lock {e:?}")),
         }?;
     }
     if first_time || !project_dir.exists() {
@@ -554,7 +554,7 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
             Ok(a) => Ok(a),
             Err(e) => {
                 fs2::FileExt::unlock(&lockfile)?;
-                Err(format!("Could not create the project directory {:?}", e))
+                Err(format!("Could not create the project directory {e:?}"))
             }
         }?;
     }
@@ -570,7 +570,7 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
         Ok(a) => Ok(a),
         Err(e) => {
             fs2::FileExt::unlock(&lockfile)?;
-            Err(format!("Could not delete the prior bundle.js file {:?}", e))
+            Err(format!("Could not delete the prior bundle.js file {e:?}"))
         }
     }?;
     // Generate the js code to bundle
@@ -578,7 +578,7 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
         Ok(s) => Ok(s),
         Err(e) => {
             fs2::FileExt::unlock(&lockfile)?;
-            Err(format!("Could not generate the Javascript code {:?}", e))
+            Err(format!("Could not generate the Javascript code {e:?}"))
         }
     }?;
     // Always write the `package.json` file, in case the cache is out-of-date from a prior version of
@@ -589,7 +589,7 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
             "{{\n  \"name\": \"alan_generated_bundle\",\n  \"main\": \"index.js\",\n  \"dependencies\": {{\n    {}\n  }},\n  \"devDependencies\": {{\n    \"rollup\": \"4.x\",\n    \"@rollup/plugin-node-resolve\": \"15.x\",\n \"@rollup/plugin-terser\": \"^0.4.4\"\n  }}\n}}",
             deps.iter()
                 .map(|(k, v)| {
-                    format!("    \"{}\": \"{}\"", k, v)
+                    format!("    \"{k}\": \"{v}\"")
                 })
                 .collect::<Vec<String>>()
                 .join(",\n")
@@ -598,7 +598,7 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
         Ok(a) => Ok(a),
         Err(e) => {
             fs2::FileExt::unlock(&lockfile)?;
-            Err(format!("Could not create the package.json file {:?}", e))
+            Err(format!("Could not create the package.json file {e:?}"))
         }
     }?;
     // Shove it into a temp file for rustc
@@ -612,8 +612,7 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
         Err(e) => {
             fs2::FileExt::unlock(&lockfile)?;
             Err(format!(
-                "Could not save the generated Javascript to disk {:?}",
-                e
+                "Could not save the generated Javascript to disk {e:?}"
             ))
         }
     }?;
@@ -631,7 +630,7 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
         Ok(a) => Ok(a),
         Err(e) => {
             fs2::FileExt::unlock(&lockfile)?;
-            Err(format!("Could not clear package-lock.json {:?}", e))
+            Err(format!("Could not clear package-lock.json {e:?}"))
         }
     }?;
     match Command::new(if cfg!(windows) {
@@ -650,7 +649,7 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
         Ok(a) => Ok(a),
         Err(e) => {
             fs2::FileExt::unlock(&lockfile)?;
-            Err(format!("Could not run npm install {:?}", e))
+            Err(format!("Could not run npm install {e:?}"))
         }
     }?;
     // Build the bundle
@@ -701,7 +700,7 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
         },
         Err(e) => {
             fs2::FileExt::unlock(&lockfile)?;
-            Err(format!("Could not generate the bundle.js file {:?}", e))
+            Err(format!("Could not generate the bundle.js file {e:?}"))
         }
     }?;
     // Copy the bundle from the temp directory to the current directory
@@ -726,8 +725,7 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
         Err(e) => {
             fs2::FileExt::unlock(&lockfile)?;
             Err(format!(
-                "Could not copy the bundled Javascript to the PWD {:?}",
-                e
+                "Could not copy the bundled Javascript to the PWD {e:?}"
             ))
         }
     }?;
@@ -788,7 +786,7 @@ pub fn to_rs(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
                     } else {
                         // We'll assume there's only one part, since the alternative
                         // wouldn't parse properly. If it blows up, it's on them.
-                        format!("{} = {{ git = \"{}\" }}", k, v)
+                        format!("{k} = {{ git = \"{v}\" }}")
                     }
                 })
                 .collect::<Vec<String>>()
@@ -831,7 +829,7 @@ pub fn to_js(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
                 .to_string_lossy(),
             deps.iter()
                 .map(|(k, v)| {
-                    format!("    \"{}\": \"{}\"", k, v)
+                    format!("    \"{k}\": \"{v}\"")
                 })
                 .collect::<Vec<String>>()
                 .join(",\n")
