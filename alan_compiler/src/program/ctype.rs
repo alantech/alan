@@ -4173,9 +4173,7 @@ impl CType {
                     } else {
                         let program = Program::get_program();
                         let out = match program.scope_by_file(s) {
-                            Err(e) => {
-                                CType::fail(&format!("Failed to load dependency {s}: {e:?}"))
-                            }
+                            Err(e) => CType::fail(&format!("Failed to load dependency {s}: {e:?}")),
                             Ok(dep_scope) => {
                                 // Currently can only import types and functions. Constants and
                                 // operator mappings don't have a syntax to express this. TODO:
@@ -4282,17 +4280,13 @@ impl CType {
                             }
                         }
                     }
-                    Arc::new(CType::Fail(format!(
-                        "Property {s} not found on type {t:?}"
-                    )))
+                    Arc::new(CType::Fail(format!("Property {s} not found on type {t:?}")))
                 }
                 CType::Int(i) => {
                     if (0..ts.len()).contains(&(*i as usize)) {
                         ts[*i as usize].clone()
                     } else {
-                        Arc::new(CType::Fail(format!(
-                            "{i} is out of bounds for type {t:?}"
-                        )))
+                        Arc::new(CType::Fail(format!("{i} is out of bounds for type {t:?}")))
                     }
                 }
                 otherwise => Arc::new(CType::Fail(format!(
@@ -4536,9 +4530,7 @@ impl CType {
     pub fn concat(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
         match (&*a, &*b) {
             (CType::Infer(..), _) | (_, CType::Infer(..)) => Arc::new(CType::Concat(a, b)),
-            (CType::TString(a), CType::TString(b)) => {
-                Arc::new(CType::TString(format!("{a}{b}")))
-            }
+            (CType::TString(a), CType::TString(b)) => Arc::new(CType::TString(format!("{a}{b}"))),
             _ => CType::fail("Concat{A, B} must be given strings to concatenate"),
         }
     }

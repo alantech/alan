@@ -352,8 +352,7 @@ pub fn from_microstatement(
                     out = res.1;
                     deps = res.2;
                     return Ok((
-                        format!("if {conditional} {successblock} else {failblock}")
-                            .to_string(),
+                        format!("if {conditional} {successblock} else {failblock}").to_string(),
                         out,
                         deps,
                     ));

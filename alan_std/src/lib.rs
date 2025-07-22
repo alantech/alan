@@ -383,10 +383,9 @@ pub fn repeatarray<T: std::clone::Clone>(a: &[T], c: &i64) -> Vec<T> {
 #[inline(always)]
 pub fn storearray<T: std::clone::Clone>(a: &mut Vec<T>, i: &i64, v: &T) -> Result<(), AlanError> {
     match (*i as usize) > a.len() {
-        true => Err(format!(
-            "Provided array index {i} is greater than the length of the array"
-        )
-        .into()),
+        true => {
+            Err(format!("Provided array index {i} is greater than the length of the array").into())
+        }
         false => {
             a.insert(*i as usize, v.clone());
             Ok(())
@@ -399,10 +398,7 @@ pub fn storearray<T: std::clone::Clone>(a: &mut Vec<T>, i: &i64, v: &T) -> Resul
 #[inline(always)]
 pub fn deletearray<T: std::clone::Clone>(a: &mut Vec<T>, i: &i64) -> Result<T, AlanError> {
     match (*i as usize) >= a.len() {
-        true => Err(format!(
-            "Provided array index {i} is beyond the bounds of the array"
-        )
-        .into()),
+        true => Err(format!("Provided array index {i} is beyond the bounds of the array").into()),
         false => Ok(a.remove(*i as usize).clone()),
     }
 }
@@ -412,30 +408,18 @@ pub fn deletearray<T: std::clone::Clone>(a: &mut Vec<T>, i: &i64) -> Result<T, A
 #[inline(always)]
 pub fn swaparray<T>(a: &mut [T], i: &i64, j: &i64) -> Result<(), AlanError> {
     if *i < 0 {
-        return Err(format!(
-            "Provided array index {i} is beyond the bounds of the array"
-        )
-        .into());
+        return Err(format!("Provided array index {i} is beyond the bounds of the array").into());
     }
     if *j < 0 {
-        return Err(format!(
-            "Provided array index {j} is beyond the bounds of the array"
-        )
-        .into());
+        return Err(format!("Provided array index {j} is beyond the bounds of the array").into());
     }
     let i = *i as usize;
     let j = *j as usize;
     if i >= a.len() {
-        return Err(format!(
-            "Provided array index {i} is beyond the bounds of the array"
-        )
-        .into());
+        return Err(format!("Provided array index {i} is beyond the bounds of the array").into());
     }
     if j >= a.len() {
-        return Err(format!(
-            "Provided array index {j} is beyond the bounds of the array"
-        )
-        .into());
+        return Err(format!("Provided array index {j} is beyond the bounds of the array").into());
     }
     if i == j {
         return Ok(());
@@ -603,10 +587,9 @@ pub fn storebuffer<T: std::clone::Clone, const S: usize>(
     v: &T,
 ) -> Result<T, AlanError> {
     match (*i as usize) < a.len() {
-        false => Err(format!(
-            "The provided index {i} is out-of-bounds for the specified buffer"
-        )
-        .into()),
+        false => {
+            Err(format!("The provided index {i} is out-of-bounds for the specified buffer").into())
+        }
         true => Ok(std::mem::replace(a.each_mut()[*i as usize], v.clone())),
     }
 }
@@ -616,30 +599,18 @@ pub fn storebuffer<T: std::clone::Clone, const S: usize>(
 #[inline(always)]
 pub fn swapbuffer<T, const S: usize>(a: &mut [T; S], i: &i64, j: &i64) -> Result<(), AlanError> {
     if *i < 0 {
-        return Err(format!(
-            "Provided buffer index {i} is beyond the bounds of the buffer"
-        )
-        .into());
+        return Err(format!("Provided buffer index {i} is beyond the bounds of the buffer").into());
     }
     if *j < 0 {
-        return Err(format!(
-            "Provided buffer index {j} is beyond the bounds of the buffer"
-        )
-        .into());
+        return Err(format!("Provided buffer index {j} is beyond the bounds of the buffer").into());
     }
     let i = *i as usize;
     let j = *j as usize;
     if i >= a.len() {
-        return Err(format!(
-            "Provided buffer index {i} is beyond the bounds of the buffer"
-        )
-        .into());
+        return Err(format!("Provided buffer index {i} is beyond the bounds of the buffer").into());
     }
     if j >= a.len() {
-        return Err(format!(
-            "Provided buffer index {j} is beyond the bounds of the buffer"
-        )
-        .into());
+        return Err(format!("Provided buffer index {j} is beyond the bounds of the buffer").into());
     }
     if i == j {
         return Ok(());
