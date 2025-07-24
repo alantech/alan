@@ -122,7 +122,7 @@ jobs:
       run: cargo test --release --verbose -- --include-ignored
     - if: ${{ github.ref_name != 'main' }}
       name: Run tests
-      run: cargo test --release --verbose
+      run: MTL_DEBUG_LAYER=1 cargo test --release --verbose
     - if: always()
       name: Stop web server
       run: yarn stop-server
@@ -141,10 +141,10 @@ jobs:
       run: cargo build --release --verbose
     - if: ${{ github.ref_name == 'main' }}
       name: Run tests
-      run: cargo test --release --verbose -- --include-ignored
+      run: cargo test --release --verbose -- --include-ignored --nocapture
     - if: ${{ github.ref_name != 'main' }}
       name: Run tests
-      run: cargo test --release --verbose
+      run: cargo test --release --verbose -- --nocapture
     - name: Run native tests
       run: cargo run --release -- test alan/test.ln
     - name: Run js tests
@@ -164,10 +164,10 @@ jobs:
       run: cargo build --release --verbose
     - if: ${{ github.ref_name == 'main' }}
       name: Run tests
-      run: cargo test --release --verbose -- --include-ignored
+      run: cargo test --release --verbose -- --include-ignored --nocapture
     - if: ${{ github.ref_name != 'main' }}
       name: Run tests
-      run: cargo test --release --verbose
+      run: cargo test --release --verbose -- --nocapture
     - if: always()
       name: Stop web server
       run: yarn stop-server

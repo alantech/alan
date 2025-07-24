@@ -59,7 +59,7 @@ This will create a file with the name `<source>` that you can run (or error if i
 If you wish to contribute to Alan, you'll need a development environment to build Alan locally:
 
 * git (any recent version should work)
-* Rust >=1.83.0
+* Rust >=1.84.0
 * Node.js >=18.0.0
 * A complete C toolchain (gcc, clang, msvc)
 
