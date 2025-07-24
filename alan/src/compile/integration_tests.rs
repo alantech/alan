@@ -11,9 +11,6 @@
 ///     stdout "Hello, World!\n";
 ///     status 0;
 /// );
-
-
-
 macro_rules! test {
     ( $rule: ident => $code:expr; $( $type:ident $test_val:expr);+ $(;)? ) => {
         #[cfg(test)]
