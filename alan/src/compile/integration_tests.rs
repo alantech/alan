@@ -32,7 +32,7 @@ macro_rules! test {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
                         std::fs::remove_file(&filename)?;
-                        return Err(format!("Failed to compile {:?}", e).into());
+                        return Err(format!("Failed to compile to Rust {:?}", e).into());
                     }
                 };
                 let cmd = if cfg!(windows) {
@@ -57,7 +57,7 @@ macro_rules! test {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
                         std::fs::remove_file(&filename)?;
-                        return Err(format!("Failed to compile {:?}", e).into());
+                        return Err(format!("Failed to compile to Javascript {:?}", e).into());
                     }
                 };
                 let cmd = if cfg!(windows) {
@@ -98,7 +98,7 @@ macro_rules! test {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
                         $( std::fs::remove_file($filename)?; )+
-                        return Err(format!("Failed to compile {:?}", e).into());
+                        return Err(format!("Failed to compile to Rust {:?}", e).into());
                     }
                 };
                 let cmd = if cfg!(windows) {
@@ -123,7 +123,7 @@ macro_rules! test {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
                         $( std::fs::remove_file($filename)?; )+
-                        return Err(format!("Failed to compile {:?}", e).into());
+                        return Err(format!("Failed to compile to Javascript {:?}", e).into());
                     }
                 };
                 let cmd = if cfg!(windows) {
@@ -167,7 +167,7 @@ macro_rules! test_gpgpu {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
                         std::fs::remove_file(&filename)?;
-                        return Err(format!("Failed to compile {:?}", e).into());
+                        return Err(format!("Failed to compile to Rust {:?}", e).into());
                     }
                 };
                 let cmd = if cfg!(windows) {
@@ -179,6 +179,7 @@ macro_rules! test_gpgpu {
                     Ok(a) => Ok(a),
                     Err(e) => Err(format!("Could not run the test binary {:?}", e)),
                 }?;
+
                 $( $type!($test_val, true, &run); )+
                 match std::fs::remove_file(&cmd) {
                     Ok(a) => Ok(a),
@@ -199,7 +200,7 @@ macro_rules! test_gpgpu {
                         Ok(_) => { /* Do nothing */ }
                         Err(e) => {
                             std::fs::remove_file(&filename)?;
-                            return Err(format!("Failed to compile {:?}", e).into());
+                            return Err(format!("Failed to compile to Javascript {:?}", e).into());
                         }
                     };
                     let jsfile = if cfg!(windows) {
@@ -243,6 +244,7 @@ macro_rules! test_gpgpu {
                             Ok(a) => Ok(a),
                             Err(e) => Err(format!("Could not run the test JS code {:?}", e)),
                         }?;
+
                     $( $type!($test_val, false, &run); )+
                     match std::fs::remove_file(&jsfile) {
                         Ok(a) => Ok(a),
@@ -281,7 +283,7 @@ macro_rules! test_ignore {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
                         std::fs::remove_file(&filename)?;
-                        return Err(format!("Failed to compile {:?}", e).into());
+                        return Err(format!("Failed to compile to Rust {:?}", e).into());
                     }
                 };
                 let cmd = if cfg!(windows) {
@@ -340,7 +342,27 @@ macro_rules! stdout {
         } else {
             String::from_utf8($real_val.stdout.clone())?
         };
-        assert_eq!($test_val, &std_out);
+        let std_err = if cfg!(windows) {
+            String::from_utf8($real_val.stderr.clone())?.replace("\r\n", "\n")
+        } else {
+            String::from_utf8($real_val.stderr.clone())?
+        };
+        let err_info = if std_err.is_empty() {
+            "".to_string()
+        } else {
+            format!(" (stderr: {})", std_err)
+        };
+        assert_eq!(
+            $test_val,
+            &std_out,
+            "{}{}",
+            if $in_rs {
+                format!("Rust: {} == {}", $test_val, &std_out)
+            } else {
+                format!("JS: {} === {}", $test_val, &std_out)
+            },
+            err_info
+        );
     };
 }
 #[cfg(test)]
@@ -352,7 +374,21 @@ macro_rules! stdout_rs {
             } else {
                 String::from_utf8($real_val.stdout.clone())?
             };
-            assert_eq!($test_val, &std_out);
+            let std_err = if cfg!(windows) {
+                String::from_utf8($real_val.stderr.clone())?.replace("\r\n", "\n")
+            } else {
+                String::from_utf8($real_val.stderr.clone())?
+            };
+            let err_info = if std_err.is_empty() {
+                "".to_string()
+            } else {
+                format!(" (stderr: {})", std_err)
+            };
+            assert_eq!(
+                $test_val, &std_out,
+                "Rust: {} == {}{}",
+                $test_val, &std_out, err_info
+            );
         }
     };
 }
@@ -365,7 +401,21 @@ macro_rules! stdout_js {
             } else {
                 String::from_utf8($real_val.stdout.clone())?
             };
-            assert_eq!($test_val, &std_out);
+            let std_err = if cfg!(windows) {
+                String::from_utf8($real_val.stderr.clone())?.replace("\r\n", "\n")
+            } else {
+                String::from_utf8($real_val.stderr.clone())?
+            };
+            let err_info = if std_err.is_empty() {
+                "".to_string()
+            } else {
+                format!(" (stderr: {})", std_err)
+            };
+            assert_eq!(
+                $test_val, &std_out,
+                "JS: {} == {}{}",
+                $test_val, &std_out, err_info
+            );
         }
     };
 }
@@ -377,7 +427,27 @@ macro_rules! stdout_contains {
         } else {
             String::from_utf8($real_val.stdout.clone())?
         };
-        assert_eq!(std_out.contains($test_val), true);
+        let std_err = if cfg!(windows) {
+            String::from_utf8($real_val.stderr.clone())?.replace("\r\n", "\n")
+        } else {
+            String::from_utf8($real_val.stderr.clone())?
+        };
+        let err_info = if std_err.is_empty() {
+            "".to_string()
+        } else {
+            format!(" (stderr: {})", std_err)
+        };
+        assert_eq!(
+            std_out.contains($test_val),
+            true,
+            "{}{}",
+            if $in_rs {
+                format!("Rust: {} contained in {}", $test_val, &std_out)
+            } else {
+                format!("JS: {} contained in {}", $test_val, &std_out)
+            },
+            err_info
+        );
     };
 }
 #[cfg(test)]
@@ -388,14 +458,32 @@ macro_rules! stderr {
         } else {
             String::from_utf8($real_val.stderr.clone())?
         };
-        assert_eq!($test_val, &std_err);
+        assert_eq!(
+            $test_val,
+            &std_err,
+            "{}",
+            if $in_rs {
+                format!("Rust: {} == {}", $test_val, &std_err)
+            } else {
+                format!("JS: {} == {}", $test_val, &std_err)
+            }
+        );
     };
 }
 #[cfg(test)]
 macro_rules! status {
     ( $test_val:expr, $in_rs:expr, $real_val:expr ) => {
         let status = $real_val.status.code().unwrap();
-        assert_eq!($test_val, status);
+        assert_eq!(
+            $test_val,
+            status,
+            "{}",
+            if $in_rs {
+                format!("Rust: {} == {}", $test_val, status)
+            } else {
+                format!("JS: {} == {}", $test_val, status)
+            }
+        );
     };
 }
 

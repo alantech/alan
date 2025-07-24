@@ -773,13 +773,19 @@ export class GPU {
       let features = adapter.features;
       let limits = adapter.limits;
       let info = adapter.info;
-      let device = await adapter.requestDevice({
-        label: `${info.device} on ${info.architecture}`,
-        // If I don't pass these through, it defaults to a really small set of features and limits
-        requiredFeatures: features,
-        requiredLimits: limits,
-      });
-      out.push(new GPU(adapter, device, device.queue));
+      try {
+        let device = await adapter.requestDevice({
+          label: `${info.device} on ${info.architecture}`,
+          // If I don't pass these through, it defaults to a really small set of features and limits
+          requiredFeatures: features,
+          requiredLimits: limits,
+        });
+        out.push(new GPU(adapter, device, device.queue));
+      } catch (error) {
+        // Log the device error but continue to try other adapters
+        console.error(`Failed to initialize GPU adapter ${info.device}:`, error);
+        continue;
+      }
     }
     return out;
   }
@@ -794,7 +800,13 @@ export async function gpu() {
   if (GPUS.length > 0) {
     return GPUS[0];
   } else {
-    throw new AlanError("This program requires a GPU but there are no WebGPU-compliant GPUs on this machine");
+    // Check if we had adapters but they all failed to initialize
+    let adapters = await GPU.list();
+    if (adapters.length === 0) {
+      throw new AlanError("This program requires a GPU but there are no WebGPU-compliant GPUs on this machine");
+    } else {
+      throw new AlanError("This program requires a GPU but all available GPU adapters failed to initialize. This may be due to device lost errors on Intel Mac systems.");
+    }
   }
 }
 
