@@ -29,6 +29,7 @@ fn acquire_file_lock(
             .read(true)
             .write(true)
             .create(true)
+            .truncate(true)
             .open(lockfile_path)
         {
             Ok(file) => {
