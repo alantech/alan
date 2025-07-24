@@ -1,6 +1,6 @@
 use std::env::current_dir;
-use std::fs::{create_dir_all, remove_file, write, File};
-use std::io::Read;
+use std::fs::{create_dir_all, remove_file, write, File, OpenOptions};
+use std::io::{Read, Seek, Write};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
@@ -13,6 +13,52 @@ use alan_compiler::lntors::lntors;
 use alan_compiler::program::Program;
 
 mod integration_tests;
+
+/// Acquire an exclusive lock on a file with timeout and retry logic
+fn acquire_file_lock(
+    lockfile_path: &PathBuf,
+    timeout_secs: u64,
+) -> Result<File, Box<dyn std::error::Error>> {
+    let start_time = Instant::now();
+    let timeout = std::time::Duration::from_secs(timeout_secs);
+    let sleep_time = std::time::Duration::from_millis(50);
+
+    loop {
+        // Try to open the file for exclusive access
+        match OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .open(lockfile_path)
+        {
+            Ok(file) => {
+                // Try to acquire an exclusive lock
+                match file.lock_exclusive() {
+                    Ok(_) => {
+                        // Successfully acquired the lock
+                        return Ok(file);
+                    }
+                    Err(_) => {
+                        // Lock failed, check if we've exceeded timeout
+                        if start_time.elapsed() > timeout {
+                            return Err("Could not acquire lock within timeout period".into());
+                        }
+                        // Sleep briefly before retrying
+                        std::thread::sleep(sleep_time);
+                    }
+                }
+            }
+            Err(_) => {
+                // File open failed, check if we've exceeded timeout
+                if start_time.elapsed() > timeout {
+                    return Err("Could not open lockfile within timeout period".into());
+                }
+                // Sleep briefly before retrying
+                std::thread::sleep(sleep_time);
+            }
+        }
+    }
+}
 
 /// The `build` function creates a temporary directory that is a Cargo project primarily consisting
 /// of a single source file, plus a Cargo.toml file including the 3rd party dependencies in the
@@ -83,41 +129,17 @@ bytemuck_derive = { git = "https://github.com/Lokathor/bytemuck", tag = "bytemuc
         c.push("Cargo.toml");
         c
     };
-    let first_time = !alan_config.exists() || !lockfile_path.exists();
-    if first_time {
+
+    // Create the config directory if it doesn't exist
+    if !alan_config.exists() {
         create_dir_all(alan_config.clone())?;
-        write(
-            lockfile_path.clone(),
-            format!(
-                "{}",
-                SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs()
-            )
-            .as_bytes(),
-        )?;
     }
-    let mut lockfile = File::open(lockfile_path.as_path())?;
-    if cfg!(windows) {
-        let timeout = std::time::Duration::from_secs(180);
-        let sleep_time = std::time::Duration::from_millis(100);
-        let mut now = std::time::Instant::now();
-        let expiry = now + timeout;
-        let mut locked = false;
-        while now < expiry {
-            match lockfile.lock_exclusive() {
-                Err(_) => std::thread::sleep(sleep_time),
-                Ok(_) => {
-                    locked = true;
-                    break;
-                }
-            }
-            now = std::time::Instant::now();
-        }
-        if !locked {
-            return Err("Could not lock the lockfile".into());
-        }
-    } else {
-        lockfile.lock_exclusive()?;
-    }
+
+    // Acquire the lock with a 3-minute timeout
+    let mut lockfile = acquire_file_lock(&lockfile_path, 180)?;
+
+    // Check if this is the first time or if we need to rebuild dependencies
+    let first_time = !project_dir.exists();
     let should_rebuild_deps = {
         let mut b = Vec::new();
         lockfile.read_to_end(&mut b)?;
@@ -128,6 +150,7 @@ bytemuck_derive = { git = "https://github.com/Lokathor/bytemuck", tag = "bytemuc
         let t2 = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
         t2 > t1 + 24 * 60 * 60
     };
+
     if first_time {
         // First time initialization of the alan config directory
         match create_dir_all(project_dir.clone()) {
@@ -327,20 +350,14 @@ bytemuck_derive = { git = "https://github.com/Lokathor/bytemuck", tag = "bytemuc
                 Err(e)
             }
         }?;
-        if cfg!(windows) {
-            fs2::FileExt::unlock(&lockfile)?;
-        } // Why is this necessary?
-        write(
-            lockfile_path.clone(),
-            format!(
-                "{}",
-                SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs()
-            )
-            .as_bytes(),
+        // Update the lockfile timestamp
+        lockfile.set_len(0)?;
+        lockfile.seek(std::io::SeekFrom::Start(0))?;
+        write!(
+            lockfile,
+            "{}",
+            SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs()
         )?;
-        if cfg!(windows) {
-            lockfile.lock_exclusive()?;
-        }
     }
     // Build the executable
     match Command::new("cargo")
@@ -507,48 +524,17 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
         c.push("package.json");
         c
     };
-    let first_time = !alan_config.exists() || !lockfile_path.exists();
-    if first_time {
+    // Create the config directory if it doesn't exist
+    if !alan_config.exists() {
         create_dir_all(alan_config.clone())?;
-        match write(
-            lockfile_path.clone(),
-            format!(
-                "{}",
-                SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs()
-            )
-            .as_bytes(),
-        ) {
-            Ok(a) => Ok(a),
-            Err(e) => Err(format!("Failed to write to lockfile: {e:?}")),
-        }?;
     }
-    let lockfile = File::open(lockfile_path.as_path())?;
-    if cfg!(windows) {
-        let timeout = std::time::Duration::from_secs(180);
-        let sleep_time = std::time::Duration::from_millis(100);
-        let mut now = std::time::Instant::now();
-        let expiry = now + timeout;
-        let mut locked = false;
-        while now < expiry {
-            match lockfile.lock_exclusive() {
-                Err(_) => std::thread::sleep(sleep_time),
-                Ok(_) => {
-                    locked = true;
-                    break;
-                }
-            }
-            now = std::time::Instant::now();
-        }
-        if !locked {
-            return Err("Could not lock the lockfile".into());
-        }
-    } else {
-        match lockfile.lock_exclusive() {
-            Ok(a) => Ok(a),
-            Err(e) => Err(format!("Could not acquire the lock {e:?}")),
-        }?;
-    }
-    if first_time || !project_dir.exists() {
+
+    // Acquire the lock with a 3-minute timeout
+    let lockfile = acquire_file_lock(&lockfile_path, 180)?;
+
+    // Check if this is the first time or if we need to rebuild dependencies
+    let first_time = !project_dir.exists();
+    if first_time {
         // First time initialization of the alan config directory
         match create_dir_all(project_dir.clone()) {
             Ok(a) => Ok(a),
