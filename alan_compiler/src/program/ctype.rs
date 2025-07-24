@@ -1349,7 +1349,9 @@ impl CType {
                     .map(|t| t.clone().degroup())
                     .collect::<Vec<Arc<CType>>>(),
             )),
-            CType::BindsAs(a, b) => Arc::new(CType::BindsAs(a.clone().degroup(), b.clone().degroup())),
+            CType::BindsAs(a, b) => {
+                Arc::new(CType::BindsAs(a.clone().degroup(), b.clone().degroup()))
+            }
             CType::IntrinsicGeneric(..) => self,
             CType::IntCast(t) => Arc::new(CType::IntCast(t.clone().degroup())),
             CType::Int(_) => self,
@@ -5507,7 +5509,10 @@ pub fn typebaselist_to_ctype(
                                     // TODO: Is there a better way to do this?
                                     match name.as_str() {
                                         "Binds" => CType::binds(args),
-                                        "BindsAs" => Arc::new(CType::BindsAs(args[0].clone(), args[1].clone())),
+                                        "BindsAs" => Arc::new(CType::BindsAs(
+                                            args[0].clone(),
+                                            args[1].clone(),
+                                        )),
                                         "Int" => CType::intcast(args[0].clone()),
                                         "Float" => CType::floatcast(args[0].clone()),
                                         "Bool" => CType::boolcast(args[0].clone()),
