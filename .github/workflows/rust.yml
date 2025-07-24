@@ -12,8 +12,6 @@ env:
 jobs:
   test:
     runs-on: [self-hosted, linux, X64]
-    env:
-      BUFSIZE: 64
     steps:
     - uses: actions/checkout@v4
     - name: Check formatting
@@ -88,8 +86,6 @@ jobs:
 
   test-windows:
     runs-on: [self-hosted, windows]
-    env:
-      BUFSIZE: 64
     steps:
     - uses: actions/checkout@v4
     - name: Build
@@ -107,8 +103,6 @@ jobs:
 
   test-macos:
     runs-on: [self-hosted, macOS, X64]
-    env:
-      BUFSIZE: 64
     steps:
     - uses: actions/checkout@v4
     - name: Node deps
@@ -133,8 +127,6 @@ jobs:
 
   test-arm-linux:
     runs-on: [self-hosted, linux, ARM64]
-    env:
-      BUFSIZE: 64
     steps:
     - uses: actions/checkout@v4
     - name: Build
@@ -152,8 +144,6 @@ jobs:
 
   test-arm-macos:
     runs-on: [self-hosted, macOS, ARM64]
-    env:
-      BUFSIZE: 64
     steps:
     - uses: actions/checkout@v4
     - name: Node deps

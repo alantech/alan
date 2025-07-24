@@ -11,6 +11,9 @@
 ///     stdout "Hello, World!\n";
 ///     status 0;
 /// );
+
+
+
 macro_rules! test {
     ( $rule: ident => $code:expr; $( $type:ident $test_val:expr);+ $(;)? ) => {
         #[cfg(test)]
@@ -25,9 +28,6 @@ macro_rules! test {
                         return Err(format!("Unable to write {} to disk. {:?}", filename, e).into());
                     }
                 };
-                let mut program = alan_compiler::program::Program::get_program();
-                program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
-                alan_compiler::program::Program::return_program(program);
                 match crate::compile::build(filename.to_string()) {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
@@ -50,9 +50,6 @@ macro_rules! test {
                     Err(e) => Err(format!("Could not remove the test binary {:?}", e)),
                 }?;
                 alan_compiler::program::Program::set_target_lang_js();
-                let mut program = alan_compiler::program::Program::get_program();
-                program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
-                alan_compiler::program::Program::return_program(program);
                 match crate::compile::web(filename.to_string()) {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
@@ -91,9 +88,6 @@ macro_rules! test {
                         return Err(format!("Unable to write {} to disk. {:?}", $filename, e).into());
                     }
                 })+
-                let mut program = alan_compiler::program::Program::get_program();
-                program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
-                alan_compiler::program::Program::return_program(program);
                 match crate::compile::build(format!("{}.ln", $entryfile)) {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
@@ -116,9 +110,6 @@ macro_rules! test {
                     Err(e) => Err(format!("Could not remove the test binary {:?}", e)),
                 }?;
                 alan_compiler::program::Program::set_target_lang_js();
-                let mut program = alan_compiler::program::Program::get_program();
-                program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
-                alan_compiler::program::Program::return_program(program);
                 match crate::compile::web(format!("{}.ln", $entryfile)) {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
@@ -160,9 +151,6 @@ macro_rules! test_gpgpu {
                         return Err(format!("Unable to write {} to disk. {:?}", filename, e).into());
                     }
                 };
-                let mut program = alan_compiler::program::Program::get_program();
-                program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
-                alan_compiler::program::Program::return_program(program);
                 match crate::compile::build(filename.to_string()) {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
@@ -193,9 +181,6 @@ macro_rules! test_gpgpu {
                 // if cfg!(windows) || cfg!(macos) {
                 if cfg!(target_os = "macos") {
                     alan_compiler::program::Program::set_target_lang_js();
-                    let mut program = alan_compiler::program::Program::get_program();
-                    program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
-                    alan_compiler::program::Program::return_program(program);
                     match crate::compile::web(filename.to_string()) {
                         Ok(_) => { /* Do nothing */ }
                         Err(e) => {
@@ -276,9 +261,6 @@ macro_rules! test_ignore {
                         return Err(format!("Unable to write {} to disk. {:?}", filename, e).into());
                     }
                 };
-                let mut program = alan_compiler::program::Program::get_program();
-                program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
-                alan_compiler::program::Program::return_program(program);
                 match crate::compile::build(filename.to_string()) {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
@@ -1147,8 +1129,7 @@ test!(library_testing => r#"
 );
 
 test!(compile_time_buffer_size => r#"
-    // BUFSIZE is set by the Github Actions test suite. Be sure to set this environment variable
-    // yourself if you run this test locally
+    // BUFSIZE is set by the `.cargo/config.toml` file
     export fn main {
       {Buffer{i64, Int{Env{"BUFSIZE"}}}}(0).print;
     }"#;
