@@ -798,15 +798,13 @@ impl GPU {
             let features = adapter.features();
             let limits = adapter.limits();
             let info = adapter.get_info();
-            let device_future = adapter.request_device(
-                &wgpu::DeviceDescriptor {
-                    label: Some(&format!("{} on {}", info.name, info.backend.to_str())),
-                    required_features: features,
-                    required_limits: limits,
-                    memory_hints: wgpu::MemoryHints::Performance,
-                },
-                None,
-            );
+            let device_future = adapter.request_device(&wgpu::DeviceDescriptor {
+                label: Some(&format!("{} on {}", info.name, info.backend.to_str())),
+                required_features: features,
+                required_limits: limits,
+                memory_hints: wgpu::MemoryHints::Performance,
+                trace: wgpu::Trace::Off,
+            });
             match futures::executor::block_on(device_future) {
                 Ok((device, queue)) => {
                     out.push(GPU {
@@ -916,9 +914,12 @@ pub fn create_buffer_init<T>(
 
     // Submit and wait for the copy to complete
     let submission_index = g.queue.submit(Some(encoder.finish()));
-    g.device
-        .poll(wgpu::MaintainBase::wait_for(submission_index))
-        .panic_on_timeout();
+    match g.device.poll(wgpu::PollType::wait_for(submission_index)) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(AlanError {
+            message: format!("Failed to create buffer {e:?}"),
+        }),
+    }?;
 
     Ok(buf)
 }
@@ -1131,7 +1132,7 @@ pub fn read_buffer<T: std::clone::Clone>(b: &GBuffer) -> Vec<T> {
     let g = gpu();
 
     // Wait for all work to finish before reading out to avoid race conditions
-    g.device.poll(wgpu::MaintainBase::wait()).panic_on_timeout();
+    let _ = g.device.poll(wgpu::PollType::wait());
 
     let temp_buffer = create_empty_buffer(&map_read_buffer_type(), &bufferlen(b), &b.element_size)
         .expect("The buffer already exists so a new one the same size should always work");
@@ -1145,9 +1146,7 @@ pub fn read_buffer<T: std::clone::Clone>(b: &GBuffer) -> Vec<T> {
         wgpu::MapMode::Read,
         |_| { /* Not needed for us; single threaded GPU access in Alan (for now) */ },
     );
-    g.device
-        .poll(wgpu::Maintain::wait_for(submission_index))
-        .panic_on_timeout();
+    let _ = g.device.poll(wgpu::PollType::wait_for(submission_index));
     let data = temp_slice.get_mapped_range();
     let data_ptr = data.as_ptr();
     let data_len = bufferlen(b) as usize;
@@ -1171,9 +1170,7 @@ pub fn replace_buffer<T>(b: &GBuffer, v: &[T]) -> Result<(), AlanError> {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
         encoder.copy_buffer_to_buffer(&gb, 0, b, 0, b.size());
         let submission_index = g.queue.submit(Some(encoder.finish()));
-        g.device
-            .poll(wgpu::MaintainBase::wait_for(submission_index))
-            .panic_on_timeout();
+        let _ = g.device.poll(wgpu::PollType::wait_for(submission_index));
         gb.destroy();
         Ok(())
     }
@@ -1313,16 +1310,15 @@ where
         if self.device.is_none() {
             // We can do both device and queue here as they're created at the same time
             let adapter = self.adapter.as_ref().unwrap();
-            let (device, queue) = pollster::block_on(adapter.request_device(
-                &wgpu::DeviceDescriptor {
+            let (device, queue) =
+                pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
                     label: None,
                     required_features: adapter.features(),
                     required_limits: adapter.limits(),
                     memory_hints: wgpu::MemoryHints::MemoryUsage,
-                },
-                None,
-            ))
-            .unwrap();
+                    trace: wgpu::Trace::Off,
+                }))
+                .unwrap();
             self.device = Some(device);
             self.queue = Some(queue);
         }
