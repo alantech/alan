@@ -14,5 +14,5 @@ futures = "0.3.31"
 ordered_hash_map = "0.4.0"
 pollster = "0.4.0"
 uuid = { version = "1.17.0", features = ["v4", "fast-rng"] }
-wgpu = "24.0.3"
+wgpu = "26.0.1"
 winit = "0.30.12"
