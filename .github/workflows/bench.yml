@@ -8,12 +8,25 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  CARGO_HOME: ${{ github.workspace }}/.cargo
 
 jobs:
   bench:
     runs-on: [self-hosted, linux, X64]
     steps:
     - uses: actions/checkout@v4
+    - name: Cache Cargo dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
+    - name: Update branch URLs for testing
+      run: ./scripts/update_branch_urls.sh
     - name: Build Alan
       run: cargo build --verbose
     - name: Rust-managed Benchmarks
@@ -27,6 +40,18 @@ jobs:
     runs-on: [self-hosted, windows]
     steps:
     - uses: actions/checkout@v4
+    - name: Cache Cargo dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
+    - name: Update branch URLs for testing
+      run: ./scripts/update_branch_urls.sh
     - name: Build Alan
       run: cargo build --verbose
     - name: Rust-managed Benchmarks
@@ -36,6 +61,18 @@ jobs:
     runs-on: [self-hosted, macOS, X64]
     steps:
     - uses: actions/checkout@v4
+    - name: Cache Cargo dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
+    - name: Update branch URLs for testing
+      run: ./scripts/update_branch_urls.sh
     - name: Build Alan
       run: cargo build --verbose
     - name: Rust-managed Benchmarks
@@ -45,6 +82,18 @@ jobs:
     runs-on: [self-hosted, linux, ARM64]
     steps:
     - uses: actions/checkout@v4
+    - name: Cache Cargo dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
+    - name: Update branch URLs for testing
+      run: ./scripts/update_branch_urls.sh
     - name: Build Alan
       run: cargo build --verbose
     - name: Rust-managed Benchmarks
@@ -54,6 +103,18 @@ jobs:
     runs-on: [self-hosted, macOS, ARM64]
     steps:
     - uses: actions/checkout@v4
+    - name: Cache Cargo dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
+    - name: Update branch URLs for testing
+      run: ./scripts/update_branch_urls.sh
     - name: Build Alan
       run: cargo build --verbose
     - name: Rust-managed Benchmarks
