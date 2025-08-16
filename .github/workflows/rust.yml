@@ -14,6 +14,8 @@ jobs:
     runs-on: [self-hosted, linux, X64]
     steps:
     - uses: actions/checkout@v4
+    - name: Update branch URLs for testing
+      run: ./scripts/update_branch_urls.sh
     - name: Check formatting
       run: cargo fmt --check
     - name: Build
@@ -88,6 +90,8 @@ jobs:
     runs-on: [self-hosted, windows]
     steps:
     - uses: actions/checkout@v4
+    - name: Update branch URLs for testing
+      run: ./scripts/update_branch_urls.sh
     - name: Build
       run: cargo build --release --verbose
     - if: ${{ github.ref_name == 'main' }}
@@ -105,6 +109,8 @@ jobs:
     runs-on: [self-hosted, macOS, X64]
     steps:
     - uses: actions/checkout@v4
+    - name: Update branch URLs for testing
+      run: ./scripts/update_branch_urls.sh
     - name: Node deps
       run: yarn
     - name: Start web server
@@ -129,6 +135,8 @@ jobs:
     runs-on: [self-hosted, linux, ARM64]
     steps:
     - uses: actions/checkout@v4
+    - name: Update branch URLs for testing
+      run: ./scripts/update_branch_urls.sh
     - name: Build
       run: cargo build --release --verbose
     - if: ${{ github.ref_name == 'main' }}
@@ -146,6 +154,8 @@ jobs:
     runs-on: [self-hosted, macOS, ARM64]
     steps:
     - uses: actions/checkout@v4
+    - name: Update branch URLs for testing
+      run: ./scripts/update_branch_urls.sh
     - name: Node deps
       run: yarn
     - name: Start web server
