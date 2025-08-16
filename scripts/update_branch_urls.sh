@@ -20,14 +20,16 @@ fi
 echo "Updating Git URLs to point to branch: $BRANCH_NAME"
 
 # Update the RootBacking definitions to include the branch name
-# Lines 130-131 in alan_compiler/src/std/root.ln
-# Use cross-platform compatible approach instead of sed -i
+# Only update lines that don't already have a commit SHA (lines 133 and 135)
+# Skip line 134 which has a specific commit SHA for x86 Mac wgpu workaround
 if [[ "$OSTYPE" == "darwin"* ]]; then
     # macOS (BSD sed)
-    sed -i '' "s|@ \"https://github.com/alantech/alan.git\"|@ \"https://github.com/alantech/alan.git#$BRANCH_NAME\"|g" alan_compiler/src/std/root.ln
+    # Only replace URLs that end with .git" followed by closing brace (no hash/commit SHA)
+    sed -i '' "s|@ \"https://github.com/alantech/alan.git\"}|@ \"https://github.com/alantech/alan.git#$BRANCH_NAME\"}|g" alan_compiler/src/std/root.ln
 else
     # Linux and Windows (GNU sed)
-    sed -i "s|@ \"https://github.com/alantech/alan.git\"|@ \"https://github.com/alantech/alan.git#$BRANCH_NAME\"|g" alan_compiler/src/std/root.ln
+    # Only replace URLs that end with .git" followed by closing brace (no hash/commit SHA)
+    sed -i "s|@ \"https://github.com/alantech/alan.git\"}|@ \"https://github.com/alantech/alan.git#$BRANCH_NAME\"}|g" alan_compiler/src/std/root.ln
 fi
 
 echo "Successfully updated Git URLs to point to branch: $BRANCH_NAME"
