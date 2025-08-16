@@ -35,6 +35,17 @@ Program {
         } else {
             "what".to_string()
         });
+        env.insert("ALAN_ARCH".to_string(), if cfg!(target_arch="x86_64") {
+            "x86_64".to_string()
+        } else if cfg!(target_arch="x86") {
+            "x86_32".to_string()
+        } else if cfg!(target_arch="aarch64") {
+            "arm_64".to_string()
+        } else if cfg!(target_arch="arm") {
+            "arm_32".to_string()
+        } else {
+            "what".to_string()
+        });
         env
     },
 }));
@@ -51,6 +62,7 @@ Program {
             env.insert("ALAN_TARGET".to_string(), "release".to_string());
         }
         env.insert("ALAN_OUTPUT_LANG".to_string(), "js".to_string());
+        env.insert("ALAN_ARCH".to_string(), "what".to_string());
         env.insert("ALAN_PLATFORM".to_string(), "browser".to_string());
         env
     },
