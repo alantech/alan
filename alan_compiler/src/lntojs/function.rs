@@ -956,6 +956,7 @@ pub fn from_microstatement(
                                     CType::Array(_) => Ok(enum_type.clone().to_callable_string()),
                                     CType::Binds(..) => Ok(enum_type.clone().to_callable_string()),
                                     CType::Tuple(_) => Ok(enum_type.clone().to_callable_string()),
+                                    CType::Either(_) => Ok(enum_type.clone().to_callable_string()),
                                     otherwise => Err(format!("Cannot generate an constructor function for {} type as the input type has no name?, {:?}", function.name, otherwise)),
                                 }?;
                                 for t in ts {
@@ -965,6 +966,49 @@ pub fn from_microstatement(
                                             return Ok((argstrs[0].clone(), out, deps));
                                         }
                                         CType::Tuple(ts)
+                                            if inner_type.clone().to_callable_string()
+                                                == enum_name =>
+                                        {
+                                            // Special-casing for Option and Result mapping. TODO:
+                                            // Make this more centralized
+                                            if ts.len() == 2 {
+                                                if let CType::Void = &*ts[1] {
+                                                    if let CType::Void = &**t {
+                                                        return Ok(("null".to_string(), out, deps));
+                                                    } else {
+                                                        return Ok((argstrs[0].clone(), out, deps));
+                                                    }
+                                                } else if let CType::Type(name, _) = &*ts[1] {
+                                                    if name == "Error" {
+                                                        let (_, d) = typen::ctype_to_jtype(
+                                                            ts[0].clone(),
+                                                            deps,
+                                                        )?;
+                                                        deps = d;
+                                                        let (_, d) = typen::ctype_to_jtype(
+                                                            ts[1].clone(),
+                                                            deps,
+                                                        )?;
+                                                        deps = d;
+                                                        if let CType::Binds(..) = &**t {
+                                                            return Ok((
+                                                                argstrs[0].clone(),
+                                                                out,
+                                                                deps,
+                                                            ));
+                                                        } else {
+                                                            return Ok((
+                                                                argstrs[0].clone(),
+                                                                out,
+                                                                deps,
+                                                            ));
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            return Ok((argstrs[0].clone(), out, deps));
+                                        }
+                                        CType::Either(ts)
                                             if inner_type.clone().to_callable_string()
                                                 == enum_name =>
                                         {

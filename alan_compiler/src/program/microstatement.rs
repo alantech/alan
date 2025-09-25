@@ -926,14 +926,15 @@ pub fn baseassignablelist_to_microstatements<'a>(
                         Some((mut temp_scope, fun)) => {
                             // Success! Let's emit this
                             // TODO: Do a better job at type rewriting here
+                            let funargs = fun.args();
                             #[allow(clippy::needless_range_loop)]
-                            for i in 0..fun.args().len() {
+                            for i in 0..funargs.len() {
                                 match &arg_microstatements[i] {
                                     Microstatement::Value {
                                         typen,
                                         representation,
                                     } => {
-                                        let actual_typen = fun.args()[i].2.clone();
+                                        let actual_typen = funargs[i].2.clone();
                                         if typen != &actual_typen {
                                             if matches!(&*actual_typen, CType::Function(..)) {
                                                 let temp_scope_2 = temp_scope.child();
@@ -1568,7 +1569,10 @@ pub fn statement_to_microstatements<'a>(
                 // TODO: Do we really need this temp_scope?
                 let temp_scope = scope.child();
                 match temp_scope.resolve_function(&"store".to_string(), &arg_types) {
-                    Some((_, f)) => Ok(f),
+                    Some((s, f)) => {
+                        merge!(scope, s);
+                        Ok(f)
+                    }
                     None => Err(format!(
                         "Could not find store function with arguments {}",
                         arg_types
