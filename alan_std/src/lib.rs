@@ -802,6 +802,7 @@ impl GPU {
                 label: Some(&format!("{} on {}", info.name, info.backend.to_str())),
                 required_features: features,
                 required_limits: limits,
+                experimental_features: wgpu::ExperimentalFeatures::disabled(),
                 memory_hints: wgpu::MemoryHints::Performance,
                 trace: wgpu::Trace::Off,
             });
@@ -914,7 +915,7 @@ pub fn create_buffer_init<T>(
 
     // Submit and wait for the copy to complete
     let submission_index = g.queue.submit(Some(encoder.finish()));
-    match g.device.poll(wgpu::PollType::wait_for(submission_index)) {
+    match g.device.poll(wgpu::PollType::Wait { submission_index: Some(submission_index), timeout: None }) {
         Ok(_) => Ok(()),
         Err(e) => Err(AlanError {
             message: format!("Failed to create buffer {e:?}"),
@@ -1132,7 +1133,7 @@ pub fn read_buffer<T: std::clone::Clone>(b: &GBuffer) -> Vec<T> {
     let g = gpu();
 
     // Wait for all work to finish before reading out to avoid race conditions
-    let _ = g.device.poll(wgpu::PollType::wait());
+    let _ = g.device.poll(wgpu::PollType::wait_indefinitely());
 
     let temp_buffer = create_empty_buffer(&map_read_buffer_type(), &bufferlen(b), &b.element_size)
         .expect("The buffer already exists so a new one the same size should always work");
@@ -1146,7 +1147,7 @@ pub fn read_buffer<T: std::clone::Clone>(b: &GBuffer) -> Vec<T> {
         wgpu::MapMode::Read,
         |_| { /* Not needed for us; single threaded GPU access in Alan (for now) */ },
     );
-    let _ = g.device.poll(wgpu::PollType::wait_for(submission_index));
+    let _ = g.device.poll(wgpu::PollType::Wait { submission_index: Some(submission_index), timeout: None });
     let data = temp_slice.get_mapped_range();
     let data_ptr = data.as_ptr();
     let data_len = bufferlen(b) as usize;
@@ -1170,7 +1171,7 @@ pub fn replace_buffer<T>(b: &GBuffer, v: &[T]) -> Result<(), AlanError> {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
         encoder.copy_buffer_to_buffer(&gb, 0, b, 0, b.size());
         let submission_index = g.queue.submit(Some(encoder.finish()));
-        let _ = g.device.poll(wgpu::PollType::wait_for(submission_index));
+        let _ = g.device.poll(wgpu::PollType::Wait { submission_index: Some(submission_index), timeout: None });
         gb.destroy();
         Ok(())
     }
@@ -1315,6 +1316,7 @@ where
                     label: None,
                     required_features: adapter.features(),
                     required_limits: adapter.limits(),
+                    experimental_features: wgpu::ExperimentalFeatures::disabled(),
                     memory_hints: wgpu::MemoryHints::MemoryUsage,
                     trace: wgpu::Trace::Off,
                 }))
