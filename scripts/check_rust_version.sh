@@ -11,7 +11,7 @@ extract_rust_version() {
     
     # Look for rust-version field in the [workspace.package] section
     # Handle both quoted and unquoted versions
-    local version=$(grep -A 20 "\[workspace\.package\]" "$cargo_toml" | grep "rust-version" | head -1 | sed -E 's/.*rust-version\s*=\s*["\x27]?([^"\x27\s]+)["\x27]?.*/\1/')
+    local version=$(grep -A 20 "\[workspace\.package\]" "$cargo_toml" | grep "rust-version" | head -1 | sed -E 's/.*rust-version\s*=\s*["\x27]?([0-9]+\.[0-9]+\.[0-9]+)["\x27]?.*/\1/')
     
     if [ -z "$version" ]; then
         echo "Error: Could not find rust-version in $cargo_toml"
