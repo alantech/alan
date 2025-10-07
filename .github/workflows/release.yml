@@ -19,6 +19,9 @@ jobs:
       with:
         node-version: 16.x
 
+    - name: Check and set Rust version
+      run: ./scripts/check_rust_version.sh
+
     - name: Build alan app
       run: make
 
@@ -60,6 +63,9 @@ jobs:
       with:
         node-version: 16.x
 
+    - name: Check and set Rust version
+      run: ./scripts/check_rust_version.sh
+
     # The AVM requires openssl dev files to build now, and apparently the rust openssl code can auto-acquire it through vcpkg, so set that up
     - name: Set up vcpkg
       run: |
@@ -91,6 +97,9 @@ jobs:
       uses: actions/setup-node@v1
       with:
         node-version: 16.x
+
+    - name: Check and set Rust version
+      run: ./scripts/check_rust_version.sh
 
     - name: Build alan app
       run: make

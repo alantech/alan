@@ -27,6 +27,8 @@ jobs:
           ${{ runner.os }}-cargo-
     - name: Update branch URLs for testing
       run: ./scripts/update_branch_urls.sh
+    - name: Check and set Rust version
+      run: ./scripts/check_rust_version.sh
     - name: Check formatting
       run: cargo fmt --check
     - name: Build
@@ -113,6 +115,8 @@ jobs:
           ${{ runner.os }}-cargo-
     - name: Update branch URLs for testing
       run: ./scripts/update_branch_urls.sh
+    - name: Check and set Rust version
+      run: ./scripts/check_rust_version.sh
     - name: Build
       run: cargo build --release --verbose
     - if: ${{ github.ref_name == 'main' }}
@@ -142,6 +146,8 @@ jobs:
           ${{ runner.os }}-cargo-
     - name: Update branch URLs for testing
       run: ./scripts/update_branch_urls.sh
+    - name: Check and set Rust version
+      run: ./scripts/check_rust_version.sh
     - name: Node deps
       run: yarn
     - name: Start web server
@@ -178,6 +184,8 @@ jobs:
           ${{ runner.os }}-cargo-
     - name: Update branch URLs for testing
       run: ./scripts/update_branch_urls.sh
+    - name: Check and set Rust version
+      run: ./scripts/check_rust_version.sh
     - name: Build
       run: cargo build --release --verbose
     - if: ${{ github.ref_name == 'main' }}
@@ -207,6 +215,8 @@ jobs:
           ${{ runner.os }}-cargo-
     - name: Update branch URLs for testing
       run: ./scripts/update_branch_urls.sh
+    - name: Check and set Rust version
+      run: ./scripts/check_rust_version.sh
     - name: Node deps
       run: yarn
     - name: Start web server
