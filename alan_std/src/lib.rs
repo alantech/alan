@@ -915,7 +915,10 @@ pub fn create_buffer_init<T>(
 
     // Submit and wait for the copy to complete
     let submission_index = g.queue.submit(Some(encoder.finish()));
-    match g.device.poll(wgpu::PollType::Wait { submission_index: Some(submission_index), timeout: None }) {
+    match g.device.poll(wgpu::PollType::Wait {
+        submission_index: Some(submission_index),
+        timeout: None,
+    }) {
         Ok(_) => Ok(()),
         Err(e) => Err(AlanError {
             message: format!("Failed to create buffer {e:?}"),
@@ -1147,7 +1150,10 @@ pub fn read_buffer<T: std::clone::Clone>(b: &GBuffer) -> Vec<T> {
         wgpu::MapMode::Read,
         |_| { /* Not needed for us; single threaded GPU access in Alan (for now) */ },
     );
-    let _ = g.device.poll(wgpu::PollType::Wait { submission_index: Some(submission_index), timeout: None });
+    let _ = g.device.poll(wgpu::PollType::Wait {
+        submission_index: Some(submission_index),
+        timeout: None,
+    });
     let data = temp_slice.get_mapped_range();
     let data_ptr = data.as_ptr();
     let data_len = bufferlen(b) as usize;
@@ -1171,7 +1177,10 @@ pub fn replace_buffer<T>(b: &GBuffer, v: &[T]) -> Result<(), AlanError> {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
         encoder.copy_buffer_to_buffer(&gb, 0, b, 0, b.size());
         let submission_index = g.queue.submit(Some(encoder.finish()));
-        let _ = g.device.poll(wgpu::PollType::Wait { submission_index: Some(submission_index), timeout: None });
+        let _ = g.device.poll(wgpu::PollType::Wait {
+            submission_index: Some(submission_index),
+            timeout: None,
+        });
         gb.destroy();
         Ok(())
     }
