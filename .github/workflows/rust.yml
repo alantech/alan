@@ -116,7 +116,7 @@ jobs:
     - name: Update branch URLs for testing
       run: ./scripts/update_branch_urls.sh
     - name: Check and set Rust version
-      run: ./scripts/check_rust_version.sh
+      run: ./scripts/check_rust_version.bat
     - name: Build
       run: cargo build --release --verbose
     - if: ${{ github.ref_name == 'main' }}
