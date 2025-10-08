@@ -41,7 +41,7 @@ extract_rust_version() {
 
 # Function to get current rustc version
 get_current_rustc_version() {
-    rustc --version | sed 's/rustc \([0-9]\+\.[0-9]\+\.[0-9]\+\).*/\1/'
+    rustc --version | sed 's/rustc \([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\).*/\1/'
 }
 
 # Function to check if rustup is available
@@ -65,6 +65,7 @@ echo "Required Rust version: $REQUIRED_VERSION"
 # Get current rustc version
 CURRENT_VERSION=$(get_current_rustc_version)
 echo "Current rustc version: $CURRENT_VERSION"
+echo "Debug: Raw rustc --version output: $(rustc --version)" >&2
 
     # Compare versions
     if [ "$CURRENT_VERSION" = "$REQUIRED_VERSION" ]; then

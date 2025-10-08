@@ -55,7 +55,7 @@ jobs:
     - name: Update branch URLs for testing
       run: ./scripts/update_branch_urls.sh
     - name: Check and set Rust version
-      run: ./scripts/check_rust_version.bat
+      run: ./scripts/check_rust_version.ps1
     - name: Build Alan
       run: cargo build --verbose
     - name: Rust-managed Benchmarks
