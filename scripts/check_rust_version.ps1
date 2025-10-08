@@ -18,8 +18,24 @@ function Get-RustVersion {
     
     # Look for rust-version field in the [workspace.package] section
     $content = Get-Content $cargoToml -Raw
-    $workspaceSection = $content -split '\[workspace\.package\]' | Select-Object -Skip 1 | Select-Object -First 1
-    $rustVersionLine = $workspaceSection -split "`n" | Where-Object { $_ -match 'rust-version' } | Select-Object -First 1
+    $lines = $content -split "`n"
+    $rustVersionLine = $null
+    $inWorkspacePackage = $false
+    
+    foreach ($line in $lines) {
+        if ($line -match '\[workspace\.package\]') {
+            $inWorkspacePackage = $true
+            continue
+        }
+        if ($inWorkspacePackage -and $line -match 'rust-version') {
+            $rustVersionLine = $line
+            break
+        }
+        if ($inWorkspacePackage -and $line -match '^\[') {
+            # Hit another section, stop looking
+            break
+        }
+    }
     
     Write-Host "Debug: Found rust-version line: '$rustVersionLine'" -ForegroundColor Yellow
     
