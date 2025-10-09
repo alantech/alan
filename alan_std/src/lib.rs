@@ -790,7 +790,10 @@ impl GPU {
                 out.push(adapter);
             } else {
                 println!("adapter {:?}", adapter);
-                println!("downlevel capabilities {:?}", adapter.get_downlevel_capabilities());
+                println!(
+                    "downlevel capabilities {:?}",
+                    adapter.get_downlevel_capabilities()
+                );
             }
         }
         out
