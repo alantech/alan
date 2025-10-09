@@ -824,7 +824,7 @@ impl GPU {
                         queue,
                     });
                 }
-                Err(_) => { /* Do nothing */ }
+                Err(e) => { println!("Failed to initialize adapter {:?}", e); }
             };
         }
         out
