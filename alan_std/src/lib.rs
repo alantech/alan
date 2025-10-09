@@ -788,6 +788,9 @@ impl GPU {
         for adapter in instance.enumerate_adapters(wgpu::Backends::all()) {
             if adapter.get_downlevel_capabilities().is_webgpu_compliant() {
                 out.push(adapter);
+            } else {
+                println!("adapter {:?}", adapter);
+                println!("downlevel capabilities {:?}", adapter.get_downlevel_capabilities());
             }
         }
         out
