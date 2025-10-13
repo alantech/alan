@@ -805,11 +805,12 @@ impl GPU {
     pub fn init(adapters: Vec<wgpu::Adapter>) -> Vec<GPU> {
         let mut out = Vec::new();
         for adapter in adapters {
+            let features = adapter.features();
             let limits = adapter.limits();
             let info = adapter.get_info();
             let device_future = adapter.request_device(&wgpu::DeviceDescriptor {
                 label: Some(&format!("{} on {}", info.name, info.backend.to_str())),
-                required_features: wgpu::Features::all_webgpu_mask(),
+                required_features: wgpu::Features::all_webgpu_mask() & features,
                 required_limits: limits,
                 experimental_features: wgpu::ExperimentalFeatures::disabled(),
                 memory_hints: wgpu::MemoryHints::Performance,
