@@ -963,6 +963,11 @@ pub fn map_write_buffer_type() -> wgpu::BufferUsages {
 }
 
 #[inline(always)]
+pub fn copy_src_buffer_type() -> wgpu::BufferUsages {
+    wgpu::BufferUsages::COPY_SRC
+}
+
+#[inline(always)]
 pub fn storage_buffer_type() -> wgpu::BufferUsages {
     wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC
 }
@@ -1168,9 +1173,11 @@ pub fn read_buffer<T: std::clone::Clone>(b: &GBuffer) -> Vec<T> {
 pub fn replace_buffer<T>(b: &GBuffer, v: &[T]) -> Result<(), AlanError> {
     if v.len() as i64 != bufferlen(b) {
         Err("The input array is not the same size as the buffer".into())
+    } else if !b.usage().contains(wgpu::BufferUsages::COPY_DST) {
+        Err("The destination buffer does not have COPY_DST usage flag required for copy operations".into())
     } else {
         let g = gpu();
-        let gb = create_buffer_init(&map_write_buffer_type(), v, &b.element_size)
+        let gb = create_buffer_init(&copy_src_buffer_type(), v, &b.element_size)
             .expect("The buffer already exists so a new one the same size should always work");
         let mut encoder = g
             .device
