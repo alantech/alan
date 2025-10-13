@@ -132,7 +132,7 @@ type Browser = Env{"ALAN_PLATFORM"} == "browser"; // Technically not necessary, 
 
 // Importing the Root Scope backing implementation and supporting 3rd party libraries
 type{Rs} RootBacking = Rust{"alan_std" @ "https://github.com/alantech/alan.git"};
-type{Rs && Mac && x86_64} RootBacking = Rust{"alan_std" @ "https://github.com/alantech/alan.git#x86_macos_last_working_wgpu_version"}; // Until wgpu fixes the regression post v24 for x86 Macs 
+// type{Rs && Mac && x86_64} RootBacking = Rust{"alan_std" @ "https://github.com/alantech/alan.git#x86_macos_last_working_wgpu_version"}; // Until wgpu fixes the regression post v24 for x86 Macs 
 type{Js} RootBacking = Nodejs{"alan_std" @ "https://github.com/alantech/alan.git"};
 
 // Defining derived types
