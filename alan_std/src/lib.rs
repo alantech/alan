@@ -789,14 +789,14 @@ impl GPU {
             if adapter.get_downlevel_capabilities().is_webgpu_compliant() {
                 out.push(adapter);
             } else {
-                println!("instance {:?}", instance);
+                /*println!("instance {:?}", instance);
                 println!("adapter {:?}", adapter);
                 println!("adapter getinfo {:?}", adapter.get_info());
                 println!(
                     "downlevel capabilities {:?}",
                     adapter.get_downlevel_capabilities()
                 );
-                println!("all downlevel flags {:?}", wgpu::DownlevelFlags::all());
+                println!("all downlevel flags {:?}", wgpu::DownlevelFlags::all());*/
                 std::thread::sleep(std::time::Duration::from_millis(100));
             }
         }
