@@ -788,16 +788,6 @@ impl GPU {
         for adapter in instance.enumerate_adapters(wgpu::Backends::all()) {
             if adapter.get_downlevel_capabilities().is_webgpu_compliant() {
                 out.push(adapter);
-            } else {
-                /*println!("instance {:?}", instance);
-                println!("adapter {:?}", adapter);
-                println!("adapter getinfo {:?}", adapter.get_info());
-                println!(
-                    "downlevel capabilities {:?}",
-                    adapter.get_downlevel_capabilities()
-                );
-                println!("all downlevel flags {:?}", wgpu::DownlevelFlags::all());*/
-                std::thread::sleep(std::time::Duration::from_millis(100));
             }
         }
         out
@@ -824,9 +814,7 @@ impl GPU {
                         queue,
                     });
                 }
-                Err(e) => {
-                    println!("Failed to initialize adapter {:?}", e);
-                }
+                Err(_) => {}
             };
         }
         out
@@ -896,7 +884,7 @@ pub fn create_buffer_init<T>(
         buffer: Rc::new(g.device.create_buffer(&wgpu::BufferDescriptor {
             label: None,
             size: val_u8_len as u64,
-            usage: *usage | wgpu::BufferUsages::COPY_DST,
+            usage: *usage,
             mapped_at_creation: false,
         })),
         id: format!("buffer_{}", format!("{}", Uuid::new_v4()).replace("-", "_")),
