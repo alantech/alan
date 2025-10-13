@@ -1174,7 +1174,10 @@ pub fn replace_buffer<T>(b: &GBuffer, v: &[T]) -> Result<(), AlanError> {
     if v.len() as i64 != bufferlen(b) {
         Err("The input array is not the same size as the buffer".into())
     } else if !b.usage().contains(wgpu::BufferUsages::COPY_DST) {
-        Err("The destination buffer does not have COPY_DST usage flag required for copy operations".into())
+        Err(
+            "The destination buffer does not have COPY_DST usage flag required for copy operations"
+                .into(),
+        )
     } else {
         let g = gpu();
         let gb = create_buffer_init(&copy_src_buffer_type(), v, &b.element_size)
