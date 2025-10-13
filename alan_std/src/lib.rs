@@ -963,11 +963,6 @@ pub fn map_write_buffer_type() -> wgpu::BufferUsages {
 }
 
 #[inline(always)]
-pub fn copy_src_buffer_type() -> wgpu::BufferUsages {
-    wgpu::BufferUsages::COPY_SRC
-}
-
-#[inline(always)]
 pub fn storage_buffer_type() -> wgpu::BufferUsages {
     wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC
 }
@@ -1180,7 +1175,7 @@ pub fn replace_buffer<T>(b: &GBuffer, v: &[T]) -> Result<(), AlanError> {
         )
     } else {
         let g = gpu();
-        let gb = create_buffer_init(&copy_src_buffer_type(), v, &b.element_size)
+        let gb = create_buffer_init(&storage_buffer_type(), v, &b.element_size)
             .expect("The buffer already exists so a new one the same size should always work");
         let mut encoder = g
             .device
