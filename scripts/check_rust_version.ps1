@@ -73,8 +73,7 @@ Write-Host "Current rustc version: $CURRENT_VERSION"
 if ($CURRENT_VERSION -eq $REQUIRED_VERSION) {
     Write-Host "✓ Rust version matches required version ($REQUIRED_VERSION)" -ForegroundColor Green
     exit 0
-}
-else {
+} else {
     Write-Host "⚠ Rust version mismatch. Current: $CURRENT_VERSION, Required: $REQUIRED_VERSION" -ForegroundColor Yellow
     Write-Host "Installing and switching to Rust $REQUIRED_VERSION..."
     
