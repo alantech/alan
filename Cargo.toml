@@ -8,6 +8,6 @@ homepage = "https://alan-lang.org"
 documentation = "https://docs.alan-lang.org"
 repository = "https://github.com/alantech/alan"
 version = "0.2.0"
-rust-version = "1.83.0"
+rust-version = "1.88.0"
 authors = ["David Ellis <isv.damocles@gmail.com>"]
 edition = "2021"
