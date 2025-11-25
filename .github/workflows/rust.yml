@@ -238,7 +238,7 @@ jobs:
     - name: Check and set Rust version
       run: ./scripts/check_rust_version.sh
     - name: Node deps
-      run: yarn
+      run: yarn && yarn playwright install
     - name: Start web server
       run: yarn start-server
     - name: Build
