@@ -13,6 +13,6 @@ edition.workspace = true
 futures = "0.3.31"
 ordered_hash_map = "0.5.0"
 pollster = "0.4.0"
-uuid = { version = "1.19.0", features = ["v4", "fast-rng"] }
+uuid = { version = "1.20.0", features = ["v4", "fast-rng"] }
 wgpu = "27.0.1"
 winit = "0.30.12"
