@@ -88,7 +88,7 @@ impl<'a> Scope<'a> {
                         | "Prefix" | "Method" | "Property" | "Cast" | "Own" | "Deref" | "Mut"
                         | "Rust" | "Nodejs" | "From" | "Array" | "Fail" | "Neg" | "Len" | "Size"
                         | "FileStr" | "Env" | "EnvExists" | "Not") => s = CType::from_generic(s, g, 1),
-                        g @ ("Function" | "Call" | "Dependency" | "Import" | "Field"
+                        g @ ("BindsAs" | "Function" | "Call" | "Dependency" | "Import" | "Field"
                         | "Prop" | "Buffer" | "Add" | "Sub" | "Mul" | "Div" | "Mod"
                         | "Pow" | "Min" | "Max" | "Concat" | "And" | "Or" | "Xor" | "Nand"
                         | "Nor" | "Xnor" | "Eq" | "Neq" | "Lt" | "Lte" | "Gt" | "Gte") => s = CType::from_generic(s, g, 2),
@@ -490,7 +490,19 @@ impl<'a> Scope<'a> {
             let temp_scope = self.child();
             match Function::from_generic_function(temp_scope, generic_f, generic_types.to_vec()) {
                 Err(_) => return None, // TODO: Should this be a panic?
-                Ok((_, realized_f)) => {
+                Ok((mut temp_scope, realized_f)) => {
+                    // Don't merge the generic types
+                    match &generic_f.kind {
+                        FnKind::Generic(gen_args, _)
+                        | FnKind::BoundGeneric(gen_args, _)
+                        | FnKind::ExternalGeneric(gen_args, _, _) => {
+                            for arg in gen_args {
+                                temp_scope.types.remove(&arg.0);
+                            }
+                        }
+                        _ => unreachable!(),
+                    }
+                    merge!(self, temp_scope);
                     return Some((self, realized_f));
                 }
             }
