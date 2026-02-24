@@ -4,7 +4,14 @@ import { chromium } from 'playwright';
 // Currently can only run this on Windows and MacOS. Chromium has WebGPU behind flags on Linux that
 // Playwright doesn't support setting
 (async () => {
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({
+      args: [
+        '--enable-unsafe-webgpu',
+        '--disable-features=OutOfBlinkCors',
+        '--use-gl=desktop'
+      ],
+      headless: true,
+  });
   const context = await browser.newContext();
   const page = await context.newPage();
   await page.goto('http://localhost:8080/alan_std.test.html');
