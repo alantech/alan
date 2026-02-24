@@ -9,7 +9,9 @@ import { chromium } from 'playwright';
         '--enable-unsafe-webgpu',
         '--disable-features=OutOfBlinkCors',
         '--disable-gpu-sandbox',
-        '--use-gl=metal'
+        '--use-gl=metal',
+        '--enable-logging=stderr',
+        '--v=1',
       ],
       headless: true,
   });
