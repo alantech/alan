@@ -8,7 +8,7 @@ import { chromium } from 'playwright';
       args: [
         '--enable-unsafe-webgpu',
         '--disable-features=OutOfBlinkCors',
-        '--use-gl=desktop'
+        '--use-gl=egl'
       ],
       headless: true,
   });
