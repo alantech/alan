@@ -1,7 +1,15 @@
 import { chromium } from 'playwright';
 
 (async () => {
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({
+      args: [
+        '--enable-unsafe-webgpu',
+        '--disable-features=OutOfBlinkCors',
+        '--disable-gpu-sandbox',
+        '--ignore-gpu-blocklist',
+      ],
+      headless: true,
+  });
   const context = await browser.newContext();
   const page = await context.newPage();
   page.on('console', msg => console.log(msg.text()));
