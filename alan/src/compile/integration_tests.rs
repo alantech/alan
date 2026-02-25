@@ -176,7 +176,7 @@ macro_rules! test_gpgpu {
                 // My playwright scripts only work on Linux and MacOS, though, so that reduces it
                 // to just MacOS to test this on.
                 // if cfg!(windows) || cfg!(macos) {
-                if cfg!(target_os = "macos", target_arch = "arm") {
+                if cfg!(all(target_os = "macos", target_arch = "aarch64")) {
                     alan_compiler::program::Program::set_target_lang_js();
                     match crate::compile::web(filename.to_string()) {
                         Ok(_) => { /* Do nothing */ }
