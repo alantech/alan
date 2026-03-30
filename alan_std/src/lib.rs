@@ -1566,7 +1566,14 @@ where
                     self.cached_surface_config = Some(config);
                     self.cached_size = size;
                 }
-                let frame = surface.get_current_texture().unwrap();
+                let frame = match surface.get_current_texture() {
+                    wgpu::CurrentSurfaceTexture::Success(frame)
+                    | wgpu::CurrentSurfaceTexture::Suboptimal(frame) => frame,
+                    _ => {
+                        /* Skip this particular redraw request */
+                        return;
+                    }
+                };
                 let mut encoder =
                     device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
                 let context_array = (self.context_fn)(&mut self.context);
