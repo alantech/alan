@@ -1521,7 +1521,7 @@ where
                 let context_u8_len = context_array.len() * 4;
                 let context_u8: &[u8] =
                     unsafe { std::slice::from_raw_parts(context_ptr as *const u8, context_u8_len) };
-let new_context_buffer = self.context_buffer.as_ref().unwrap();
+                let new_context_buffer = self.context_buffer.as_ref().unwrap();
                 queue.write_buffer(&new_context_buffer.buffer, 0, context_u8);
                 let ggs = self.gpgpu_shaders.as_mut().unwrap();
                 for gg in ggs {
