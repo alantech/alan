@@ -1496,13 +1496,13 @@ where
                 let device = self.device.as_ref().unwrap();
                 let queue = self.queue.as_ref().unwrap();
                 if self.cached_surface_config.is_none() || self.cached_size != size {
-                    let mut config = match surface.get_default_config(adapter, size.width, size.height)
-                    {
-                        Some(config) => config,
-                        None => {
-                            return;
-                        }
-                    };
+                    let mut config =
+                        match surface.get_default_config(adapter, size.width, size.height) {
+                            Some(config) => config,
+                            None => {
+                                return;
+                            }
+                        };
                     config.usage =
                         wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::RENDER_ATTACHMENT;
                     config.present_mode = wgpu::PresentMode::AutoVsync;
