@@ -1934,3 +1934,25 @@ test_ignore!(json_complex_construction => r#"
     }"#;
     stdout r#"{"mixed": "values", "work": true, "even": [4, "arrays"]}""#;
 );
+
+// Either deduplication
+
+test!(either_dedup_explicit => r#"
+    type DupEither = i64 | string | i64;
+    type NormalEither = i64 | string;
+    fn takeEither(x: NormalEither) = if(x.i64.exists, fn = x.i64.getOrExit.print, fn = x.string.getOrExit.print);
+    export fn main {
+      takeEither(42.DupEither);
+    }"#;
+    stdout "42\n";
+);
+
+test!(either_dedup_single_unwrap => r#"
+    type DupeI64 = i64 | i64;
+    export fn main {
+      let a: i64 = 3;
+      let b: DupeI64 = 5;
+      print(a.add(b));
+    }"#;
+    stdout "8\n";
+);

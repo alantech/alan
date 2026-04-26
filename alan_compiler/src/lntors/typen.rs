@@ -599,7 +599,7 @@ pub fn generate(
         }
         // TODO: The complexity of this function indicates more fundamental issues in the type
         // generation. This needs a rethink and rewrite.
-        CType::Type(name, t) => match &**t {
+        CType::Type(_name, t) => match &**t {
             CType::Either(_) => {
                 let res = generate(t.clone(), out, deps)?;
                 out = res.1;
@@ -607,8 +607,9 @@ pub fn generate(
                 let res = ctype_to_rtype(typen.clone(), deps)?;
                 let s = res.0;
                 deps = res.1;
-                out.insert(t.clone().to_callable_string(), s);
-                Ok((name.clone(), out, deps))
+                let enum_key = t.clone().to_callable_string();
+                out.insert(enum_key.clone(), s);
+                Ok((enum_key, out, deps))
             }
             _ => {
                 let res = ctype_to_rtype(t.clone(), deps)?;

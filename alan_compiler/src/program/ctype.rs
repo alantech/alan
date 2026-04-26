@@ -4238,7 +4238,21 @@ impl CType {
                 _other => out_vec.push(arg),
             }
         }
-        Arc::new(CType::Either(out_vec))
+        // Deduplicate by string representation
+        let mut seen = HashSet::new();
+        let deduped: Vec<Arc<CType>> = out_vec
+            .into_iter()
+            .filter(|t| {
+                let key = t.clone().degroup().to_callable_string();
+                seen.insert(key)
+            })
+            .collect();
+        // If deduplication leaves a single type, unwrap the Either
+        if deduped.len() == 1 {
+            deduped.into_iter().next().unwrap()
+        } else {
+            Arc::new(CType::Either(deduped))
+        }
     }
     pub fn prop(t: Arc<CType>, p: Arc<CType>) -> Arc<CType> {
         // Check the arguments first to see if they're to be inferred
