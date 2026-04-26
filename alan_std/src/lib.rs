@@ -797,12 +797,11 @@ impl GPU {
     pub fn init(adapters: Vec<wgpu::Adapter>) -> Vec<GPU> {
         let mut out = Vec::new();
         for adapter in adapters {
-            let features = adapter.features();
             let limits = adapter.limits();
             let info = adapter.get_info();
             let device_future = adapter.request_device(&wgpu::DeviceDescriptor {
                 label: Some(&format!("{} on {}", info.name, info.backend.to_str())),
-                required_features: wgpu::Features::all_webgpu_mask() & features,
+                required_features: wgpu::Features::empty(),
                 required_limits: limits,
                 experimental_features: wgpu::ExperimentalFeatures::disabled(),
                 memory_hints: wgpu::MemoryHints::Performance,
@@ -1286,6 +1285,8 @@ where
     queue: Option<wgpu::Queue>,
     context_buffer: Option<GBuffer>,
     buffer: Option<GBuffer>,
+    cached_surface_config: Option<wgpu::SurfaceConfiguration>,
+    cached_size: winit::dpi::PhysicalSize<u32>,
     context_fn: C,
     gpgpu_shader_fn: R,
     gpgpu_shaders: Option<Vec<GPGPU>>,
@@ -1330,7 +1331,7 @@ where
             let (device, queue) =
                 pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
                     label: None,
-                    required_features: adapter.features(),
+                    required_features: wgpu::Features::empty(),
                     required_limits: adapter.limits(),
                     experimental_features: wgpu::ExperimentalFeatures::disabled(),
                     memory_hints: wgpu::MemoryHints::MemoryUsage,
@@ -1345,7 +1346,7 @@ where
             self.context_buffer = Some(GBuffer {
                 buffer: Rc::new(device.create_buffer(&wgpu::BufferDescriptor {
                     label: None,
-                    size: 16, // TODO: Not hardwired
+                    size: 256, // TODO: Not hardwired
                     usage: storage_buffer_type(),
                     mapped_at_creation: false,
                 })),
@@ -1493,21 +1494,24 @@ where
                 let surface = self.surface.as_ref().unwrap();
                 let adapter = self.adapter.as_ref().unwrap();
                 let device = self.device.as_ref().unwrap();
-                let old_context_buffer_id = self.context_buffer.as_ref().unwrap().id.clone();
                 let queue = self.queue.as_ref().unwrap();
-                let mut config = surface
-                    .get_default_config(adapter, size.width, size.height)
-                    .unwrap();
-                config.usage =
-                    wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::RENDER_ATTACHMENT;
-                config.present_mode = wgpu::PresentMode::Fifo;
-                config.desired_maximum_frame_latency = 3;
-                config.alpha_mode = if self.context.transparent {
-                    wgpu::CompositeAlphaMode::PreMultiplied
-                } else {
-                    wgpu::CompositeAlphaMode::Auto
-                };
-                surface.configure(device, &config);
+                if self.cached_surface_config.is_none() || self.cached_size != size {
+                    let mut config = surface
+                        .get_default_config(adapter, size.width, size.height)
+                        .unwrap();
+                    config.usage =
+                        wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::RENDER_ATTACHMENT;
+                    config.present_mode = wgpu::PresentMode::AutoVsync;
+                    config.desired_maximum_frame_latency = 1;
+                    config.alpha_mode = if self.context.transparent {
+                        wgpu::CompositeAlphaMode::PreMultiplied
+                    } else {
+                        wgpu::CompositeAlphaMode::Auto
+                    };
+                    surface.configure(device, &config);
+                    self.cached_surface_config = Some(config);
+                    self.cached_size = size;
+                }
                 let frame = surface.get_current_texture().unwrap();
                 let mut encoder =
                     device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
@@ -1517,18 +1521,8 @@ where
                 let context_u8_len = context_array.len() * 4;
                 let context_u8: &[u8] =
                     unsafe { std::slice::from_raw_parts(context_ptr as *const u8, context_u8_len) };
-                let new_context_buffer = GBuffer {
-                    buffer: Rc::new(wgpu::util::DeviceExt::create_buffer_init(
-                        device,
-                        &wgpu::util::BufferInitDescriptor {
-                            label: None,
-                            contents: context_u8,
-                            usage: storage_buffer_type(),
-                        },
-                    )),
-                    id: old_context_buffer_id.clone(),
-                    element_size: 4,
-                };
+let new_context_buffer = self.context_buffer.as_ref().unwrap();
+                queue.write_buffer(&new_context_buffer.buffer, 0, context_u8);
                 let ggs = self.gpgpu_shaders.as_mut().unwrap();
                 for gg in ggs {
                     if gg.module.is_none() {
@@ -1564,13 +1558,7 @@ where
                         for i in 0..gg.buffers.len() {
                             let bind_group_layout =
                                 compute_pipeline.get_bind_group_layout(i.try_into().unwrap());
-                            let bind_group_buffers = &mut gg.buffers[i];
-                            #[allow(clippy::needless_range_loop)]
-                            for j in 0..bind_group_buffers.len() {
-                                if bind_group_buffers[j].id == old_context_buffer_id {
-                                    bind_group_buffers[j] = new_context_buffer.clone();
-                                }
-                            }
+                            let bind_group_buffers = &gg.buffers[i];
                             let mut bind_group_entries = Vec::new();
                             #[allow(clippy::needless_range_loop)]
                             for j in 0..bind_group_buffers.len() {
@@ -1611,8 +1599,6 @@ where
                         );
                     }
                 }
-                self.context_buffer.as_ref().unwrap().destroy();
-                self.context_buffer = Some(new_context_buffer);
                 encoder.copy_buffer_to_texture(
                     wgpu::TexelCopyBufferInfo {
                         buffer: &self.buffer.as_ref().unwrap().buffer,
@@ -1678,6 +1664,8 @@ where
         queue: None,
         context_buffer: None,
         buffer: None,
+        cached_surface_config: None,
+        cached_size: winit::dpi::PhysicalSize::new(0, 0),
         context_fn,
         gpgpu_shader_fn,
         gpgpu_shaders: None,

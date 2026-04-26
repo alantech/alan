@@ -1133,7 +1133,7 @@ export async function runWindow(initialContextFn, contextFn, gpgpuShaderFn) {
     viewFormats: ['bgra8unorm'],
   });
   let contextBuffer = await device.createBuffer({
-    size: 16,
+    size: 256,
     usage: storageBufferType(),
     label: `buffer_${uuidv4().replaceAll('-', '_')}`,
   });
@@ -1184,23 +1184,17 @@ export async function runWindow(initialContextFn, contextFn, gpgpuShaderFn) {
       buffer = newBuffer;
     }
     // Now, actually start drawing
-    let oldContextBufferId = contextBuffer.label;
     let frame = surface.getCurrentTexture();
     let encoder = device.createCommandEncoder();
     let contextArray = await contextFn(context);
-    let newContextBuffer = await device.createBuffer({
-      mappedAtCreation: true,
-      size: contextArray.length * 4,
-      usage: storageBufferType(),
-      label: `buffer_${uuidv4().replaceAll('-', '_')}`,
-    });
-    let ab = newContextBuffer.getMappedRange();
-    let v = new Uint32Array(ab);
+    let contextBytes = new Uint8Array(contextArray.length * 4);
     for (let i = 0; i < contextArray.length; i++) {
-      v[i] = contextArray[i].valueOf();
+      contextBytes[i * 4] = contextArray[i].valueOf() & 0xff;
+      contextBytes[i * 4 + 1] = (contextArray[i].valueOf() >> 8) & 0xff;
+      contextBytes[i * 4 + 2] = (contextArray[i].valueOf() >> 16) & 0xff;
+      contextBytes[i * 4 + 3] = (contextArray[i].valueOf() >> 24) & 0xff;
     }
-    newContextBuffer.unmap();
-    newContextBuffer.ValType = U32;
+    queue.writeBuffer(contextBuffer, 0, contextBytes);
     for (let gg of gpgpuShaders) {
       if (typeof(gg.module) === "undefined") {
         gg.module = device.createShaderModule({
@@ -1222,11 +1216,6 @@ export async function runWindow(initialContextFn, contextFn, gpgpuShaderFn) {
       for (let i = 0; i < gg.buffers.length; i++) {
         let bindGroupLayout = gg.computePipeline.getBindGroupLayout(i);
         let bindGroupBuffers = gg.buffers[i];
-        for (let j = 0; j < bindGroupBuffers.length; j++) {
-          if (bindGroupBuffers[j].label === oldContextBufferId) {
-            bindGroupBuffers[j] = newContextBuffer;
-          }
-        }
         let bindGroupEntries = [];
         for (let j = 0; j < bindGroupBuffers.length; j++) {
           bindGroupEntries.push({
@@ -1269,8 +1258,6 @@ export async function runWindow(initialContextFn, contextFn, gpgpuShaderFn) {
       cpass.dispatchWorkgroups(x, y, z);
       cpass.end();
     }
-    contextBuffer.destroy();
-    contextBuffer = newContextBuffer;
     encoder.copyBufferToTexture({
       buffer,
       bytesPerRow: context.bufferWidth,
