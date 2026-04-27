@@ -5107,6 +5107,7 @@ fn ExitCode(e: i64) = ExitCode(e.u8);
 fn{Rs} print{T}(v: T) = {"println!" :: ("{}", string)}(v.string);
 fn{Js} print{T}(v: T) = {"console.log" :: T}(v);
 fn{Js} print{T}(v: T[]) = {"((vs) => console.log(vs.map((v) => v.valueOf())))" :: T[]}(v);
+fn print{A, B}(v: Either{A, B}) = if({A}(v).exists, fn = {A}(v).getOrExit.print, fn = {B}(v).getOrExit.print);
 fn{Js} print "((s) => console.log(s.val))" :: string;
 fn{Js} print (b: bool) = b.string.print;
 fn{Js} print (i: i8) = i.string.print;
