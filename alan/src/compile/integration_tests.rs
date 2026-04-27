@@ -1940,7 +1940,7 @@ test_ignore!(json_complex_construction => r#"
 test!(either_dedup_explicit => r#"
     type DupEither = i64 | string | i64;
     type NormalEither = i64 | string;
-    fn takeEither(x: NormalEither) = if(x.i64.exists, fn = x.i64.getOrExit.print, fn = x.string.getOrExit.print);
+    fn takeEither(x: NormalEither) = x.print;
     export fn main {
       takeEither(42.DupEither);
     }"#;
