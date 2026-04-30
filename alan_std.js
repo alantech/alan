@@ -792,6 +792,27 @@ export class GPU {
 }
 
 let GPUS = null;
+let OPTIMAL_LOCAL_GROUP = null;
+
+export function optimalLocalGroup() {
+  if (OPTIMAL_LOCAL_GROUP === null) {
+    if (GPUS !== null && GPUS.length > 0) {
+      let maxInvocations = GPUS[0].device.limits.maxComputeInvocationsPerWorkgroup;
+      let n = maxInvocations;
+      let sqrt = Math.floor(Math.sqrt(n));
+      if (sqrt * sqrt === n) {
+        OPTIMAL_LOCAL_GROUP = [sqrt, sqrt, 1];
+        return OPTIMAL_LOCAL_GROUP;
+      }
+      if (n % 8 === 0) {
+        OPTIMAL_LOCAL_GROUP = [n / 8, 8, 1];
+        return OPTIMAL_LOCAL_GROUP;
+      }
+    }
+    OPTIMAL_LOCAL_GROUP = [8, 8, 1];
+  }
+  return OPTIMAL_LOCAL_GROUP;
+}
 
 export async function gpu() {
   if (GPUS === null) {
@@ -867,11 +888,12 @@ export function bufferid(b) {
 }
 
 export class GPGPU {
-  constructor(source, buffers, workgroupSizes, entrypoint) {
+  constructor(source, buffers, workgroupSizes, localWorkgroupSize, entrypoint) {
     this.source = source;
     this.entrypoint = entrypoint ?? "main";
     this.buffers = buffers;
     this.workgroupSizes = workgroupSizes;
+    this.localWorkgroupSize = localWorkgroupSize;
     this.module = undefined;
     this.computePipeline = undefined;
   }
@@ -915,8 +937,8 @@ export async function gpuRun(gg) {
     cpass.setBindGroup(i, bindGroup);
   }
   cpass.dispatchWorkgroups(
-    Math.ceil(gg.workgroupSizes[0].valueOf() / 8),
-    Math.ceil((gg.workgroupSizes[1] ?? 1).valueOf() / 8),
+    Math.ceil(gg.workgroupSizes[0].valueOf() / (gg.localWorkgroupSize[0] ?? 8)),
+    Math.ceil((gg.workgroupSizes[1] ?? 1).valueOf() / (gg.localWorkgroupSize[1] ?? 8)),
     (gg.workgroupSizes[2] ?? 1).valueOf()
   );
   cpass.end();
@@ -961,9 +983,9 @@ export async function gpuRunList(ggs) {
       });
       cpass.setBindGroup(i, bindGroup);
     }
-    cpass.dispatchWorkgroups(
-    Math.ceil(gg.workgroupSizes[0].valueOf() / 8),
-    Math.ceil((gg.workgroupSizes[1] ?? 1).valueOf() / 8),
+ cpass.dispatchWorkgroups(
+    Math.ceil(gg.workgroupSizes[0].valueOf() / (gg.localWorkgroupSize[0] ?? 8)),
+    Math.ceil((gg.workgroupSizes[1] ?? 1).valueOf() / (gg.localWorkgroupSize[1] ?? 8)),
     (gg.workgroupSizes[2] ?? 1).valueOf()
   );
     cpass.end();
@@ -1234,25 +1256,27 @@ export async function runWindow(initialContextFn, contextFn, gpgpuShaderFn) {
       }
       let x = 0;
       let y = 0;
+      let lx = gg.localWorkgroupSize[0] ?? 8;
+      let ly = gg.localWorkgroupSize[1] ?? 8;
       switch (gg.workgroupSizes[0].val) {
       case -1:
-        x = Math.ceil(width / 8);
+        x = Math.ceil(width / lx);
         break;
       case -2:
-        x = Math.ceil(height / 8);
+        x = Math.ceil(height / lx);
         break;
       default:
-        x = Math.ceil(gg.workgroupSizes[0].val / 8);
+        x = Math.ceil(gg.workgroupSizes[0].val / lx);
       }
       switch (gg.workgroupSizes[1].val) {
       case -1:
-        y = Math.ceil(width / 8);
+        y = Math.ceil(width / ly);
         break;
       case -2:
-        y = Math.ceil(height / 8);
+        y = Math.ceil(height / ly);
         break;
       default:
-        y = Math.ceil(gg.workgroupSizes[1].val / 8);
+        y = Math.ceil(gg.workgroupSizes[1].val / ly);
       }
       let z = gg.workgroupSizes[2].val;
       cpass.dispatchWorkgroups(x, y, z);

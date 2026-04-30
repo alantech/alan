@@ -1851,8 +1851,10 @@ fn{Rs} id(b: GBufferRaw) = {"alan_std::buffer_id" <- RootBacking :: GBufferRaw -
 fn{Js} id(b: GBufferRaw) = {"alan_std.bufferid" <- RootBacking :: GBufferRaw -> string}(b);
 fn id{T}(b: GBuffer{T}) = b.rawBuffer.id;
 fn id(b: GBufferTagged) = b.rawBuffer.id;
-fn{Rs} GPGPU "alan_std::GPGPU::new" <- RootBacking :: (Own{string}, Own{Array{Array{GBufferRaw}}}, Deref{i64[3]}) -> GPGPU;
-fn{Js} GPGPU (src: string, gbuffers: Array{Array{GBufferRaw}}, idx: i64[3]) = {"new alan_std.GPGPU" <- RootBacking :: (string, Array{Array{GBufferRaw}}, i32[3]) -> GPGPU}(src, gbuffers, idx.map(i32));
+fn{Rs} optimalLocalGroup() = {"alan_std::optimal_local_group" <- RootBacking :: () -> Buffer{i64, 3}}();
+fn{Js} optimalLocalGroup() = {"alan_std.optimalLocalGroup" <- RootBacking :: () -> Buffer{i64, 3}}();
+fn{Rs} GPGPU "alan_std::GPGPU::new" <- RootBacking :: (Own{string}, Own{Array{Array{GBufferRaw}}}, Deref{Buffer{i64, 3}}, Deref{Buffer{i64, 3}}) -> GPGPU;
+fn{Js} GPGPU (src: string, gbuffers: Array{Array{GBufferRaw}}, idx: Buffer{i64, 3}, local: Buffer{i64, 3}) = {"new alan_std.GPGPU" <- RootBacking :: (string, Array{Array{GBufferRaw}}, Buffer{i32, 3}, Buffer{i32, 3}) -> GPGPU}(src, gbuffers, idx.map(i32), local.map(i32));
 fn GPGPU{T}(src: string, buf: GBuffer{T}) -> GPGPU {
   // In order to support larger arrays, we need to split the buffer length across them. Each of
   // indices is allowed to be up to 65535 (yes, a 16-bit integer) leading to a maximum length of
@@ -1870,7 +1872,7 @@ fn GPGPU{T}(src: string, buf: GBuffer{T}) -> GPGPU {
   // 32-bit numbers for now) and then getting the division and remainder first by the B constant,
   // and the Z limit becomes the division + 1, while the remainder is executed division and
   // remainder on the A constant, division + 1, and this remainder becomes the X limit (plus 1).
-  // Including this big explanation in case I've made an off-by-one error here ;)
+  // Including this explanation in case I've made an off-by-one error here ;)
   let l = buf.cpulen;
   let zDiv = l / 4_294_836_225;
   let z = zDiv + 1;
@@ -1879,7 +1881,7 @@ fn GPGPU{T}(src: string, buf: GBuffer{T}) -> GPGPU {
   let y = yDiv + 1;
   let yRem = zRem % 65_535;
   let x = max(yRem, 1);
-  return GPGPU(src, [[buf.rawBuffer]], {i64[3]}(x, y, z));
+  return GPGPU(src, [[buf.rawBuffer]], {i64[3]}(x, y, z), optimalLocalGroup());
 }
 fn{Rs} run "alan_std::gpu_run" <- RootBacking :: Mut{GPGPU};
 fn{Js} run "alan_std.gpuRun" <- RootBacking :: GPGPU;
@@ -1920,7 +1922,17 @@ fn build{N}(ret: N) {
       .concat(gb.gpuTypeName)
       .concat(">;\n");
   }).join("\n");
-  let wgslFunctionHeader = "@compute\n@workgroup_size(8, 8, 1)\nfn main(@builtin(global_invocation_id) id: vec3u) {\n";
+  let localGroup = optimalLocalGroup();
+  let localX = localGroup.0;
+  let localY = localGroup.1;
+  let localZ = localGroup.2;
+  let wgslFunctionHeader = "@compute\n@workgroup_size("
+    .concat(localX.string)
+    .concat(", ")
+    .concat(localY.string)
+    .concat(", ")
+    .concat(localZ.string)
+    .concat(")\nfn main(@builtin(global_invocation_id) id: vec3u) {\n");
   let wgslFunctionBody = ret.statements.Array.map(fn (kv: (string, string)) {
     return if(kv.0.eq("@builtin(global_invocation_id) id: vec3u"), fn () = "", fn () {
       return "  ".concat(kv.1).concat(";\n");
@@ -1939,7 +1951,7 @@ fn build{N}(ret: N) {
   );
   let buffers = Array{Array{GBufferRaw}}();
   buffers.push(bufferArray.map(fn (gb: GBufferTagged) = gb.rawBuffer));
-  return GPGPU(wgsl, buffers, maxGlobalId);
+  return GPGPU(wgsl, buffers, maxGlobalId, localGroup);
 }
 fn build{N}(ret: N[]) {
   // Array form to allow multiple side-effects to be computed in the same shader
