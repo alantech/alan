@@ -847,14 +847,6 @@ pub fn optimal_local_group() -> [i64; 3] {
             let d = n / 8;
             return [d as i64, 8, 1];
         }
-        let cbrt = (n as f64).cbrt() as u64;
-        if cbrt * cbrt * cbrt == n {
-            return [cbrt as i64, cbrt as i64, cbrt as i64];
-        }
-        if n % 8 == 0 {
-            let d = n / 8;
-            return [d as i64, 8, 1];
-        }
         [8, 8, 1]
     })
 }
