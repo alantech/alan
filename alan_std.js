@@ -867,12 +867,11 @@ export function bufferid(b) {
 }
 
 export class GPGPU {
-  constructor(source, buffers, workgroupSizes, workgroupDims, entrypoint) {
+  constructor(source, buffers, workgroupSizes, entrypoint) {
     this.source = source;
     this.entrypoint = entrypoint ?? "main";
     this.buffers = buffers;
     this.workgroupSizes = workgroupSizes;
-    this.workgroupDims = workgroupDims;
     this.module = undefined;
     this.computePipeline = undefined;
   }
@@ -916,9 +915,9 @@ export async function gpuRun(gg) {
     cpass.setBindGroup(i, bindGroup);
   }
   cpass.dispatchWorkgroups(
-    Math.ceil(gg.workgroupSizes[0].valueOf() / gg.workgroupDims[0].valueOf()),
-    Math.ceil((gg.workgroupSizes[1] ?? 1).valueOf() / gg.workgroupDims[1].valueOf()),
-    Math.ceil((gg.workgroupSizes[2] ?? 1).valueOf() / gg.workgroupDims[2].valueOf())
+    Math.ceil(gg.workgroupSizes[0].valueOf() / 8),
+    Math.ceil((gg.workgroupSizes[1] ?? 1).valueOf() / 8),
+    (gg.workgroupSizes[2] ?? 1).valueOf()
   );
   cpass.end();
   g.queue.submit([encoder.finish()]);
@@ -963,9 +962,9 @@ export async function gpuRunList(ggs) {
       cpass.setBindGroup(i, bindGroup);
     }
     cpass.dispatchWorkgroups(
-    Math.ceil(gg.workgroupSizes[0].valueOf() / gg.workgroupDims[0].valueOf()),
-    Math.ceil((gg.workgroupSizes[1] ?? 1).valueOf() / gg.workgroupDims[1].valueOf()),
-    Math.ceil((gg.workgroupSizes[2] ?? 1).valueOf() / gg.workgroupDims[2].valueOf())
+    Math.ceil(gg.workgroupSizes[0].valueOf() / 8),
+    Math.ceil((gg.workgroupSizes[1] ?? 1).valueOf() / 8),
+    (gg.workgroupSizes[2] ?? 1).valueOf()
   );
     cpass.end();
   }
@@ -1237,25 +1236,25 @@ export async function runWindow(initialContextFn, contextFn, gpgpuShaderFn) {
       let y = 0;
       switch (gg.workgroupSizes[0].val) {
       case -1:
-        x = Math.ceil(width / gg.workgroupDims[0].val);
+        x = Math.ceil(width / 8);
         break;
       case -2:
-        x = Math.ceil(height / gg.workgroupDims[0].val);
+        x = Math.ceil(height / 8);
         break;
       default:
-        x = Math.ceil(gg.workgroupSizes[0].val / gg.workgroupDims[0].val);
+        x = Math.ceil(gg.workgroupSizes[0].val / 8);
       }
       switch (gg.workgroupSizes[1].val) {
       case -1:
-        y = Math.ceil(width / gg.workgroupDims[1].val);
+        y = Math.ceil(width / 8);
         break;
       case -2:
-        y = Math.ceil(height / gg.workgroupDims[1].val);
+        y = Math.ceil(height / 8);
         break;
       default:
-        y = Math.ceil(gg.workgroupSizes[1].val / gg.workgroupDims[1].val);
+        y = Math.ceil(gg.workgroupSizes[1].val / 8);
       }
-      let z = Math.ceil(gg.workgroupSizes[2].val / gg.workgroupDims[2].val);
+      let z = gg.workgroupSizes[2].val;
       cpass.dispatchWorkgroups(x, y, z);
       cpass.end();
     }
