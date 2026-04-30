@@ -30,7 +30,7 @@ fn bench(l: i64) {
         if i > l { return; }
         vals[id.x + 65535 * id.y + 4294836225 * id.z] = vals[id.x + 65535 * id.y + 4294836225 * id.z] * 2;
       }
-    ", b);
+    ", b, {i64[3]}(1, 1, 1));
     plan.run;
     let v3 = b.read{i32};
     v3[0];
@@ -50,7 +50,7 @@ fn bench(l: i64) {
         if i > l { return; }
         vals[id.x + 65535 * id.y + 4294836225 * id.z] = vals[id.x + 65535 * id.y + 4294836225 * id.z] * 2;
       }
-    ", b);
+    ", b, {i64[3]}(1, 1, 1));
     plan.run;
     b.read{i32};
     let b = GBuffer(storageBuffer(), v2)!!;
@@ -67,7 +67,7 @@ fn bench(l: i64) {
         if i > l { return; }
         vals[id.x + 65535 * id.y + 4294836225 * id.z] = vals[id.x + 65535 * id.y + 4294836225 * id.z] * 2;
       }
-    ", b);
+    ", b, {i64[3]}(1, 1, 1));
     plan.run;
     let v3 = b.read{i32};
     v3[0];

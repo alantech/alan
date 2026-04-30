@@ -73,7 +73,7 @@ import { chromium } from 'playwright';
       fn main(@builtin(global_invocation_id) id: vec3<u32>) {
         vals[id.x] = vals[id.x] * i32(id.x);
       }
-    `, [[b]], [4, 1, 1]);
+    `, [[b]], [4, 1, 1], [1, 1, 1]);
     await alanStd.gpuRun(plan);
     let v = await alanStd.readBuffer(b);
     return v.map((i) => i.valueOf());

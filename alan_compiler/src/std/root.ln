@@ -132,7 +132,6 @@ type Browser = Env{"ALAN_PLATFORM"} == "browser"; // Technically not necessary, 
 
 // Importing the Root Scope backing implementation and supporting 3rd party libraries
 type{Rs} RootBacking = Rust{"alan_std" @ "https://github.com/alantech/alan.git"};
-type{Rs && Mac && x86_64} RootBacking = Rust{"alan_std" @ "https://github.com/alantech/alan.git#x86_macos_last_working_wgpu_version"}; // Until wgpu fixes the regression post v24 for x86 Macs 
 type{Js} RootBacking = Nodejs{"alan_std" @ "https://github.com/alantech/alan.git"};
 
 // Defining derived types
@@ -1851,26 +1850,11 @@ fn{Rs} id(b: GBufferRaw) = {"alan_std::buffer_id" <- RootBacking :: GBufferRaw -
 fn{Js} id(b: GBufferRaw) = {"alan_std.bufferid" <- RootBacking :: GBufferRaw -> string}(b);
 fn id{T}(b: GBuffer{T}) = b.rawBuffer.id;
 fn id(b: GBufferTagged) = b.rawBuffer.id;
-fn{Rs} GPGPU "alan_std::GPGPU::new" <- RootBacking :: (Own{string}, Own{Array{Array{GBufferRaw}}}, Deref{i64[3]}) -> GPGPU;
-fn{Js} GPGPU (src: string, gbuffers: Array{Array{GBufferRaw}}, idx: i64[3]) = {"new alan_std.GPGPU" <- RootBacking :: (string, Array{Array{GBufferRaw}}, i32[3]) -> GPGPU}(src, gbuffers, idx.map(i32));
-fn GPGPU{T}(src: string, buf: GBuffer{T}) -> GPGPU {
-  // In order to support larger arrays, we need to split the buffer length across them. Each of
-  // indices is allowed to be up to 65535 (yes, a 16-bit integer) leading to a maximum length of
-  // 65535^3, or about 2.815x10^14 elements (about 281 trillion elements). Not quite up to the
-  // 64-bit address space limit 2^64 or about 1.845x10^19 or about 18 quintillion elements, but
-  // enough for exactly 1PB of 32-bit numbers in an array, so we should be good.
-  // For now, the 65535 limit should be hardcoded by the shader author and an early exit
-  // conditional check if the shader is operating on a nonexistent array index. This may change
-  // in the future if the performance penalty of the bounds check is considered too high.
-  //
-  // Explaining the equation itself, the array length, L, needs to be split into X, Y, and Z
-  // parts where L = X + A*Y + B*Z, with X, Y, and Z bound between 0 and 65534 (inclusive) while
-  // A is 65535 and B is 65535^2 or 4294836225. Computing each dimension is to take the original
-  // length of the array (which is the buffer size divided by 4 because we're only supporting
-  // 32-bit numbers for now) and then getting the division and remainder first by the B constant,
-  // and the Z limit becomes the division + 1, while the remainder is executed division and
-  // remainder on the A constant, division + 1, and this remainder becomes the X limit (plus 1).
-  // Including this big explanation in case I've made an off-by-one error here ;)
+fn{Rs} optimalLocalGroup() = {"alan_std::optimal_local_group" <- RootBacking :: () -> Buffer{i64, 3}}();
+fn{Js} optimalLocalGroup() = {"alan_std.optimalLocalGroup" <- RootBacking :: () -> Buffer{i64, 3}}();
+fn{Rs} GPGPU "alan_std::GPGPU::new" <- RootBacking :: (Own{string}, Own{Array{Array{GBufferRaw}}}, Deref{Buffer{i64, 3}}, Deref{Buffer{i64, 3}}) -> GPGPU;
+fn{Js} GPGPU (src: string, gbuffers: Array{Array{GBufferRaw}}, idx: Buffer{i64, 3}, local: Buffer{i64, 3}) = {"new alan_std.GPGPU" <- RootBacking :: (string, Array{Array{GBufferRaw}}, Buffer{i32, 3}, Buffer{i32, 3}) -> GPGPU}(src, gbuffers, idx.map(i32), local.map(i32));
+fn GPGPU{T}(src: string, buf: GBuffer{T}, local: Buffer{i64, 3}) -> GPGPU {
   let l = buf.cpulen;
   let zDiv = l / 4_294_836_225;
   let z = zDiv + 1;
@@ -1879,7 +1863,7 @@ fn GPGPU{T}(src: string, buf: GBuffer{T}) -> GPGPU {
   let y = yDiv + 1;
   let yRem = zRem % 65_535;
   let x = max(yRem, 1);
-  return GPGPU(src, [[buf.rawBuffer]], {i64[3]}(x, y, z));
+  return GPGPU(src, [[buf.rawBuffer]], {i64[3]}(x, y, z), local);
 }
 fn{Rs} run "alan_std::gpu_run" <- RootBacking :: Mut{GPGPU};
 fn{Js} run "alan_std.gpuRun" <- RootBacking :: GPGPU;
@@ -1911,22 +1895,7 @@ fn build{N}(ret: N) {
   // TODO: Don't assume all of the buffers involved here are storage buffers
   // Also TODO: Support other buffer types than i32
   let bufferArray = ret.buffers.Array;
-  let wgslHeader = bufferArray.map(fn (gb: GBufferTagged, i: i64) {
-    return "@group(0)\n@binding("
-      .concat(i.string)
-      .concat(")\nvar<storage, read_write> ")
-      .concat(gb.id)
-      .concat(": array<")
-      .concat(gb.gpuTypeName)
-      .concat(">;\n");
-  }).join("\n");
-  let wgslFunctionHeader = "@compute\n@workgroup_size(1)\nfn main(@builtin(global_invocation_id) id: vec3u) {\n";
-  let wgslFunctionBody = ret.statements.Array.map(fn (kv: (string, string)) {
-    return if(kv.0.eq("@builtin(global_invocation_id) id: vec3u"), fn () = "", fn () {
-      return "  ".concat(kv.1).concat(";\n");
-    });
-  }).join("");
-  let wgsl = wgslHeader.concat(wgslFunctionHeader).concat(wgslFunctionBody).concat("}");
+  // Extract maxGlobalId first so we can clamp the local workgroup size to it
   let maxGlobalIdArray = ret
     .statements['@builtin(global_invocation_id) id: vec3u']
     .getOr('0,0,0')
@@ -1937,9 +1906,39 @@ fn build{N}(ret: N) {
     maxGlobalIdArray[1] ?? 0,
     maxGlobalIdArray[2] ?? 0
   );
+  let localGroup = optimalLocalGroup();
+  // Clamp each local dimension so it doesn't exceed the corresponding global dimension.
+  // If local > global, one workgroup would launch more invocations than there are valid
+  // indices, causing out-of-bounds writes since shaders have no bounds checking.
+  let localX = max(min(localGroup.0, maxGlobalId.0), 1);
+  let localY = max(min(localGroup.1, maxGlobalId.1), 1);
+  let localZ = max(min(localGroup.2, maxGlobalId.2), 1);
+  let wgslHeader = bufferArray.map(fn (gb: GBufferTagged, i: i64) {
+    return "@group(0)\n@binding("
+      .concat(i.string)
+      .concat(")\nvar<storage, read_write> ")
+      .concat(gb.id)
+      .concat(": array<")
+      .concat(gb.gpuTypeName)
+      .concat(">;\n");
+  }).join("\n");
+  let wgslFunctionHeader = "@compute\n@workgroup_size("
+    .concat(localX.string)
+    .concat(", ")
+    .concat(localY.string)
+    .concat(", ")
+    .concat(localZ.string)
+    .concat(")\nfn main(@builtin(global_invocation_id) id: vec3u) {\n");
+  let wgslFunctionBody = ret.statements.Array.map(fn (kv: (string, string)) {
+    return if(kv.0.eq("@builtin(global_invocation_id) id: vec3u"), fn () = "", fn () {
+      return "  ".concat(kv.1).concat(";\n");
+    });
+  }).join("");
+  let wgsl = wgslHeader.concat(wgslFunctionHeader).concat(wgslFunctionBody).concat("}");
+  let localGroupClamped = {i64[3]}(localX, localY, localZ);
   let buffers = Array{Array{GBufferRaw}}();
   buffers.push(bufferArray.map(fn (gb: GBufferTagged) = gb.rawBuffer));
-  return GPGPU(wgsl, buffers, maxGlobalId);
+  return GPGPU(wgsl, buffers, maxGlobalId, localGroupClamped);
 }
 fn build{N}(ret: N[]) {
   // Array form to allow multiple side-effects to be computed in the same shader
