@@ -841,11 +841,11 @@ pub fn optimal_local_group() -> [i64; 3] {
         let n = max_invocations as u64;
        let sqrt = (n as f64).sqrt() as u64;
         if sqrt * sqrt == n {
-            return [sqrt as u32, sqrt as u32, 1];
+            return [sqrt as i64, sqrt as i64, 1];
         }
         if n % 8 == 0 {
             let d = (n / 8) as u64;
-            return [d as u32, 8, 1];
+            return [d as i64, 8, 1];
         }
         let cbrt = (n as f64).cbrt() as u64;
         if cbrt * cbrt * cbrt == n {
