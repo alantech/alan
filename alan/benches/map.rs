@@ -122,7 +122,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
               if i > l { return; }
               vals[id.x + 65535 * id.y + 4294836225 * id.z] = vals[id.x + 65535 * id.y + 4294836225 * id.z] * 2;
             }
-          ", b);
+          ", b, {i64[3]}(1, 1, 1));
           plan.run;
           let v = b.read{i32};
           v[0].print;
@@ -144,7 +144,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
               if i > l { return; }
               vals[id.x + 65535 * id.y + 4294836225 * id.z] = vals[id.x + 65535 * id.y + 4294836225 * id.z] * 2;
             }
-          ", b);
+          ", b, {i64[3]}(1, 1, 1));
           plan.run;
           let v = b.read{i32};
           v[0].print;
@@ -166,7 +166,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
               if i > l { return; }
               vals[id.x + 65535 * id.y + 4294836225 * id.z] = vals[id.x + 65535 * id.y + 4294836225 * id.z] * 2;
             }
-          ", b);
+          ", b, {i64[3]}(1, 1, 1));
+          plan.run;
           plan.run;
           let v = b.read{i32};
           v[0].print;
@@ -188,7 +189,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
               if i > l { return; }
               vals[id.x + 65535 * id.y + 4294836225 * id.z] = vals[id.x + 65535 * id.y + 4294836225 * id.z] * 2;
             }
-          ", b);
+          ", b, {i64[3]}(1, 1, 1));
           plan.run;
           let v = b.read{i32};
           v[0].print;
@@ -210,7 +211,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
               if i > l { return; }
               vals[id.x + 65535 * id.y + 4294836225 * id.z] = vals[id.x + 65535 * id.y + 4294836225 * id.z] * 2;
             }
-          ", b);
+          ", b, {i64[3]}(1, 1, 1));
           plan.run;
           let v = b.read{i32};
           v[0].print;
@@ -232,7 +233,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
               if i > l { return; }
               vals[id.x + 65535 * id.y + 4294836225 * id.z] = vals[id.x + 65535 * id.y + 4294836225 * id.z] * 2;
             }
-          ", b);
+          ", b, {i64[3]}(1, 1, 1));
           plan.run;
           let v = b.read{i32};
           v[0].print;
@@ -254,7 +255,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
               if i > l { return; }
               vals[id.x + 65535 * id.y + 4294836225 * id.z] = vals[id.x + 65535 * id.y + 4294836225 * id.z] * 2;
             }
-          ", b);
+          ", b, {i64[3]}(1, 1, 1));
           plan.run;
           let v = b.read{i32};
           v[0].print;
@@ -276,7 +277,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
               if i > l { return; }
               vals[id.x + 65535 * id.y + 4294836225 * id.z] = vals[id.x + 65535 * id.y + 4294836225 * id.z] * 2;
             }
-          ", b);
+          ", b, {i64[3]}(1, 1, 1));
           plan.run;
           let v = b.read{i32};
           v[0].print;
@@ -298,7 +299,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
               if i > l { return; }
               vals[id.x + 65535 * id.y + 4294836225 * id.z] = vals[id.x + 65535 * id.y + 4294836225 * id.z] * 2;
             }
-          ", b);
+          ", b, {i64[3]}(1, 1, 1));
           plan.run;
           let v = b.read{i32};
           v[0].print;
