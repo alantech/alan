@@ -823,6 +823,7 @@ impl GPU {
 }
 
 static GPUS: OnceLock<Vec<GPU>> = OnceLock::new();
+static OPTIMAL_LOCAL_GROUP: OnceLock<[i64; 3]> = OnceLock::new();
 
 fn gpu() -> &'static GPU {
     match GPUS.get_or_init(|| GPU::init(GPU::list())).first() {
@@ -831,6 +832,31 @@ fn gpu() -> &'static GPU {
             "This program requires a GPU but there are no WebGPU-compliant GPUs on this machine"
         ),
     }
+}
+
+pub fn optimal_local_group() -> [i64; 3] {
+    *OPTIMAL_LOCAL_GROUP.get_or_init(|| {
+        let g = gpu();
+        let max_invocations = g.adapter.limits().max_compute_invocations_per_workgroup;
+        let n = max_invocations as u64;
+        let sqrt = (n as f64).sqrt() as u64;
+        if sqrt * sqrt == n {
+            return [sqrt as i64, sqrt as i64, 1];
+        }
+        if n % 8 == 0 {
+            let d = n / 8;
+            return [d as i64, 8, 1];
+        }
+        let cbrt = (n as f64).cbrt() as u64;
+        if cbrt * cbrt * cbrt == n {
+            return [cbrt as i64, cbrt as i64, cbrt as i64];
+        }
+        if n % 8 == 0 {
+            let d = n / 8;
+            return [d as i64, 8, 1];
+        }
+        [8, 8, 1]
+    })
 }
 
 #[derive(Clone)]
@@ -983,17 +1009,24 @@ pub struct GPGPU {
     pub entrypoint: String,
     pub buffers: Vec<Vec<GBuffer>>,
     pub workgroup_sizes: [i64; 3],
+    pub local_workgroup_size: [i64; 3],
     pub module: Option<wgpu::ShaderModule>,
     pub compute_pipeline: Option<wgpu::ComputePipeline>,
 }
 
 impl GPGPU {
-    pub fn new(source: String, buffers: Vec<Vec<GBuffer>>, workgroup_sizes: [i64; 3]) -> GPGPU {
+    pub fn new(
+        source: String,
+        buffers: Vec<Vec<GBuffer>>,
+        workgroup_sizes: [i64; 3],
+        local_workgroup_size: [i64; 3],
+    ) -> GPGPU {
         GPGPU {
             source,
             entrypoint: "main".to_string(),
             buffers,
             workgroup_sizes,
+            local_workgroup_size,
             module: None,
             compute_pipeline: None,
         }
@@ -1055,11 +1088,20 @@ pub fn gpu_run(gg: &mut GPGPU) {
             // The Rust borrow checker is forcing my hand here
             cpass.set_bind_group(i.try_into().unwrap(), &bind_groups[i], &[]);
         }
-        cpass.dispatch_workgroups(
-            gg.workgroup_sizes[0].try_into().unwrap(),
-            gg.workgroup_sizes[1].try_into().unwrap(),
-            gg.workgroup_sizes[2].try_into().unwrap(),
-        );
+        let lx = gg.local_workgroup_size[0];
+        let ly = gg.local_workgroup_size[1];
+        let x = if gg.workgroup_sizes[0] > 0 {
+            ((gg.workgroup_sizes[0] + lx - 1) / lx).try_into().unwrap()
+        } else {
+            gg.workgroup_sizes[0].try_into().unwrap()
+        };
+        let y = if gg.workgroup_sizes[1] > 0 {
+            ((gg.workgroup_sizes[1] + ly - 1) / ly).try_into().unwrap()
+        } else {
+            gg.workgroup_sizes[1].try_into().unwrap()
+        };
+        let z = gg.workgroup_sizes[2].try_into().unwrap();
+        cpass.dispatch_workgroups(x, y, z);
     }
 
     g.queue.submit(Some(encoder.finish()));
@@ -1122,11 +1164,20 @@ pub fn gpu_run_list(ggs: &mut Vec<GPGPU>) {
                 // The Rust borrow checker is forcing my hand here
                 cpass.set_bind_group(i.try_into().unwrap(), &bind_groups[i], &[]);
             }
-            cpass.dispatch_workgroups(
-                gg.workgroup_sizes[0].try_into().unwrap(),
-                gg.workgroup_sizes[1].try_into().unwrap(),
-                gg.workgroup_sizes[2].try_into().unwrap(),
-            );
+            let lx = gg.local_workgroup_size[0];
+            let ly = gg.local_workgroup_size[1];
+            let x = if gg.workgroup_sizes[0] > 0 {
+                ((gg.workgroup_sizes[0] + lx - 1) / lx).try_into().unwrap()
+            } else {
+                gg.workgroup_sizes[0].try_into().unwrap()
+            };
+            let y = if gg.workgroup_sizes[1] > 0 {
+                ((gg.workgroup_sizes[1] + ly - 1) / ly).try_into().unwrap()
+            } else {
+                gg.workgroup_sizes[1].try_into().unwrap()
+            };
+            let z = gg.workgroup_sizes[2].try_into().unwrap();
+            cpass.dispatch_workgroups(x, y, z);
         }
     }
 
@@ -1579,23 +1630,22 @@ where
                             // The Rust borrow checker is forcing my hand here
                             cpass.set_bind_group(i.try_into().unwrap(), &bind_groups[i], &[]);
                         }
+                        let lx = gg.local_workgroup_size[0];
+                        let ly = gg.local_workgroup_size[1];
+                        let wx = match gg.workgroup_sizes[0] {
+                            -1 => size.width as i64,
+                            -2 => size.height as i64,
+                            _ => gg.workgroup_sizes[0],
+                        };
+                        let wy = match gg.workgroup_sizes[1] {
+                            -1 => size.width as i64,
+                            -2 => size.height as i64,
+                            _ => gg.workgroup_sizes[1],
+                        };
                         cpass.dispatch_workgroups(
-                            // TODO: Can I avoid this branching somehow?
-                            match gg.workgroup_sizes[0] {
-                                -1 => size.width,
-                                -2 => size.height,
-                                otherwise => otherwise.try_into().unwrap(),
-                            },
-                            match gg.workgroup_sizes[1] {
-                                -1 => size.width,
-                                -2 => size.height,
-                                otherwise => otherwise.try_into().unwrap(),
-                            },
-                            match gg.workgroup_sizes[2] {
-                                -1 => size.width,
-                                -2 => size.height,
-                                otherwise => otherwise.try_into().unwrap(),
-                            },
+                            ((wx + lx - 1) / lx) as u32,
+                            ((wy + ly - 1) / ly) as u32,
+                            gg.workgroup_sizes[2] as u32,
                         );
                     }
                 }

@@ -594,8 +594,8 @@ test_gpgpu!(hello_gpu => r#"
         fn main(@builtin(global_invocation_id) id: vec3<u32>) {
           vals[id.x] = vals[id.x] * i32(id.x);
         }
-      ", b);
-      plan.run;
+      ", b, {i64[3]}(1, 1, 1));
+       plan.run;
       b.read.print;
     }"#;
     stdout "[0, 2, 4, 6]\n";
