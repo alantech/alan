@@ -1896,6 +1896,24 @@ fn build{N}(ret: N) {
   // TODO: Don't assume all of the buffers involved here are storage buffers
   // Also TODO: Support other buffer types than i32
   let bufferArray = ret.buffers.Array;
+  // Extract maxGlobalId first so we can clamp the local workgroup size to it
+  let maxGlobalIdArray = ret
+    .statements['@builtin(global_invocation_id) id: vec3u']
+    .getOr('0,0,0')
+    .split(',')
+    .map(fn (s: string) = s.i64 ?? 0);
+  let maxGlobalId = {i64[3]}(
+    maxGlobalIdArray[0] ?? 0,
+    maxGlobalIdArray[1] ?? 0,
+    maxGlobalIdArray[2] ?? 0
+  );
+  let localGroup = optimalLocalGroup();
+  // Clamp each local dimension so it doesn't exceed the corresponding global dimension.
+  // If local > global, one workgroup would launch more invocations than there are valid
+  // indices, causing out-of-bounds writes since shaders have no bounds checking.
+  let localX = max(min(localGroup.0, maxGlobalId.0), 1);
+  let localY = max(min(localGroup.1, maxGlobalId.1), 1);
+  let localZ = max(min(localGroup.2, maxGlobalId.2), 1);
   let wgslHeader = bufferArray.map(fn (gb: GBufferTagged, i: i64) {
     return "@group(0)\n@binding("
       .concat(i.string)
@@ -1905,10 +1923,6 @@ fn build{N}(ret: N) {
       .concat(gb.gpuTypeName)
       .concat(">;\n");
   }).join("\n");
-  let localGroup = optimalLocalGroup();
-  let localX = localGroup.0;
-  let localY = localGroup.1;
-  let localZ = localGroup.2;
   let wgslFunctionHeader = "@compute\n@workgroup_size("
     .concat(localX.string)
     .concat(", ")
@@ -1922,19 +1936,10 @@ fn build{N}(ret: N) {
     });
   }).join("");
   let wgsl = wgslHeader.concat(wgslFunctionHeader).concat(wgslFunctionBody).concat("}");
-  let maxGlobalIdArray = ret
-    .statements['@builtin(global_invocation_id) id: vec3u']
-    .getOr('0,0,0')
-    .split(',')
-    .map(fn (s: string) = s.i64 ?? 0);
-  let maxGlobalId = {i64[3]}(
-    maxGlobalIdArray[0] ?? 0,
-    maxGlobalIdArray[1] ?? 0,
-    maxGlobalIdArray[2] ?? 0
-  );
+  let localGroupClamped = {i64[3]}(localX, localY, localZ);
   let buffers = Array{Array{GBufferRaw}}();
   buffers.push(bufferArray.map(fn (gb: GBufferTagged) = gb.rawBuffer));
-  return GPGPU(wgsl, buffers, maxGlobalId, localGroup);
+  return GPGPU(wgsl, buffers, maxGlobalId, localGroupClamped);
 }
 fn build{N}(ret: N[]) {
   // Array form to allow multiple side-effects to be computed in the same shader
