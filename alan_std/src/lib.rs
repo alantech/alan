@@ -839,12 +839,12 @@ pub fn optimal_local_group() -> [i64; 3] {
         let g = gpu();
         let max_invocations = g.adapter.limits().max_compute_invocations_per_workgroup;
         let n = max_invocations as u64;
-       let sqrt = (n as f64).sqrt() as u64;
+        let sqrt = (n as f64).sqrt() as u64;
         if sqrt * sqrt == n {
             return [sqrt as i64, sqrt as i64, 1];
         }
         if n % 8 == 0 {
-            let d = (n / 8) as u64;
+            let d = n / 8;
             return [d as i64, 8, 1];
         }
         let cbrt = (n as f64).cbrt() as u64;
@@ -852,7 +852,7 @@ pub fn optimal_local_group() -> [i64; 3] {
             return [cbrt as i64, cbrt as i64, cbrt as i64];
         }
         if n % 8 == 0 {
-            let d = (n / 8) as u64;
+            let d = n / 8;
             return [d as i64, 8, 1];
         }
         [8, 8, 1]
@@ -1088,8 +1088,8 @@ pub fn gpu_run(gg: &mut GPGPU) {
             // The Rust borrow checker is forcing my hand here
             cpass.set_bind_group(i.try_into().unwrap(), &bind_groups[i], &[]);
         }
-        let lx = gg.local_workgroup_size[0] as i64;
-        let ly = gg.local_workgroup_size[1] as i64;
+        let lx = gg.local_workgroup_size[0];
+        let ly = gg.local_workgroup_size[1];
         let x = if gg.workgroup_sizes[0] > 0 {
             ((gg.workgroup_sizes[0] + lx - 1) / lx).try_into().unwrap()
         } else {
@@ -1164,8 +1164,8 @@ pub fn gpu_run_list(ggs: &mut Vec<GPGPU>) {
                 // The Rust borrow checker is forcing my hand here
                 cpass.set_bind_group(i.try_into().unwrap(), &bind_groups[i], &[]);
             }
-            let lx = gg.local_workgroup_size[0] as i64;
-            let ly = gg.local_workgroup_size[1] as i64;
+            let lx = gg.local_workgroup_size[0];
+            let ly = gg.local_workgroup_size[1];
             let x = if gg.workgroup_sizes[0] > 0 {
                 ((gg.workgroup_sizes[0] + lx - 1) / lx).try_into().unwrap()
             } else {
@@ -1630,8 +1630,8 @@ where
                             // The Rust borrow checker is forcing my hand here
                             cpass.set_bind_group(i.try_into().unwrap(), &bind_groups[i], &[]);
                         }
-                        let lx = gg.local_workgroup_size[0] as i64;
-                        let ly = gg.local_workgroup_size[1] as i64;
+                        let lx = gg.local_workgroup_size[0];
+                        let ly = gg.local_workgroup_size[1];
                         let wx = match gg.workgroup_sizes[0] {
                             -1 => size.width as i64,
                             -2 => size.height as i64,
