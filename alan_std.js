@@ -911,7 +911,7 @@ export async function gpuRun(gg) {
     gg.computePipeline = g.device.createComputePipeline({
       layout: "auto",
       compute: {
-        entryPoint: gg.entryPoint,
+        entryPoint: gg.entrypoint,
         module,
       },
     });
@@ -936,11 +936,14 @@ export async function gpuRun(gg) {
     });
     cpass.setBindGroup(i, bindGroup);
   }
-  cpass.dispatchWorkgroups(
-    Math.ceil(gg.workgroupSizes[0].valueOf() / (gg.localWorkgroupSize[0] ?? 8)),
-    Math.ceil((gg.workgroupSizes[1] ?? 1).valueOf() / (gg.localWorkgroupSize[1] ?? 8)),
-    (gg.workgroupSizes[2] ?? 1).valueOf()
-  );
+  let lx = gg.localWorkgroupSize[0].valueOf();
+  let ly = gg.localWorkgroupSize[1].valueOf();
+  let wx = gg.workgroupSizes[0].valueOf();
+  let wy = gg.workgroupSizes[1].valueOf();
+  let wz = gg.workgroupSizes[2].valueOf();
+  let x = wx > 0 ? Math.ceil(wx / lx) : wx;
+  let y = wy > 0 ? Math.ceil(wy / ly) : wy;
+  cpass.dispatchWorkgroups(x, y, wz);
   cpass.end();
   g.queue.submit([encoder.finish()]);
 }
@@ -959,7 +962,7 @@ export async function gpuRunList(ggs) {
       gg.computePipeline = g.device.createComputePipeline({
         layout: "auto",
         compute: {
-          entryPoint: gg.entryPoint,
+          entryPoint: gg.entrypoint,
           module,
         },
       });
@@ -983,12 +986,15 @@ export async function gpuRunList(ggs) {
       });
       cpass.setBindGroup(i, bindGroup);
     }
- cpass.dispatchWorkgroups(
-    Math.ceil(gg.workgroupSizes[0].valueOf() / (gg.localWorkgroupSize[0] ?? 8)),
-    Math.ceil((gg.workgroupSizes[1] ?? 1).valueOf() / (gg.localWorkgroupSize[1] ?? 8)),
-    (gg.workgroupSizes[2] ?? 1).valueOf()
-  );
-    cpass.end();
+let lx = gg.localWorkgroupSize[0].valueOf();
+     let ly = gg.localWorkgroupSize[1].valueOf();
+     let wx = gg.workgroupSizes[0].valueOf();
+     let wy = gg.workgroupSizes[1].valueOf();
+     let wz = gg.workgroupSizes[2].valueOf();
+     let x = wx > 0 ? Math.ceil(wx / lx) : wx;
+     let y = wy > 0 ? Math.ceil(wy / ly) : wy;
+     cpass.dispatchWorkgroups(x, y, wz);
+     cpass.end();
   }
   g.queue.submit([encoder.finish()]);
 }
@@ -1227,7 +1233,7 @@ export async function runWindow(initialContextFn, contextFn, gpgpuShaderFn) {
         gg.computePipeline = device.createComputePipeline({
           compute: {
             module: gg.module,
-            entryPoint: gg.entryPoint,
+            entryPoint: gg.entrypoint,
           },
           layout: 'auto',
         });
