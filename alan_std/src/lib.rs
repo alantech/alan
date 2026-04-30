@@ -983,21 +983,37 @@ pub struct GPGPU {
     pub entrypoint: String,
     pub buffers: Vec<Vec<GBuffer>>,
     pub workgroup_sizes: [i64; 3],
+    pub workgroup_dims: [i64; 3],
     pub module: Option<wgpu::ShaderModule>,
     pub compute_pipeline: Option<wgpu::ComputePipeline>,
 }
 
 impl GPGPU {
-    pub fn new(source: String, buffers: Vec<Vec<GBuffer>>, workgroup_sizes: [i64; 3]) -> GPGPU {
+    pub fn new(source: String, buffers: Vec<Vec<GBuffer>>, workgroup_sizes: [i64; 3], workgroup_dims: [i64; 3]) -> GPGPU {
         GPGPU {
             source,
             entrypoint: "main".to_string(),
             buffers,
             workgroup_sizes,
+            workgroup_dims,
             module: None,
             compute_pipeline: None,
         }
     }
+}
+
+fn dispatch_dim(size: i64, dim: i64, width: u32, height: u32) -> u32 {
+    let resolved = match size {
+        -1 => width as i64,
+        -2 => height as i64,
+        _ => size,
+    };
+    let d = match dim {
+        -1 => width as i64,
+        -2 => height as i64,
+        _ => dim,
+    };
+    ((resolved + d - 1) / d) as u32
 }
 
 pub fn gpu_run(gg: &mut GPGPU) {
@@ -1056,9 +1072,9 @@ pub fn gpu_run(gg: &mut GPGPU) {
             cpass.set_bind_group(i.try_into().unwrap(), &bind_groups[i], &[]);
         }
         cpass.dispatch_workgroups(
-            gg.workgroup_sizes[0].try_into().unwrap(),
-            gg.workgroup_sizes[1].try_into().unwrap(),
-            gg.workgroup_sizes[2].try_into().unwrap(),
+            ((gg.workgroup_sizes[0] + gg.workgroup_dims[0] - 1) / gg.workgroup_dims[0]).try_into().unwrap(),
+            ((gg.workgroup_sizes[1] + gg.workgroup_dims[1] - 1) / gg.workgroup_dims[1]).try_into().unwrap(),
+            ((gg.workgroup_sizes[2] + gg.workgroup_dims[2] - 1) / gg.workgroup_dims[2]).try_into().unwrap(),
         );
     }
 
@@ -1123,9 +1139,9 @@ pub fn gpu_run_list(ggs: &mut Vec<GPGPU>) {
                 cpass.set_bind_group(i.try_into().unwrap(), &bind_groups[i], &[]);
             }
             cpass.dispatch_workgroups(
-                gg.workgroup_sizes[0].try_into().unwrap(),
-                gg.workgroup_sizes[1].try_into().unwrap(),
-                gg.workgroup_sizes[2].try_into().unwrap(),
+                ((gg.workgroup_sizes[0] + gg.workgroup_dims[0] - 1) / gg.workgroup_dims[0]).try_into().unwrap(),
+                ((gg.workgroup_sizes[1] + gg.workgroup_dims[1] - 1) / gg.workgroup_dims[1]).try_into().unwrap(),
+                ((gg.workgroup_sizes[2] + gg.workgroup_dims[2] - 1) / gg.workgroup_dims[2]).try_into().unwrap(),
             );
         }
     }
@@ -1580,22 +1596,9 @@ where
                             cpass.set_bind_group(i.try_into().unwrap(), &bind_groups[i], &[]);
                         }
                         cpass.dispatch_workgroups(
-                            // TODO: Can I avoid this branching somehow?
-                            match gg.workgroup_sizes[0] {
-                                -1 => size.width,
-                                -2 => size.height,
-                                otherwise => otherwise.try_into().unwrap(),
-                            },
-                            match gg.workgroup_sizes[1] {
-                                -1 => size.width,
-                                -2 => size.height,
-                                otherwise => otherwise.try_into().unwrap(),
-                            },
-                            match gg.workgroup_sizes[2] {
-                                -1 => size.width,
-                                -2 => size.height,
-                                otherwise => otherwise.try_into().unwrap(),
-                            },
+                            dispatch_dim(gg.workgroup_sizes[0], gg.workgroup_dims[0], size.width, size.height),
+                            dispatch_dim(gg.workgroup_sizes[1], gg.workgroup_dims[1], size.width, size.height),
+                            dispatch_dim(gg.workgroup_sizes[2], gg.workgroup_dims[2], size.width, size.height),
                         );
                     }
                 }

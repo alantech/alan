@@ -1851,8 +1851,8 @@ fn{Rs} id(b: GBufferRaw) = {"alan_std::buffer_id" <- RootBacking :: GBufferRaw -
 fn{Js} id(b: GBufferRaw) = {"alan_std.bufferid" <- RootBacking :: GBufferRaw -> string}(b);
 fn id{T}(b: GBuffer{T}) = b.rawBuffer.id;
 fn id(b: GBufferTagged) = b.rawBuffer.id;
-fn{Rs} GPGPU "alan_std::GPGPU::new" <- RootBacking :: (Own{string}, Own{Array{Array{GBufferRaw}}}, Deref{i64[3]}) -> GPGPU;
-fn{Js} GPGPU (src: string, gbuffers: Array{Array{GBufferRaw}}, idx: i64[3]) = {"new alan_std.GPGPU" <- RootBacking :: (string, Array{Array{GBufferRaw}}, i32[3]) -> GPGPU}(src, gbuffers, idx.map(i32));
+fn{Rs} GPGPU "alan_std::GPGPU::new" <- RootBacking :: (Own{string}, Own{Array{Array{GBufferRaw}}}, Deref{i64[3]}, Deref{i64[3]}) -> GPGPU;
+fn{Js} GPGPU (src: string, gbuffers: Array{Array{GBufferRaw}}, idx: i64[3], dims: i64[3]) = {"new alan_std.GPGPU" <- RootBacking :: (string, Array{Array{GBufferRaw}}, i32[3], i32[3]) -> GPGPU}(src, gbuffers, idx.map(i32), dims.map(i32));
 fn GPGPU{T}(src: string, buf: GBuffer{T}) -> GPGPU {
   // In order to support larger arrays, we need to split the buffer length across them. Each of
   // indices is allowed to be up to 65535 (yes, a 16-bit integer) leading to a maximum length of
@@ -1879,7 +1879,7 @@ fn GPGPU{T}(src: string, buf: GBuffer{T}) -> GPGPU {
   let y = yDiv + 1;
   let yRem = zRem % 65_535;
   let x = max(yRem, 1);
-  return GPGPU(src, [[buf.rawBuffer]], {i64[3]}(x, y, z));
+  return GPGPU(src, [[buf.rawBuffer]], {i64[3]}(x, y, z), {i64[3]}(1, 1, 1));
 }
 fn{Rs} run "alan_std::gpu_run" <- RootBacking :: Mut{GPGPU};
 fn{Js} run "alan_std.gpuRun" <- RootBacking :: GPGPU;
@@ -1920,7 +1920,7 @@ fn build{N}(ret: N) {
       .concat(gb.gpuTypeName)
       .concat(">;\n");
   }).join("\n");
-  let wgslFunctionHeader = "@compute\n@workgroup_size(1)\nfn main(@builtin(global_invocation_id) id: vec3u) {\n";
+  let wgslFunctionHeader = "@compute\n@workgroup_size(8, 8, 1)\nfn main(@builtin(global_invocation_id) id: vec3u) {\n";
   let wgslFunctionBody = ret.statements.Array.map(fn (kv: (string, string)) {
     return if(kv.0.eq("@builtin(global_invocation_id) id: vec3u"), fn () = "", fn () {
       return "  ".concat(kv.1).concat(";\n");
@@ -1932,14 +1932,22 @@ fn build{N}(ret: N) {
     .getOr('0,0,0')
     .split(',')
     .map(fn (s: string) = s.i64 ?? 0);
-  let maxGlobalId = {i64[3]}(
-    maxGlobalIdArray[0] ?? 0,
-    maxGlobalIdArray[1] ?? 0,
-    maxGlobalIdArray[2] ?? 0
+  let dispatchX = maxGlobalIdArray[0] ?? 0;
+  let dispatchY = maxGlobalIdArray[1] ?? 0;
+  let dispatchZ = maxGlobalIdArray[2] ?? 0;
+  let dispatchSizes = {i64[3]}(
+    if(dispatchX < 0, dispatchX, (dispatchX + 7) / 8),
+    if(dispatchY < 0, dispatchY, (dispatchY + 7) / 8),
+    if(dispatchZ < 0, dispatchZ, (dispatchZ + 7) / 8)
+  );
+  let workgroupDims = {i64[3]}(
+    if(dispatchX < 0, -1, 8),
+    if(dispatchY < 0, -2, 8),
+    if(dispatchZ < 0, 1, 1)
   );
   let buffers = Array{Array{GBufferRaw}}();
   buffers.push(bufferArray.map(fn (gb: GBufferTagged) = gb.rawBuffer));
-  return GPGPU(wgsl, buffers, maxGlobalId);
+  return GPGPU(wgsl, buffers, dispatchSizes, workgroupDims);
 }
 fn build{N}(ret: N[]) {
   // Array form to allow multiple side-effects to be computed in the same shader
