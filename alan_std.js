@@ -819,9 +819,9 @@ function getSubgroupMaxSize() {
 }
 
 export function optimalLocalGroup(global) {
-  let totalGlobal = global[0] * global[1] * global[2];
+  let totalGlobal = Number(global[0]) * Number(global[1]) * Number(global[2]);
   if (totalGlobal === 0) {
-    return [1, 1, 1];
+    return [new I64(1), new I64(1), new I64(1)];
   }
   let subMax = getSubgroupMaxSize();
   let maxInvocations = 256;
@@ -837,12 +837,12 @@ export function optimalLocalGroup(global) {
   // Shape: prefer S*S*1, then D*8*1
   let sqrt = Math.floor(Math.sqrt(target));
   if (sqrt >= 8 && sqrt * sqrt === target) {
-    return [sqrt, sqrt, 1];
+    return [new I64(sqrt), new I64(sqrt), new I64(1)];
   }
   if (target % 8 === 0) {
-    return [target / 8, 8, 1];
+    return [new I64(target / 8), new I64(8), new I64(1)];
   }
-  return [target, 1, 1];
+  return [new I64(target), new I64(1), new I64(1)];
 }
 
 export async function gpu() {
@@ -1285,12 +1285,12 @@ export async function runWindow(initialContextFn, contextFn, gpgpuShaderFn) {
       for (let i = 0; i < gg.buffers.length; i++) {
         cpass.setBindGroup(i, bindGroups[i]);
       }
-      let lx = gg.localWorkgroupSize[0] ?? 8;
-      let ly = gg.localWorkgroupSize[1] ?? 8;
+      let lx = Number(gg.localWorkgroupSize[0]) ?? 8;
+      let ly = Number(gg.localWorkgroupSize[1]) ?? 8;
       cpass.dispatchWorkgroups(
-        Math.ceil(gg.workgroupSizes[0].val / lx),
-        Math.ceil(gg.workgroupSizes[1].val / ly),
-        gg.workgroupSizes[2].val
+        Math.ceil(Number(gg.workgroupSizes[0]) / lx),
+        Math.ceil(Number(gg.workgroupSizes[1]) / ly),
+        Number(gg.workgroupSizes[2])
       );
       cpass.end();
     }
