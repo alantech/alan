@@ -1136,6 +1136,14 @@ export function frameFramebuffer(frame) {
   return frame.framebuffer;
 }
 
+export function frameWidth(frame) {
+  return frame.width;
+}
+
+export function frameHeight(frame) {
+  return frame.height;
+}
+
 export async function runWindow(initialContextFn, contextFn, gpgpuShaderFn) {
   // None of this can run before `document.body` exists, so let's wait for that
   if (document.readyState !== "complete" && document.readyState !== "loaded") {
@@ -1208,39 +1216,25 @@ export async function runWindow(initialContextFn, contextFn, gpgpuShaderFn) {
     label: `buffer_${uuidv4().replaceAll('-', '_')}`,
   });
   buffer.ValKind = U32;
-  let gpgpuShaders = await gpgpuShaderFn({ context: contextBuffer, framebuffer: buffer });
+  let gpgpuShaders = await gpgpuShaderFn({ context: contextBuffer, framebuffer: buffer, width: width, height: height });
   let redraw = async function() {
     // First resize things if necessary
     if (width !== context.canvas.width || height !== context.canvas.height) {
-      width = context.canvas.width;
-      height = context.canvas.height;
+      width = Math.max(1, context.canvas.width);
+      height = Math.max(1, context.canvas.height);
       context.bufferWidth = (4 * width) % 256 === 0 ? 4 * width : 4 * width + (256 - ((4 * width) % 256));
       bufferHeight = height;
       bufferSize = context.bufferWidth * bufferHeight;
-      let oldBufferId = buffer.label;
       let newBuffer = await device.createBuffer({
         size: bufferSize,
         usage: storageBufferType(),
         label: `buffer_${uuidv4().replaceAll('-', '_')}`,
       });
       newBuffer.ValKind = U32;
-      for (let shader of gpgpuShaders) {
-        for (let group of shader.buffers) {
-          let idx = undefined;
-          for (let i = 0; i < group.length; i++) {
-            let buffer = group[i];
-            if (buffer.label == oldBufferId) {
-              idx = i;
-              break;
-            }
-          }
-          if (typeof(idx) !== 'undefined') {
-            group[idx] = newBuffer;
-          }
-        }
-      }
       buffer.destroy();
       buffer = newBuffer;
+      // Re-invoke the shader callback with new dimensions so shaders are regenerated
+      gpgpuShaders = await gpgpuShaderFn({ context: contextBuffer, framebuffer: buffer, width: width, height: height });
     }
     // Now, actually start drawing
     let frame = surface.getCurrentTexture();
@@ -1291,32 +1285,13 @@ export async function runWindow(initialContextFn, contextFn, gpgpuShaderFn) {
       for (let i = 0; i < gg.buffers.length; i++) {
         cpass.setBindGroup(i, bindGroups[i]);
       }
-      let x = 0;
-      let y = 0;
       let lx = gg.localWorkgroupSize[0] ?? 8;
       let ly = gg.localWorkgroupSize[1] ?? 8;
-      switch (gg.workgroupSizes[0].val) {
-      case -1:
-        x = Math.ceil(width / lx);
-        break;
-      case -2:
-        x = Math.ceil(height / lx);
-        break;
-      default:
-        x = Math.ceil(gg.workgroupSizes[0].val / lx);
-      }
-      switch (gg.workgroupSizes[1].val) {
-      case -1:
-        y = Math.ceil(width / ly);
-        break;
-      case -2:
-        y = Math.ceil(height / ly);
-        break;
-      default:
-        y = Math.ceil(gg.workgroupSizes[1].val / ly);
-      }
-      let z = gg.workgroupSizes[2].val;
-      cpass.dispatchWorkgroups(x, y, z);
+      cpass.dispatchWorkgroups(
+        Math.ceil(gg.workgroupSizes[0].val / lx),
+        Math.ceil(gg.workgroupSizes[1].val / ly),
+        gg.workgroupSizes[2].val
+      );
       cpass.end();
     }
     encoder.copyBufferToTexture({

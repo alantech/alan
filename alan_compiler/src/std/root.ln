@@ -1906,16 +1906,12 @@ fn build{N}(ret: N) {
     maxGlobalIdArray[1] ?? 0,
     maxGlobalIdArray[2] ?? 0
   );
-  // Sentinel values (-1 for width, -2 for height) are resolved at runtime by the window
-  // dispatch path, so we can't compute optimal local group size at compile time. Fall back
-  // to a reasonable default; dispatch counts will be calculated correctly at runtime.
-  let hasSentinels = maxGlobalId.0 < 0 || maxGlobalId.1 < 0 || maxGlobalId.2 < 0;
-  let localGroup = if(hasSentinels, {i64[3]}(8, 8, 1), optimalLocalGroup(maxGlobalId));
+  // Compute optimal local group size based on total work to perform
+  let localGroup = optimalLocalGroup(maxGlobalId);
   // Clamp each local dimension so it doesn't exceed the corresponding global dimension.
-  // Skip clamping when sentinels are present since actual dimensions are unknown.
-  let localX = if(hasSentinels, localGroup.0, max(min(localGroup.0, maxGlobalId.0), 1));
-  let localY = if(hasSentinels, localGroup.1, max(min(localGroup.1, maxGlobalId.1), 1));
-  let localZ = if(hasSentinels, localGroup.2, max(min(localGroup.2, maxGlobalId.2), 1));
+  let localX = max(min(localGroup.0, maxGlobalId.0), 1);
+  let localY = max(min(localGroup.1, maxGlobalId.1), 1);
+  let localZ = max(min(localGroup.2, maxGlobalId.2), 1);
   let wgslHeader = bufferArray.map(fn (gb: GBufferTagged, i: i64) {
     return "@group(0)\n@binding("
       .concat(i.string)
@@ -2698,6 +2694,7 @@ fn gFor{T}(x: T, y: T, z: T) = gFor(x.u32, y.u32, z.u32);
 fn gFor{T}(x: T, y: T) = gFor(x.u32, y.u32, 1.u32);
 fn gFor{T}(x: T) = gFor(x.u32, 1.u32, 1.u32).x;
 // TODO: More hackery to eliminate
+fn gFor(x: u32, y: u32) = gFor(x, y, 1.u32);
 fn gFor(x: i64, y: i64) {
   let initialStatement = "@builtin(global_invocation_id) id: vec3u";
   let statements = Dict(initialStatement, x.string.concat(',').concat(y.string).concat(',1'));
@@ -5091,7 +5088,11 @@ fn{Rs} context(f: Frame) = GBuffer{u32}({Property{"context.clone()"} :: Frame ->
 fn{Js} context(f: Frame) = GBuffer{u32}({"alan_std.frameContext" <- RootBacking :: Frame -> GBufferRaw}(f));
 fn{Rs} framebuffer(f: Frame) = GBuffer{u32}({Property{"framebuffer.clone()"} :: Frame -> GBufferRaw}(f));
 fn{Js} framebuffer(f: Frame) = GBuffer{u32}({"alan_std.frameFramebuffer" <- RootBacking :: Frame -> GBufferRaw}(f));
-fn pixel Frame = gFor(-1, -2); // Magic numbers for the binding
+fn{Rs} width(f: Frame) = {Property{"width"} :: Frame -> u32}(f);
+fn{Js} width(f: Frame) = {"alan_std.frameWidth" <- RootBacking :: Frame -> u32}(f);
+fn{Rs} height(f: Frame) = {Property{"height"} :: Frame -> u32}(f);
+fn{Js} height(f: Frame) = {"alan_std.frameHeight" <- RootBacking :: Frame -> u32}(f);
+fn pixel(f: Frame) = gFor(f.width, f.height);
 
 /// Process exit-related functions
 fn{Rs} ExitCode "std::process::ExitCode::from" :: Own{u8} -> ExitCode;
