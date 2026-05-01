@@ -823,7 +823,7 @@ impl GPU {
 }
 
 static GPUS: OnceLock<Vec<GPU>> = OnceLock::new();
-static OPTIMAL_LOCAL_GROUP: OnceLock<[i64; 3]> = OnceLock::new();
+static SUBGROUP_MAX_SIZE: OnceLock<u32> = OnceLock::new();
 
 fn gpu() -> &'static GPU {
     match GPUS.get_or_init(|| GPU::init(GPU::list())).first() {
@@ -834,21 +834,36 @@ fn gpu() -> &'static GPU {
     }
 }
 
-pub fn optimal_local_group() -> [i64; 3] {
-    *OPTIMAL_LOCAL_GROUP.get_or_init(|| {
+fn subgroup_max_size() -> u32 {
+    *SUBGROUP_MAX_SIZE.get_or_init(|| {
         let g = gpu();
-        let max_invocations = g.adapter.limits().max_compute_invocations_per_workgroup;
-        let n = max_invocations as u64;
-        let sqrt = (n as f64).sqrt() as u64;
-        if sqrt * sqrt == n {
-            return [sqrt as i64, sqrt as i64, 1];
-        }
-        if n % 8 == 0 {
-            let d = n / 8;
-            return [d as i64, 8, 1];
-        }
-        [8, 8, 1]
+        g.adapter.get_info().subgroup_max_size
     })
+}
+
+pub fn optimal_local_group(global: [i64; 3]) -> [i64; 3] {
+    let total_global = (global[0] as u64) * (global[1] as u64) * (global[2] as u64);
+    if total_global == 0 {
+        return [1, 1, 1];
+    }
+    let g = gpu();
+    let sub_max = subgroup_max_size();
+    let max_invocations = g.adapter.limits().max_compute_invocations_per_workgroup as u64;
+    // Target totalInvocationsPerWorkgroup so that totalWorkgroups ~ subgroup_max_size
+    let mut target = (total_global as f64 / sub_max as f64).ceil() as u64;
+    // Clamp to [8, maxInvocations]
+    target = target.max(8).min(max_invocations);
+    // Snap to nearest multiple of 8 (hardware alignment)
+    target = ((target + 7) / 8) * 8;
+    // Shape: prefer S*S*1, then D*8*1
+    let sqrt = (target as f64).sqrt() as u64;
+    if sqrt >= 8 && sqrt * sqrt == target {
+        return [sqrt as i64, sqrt as i64, 1];
+    }
+    if target % 8 == 0 {
+        return [(target / 8) as i64, 8, 1];
+    }
+    [target as i64, 1, 1]
 }
 
 #[derive(Clone)]
@@ -1312,6 +1327,8 @@ impl AlanWindowContext {
 pub struct AlanWindowFrame {
     pub context: GBuffer,
     pub framebuffer: GBuffer,
+    pub width: u32,
+    pub height: u32,
 }
 
 pub struct AlanWindow<C, R>
@@ -1427,6 +1444,8 @@ where
             self.gpgpu_shaders = Some((self.gpgpu_shader_fn)(&AlanWindowFrame {
                 context: self.context_buffer.as_ref().unwrap().clone(),
                 framebuffer: self.buffer.as_ref().unwrap().clone(),
+                width: size.width,
+                height: size.height,
             }));
         }
         self.inited = true;
@@ -1475,8 +1494,6 @@ where
                 if !self.inited {
                     self.window_gpu_init();
                 }
-                // We need to create a new buffer with the right size *and* replace all instances
-                // of the old buffer in the GPGPU array with the new one.
                 let device = self.device.as_ref().unwrap();
                 new_size.width = new_size.width.max(1);
                 new_size.height = new_size.height.max(1);
@@ -1488,7 +1505,6 @@ where
                 let buffer_height = new_size.height;
                 let buffer_size =
                     (self.context.buffer_width.unwrap() as u64) * (buffer_height as u64);
-                let old_buffer_id = self.buffer.as_ref().unwrap().id.clone();
                 let new_buffer = GBuffer {
                     buffer: Rc::new(device.create_buffer(&wgpu::BufferDescriptor {
                         label: None,
@@ -1499,24 +1515,17 @@ where
                     id: format!("buffer_{}", format!("{}", Uuid::new_v4()).replace("-", "_")),
                     element_size: 4,
                 };
-                for shader in self.gpgpu_shaders.as_mut().unwrap() {
-                    for group in &mut shader.buffers {
-                        let mut idx = None;
-                        for (i, buffer) in group.iter().enumerate() {
-                            if buffer.id == old_buffer_id {
-                                idx = Some(i);
-                                break;
-                            }
-                        }
-                        if let Some(id) = idx {
-                            group[id] = new_buffer.clone();
-                        }
-                    }
-                }
                 if let Some(b) = &self.buffer {
                     b.destroy();
                 }
                 self.buffer = Some(new_buffer);
+                // Re-invoke the shader callback with new dimensions so shaders are regenerated
+                self.gpgpu_shaders = Some((self.gpgpu_shader_fn)(&AlanWindowFrame {
+                    context: self.context_buffer.as_ref().unwrap().clone(),
+                    framebuffer: self.buffer.as_ref().unwrap().clone(),
+                    width: new_size.width,
+                    height: new_size.height,
+                }));
                 self.context.window.as_ref().unwrap().request_redraw();
             }
             WindowEvent::RedrawRequested => {
@@ -1624,19 +1633,9 @@ where
                         }
                         let lx = gg.local_workgroup_size[0];
                         let ly = gg.local_workgroup_size[1];
-                        let wx = match gg.workgroup_sizes[0] {
-                            -1 => size.width as i64,
-                            -2 => size.height as i64,
-                            _ => gg.workgroup_sizes[0],
-                        };
-                        let wy = match gg.workgroup_sizes[1] {
-                            -1 => size.width as i64,
-                            -2 => size.height as i64,
-                            _ => gg.workgroup_sizes[1],
-                        };
                         cpass.dispatch_workgroups(
-                            ((wx + lx - 1) / lx) as u32,
-                            ((wy + ly - 1) / ly) as u32,
+                            ((gg.workgroup_sizes[0] + lx - 1) / lx) as u32,
+                            ((gg.workgroup_sizes[1] + ly - 1) / ly) as u32,
                             gg.workgroup_sizes[2] as u32,
                         );
                     }

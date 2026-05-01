@@ -792,26 +792,57 @@ export class GPU {
 }
 
 let GPUS = null;
-let OPTIMAL_LOCAL_GROUP = null;
+let SUBGROUP_MAX_SIZE = null;
 
-export function optimalLocalGroup() {
-  if (OPTIMAL_LOCAL_GROUP === null) {
+// Typical subgroup_max_size values from wgpu docs (https://docs.rs/wgpu/28.0.0/wgpu/struct.AdapterInfo.html#structfield.subgroup_max_size)
+const SUBGROUP_MAX_SIZE_BY_VENDOR = {
+  "Intel": 32,      // Intel: 16 or 32, using upper bound
+  "AMD": 64,        // AMD GCN/Vega: 64, RDNA+: 64
+  "Apple": 32,      // Apple M-series (Metal backend)
+  "Google": 32,     // ChromeOS (typically AMD/Intel)
+  "Qualcomm": 128,  // Qualcomm: 128
+  "NVIDIA": 32,     // NVIDIA: 32
+  "Microsoft": 128, // WARP software rasterizer: 4 or 128, using upper bound
+};
+
+function getSubgroupMaxSize() {
+  if (SUBGROUP_MAX_SIZE === null) {
     if (GPUS !== null && GPUS.length > 0) {
-      let maxInvocations = GPUS[0].device.limits.maxComputeInvocationsPerWorkgroup;
-      let n = maxInvocations;
-      let sqrt = Math.floor(Math.sqrt(n));
-      if (sqrt * sqrt === n) {
-        OPTIMAL_LOCAL_GROUP = [sqrt, sqrt, 1];
-        return OPTIMAL_LOCAL_GROUP;
-      }
-      if (n % 8 === 0) {
-        OPTIMAL_LOCAL_GROUP = [n / 8, 8, 1];
-        return OPTIMAL_LOCAL_GROUP;
-      }
+      let vendor = GPUS[0].adapter.info.vendor || "";
+      // Try exact match first, then partial match
+      SUBGROUP_MAX_SIZE = SUBGROUP_MAX_SIZE_BY_VENDOR[vendor] || 64; // 64 is safe middle ground
+    } else {
+      SUBGROUP_MAX_SIZE = 64;
     }
-    OPTIMAL_LOCAL_GROUP = [8, 8, 1];
   }
-  return OPTIMAL_LOCAL_GROUP;
+  return SUBGROUP_MAX_SIZE;
+}
+
+export function optimalLocalGroup(global) {
+  let totalGlobal = Number(global[0]) * Number(global[1]) * Number(global[2]);
+  if (totalGlobal === 0) {
+    return [new I64(1), new I64(1), new I64(1)];
+  }
+  let subMax = getSubgroupMaxSize();
+  let maxInvocations = 256;
+  if (GPUS !== null && GPUS.length > 0) {
+    maxInvocations = GPUS[0].device.limits.maxComputeInvocationsPerWorkgroup;
+  }
+  // Target totalInvocationsPerWorkgroup so that totalWorkgroups ~ subgroup_max_size
+  let target = Math.ceil(totalGlobal / subMax);
+  // Clamp to [8, maxInvocations]
+  target = Math.max(8, Math.min(target, maxInvocations));
+  // Snap to nearest multiple of 8 (hardware alignment)
+  target = Math.ceil(target / 8) * 8;
+  // Shape: prefer S*S*1, then D*8*1
+  let sqrt = Math.floor(Math.sqrt(target));
+  if (sqrt >= 8 && sqrt * sqrt === target) {
+    return [new I64(sqrt), new I64(sqrt), new I64(1)];
+  }
+  if (target % 8 === 0) {
+    return [new I64(target / 8), new I64(8), new I64(1)];
+  }
+  return [new I64(target), new I64(1), new I64(1)];
 }
 
 export async function gpu() {
@@ -1105,6 +1136,14 @@ export function frameFramebuffer(frame) {
   return frame.framebuffer;
 }
 
+export function frameWidth(frame) {
+  return frame.width;
+}
+
+export function frameHeight(frame) {
+  return frame.height;
+}
+
 export async function runWindow(initialContextFn, contextFn, gpgpuShaderFn) {
   // None of this can run before `document.body` exists, so let's wait for that
   if (document.readyState !== "complete" && document.readyState !== "loaded") {
@@ -1177,39 +1216,25 @@ export async function runWindow(initialContextFn, contextFn, gpgpuShaderFn) {
     label: `buffer_${uuidv4().replaceAll('-', '_')}`,
   });
   buffer.ValKind = U32;
-  let gpgpuShaders = await gpgpuShaderFn({ context: contextBuffer, framebuffer: buffer });
+  let gpgpuShaders = await gpgpuShaderFn({ context: contextBuffer, framebuffer: buffer, width: width, height: height });
   let redraw = async function() {
     // First resize things if necessary
     if (width !== context.canvas.width || height !== context.canvas.height) {
-      width = context.canvas.width;
-      height = context.canvas.height;
+      width = Math.max(1, context.canvas.width);
+      height = Math.max(1, context.canvas.height);
       context.bufferWidth = (4 * width) % 256 === 0 ? 4 * width : 4 * width + (256 - ((4 * width) % 256));
       bufferHeight = height;
       bufferSize = context.bufferWidth * bufferHeight;
-      let oldBufferId = buffer.label;
       let newBuffer = await device.createBuffer({
         size: bufferSize,
         usage: storageBufferType(),
         label: `buffer_${uuidv4().replaceAll('-', '_')}`,
       });
       newBuffer.ValKind = U32;
-      for (let shader of gpgpuShaders) {
-        for (let group of shader.buffers) {
-          let idx = undefined;
-          for (let i = 0; i < group.length; i++) {
-            let buffer = group[i];
-            if (buffer.label == oldBufferId) {
-              idx = i;
-              break;
-            }
-          }
-          if (typeof(idx) !== 'undefined') {
-            group[idx] = newBuffer;
-          }
-        }
-      }
       buffer.destroy();
       buffer = newBuffer;
+      // Re-invoke the shader callback with new dimensions so shaders are regenerated
+      gpgpuShaders = await gpgpuShaderFn({ context: contextBuffer, framebuffer: buffer, width: width, height: height });
     }
     // Now, actually start drawing
     let frame = surface.getCurrentTexture();
@@ -1260,32 +1285,13 @@ export async function runWindow(initialContextFn, contextFn, gpgpuShaderFn) {
       for (let i = 0; i < gg.buffers.length; i++) {
         cpass.setBindGroup(i, bindGroups[i]);
       }
-      let x = 0;
-      let y = 0;
-      let lx = gg.localWorkgroupSize[0] ?? 8;
-      let ly = gg.localWorkgroupSize[1] ?? 8;
-      switch (gg.workgroupSizes[0].val) {
-      case -1:
-        x = Math.ceil(width / lx);
-        break;
-      case -2:
-        x = Math.ceil(height / lx);
-        break;
-      default:
-        x = Math.ceil(gg.workgroupSizes[0].val / lx);
-      }
-      switch (gg.workgroupSizes[1].val) {
-      case -1:
-        y = Math.ceil(width / ly);
-        break;
-      case -2:
-        y = Math.ceil(height / ly);
-        break;
-      default:
-        y = Math.ceil(gg.workgroupSizes[1].val / ly);
-      }
-      let z = gg.workgroupSizes[2].val;
-      cpass.dispatchWorkgroups(x, y, z);
+      let lx = Number(gg.localWorkgroupSize[0]) ?? 8;
+      let ly = Number(gg.localWorkgroupSize[1]) ?? 8;
+      cpass.dispatchWorkgroups(
+        Math.ceil(Number(gg.workgroupSizes[0]) / lx),
+        Math.ceil(Number(gg.workgroupSizes[1]) / ly),
+        Number(gg.workgroupSizes[2])
+      );
       cpass.end();
     }
     encoder.copyBufferToTexture({
