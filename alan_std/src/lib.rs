@@ -823,7 +823,7 @@ impl GPU {
 }
 
 static GPUS: OnceLock<Vec<GPU>> = OnceLock::new();
-static OPTIMAL_LOCAL_GROUP: OnceLock<[i64; 3]> = OnceLock::new();
+static SUBGROUP_MAX_SIZE: OnceLock<u32> = OnceLock::new();
 
 fn gpu() -> &'static GPU {
     match GPUS.get_or_init(|| GPU::init(GPU::list())).first() {
@@ -834,21 +834,36 @@ fn gpu() -> &'static GPU {
     }
 }
 
-pub fn optimal_local_group() -> [i64; 3] {
-    *OPTIMAL_LOCAL_GROUP.get_or_init(|| {
+fn subgroup_max_size() -> u32 {
+    *SUBGROUP_MAX_SIZE.get_or_init(|| {
         let g = gpu();
-        let max_invocations = g.adapter.limits().max_compute_invocations_per_workgroup;
-        let n = max_invocations as u64;
-        let sqrt = (n as f64).sqrt() as u64;
-        if sqrt * sqrt == n {
-            return [sqrt as i64, sqrt as i64, 1];
-        }
-        if n % 8 == 0 {
-            let d = n / 8;
-            return [d as i64, 8, 1];
-        }
-        [8, 8, 1]
+        g.adapter.get_info().subgroup_max_size
     })
+}
+
+pub fn optimal_local_group(global: [i64; 3]) -> [i64; 3] {
+    let total_global = (global[0] as u64) * (global[1] as u64) * (global[2] as u64);
+    if total_global == 0 {
+        return [1, 1, 1];
+    }
+    let g = gpu();
+    let sub_max = subgroup_max_size();
+    let max_invocations = g.adapter.limits().max_compute_invocations_per_workgroup as u64;
+    // Target totalInvocationsPerWorkgroup so that totalWorkgroups ~ subgroup_max_size
+    let mut target = (total_global as f64 / sub_max as f64).ceil() as u64;
+    // Clamp to [8, maxInvocations]
+    target = target.max(8).min(max_invocations);
+    // Snap to nearest multiple of 8 (hardware alignment)
+    target = ((target + 7) / 8) * 8;
+    // Shape: prefer S*S*1, then D*8*1
+    let sqrt = (target as f64).sqrt() as u64;
+    if sqrt >= 8 && sqrt * sqrt == target {
+        return [sqrt as i64, sqrt as i64, 1];
+    }
+    if target % 8 == 0 {
+        return [(target / 8) as i64, 8, 1];
+    }
+    [target as i64, 1, 1]
 }
 
 #[derive(Clone)]

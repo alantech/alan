@@ -792,26 +792,57 @@ export class GPU {
 }
 
 let GPUS = null;
-let OPTIMAL_LOCAL_GROUP = null;
+let SUBGROUP_MAX_SIZE = null;
 
-export function optimalLocalGroup() {
-  if (OPTIMAL_LOCAL_GROUP === null) {
+// Typical subgroup_max_size values from wgpu docs (https://docs.rs/wgpu/28.0.0/wgpu/struct.AdapterInfo.html#structfield.subgroup_max_size)
+const SUBGROUP_MAX_SIZE_BY_VENDOR = {
+  "Intel": 32,      // Intel: 16 or 32, using upper bound
+  "AMD": 64,        // AMD GCN/Vega: 64, RDNA+: 64
+  "Apple": 32,      // Apple M-series (Metal backend)
+  "Google": 32,     // ChromeOS (typically AMD/Intel)
+  "Qualcomm": 128,  // Qualcomm: 128
+  "NVIDIA": 32,     // NVIDIA: 32
+  "Microsoft": 128, // WARP software rasterizer: 4 or 128, using upper bound
+};
+
+function getSubgroupMaxSize() {
+  if (SUBGROUP_MAX_SIZE === null) {
     if (GPUS !== null && GPUS.length > 0) {
-      let maxInvocations = GPUS[0].device.limits.maxComputeInvocationsPerWorkgroup;
-      let n = maxInvocations;
-      let sqrt = Math.floor(Math.sqrt(n));
-      if (sqrt * sqrt === n) {
-        OPTIMAL_LOCAL_GROUP = [sqrt, sqrt, 1];
-        return OPTIMAL_LOCAL_GROUP;
-      }
-      if (n % 8 === 0) {
-        OPTIMAL_LOCAL_GROUP = [n / 8, 8, 1];
-        return OPTIMAL_LOCAL_GROUP;
-      }
+      let vendor = GPUS[0].adapter.info.vendor || "";
+      // Try exact match first, then partial match
+      SUBGROUP_MAX_SIZE = SUBGROUP_MAX_SIZE_BY_VENDOR[vendor] || 64; // 64 is safe middle ground
+    } else {
+      SUBGROUP_MAX_SIZE = 64;
     }
-    OPTIMAL_LOCAL_GROUP = [8, 8, 1];
   }
-  return OPTIMAL_LOCAL_GROUP;
+  return SUBGROUP_MAX_SIZE;
+}
+
+export function optimalLocalGroup(global) {
+  let totalGlobal = global[0] * global[1] * global[2];
+  if (totalGlobal === 0) {
+    return [1, 1, 1];
+  }
+  let subMax = getSubgroupMaxSize();
+  let maxInvocations = 256;
+  if (GPUS !== null && GPUS.length > 0) {
+    maxInvocations = GPUS[0].device.limits.maxComputeInvocationsPerWorkgroup;
+  }
+  // Target totalInvocationsPerWorkgroup so that totalWorkgroups ~ subgroup_max_size
+  let target = Math.ceil(totalGlobal / subMax);
+  // Clamp to [8, maxInvocations]
+  target = Math.max(8, Math.min(target, maxInvocations));
+  // Snap to nearest multiple of 8 (hardware alignment)
+  target = Math.ceil(target / 8) * 8;
+  // Shape: prefer S*S*1, then D*8*1
+  let sqrt = Math.floor(Math.sqrt(target));
+  if (sqrt >= 8 && sqrt * sqrt === target) {
+    return [sqrt, sqrt, 1];
+  }
+  if (target % 8 === 0) {
+    return [target / 8, 8, 1];
+  }
+  return [target, 1, 1];
 }
 
 export async function gpu() {

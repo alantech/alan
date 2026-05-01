@@ -131,8 +131,8 @@ type arm_64 = Env{"ALAN_ARCH"} == "arm_64";
 type Browser = Env{"ALAN_PLATFORM"} == "browser"; // Technically not necessary, always also Js
 
 // Importing the Root Scope backing implementation and supporting 3rd party libraries
-type{Rs} RootBacking = Rust{"alan_std" @ "https://github.com/alantech/alan.git"};
-type{Js} RootBacking = Nodejs{"alan_std" @ "https://github.com/alantech/alan.git"};
+type{Rs} RootBacking = Rust{"alan_std" @ "https://github.com/alantech/alan.git#better-local-group-selection"};
+type{Js} RootBacking = Nodejs{"alan_std" @ "https://github.com/alantech/alan.git#better-local-group-selection"};
 
 // Defining derived types
 type void = ();
@@ -1850,8 +1850,8 @@ fn{Rs} id(b: GBufferRaw) = {"alan_std::buffer_id" <- RootBacking :: GBufferRaw -
 fn{Js} id(b: GBufferRaw) = {"alan_std.bufferid" <- RootBacking :: GBufferRaw -> string}(b);
 fn id{T}(b: GBuffer{T}) = b.rawBuffer.id;
 fn id(b: GBufferTagged) = b.rawBuffer.id;
-fn{Rs} optimalLocalGroup() = {"alan_std::optimal_local_group" <- RootBacking :: () -> Buffer{i64, 3}}();
-fn{Js} optimalLocalGroup() = {"alan_std.optimalLocalGroup" <- RootBacking :: () -> Buffer{i64, 3}}();
+fn{Rs} optimalLocalGroup(global: Buffer{i64, 3}) = {"alan_std::optimal_local_group" <- RootBacking :: Deref{Buffer{i64, 3}} -> Buffer{i64, 3}}(global);
+fn{Js} optimalLocalGroup(global: Buffer{i64, 3}) = {"alan_std.optimalLocalGroup" <- RootBacking :: Buffer{i64, 3} -> Buffer{i64, 3}}(global);
 fn{Rs} GPGPU "alan_std::GPGPU::new" <- RootBacking :: (Own{string}, Own{Array{Array{GBufferRaw}}}, Deref{Buffer{i64, 3}}, Deref{Buffer{i64, 3}}) -> GPGPU;
 fn{Js} GPGPU (src: string, gbuffers: Array{Array{GBufferRaw}}, idx: Buffer{i64, 3}, local: Buffer{i64, 3}) = {"new alan_std.GPGPU" <- RootBacking :: (string, Array{Array{GBufferRaw}}, Buffer{i32, 3}, Buffer{i32, 3}) -> GPGPU}(src, gbuffers, idx.map(i32), local.map(i32));
 fn GPGPU{T}(src: string, buf: GBuffer{T}, local: Buffer{i64, 3}) -> GPGPU {
@@ -1906,13 +1906,16 @@ fn build{N}(ret: N) {
     maxGlobalIdArray[1] ?? 0,
     maxGlobalIdArray[2] ?? 0
   );
-  let localGroup = optimalLocalGroup();
+  // Sentinel values (-1 for width, -2 for height) are resolved at runtime by the window
+  // dispatch path, so we can't compute optimal local group size at compile time. Fall back
+  // to a reasonable default; dispatch counts will be calculated correctly at runtime.
+  let hasSentinels = maxGlobalId.0 < 0 || maxGlobalId.1 < 0 || maxGlobalId.2 < 0;
+  let localGroup = if(hasSentinels, {i64[3]}(8, 8, 1), optimalLocalGroup(maxGlobalId));
   // Clamp each local dimension so it doesn't exceed the corresponding global dimension.
-  // If local > global, one workgroup would launch more invocations than there are valid
-  // indices, causing out-of-bounds writes since shaders have no bounds checking.
-  let localX = max(min(localGroup.0, maxGlobalId.0), 1);
-  let localY = max(min(localGroup.1, maxGlobalId.1), 1);
-  let localZ = max(min(localGroup.2, maxGlobalId.2), 1);
+  // Skip clamping when sentinels are present since actual dimensions are unknown.
+  let localX = if(hasSentinels, localGroup.0, max(min(localGroup.0, maxGlobalId.0), 1));
+  let localY = if(hasSentinels, localGroup.1, max(min(localGroup.1, maxGlobalId.1), 1));
+  let localZ = if(hasSentinels, localGroup.2, max(min(localGroup.2, maxGlobalId.2), 1));
   let wgslHeader = bufferArray.map(fn (gb: GBufferTagged, i: i64) {
     return "@group(0)\n@binding("
       .concat(i.string)
