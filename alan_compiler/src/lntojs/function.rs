@@ -335,6 +335,52 @@ pub fn from_microstatement(
                     Err("Generic functions should have been resolved before reaching here".into())
                 }
                 FnKind::Normal | FnKind::External(_) => {
+                    // Special handling for first_either and rest_either
+                    if function.name == "first_either" || function.name == "rest_either" {
+                        if args.len() == 1 {
+                            let arg_type = args[0].get_type().degroup();
+                            if let CType::Either(ts) = &*arg_type.clone() {
+                                let (a, o, d) = from_microstatement(&args[0], scope, parent_fn, out, deps)?;
+                                out = o;
+                                deps = d;
+                                let get_check = |t: &Arc<CType>| -> String {
+                                    let cls = match &**t {
+                                        CType::Int(_) | CType::Float(_) => return format!("(typeof {} !== 'undefined')", a),
+                                        CType::TString(_) => "alan_std.Str",
+                                        CType::Type(n, _) if matches!(n.as_str(), "string" | "String") => "alan_std.Str",
+                                        CType::Type(n, _) if n == "i64" => "alan_std.I64",
+                                        CType::Type(n, _) if n == "f32" => "alan_std.F32",
+                                        CType::Type(n, _) if n == "f64" => "alan_std.F64",
+                                        CType::Type(n, _) if n == "i8" => "alan_std.I8",
+                                        CType::Type(n, _) if n == "i16" => "alan_std.I16",
+                                        CType::Type(n, _) if n == "i32" => "alan_std.I32",
+                                        CType::Type(n, _) if n == "u8" => "alan_std.U8",
+                                        CType::Type(n, _) if n == "u16" => "alan_std.U16",
+                                        CType::Type(n, _) if n == "u32" => "alan_std.U32",
+                                        CType::Type(n, _) if n == "u64" => "alan_std.U64",
+                                        CType::Type(n, _) if n == "bool" => "alan_std.Bool",
+                                        CType::Type(n, _) => n,
+                                        CType::Field(n, _) => n,
+                                        _ => &t.clone().to_callable_string(),
+                                    };
+                                    format!("({} instanceof {})", a, cls)
+                                };
+                                if function.name == "first_either" {
+                                    if ts.is_empty() {
+                                        return Ok(("null".to_string(), out, deps));
+                                    }
+                                    let check = get_check(&ts[0]);
+                                    return Ok((format!("({} ? {} : null)", check, a), out, deps));
+                                } else if function.name == "rest_either" {
+                                    if ts.len() <= 1 {
+                                        return Ok(("null".to_string(), out, deps));
+                                    }
+                                    let check = get_check(&ts[0]);
+                                    return Ok((format!("(!({}) ? {} : null)", check, a), out, deps));
+                                }
+                            }
+                        }
+                    }
                     let (_, o, d) = typen::generate(function.rettype(), out, deps)?;
                     out = o;
                     deps = d;
@@ -409,6 +455,52 @@ pub fn from_microstatement(
                     ))
                 }
                 FnKind::Bind(jsname) | FnKind::ExternalBind(jsname, _) => {
+                    // Special handling for first_either and rest_either
+                    if jsname == "first_either" || jsname == "rest_either" {
+                        if args.len() == 1 {
+                            let arg_type = args[0].get_type().degroup();
+                            if let CType::Either(ts) = &*arg_type.clone() {
+                                let (a, o, d) = from_microstatement(&args[0], scope, parent_fn, out, deps)?;
+                                out = o;
+                                deps = d;
+                                let get_check = |t: &Arc<CType>| -> String {
+                                    let cls = match &**t {
+                                        CType::Int(_) | CType::Float(_) => return format!("(typeof {} !== 'undefined')", a),
+                                        CType::TString(_) => "alan_std.Str",
+                                        CType::Type(n, _) if matches!(n.as_str(), "string" | "String") => "alan_std.Str",
+                                        CType::Type(n, _) if n == "i64" => "alan_std.I64",
+                                        CType::Type(n, _) if n == "f32" => "alan_std.F32",
+                                        CType::Type(n, _) if n == "f64" => "alan_std.F64",
+                                        CType::Type(n, _) if n == "i8" => "alan_std.I8",
+                                        CType::Type(n, _) if n == "i16" => "alan_std.I16",
+                                        CType::Type(n, _) if n == "i32" => "alan_std.I32",
+                                        CType::Type(n, _) if n == "u8" => "alan_std.U8",
+                                        CType::Type(n, _) if n == "u16" => "alan_std.U16",
+                                        CType::Type(n, _) if n == "u32" => "alan_std.U32",
+                                        CType::Type(n, _) if n == "u64" => "alan_std.U64",
+                                        CType::Type(n, _) if n == "bool" => "alan_std.Bool",
+                                        CType::Type(n, _) => n,
+                                        CType::Field(n, _) => n,
+                                        _ => &t.clone().to_callable_string(),
+                                    };
+                                    format!("({} instanceof {})", a, cls)
+                                };
+                                if jsname == "first_either" {
+                                    if ts.is_empty() {
+                                        return Ok(("null".to_string(), out, deps));
+                                    }
+                                    let check = get_check(&ts[0]);
+                                    return Ok((format!("({} ? {} : null)", check, a), out, deps));
+                                } else {
+                                    if ts.len() <= 1 {
+                                        return Ok(("null".to_string(), out, deps));
+                                    }
+                                    let check = get_check(&ts[0]);
+                                    return Ok((format!("(!({}) ? {} : null)", check, a), out, deps));
+                                }
+                            }
+                        }
+                    }
                     let mut argstrs = Vec::new();
                     for arg in args {
                         let (a, o, d) = from_microstatement(arg, scope, parent_fn, out, deps)?;
@@ -641,6 +733,60 @@ pub fn from_microstatement(
                                 return Ok((format!("{}.arg0", argstrs[0]), out, deps));
                             }
                             CType::Either(ts) => {
+                                // Helper to get JS class name for a type
+                                let get_js_class = |t: &Arc<CType>| -> String {
+                                    match &**t {
+                                        CType::TString(_) => "alan_std.Str".to_string(),
+                                        CType::Type(n, _) => match n.as_str() {
+                                            "string" | "String" => "alan_std.Str".to_string(),
+                                            "f32" => "alan_std.F32".to_string(),
+                                            "f64" => "alan_std.F64".to_string(),
+                                            "i8" => "alan_std.I8".to_string(),
+                                            "i16" => "alan_std.I16".to_string(),
+                                            "i32" => "alan_std.I32".to_string(),
+                                            "i64" => "alan_std.I64".to_string(),
+                                            "u8" => "alan_std.U8".to_string(),
+                                            "u16" => "alan_std.U16".to_string(),
+                                            "u32" => "alan_std.U32".to_string(),
+                                            "u64" => "alan_std.U64".to_string(),
+                                            "bool" => "alan_std.Bool".to_string(),
+                                            _ => n.clone(),
+                                        },
+                                        CType::Field(n, _) => n.clone(),
+                                        _ => t.clone().to_callable_string(),
+                                    }
+                                };
+                                // Helper to get instanceof check for a type
+                                let get_instanceof = |t: &Arc<CType>, var: &str| -> String {
+                                    match &**t {
+                                        CType::Int(_) | CType::Float(_) => format!("(typeof {} !== 'undefined')", var),
+                                        _ => format!("({} instanceof {})", var, get_js_class(t)),
+                                    }
+                                };
+                                // Special handling for first{T} function
+                                if function.name == "first" {
+                                    if ts.is_empty() {
+                                        return Ok(("null".to_string(), out, deps));
+                                    }
+                                    let check = get_instanceof(&ts[0], &argstrs[0]);
+                                    return Ok((
+                                        format!("({} ? {} : null)", check, argstrs[0]),
+                                        out,
+                                        deps,
+                                    ));
+                                }
+                                // Special handling for rest{T} function
+                                if function.name == "rest" {
+                                    if ts.len() <= 1 {
+                                        return Ok(("null".to_string(), out, deps));
+                                    }
+                                    let check = get_instanceof(&ts[0], &argstrs[0]);
+                                    return Ok((
+                                        format!("(!({}) ? {} : null)", check, argstrs[0]),
+                                        out,
+                                        deps,
+                                    ));
+                                }
                                 // The kinds of types allowed here are `Type`, `Bound`, and
                                 // `ResolvedBoundGeneric`, and `Field`. Other types don't have
                                 // a string name we can match against the function name

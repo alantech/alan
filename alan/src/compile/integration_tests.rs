@@ -1956,3 +1956,95 @@ test!(either_dedup_single_unwrap => r#"
     }"#;
     stdout "8\n";
 );
+
+// First/Rest pattern matching for recursive Either processing
+
+test!(first_matches_first_variant => r#"
+    export fn main {
+      let v = Either{string, i64, bool}("hello");
+      first(v).print;
+    }"#;
+    stdout "hello\n";
+);
+
+test!(first_no_match_returns_void => r#"
+    export fn main {
+      let v = Either{string, i64, bool}(42);
+      first(v).print;
+    }"#;
+    stdout "void\n";
+);
+
+test!(first_with_two_variants => r#"
+    export fn main {
+      let v = Either{string, i64}("world");
+      first(v).print;
+    }"#;
+    stdout "world\n";
+);
+
+test!(first_with_two_variants_no_match => r#"
+    export fn main {
+      let v = Either{string, i64}(99);
+      first(v).print;
+    }"#;
+    stdout "void\n";
+);
+
+test!(rest_discards_first_variant => r#"
+    export fn main {
+      let v = Either{string, i64, bool}("hello");
+      rest(v);
+    }"#;
+    stdout "";
+);
+
+test!(rest_preserves_second_variant => r#"
+    export fn main {
+      let v = Either{string, i64, bool}(42);
+      first(rest(v)).print;
+    }"#;
+    stdout "42\n";
+);
+
+test!(rest_preserves_third_variant => r#"
+    export fn main {
+      let v = Either{string, i64, bool}(true);
+      first(rest(v)).print;
+    }"#;
+    stdout "void\n";
+);
+
+test!(rest_with_two_variants_discarded => r#"
+    export fn main {
+      let v = Either{string, i64}("hello");
+      rest(v).print;
+    }"#;
+    stdout "void\n";
+);
+
+test!(rest_with_two_variants_preserved => r#"
+    export fn main {
+      let v = Either{string, i64}(42);
+      rest(v).print;
+    }"#;
+    stdout "42\n";
+);
+
+test!(first_rest_chain => r#"
+    export fn main {
+      let v = Either{string, i64, bool}("hello");
+      first(v).print;
+      first(rest(v)).print;
+    }"#;
+    stdout "hello\nvoid\n";
+);
+
+test!(first_rest_chain_second => r#"
+    export fn main {
+      let v = Either{string, i64, bool}(42);
+      first(v).print;
+      first(rest(v)).print;
+    }"#;
+    stdout "void\n42\n";
+);

@@ -77,6 +77,7 @@ ctype Lt{A, B}; // Returns true if A is less than B (and are an int or float)
 ctype Lte{A, B}; // Returns true if A is less than or equal to B
 ctype Gt{A, B}; // Returns true if A is greater than B
 ctype Gte{A, B}; // Returns true if A is greater than or equal to B
+ctype Rest{T}; // Returns all variants of an Either type except the first, appending () if not already the last variant
 
 // Defining the operators in the type system; they can be defined before the types themselves
 type infix Function as -> precedence 4; // I -> O, where I is the input and O is the output. With Tuples and Fields you can reconstruct arguments for functions.
@@ -141,6 +142,7 @@ type{Rs} Error = Binds{"alan_std::AlanError" <- RootBacking};
 type{Js} Error = Binds{"alan_std.AlanError" <- RootBacking};
 type Fallible{T} = T | Error;
 type Maybe{T} = T | ();
+type First{T} = Prop{T, 0};
 
 // Binding the float types
 type{Rs} f32 = Binds{"f32"};
@@ -266,6 +268,12 @@ fn{Rs} exists{T} (m: T!) = {Method{"is_ok"} :: T! -> bool}(m);
 fn{Js} exists{T} (m: T!) = {"((a) => new alan_std.Bool(!(a instanceof alan_std.AlanError)))" <- RootBacking :: T! -> bool}(m);
 fn{Rs} string(e: Error) = {"format!" :: ("{}", Error) -> string}(e);
 fn{Js} string Property{"message"} :: Error -> string;
+
+/// First and Rest functions for Either type recursion
+fn{Rs} first{T}(v: T) -> Maybe{First{T}} = {"first_either" :: T -> Maybe{First{T}}}(v);
+fn{Js} first{T}(v: T) -> Maybe{First{T}} = {"first_either" :: T -> Maybe{First{T}}}(v);
+fn{Rs} rest{T}(v: T) -> Rest{T} = {"rest_either" :: T -> Rest{T}}(v);
+fn{Js} rest{T}(v: T) -> Rest{T} = {"rest_either" :: T -> Rest{T}}(v);
 
 /// Primitive type casting functions
 fn{Rs} f32 Cast{"f32"} :: Deref{i8} -> f32;

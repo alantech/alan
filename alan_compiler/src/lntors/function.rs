@@ -373,6 +373,125 @@ pub fn from_microstatement(
                         out,
                         deps,
                     ));
+                } else if fname == "first_either" {
+                    if args.len() == 1 {
+                        let arg_type = args[0].get_type().degroup();
+                        if let CType::Either(ts) = &*arg_type.clone() {
+                            if ts.is_empty() {
+                                return Ok(("None".to_string(), out, deps));
+                            }
+                            let enum_name = arg_type.to_callable_string();
+                            let first_variant_name = match &*ts[0] {
+                                CType::Field(n, _) => n.clone(),
+                                CType::Type(n, _) => n.clone(),
+                                _ => ts[0].clone().to_callable_string(),
+                            };
+                            let (a, o, d) = from_microstatement(&args[0], parent_fn, scope, out, deps)?;
+                            out = o;
+                            deps = d;
+                            return Ok((
+                                format!(
+                                    "(match &{} {{ {}::{}(v) => Some(v.clone()), _ => None }})",
+                                    a, enum_name, first_variant_name
+                                ),
+                                out,
+                                deps,
+                            ));
+                        }
+                    }
+                } else if fname == "rest_either" {
+                    if args.len() == 1 {
+                        let arg_type = args[0].get_type().degroup();
+                        if let CType::Either(ts) = &*arg_type.clone() {
+                            let rest_type = CType::trest(arg_type.clone());
+                            if ts.len() <= 1 {
+                                return Ok(("void".to_string(), out, deps));
+                            }
+                            // Check if Rest type is a 2-variant Either{T, ()} -> Option<T>
+                            let is_option = matches!(&*rest_type, CType::Either(rest_ts) if rest_ts.len() == 2 && matches!(*rest_ts[1], CType::Void));
+                            if is_option {
+                                let enum_name = arg_type.to_callable_string();
+                                let mut match_arms = Vec::new();
+                                for (i, t) in ts.iter().enumerate() {
+                                    if i == 0 {
+                                        let first_variant_name = match &**t {
+                                            CType::Field(n, _) => n.clone(),
+                                            CType::Type(n, _) => n.clone(),
+                                            _ => t.clone().to_callable_string(),
+                                        };
+                                        match_arms.push(format!(
+                                            "{}::{}(_) => None",
+                                            enum_name, first_variant_name
+                                        ));
+                                    } else {
+                                        let variant_name = match &**t {
+                                            CType::Field(n, _) => n.clone(),
+                                            CType::Type(n, _) => n.clone(),
+                                            _ => t.clone().to_callable_string(),
+                                        };
+                                        match_arms.push(format!(
+                                            "{}::{}(v) => Some(v.clone())",
+                                            enum_name, variant_name
+                                        ));
+                                    }
+                                }
+                                let (a, o, d) = from_microstatement(&args[0], parent_fn, scope, out, deps)?;
+                                out = o;
+                                deps = d;
+                                return Ok((
+                                    format!(
+                                        "(match &{} {{ {} }})",
+                                        a,
+                                        match_arms.join(", ")
+                                    ),
+                                    out,
+                                    deps,
+                                ));
+                            }
+                            // Ensure the Rest enum type definition is generated
+                            let (_rest_key, new_out, new_deps) = typen::generate(rest_type.clone(), out, deps)?;
+                            out = new_out;
+                            deps = new_deps;
+                            let rest_enum_name = rest_type.clone().to_callable_string();
+                            let enum_name = arg_type.to_callable_string();
+                            let mut match_arms = Vec::new();
+                            for (i, t) in ts.iter().enumerate() {
+                                if i == 0 {
+                                    let first_variant_name = match &**t {
+                                        CType::Field(n, _) => n.clone(),
+                                        CType::Type(n, _) => n.clone(),
+                                        _ => t.clone().to_callable_string(),
+                                    };
+                                    match_arms.push(format!(
+                                        "{}::{}(_) => {}::void",
+                                        enum_name, first_variant_name, rest_enum_name
+                                    ));
+                                } else {
+                                    let variant_name = match &**t {
+                                        CType::Field(n, _) => n.clone(),
+                                        CType::Type(n, _) => n.clone(),
+                                        _ => t.clone().to_callable_string(),
+                                    };
+                                    match_arms.push(format!(
+                                        "{}::{}(v) => {}::{}(v.clone())",
+                                        enum_name, variant_name, rest_enum_name, variant_name
+                                    ));
+                                }
+                            }
+                            let (a, o, d) = from_microstatement(&args[0], parent_fn, scope, out, deps)?;
+                            out = o;
+                            deps = d;
+                            return Ok((
+                                format!(
+                                    "(match &{} {{ {} }})",
+                                    a,
+                                    match_arms.join(", ")
+                                ),
+                                out,
+                                deps,
+                            ));
+                        }
+                    }
                 }
             }
             match &function.kind {
@@ -718,6 +837,58 @@ pub fn from_microstatement(
                                 return Ok((format!("{}.0", argstrs[0]), out, deps));
                             }
                             CType::Either(ts) => {
+                                let enum_type = function.args()[0].2.clone().degroup();
+                                let enum_name = enum_type.to_callable_string();
+                                // Special handling for first{T} and rest{T} functions
+                                if function.name == "first" {
+                                    if ts.is_empty() {
+                                        return Ok(("None".to_string(), out, deps));
+                                    }
+                                    let first_variant_name = match &*ts[0] {
+                                        CType::Field(n, _) => n.clone(),
+                                        CType::Type(n, _) => n.clone(),
+                                        _ => ts[0].clone().to_callable_string(),
+                                    };
+                                    return Ok((
+                                        format!(
+                                            "(match &{} {{ {}::{}(v) => Some(v.clone()), _ => None }})",
+                                            argstrs[0], enum_name, first_variant_name
+                                        ),
+                                        out,
+                                        deps,
+                                    ));
+                                }
+                                if function.name == "rest" {
+                                    let rest_type = CType::trest(function.args()[0].2.clone());
+                                    let rest_enum_name = rest_type.clone().to_callable_string();
+                                    let (_rest_rtype, new_deps) = typen::ctype_to_rtype(rest_type.clone(), deps)?;
+                                    deps = new_deps;
+                                    if ts.len() <= 1 {
+                                        return Ok(("None".to_string(), out, deps));
+                                    }
+                                    let mut match_arms = Vec::new();
+                                    for (_i, t) in ts.iter().enumerate().skip(1) {
+                                        let variant_name = match &**t {
+                                            CType::Field(n, _) => n.clone(),
+                                            CType::Type(n, _) => n.clone(),
+                                            _ => t.clone().to_callable_string(),
+                                        };
+                                        match_arms.push(format!(
+                                            "{}::{}(v) => Some({}::{}(v.clone()))",
+                                            enum_name, variant_name, rest_enum_name, variant_name
+                                        ));
+                                    }
+                                    match_arms.push("_ => None".to_string());
+                                    return Ok((
+                                        format!(
+                                            "(match &{} {{ {} }})",
+                                            argstrs[0],
+                                            match_arms.join(", ")
+                                        ),
+                                        out,
+                                        deps,
+                                    ));
+                                }
                                 // The kinds of types allowed here are `Type`, `Bound`, and
                                 // `ResolvedBoundGeneric`, and `Field`. Other types don't have
                                 // a string name we can match against the function name
@@ -734,8 +905,6 @@ pub fn from_microstatement(
                                 // function argument. We blow up here if the first argument is
                                 // *not* a Type we can get an enum name from (it *shouldn't* be
                                 // possible, but..)
-                                let enum_type = function.args()[0].2.clone().degroup();
-                                let enum_name = enum_type.to_callable_string();
                                 // We pass through to the main path if we can't find a matching
                                 // name
                                 if accessor_field.is_some() {

@@ -65,6 +65,7 @@ pub enum CType {
     Max(Vec<Arc<CType>>),
     Neg(Arc<CType>),
     Len(Arc<CType>),
+    Rest(Arc<CType>),
     Size(Arc<CType>),
     FileStr(Arc<CType>),
     Concat(Arc<CType>, Arc<CType>),
@@ -523,6 +524,11 @@ impl CType {
                 }
                 CType::Len(t) => {
                     str_parts.push("Len{");
+                    ctype_stack.push(close_brace);
+                    ctype_stack.push(t);
+                }
+                CType::Rest(t) => {
+                    str_parts.push("Rest{");
                     ctype_stack.push(close_brace);
                     ctype_stack.push(t);
                 }
@@ -1036,6 +1042,11 @@ impl CType {
                     ctype_stack.push(close_brace);
                     ctype_stack.push(t);
                 }
+                CType::Rest(t) => {
+                    str_parts.push("Rest{");
+                    ctype_stack.push(close_brace);
+                    ctype_stack.push(t);
+                }
                 CType::Size(t) => {
                     str_parts.push("Size{");
                     ctype_stack.push(close_brace);
@@ -1280,6 +1291,7 @@ impl CType {
             | CType::Field(_, t)
             | CType::Neg(t)
             | CType::Len(t)
+            | CType::Rest(t)
             | CType::Size(t)
             | CType::FileStr(t)
             | CType::EnvExists(t)
@@ -1429,6 +1441,7 @@ impl CType {
             )),
             CType::Neg(t) => Arc::new(CType::Neg(t.clone().degroup())),
             CType::Len(t) => Arc::new(CType::Len(t.clone().degroup())),
+            CType::Rest(t) => Arc::new(CType::Rest(t.clone().degroup())),
             CType::Size(t) => Arc::new(CType::Size(t.clone().degroup())),
             CType::FileStr(t) => Arc::new(CType::FileStr(t.clone().degroup())),
             CType::Concat(a, b) => {
@@ -2061,6 +2074,7 @@ impl CType {
                         | CType::Max(_)
                         | CType::Neg(_)
                         | CType::Len(_)
+                        | CType::Rest(_)
                         | CType::Size(_),
                     ) => {
                         // TODO: This should allow us to constrain which generic values are
@@ -2209,6 +2223,10 @@ impl CType {
                         input.push(t2.clone());
                     }
                     (CType::Len(t1), CType::Len(t2)) => {
+                        arg.push(t1.clone());
+                        input.push(t2.clone());
+                    }
+                    (CType::Rest(t1), CType::Rest(t2)) => {
                         arg.push(t1.clone());
                         input.push(t2.clone());
                     }
@@ -3962,6 +3980,7 @@ impl CType {
                 .unwrap(),
             CType::Neg(t) => CType::neg(t.clone().swap_subtype(old_type, new_type)),
             CType::Len(t) => CType::len(t.clone().swap_subtype(old_type, new_type)),
+            CType::Rest(t) => CType::trest(t.clone().swap_subtype(old_type, new_type)),
             CType::Size(t) => CType::size(t.clone().swap_subtype(old_type, new_type)),
             CType::FileStr(t) => CType::filestr(t.clone().swap_subtype(old_type, new_type)),
             CType::Concat(a, b) => CType::concat(
@@ -4287,6 +4306,13 @@ impl CType {
             },
             CType::Tuple(ts) | CType::Either(ts) => match &*p {
                 CType::TString(s) => {
+                    if let Ok(i) = s.parse::<i128>() {
+                        if (0..ts.len()).contains(&(i as usize)) {
+                            return ts[i as usize].clone();
+                        } else {
+                            return Arc::new(CType::Fail(format!("{i} is out of bounds for type {t:?}")));
+                        }
+                    }
                     for inner in ts {
                         if let CType::Field(n, f) = &**inner {
                             if n == s {
@@ -4430,6 +4456,27 @@ impl CType {
             }
             CType::Infer(..) => Arc::new(CType::Len(t)),
             _ => Arc::new(CType::Int(1)),
+        }
+    }
+    pub fn trest(t: Arc<CType>) -> Arc<CType> {
+        match &*t {
+            CType::Either(ts) => {
+                if ts.is_empty() {
+                    return Arc::new(CType::Void);
+                }
+                let mut rest: Vec<Arc<CType>> = ts[1..].to_vec();
+                if rest.is_empty() {
+                    return Arc::new(CType::Void);
+                }
+                if !matches!(*rest[rest.len() - 1], CType::Void) {
+                    rest.push(Arc::new(CType::Void));
+                }
+                Arc::new(CType::Either(rest))
+            }
+            CType::Type(_, inner) => CType::trest(inner.clone()),
+            CType::Group(inner) => CType::trest(inner.clone()),
+            CType::Infer(..) => Arc::new(CType::Rest(t)),
+            _ => CType::fail("Rest can only be computed for Either types"),
         }
     }
     pub fn size(t: Arc<CType>) -> Arc<CType> {
@@ -5538,6 +5585,7 @@ pub fn typebaselist_to_ctype(
                                         "Max" => CType::max(args[0].clone(), args[1].clone()),
                                         "Neg" => CType::neg(args[0].clone()),
                                         "Len" => CType::len(args[0].clone()),
+                                        "Rest" => CType::trest(args[0].clone()),
                                         "Size" => CType::size(args[0].clone()),
                                         "FileStr" => CType::filestr(args[0].clone()),
                                         "Concat" => CType::concat(args[0].clone(), args[1].clone()),

@@ -60,6 +60,10 @@ pub fn ctype_to_rtype(
             ctype_to_rtype(t.clone(), deps)
         }
         CType::Void => Ok(("void".to_string(), deps)),
+        CType::Rest(t) => {
+            let rest_type = CType::trest(t.clone());
+            ctype_to_rtype(rest_type, deps)
+        }
         CType::Infer(s, _) => Err(format!(
             "Inferred type matching {s} was not realized before code generation"
         )
@@ -637,16 +641,54 @@ pub fn generate(
                 deps = res.2;
             }
 
-            let res = ctype_to_rtype(typen, deps)?;
-            let out_str = res.0;
-            deps = res.1;
-            Ok((out_str, out, deps)) // TODO: Put something into out?
+            // Check if this is a 2-variant Either that maps to Option/Result
+            if ts.len() == 2 && matches!(*ts[1], CType::Void) {
+                let res = ctype_to_rtype(ts[0].clone(), deps)?;
+                deps = res.1;
+                Ok((format!("Option<{}>", res.0), out, deps))
+            } else {
+                // Build the enum definition for 3+ variant Either
+                let mut enum_type_strs = Vec::new();
+                for t in ts {
+                    match &**t {
+                        CType::Field(k, v) => {
+                            let res = ctype_to_rtype(v.clone(), deps)?;
+                            deps = res.1;
+                            enum_type_strs.push(format!("{}({})", k, res.0));
+                        }
+                        CType::Type(n, t) => {
+                            let res = ctype_to_rtype(t.clone(), deps)?;
+                            deps = res.1;
+                            enum_type_strs.push(format!("{}({})", n, res.0));
+                        }
+                        CType::Void => enum_type_strs.push("void".to_string()),
+                        _otherwise => {
+                            let res = ctype_to_rtype(t.clone(), deps)?;
+                            deps = res.1;
+                            let name = t.clone().to_callable_string();
+                            enum_type_strs.push(format!("{}({})", name, res.0));
+                        }
+                    }
+                }
+                let enum_key = typen.to_callable_string();
+                let enum_def = format!(
+                    "#[derive(Clone)]\nenum {} {{ {} }}",
+                    enum_key,
+                    enum_type_strs.join(", ")
+                );
+                out.insert(enum_key.clone(), enum_def);
+                Ok((enum_key, out, deps))
+            }
         }
         CType::Group(g) => {
             let res = generate(g.clone(), out, deps)?;
             out = res.1;
             deps = res.2;
             Ok(("".to_string(), out, deps))
+        }
+        CType::Rest(t) => {
+            let rest_type = CType::trest(t.clone());
+            generate(rest_type, out, deps)
         }
         _otherwise => {
             let res = ctype_to_rtype(typen, deps)?;
