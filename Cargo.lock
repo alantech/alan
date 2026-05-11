@@ -1466,9 +1466,9 @@ dependencies = [
 
 [[package]]
 name = "ordered_hash_map"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a6c699f8a30f345785be969deed7eee4c73a5de58c7faf61d6a3251ef798ff61"
+checksum = "fe5a1cbf49ce5de21ddae71cd1fbe91ff9e38d6a7a9af366fd9be6cea94d856f"
 dependencies = [
  "hashbrown 0.15.5",
 ]
