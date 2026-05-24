@@ -51,6 +51,7 @@ pub enum CType {
     Field(String, Arc<CType>),
     Either(Vec<Arc<CType>>),
     Prop(Arc<CType>, Arc<CType>),
+    Exclude(Arc<CType>, Arc<CType>),
     AnyOf(Vec<Arc<CType>>),
     Buffer(Arc<CType>, Arc<CType>),
     Array(Arc<CType>),
@@ -65,7 +66,7 @@ pub enum CType {
     Max(Vec<Arc<CType>>),
     Neg(Arc<CType>),
     Len(Arc<CType>),
-    Rest(Arc<CType>),
+ 
     Size(Arc<CType>),
     FileStr(Arc<CType>),
     Concat(Arc<CType>, Arc<CType>),
@@ -426,6 +427,13 @@ impl CType {
                     ctype_stack.push(dot);
                     ctype_stack.push(t);
                 }
+                CType::Exclude(t, p) => {
+                    str_parts.push("Exclude{");
+                    ctype_stack.push(close_brace);
+                    ctype_stack.push(p);
+                    ctype_stack.push(comma);
+                    ctype_stack.push(t);
+                }
                 CType::AnyOf(ts) => {
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
@@ -524,11 +532,6 @@ impl CType {
                 }
                 CType::Len(t) => {
                     str_parts.push("Len{");
-                    ctype_stack.push(close_brace);
-                    ctype_stack.push(t);
-                }
-                CType::Rest(t) => {
-                    str_parts.push("Rest{");
                     ctype_stack.push(close_brace);
                     ctype_stack.push(t);
                 }
@@ -925,6 +928,13 @@ impl CType {
                     ctype_stack.push(comma);
                     ctype_stack.push(t);
                 }
+                CType::Exclude(t, p) => {
+                    str_parts.push("Exclude{");
+                    ctype_stack.push(close_brace);
+                    ctype_stack.push(p);
+                    ctype_stack.push(comma);
+                    ctype_stack.push(t);
+                }
                 CType::AnyOf(ts) => {
                     str_parts.push("AnyOf{");
                     ctype_stack.push(close_brace);
@@ -1039,11 +1049,6 @@ impl CType {
                 }
                 CType::Len(t) => {
                     str_parts.push("Len{");
-                    ctype_stack.push(close_brace);
-                    ctype_stack.push(t);
-                }
-                CType::Rest(t) => {
-                    str_parts.push("Rest{");
                     ctype_stack.push(close_brace);
                     ctype_stack.push(t);
                 }
@@ -1291,7 +1296,6 @@ impl CType {
             | CType::Field(_, t)
             | CType::Neg(t)
             | CType::Len(t)
-            | CType::Rest(t)
             | CType::Size(t)
             | CType::FileStr(t)
             | CType::EnvExists(t)
@@ -1304,6 +1308,7 @@ impl CType {
             | CType::Dependency(a, b)
             | CType::Import(a, b)
             | CType::Prop(a, b)
+            | CType::Exclude(a, b)
             | CType::Buffer(a, b)
             | CType::Concat(a, b) => a.clone().has_infer() || b.clone().has_infer(),
             CType::Tuple(ts)
@@ -1389,6 +1394,7 @@ impl CType {
                     .collect::<Vec<Arc<CType>>>(),
             )),
             CType::Prop(t, p) => Arc::new(CType::Prop(t.clone().degroup(), p.clone().degroup())),
+            CType::Exclude(t, p) => Arc::new(CType::Exclude(t.clone().degroup(), p.clone().degroup())),
             CType::AnyOf(ts) => Arc::new(CType::AnyOf(
                 ts.iter()
                     .map(|t| t.clone().degroup())
@@ -1441,7 +1447,6 @@ impl CType {
             )),
             CType::Neg(t) => Arc::new(CType::Neg(t.clone().degroup())),
             CType::Len(t) => Arc::new(CType::Len(t.clone().degroup())),
-            CType::Rest(t) => Arc::new(CType::Rest(t.clone().degroup())),
             CType::Size(t) => Arc::new(CType::Size(t.clone().degroup())),
             CType::FileStr(t) => Arc::new(CType::FileStr(t.clone().degroup())),
             CType::Concat(a, b) => {
@@ -1794,6 +1799,12 @@ impl CType {
                         input.push(t2.clone());
                         input.push(p2.clone());
                     }
+                    (CType::Exclude(t1, p1), CType::Exclude(t2, p2)) => {
+                        arg.push(t1.clone());
+                        arg.push(p1.clone());
+                        input.push(t2.clone());
+                        input.push(p2.clone());
+                    }
                     (a, CType::Prop(t, p)) => {
                         // TODO: There's probably a generalized way to handle things like this, but
                         // for now, just hardwire this particular generic resolution used for the
@@ -2074,7 +2085,6 @@ impl CType {
                         | CType::Max(_)
                         | CType::Neg(_)
                         | CType::Len(_)
-                        | CType::Rest(_)
                         | CType::Size(_),
                     ) => {
                         // TODO: This should allow us to constrain which generic values are
@@ -2223,10 +2233,6 @@ impl CType {
                         input.push(t2.clone());
                     }
                     (CType::Len(t1), CType::Len(t2)) => {
-                        arg.push(t1.clone());
-                        input.push(t2.clone());
-                    }
-                    (CType::Rest(t1), CType::Rest(t2)) => {
                         arg.push(t1.clone());
                         input.push(t2.clone());
                     }
@@ -3980,7 +3986,7 @@ impl CType {
                 .unwrap(),
             CType::Neg(t) => CType::neg(t.clone().swap_subtype(old_type, new_type)),
             CType::Len(t) => CType::len(t.clone().swap_subtype(old_type, new_type)),
-            CType::Rest(t) => CType::trest(t.clone().swap_subtype(old_type, new_type)),
+            CType::Exclude(t, p) => CType::exclude(t.clone().swap_subtype(old_type.clone(), new_type.clone()), p.clone().swap_subtype(old_type, new_type)),
             CType::Size(t) => CType::size(t.clone().swap_subtype(old_type, new_type)),
             CType::FileStr(t) => CType::filestr(t.clone().swap_subtype(old_type, new_type)),
             CType::Concat(a, b) => CType::concat(
@@ -4458,25 +4464,127 @@ impl CType {
             _ => Arc::new(CType::Int(1)),
         }
     }
-    pub fn trest(t: Arc<CType>) -> Arc<CType> {
+    pub fn exclude(t: Arc<CType>, n: Arc<CType>) -> Arc<CType> {
+        if t.clone().has_infer() || n.clone().has_infer() {
+            return Arc::new(CType::Exclude(t, n));
+        }
         match &*t {
+            CType::Infer(..) => unreachable!(),
+            CType::Type(_, inner) => CType::exclude(inner.clone(), n),
+            CType::Group(inner) => CType::exclude(inner.clone(), n),
             CType::Either(ts) => {
-                if ts.is_empty() {
+                let result = match &*n {
+                    CType::TString(s) => {
+                        let filtered: Vec<Arc<CType>> = ts.iter().filter(|t| {
+                            if let CType::Field(name, _) = &***t {
+                                name != s
+                            } else {
+                                true
+                            }
+                        }).cloned().collect();
+                        if filtered.len() == ts.len() {
+                            return Arc::new(CType::Fail(format!("Variant with name {s} not found in Either type")));
+                        }
+                        filtered
+                    }
+                    CType::Int(i) => {
+                        let idx = *i as usize;
+                        if idx >= ts.len() {
+                            return Arc::new(CType::Fail(format!("Index {idx} out of bounds for Either type with {} variants", ts.len())));
+                        }
+                        let mut filtered: Vec<Arc<CType>> = ts.iter().enumerate().filter(|(idx_in_either, _)| {
+                            *idx_in_either != idx
+                        }).map(|(_, t)| t.clone()).collect();
+                        if filtered.is_empty() {
+                            return Arc::new(CType::Void);
+                        }
+                        if !matches!(*filtered[filtered.len() - 1], CType::Void) {
+                            filtered.push(Arc::new(CType::Void));
+                        }
+                        filtered
+                    }
+                    otherwise => {
+                        CType::fail(&format!(
+                            "Exclude index must be a name or integer, not {otherwise:?}"
+                        ))
+                    }
+                };
+                if result.is_empty() {
                     return Arc::new(CType::Void);
                 }
-                let mut rest: Vec<Arc<CType>> = ts[1..].to_vec();
-                if rest.is_empty() {
-                    return Arc::new(CType::Void);
+                if result.len() == 1 {
+                    return result.into_iter().next().unwrap();
                 }
-                if !matches!(*rest[rest.len() - 1], CType::Void) {
-                    rest.push(Arc::new(CType::Void));
-                }
-                Arc::new(CType::Either(rest))
+                Arc::new(CType::Either(result))
             }
-            CType::Type(_, inner) => CType::trest(inner.clone()),
-            CType::Group(inner) => CType::trest(inner.clone()),
-            CType::Infer(..) => Arc::new(CType::Rest(t)),
-            _ => CType::fail("Rest can only be computed for Either types"),
+            CType::Tuple(ts) => {
+                let result = match &*n {
+                    CType::TString(s) => {
+                        let filtered: Vec<Arc<CType>> = ts.iter().filter(|t| {
+                            if let CType::Field(name, _) = &***t {
+                                name != s
+                            } else {
+                                true
+                            }
+                        }).cloned().collect();
+                        if filtered.len() == ts.len() {
+                            return Arc::new(CType::Fail(format!("Element with name {s} not found in Tuple type")));
+                        }
+                        filtered
+                    }
+                    CType::Int(i) => {
+                        let idx = *i as usize;
+                        if idx >= ts.len() {
+                            return Arc::new(CType::Fail(format!("Index {idx} out of bounds for Tuple type with {} elements", ts.len())));
+                        }
+                        let filtered: Vec<Arc<CType>> = ts.iter().enumerate().filter(|(idx_in_tup, _)| {
+                            *idx_in_tup != idx
+                        }).map(|(_, t)| t.clone()).collect();
+                        if filtered.is_empty() {
+                            return Arc::new(CType::Void);
+                        }
+                        if filtered.len() == 1 {
+                            return filtered.into_iter().next().unwrap();
+                        }
+                        return Arc::new(CType::Tuple(filtered));
+                    }
+                    otherwise => {
+                        CType::fail(&format!(
+                            "Exclude index must be a name or integer, not {otherwise:?}"
+                        ))
+                    }
+                };
+                if result.is_empty() {
+                    return Arc::new(CType::Void);
+                }
+                Arc::new(CType::Tuple(result))
+            }
+            CType::Field(name, _) => {
+                match &*n {
+                    CType::TString(s) => {
+                        if name == s {
+                            Arc::new(CType::Void)
+                        } else {
+                            Arc::new(CType::Fail(format!("Field name {s} does not match {name}")))
+                        }
+                    }
+                    CType::Int(i) => {
+                        if *i == 0 {
+                            Arc::new(CType::Void)
+                        } else {
+                            Arc::new(CType::Fail("Cannot exclude value (index 1) from Field type, only label (index 0)".to_string()))
+                        }
+                    }
+                    otherwise => {
+                        CType::fail(&format!(
+                            "Exclude index must be a name or integer, not {otherwise:?}"
+                        ))
+                    }
+                }
+            }
+            otherwise => CType::fail(&format!(
+                "Cannot exclude from type {otherwise:?}. Only Either, Tuple, and Field types are supported."
+            )),
         }
     }
     pub fn size(t: Arc<CType>) -> Arc<CType> {
@@ -5577,6 +5685,7 @@ pub fn typebaselist_to_ctype(
                                         "Field" => CType::field(args.clone()),
                                         "Either" => CType::either(args.clone()),
                                         "Prop" => CType::prop(args[0].clone(), args[1].clone()),
+                                        "Exclude" => CType::exclude(args[0].clone(), args[1].clone()),
                                         "AnyOf" => CType::anyof(args.clone()),
                                         "Buffer" => CType::buffer(args.clone()),
                                         "Array" => Arc::new(CType::Array(args[0].clone())),
@@ -5584,9 +5693,8 @@ pub fn typebaselist_to_ctype(
                                         "Min" => CType::min(args[0].clone(), args[1].clone()),
                                         "Max" => CType::max(args[0].clone(), args[1].clone()),
                                         "Neg" => CType::neg(args[0].clone()),
-                                        "Len" => CType::len(args[0].clone()),
-                                        "Rest" => CType::trest(args[0].clone()),
-                                        "Size" => CType::size(args[0].clone()),
+                                       "Len" => CType::len(args[0].clone()),
+                                         "Size" => CType::size(args[0].clone()),
                                         "FileStr" => CType::filestr(args[0].clone()),
                                         "Concat" => CType::concat(args[0].clone(), args[1].clone()),
                                         "Env" => CType::env(args[0].clone()),

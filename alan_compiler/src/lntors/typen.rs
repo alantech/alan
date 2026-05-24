@@ -60,10 +60,6 @@ pub fn ctype_to_rtype(
             ctype_to_rtype(t.clone(), deps)
         }
         CType::Void => Ok(("void".to_string(), deps)),
-        CType::Rest(t) => {
-            let rest_type = CType::trest(t.clone());
-            ctype_to_rtype(rest_type, deps)
-        }
         CType::Infer(s, _) => Err(format!(
             "Inferred type matching {s} was not realized before code generation"
         )
@@ -646,6 +642,10 @@ pub fn generate(
                 let res = ctype_to_rtype(ts[0].clone(), deps)?;
                 deps = res.1;
                 Ok((format!("Option<{}>", res.0), out, deps))
+            } else if ts.len() == 2 && matches!(&*ts[1], CType::Type(n, _) if n == "Error") {
+                let res = ctype_to_rtype(ts[0].clone(), deps)?;
+                deps = res.1;
+                Ok((format!("Result<{}, alan_std::AlanError>", res.0), out, deps))
             } else {
                 // Build the enum definition for 3+ variant Either
                 let mut enum_type_strs = Vec::new();
@@ -685,10 +685,6 @@ pub fn generate(
             out = res.1;
             deps = res.2;
             Ok(("".to_string(), out, deps))
-        }
-        CType::Rest(t) => {
-            let rest_type = CType::trest(t.clone());
-            generate(rest_type, out, deps)
         }
         _otherwise => {
             let res = ctype_to_rtype(typen, deps)?;

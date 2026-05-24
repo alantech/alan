@@ -45,6 +45,7 @@ ctype Array{T}; // An array type, a variable-length array of the specified type 
 
 /// Compute types
 ctype Prop{T, P}; // Extracts the inner type from the outer type by the property name or number
+ctype Exclude{T, N}; // Returns the type with the specified property or index excluded, works with Either, Tuple, and Field
 ctype Len{A}; // Returns the length of the input type in terms of the number of elements it contains, which is most useful for Buffers, Tuples, and Either, causes a compiler failure for Arrays, and returns 1 for everything else
 ctype Size{T}; // Returns the size in bytes of the type in question, if possible, causing a compiler failure otherwise.
 ctype FileStr{F}; // Read a file and return a string constant, useful for including large strings from a separate, nearby file, or fails if it doesn't exist
@@ -77,8 +78,6 @@ ctype Lt{A, B}; // Returns true if A is less than B (and are an int or float)
 ctype Lte{A, B}; // Returns true if A is less than or equal to B
 ctype Gt{A, B}; // Returns true if A is greater than B
 ctype Gte{A, B}; // Returns true if A is greater than or equal to B
-ctype Rest{T}; // Returns all variants of an Either type except the first, appending () if not already the last variant
-
 // Defining the operators in the type system; they can be defined before the types themselves
 type infix Function as -> precedence 4; // I -> O, where I is the input and O is the output. With Tuples and Fields you can reconstruct arguments for functions.
 type infix Call as :: precedence 0; // N :: F, where N is the native function (or method) and F is the function type
@@ -143,6 +142,7 @@ type{Js} Error = Binds{"alan_std.AlanError" <- RootBacking};
 type Fallible{T} = T | Error;
 type Maybe{T} = T | ();
 type First{T} = Prop{T, 0};
+type Rest{T} = Exclude{T, 0};
 
 // Binding the float types
 type{Rs} f32 = Binds{"f32"};

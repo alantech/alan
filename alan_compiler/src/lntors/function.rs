@@ -403,7 +403,7 @@ pub fn from_microstatement(
                     if args.len() == 1 {
                         let arg_type = args[0].get_type().degroup();
                         if let CType::Either(ts) = &*arg_type.clone() {
-                            let rest_type = CType::trest(arg_type.clone());
+                            let rest_type = CType::exclude(arg_type.clone(), Arc::new(CType::Int(0)));
                             if ts.len() <= 1 {
                                 return Ok(("void".to_string(), out, deps));
                             }
@@ -859,7 +859,7 @@ pub fn from_microstatement(
                                     ));
                                 }
                                 if function.name == "rest" {
-                                    let rest_type = CType::trest(function.args()[0].2.clone());
+                                    let rest_type = CType::exclude(function.args()[0].2.clone(), Arc::new(CType::Int(0)));
                                     let rest_enum_name = rest_type.clone().to_callable_string();
                                     let (_rest_rtype, new_deps) = typen::ctype_to_rtype(rest_type.clone(), deps)?;
                                     deps = new_deps;
