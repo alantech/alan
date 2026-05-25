@@ -3581,12 +3581,17 @@ impl CType {
                             }
                         }
                     }
-                    // Create the parent constructor: fn TypeName(arg: ParentType) -> TypeName
+                    // Create the parent constructor: fn TypeName(arg: ParentType) -> Maybe{TypeName}
+                    // Returns Maybe because the parent may hold the excluded variant
+                    let maybe_ret = Arc::new(CType::Either(
+                        vec![t.clone(), Arc::new(CType::Void)],
+                        Vec::new(),
+                    ));
                     fs.push(Arc::new(Function {
                         name: constructor_fn_name.clone(),
                         typen: Arc::new(CType::Function(
                             Arc::new(CType::Tuple(vec![parent.clone()], Vec::new())),
-                            t.clone(),
+                            maybe_ret,
                         )),
                         microstatements: Vec::new(),
                         kind: FnKind::Derived,

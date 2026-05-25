@@ -2008,3 +2008,72 @@ test!(exclude_tuple_parent_constructor_recursive => r#"
   }"#;
   stdout "42\ntrue\n";
 );
+
+// Exclude Either tests
+
+test!(exclude_either_by_index => r#"
+  type MyEither = i64 | string | bool;
+  type MyFiltered = Exclude{MyEither, 1};
+  export fn main {
+    let v: MyEither = 42.MyEither;
+    let res: MyFiltered = 42.MyFiltered;
+    res.print;
+  }"#;
+  stdout "42\n";
+);
+
+test!(exclude_either_by_index_first => r#"
+  type MyEither2 = i64 | string | bool;
+  type MyFiltered2 = Exclude{MyEither2, 0};
+  export fn main {
+    let v: MyEither2 = true.MyEither2;
+    let res: MyFiltered2 = true.MyFiltered2;
+    res.print;
+  }"#;
+  stdout "true\n";
+);
+
+test!(exclude_either_parent_constructor => r#"
+  type MyEither = i64 | string | bool;
+  type MyFiltered = Exclude{MyEither, 1};
+  export fn main {
+    let v: MyEither = 42.MyEither;
+    let res: Maybe{MyFiltered} = MyFiltered(v);
+    if(res.exists,
+      fn { res.getOrExit.print; },
+      fn { 'void'.print; });
+  }"#;
+  stdout "42\n";
+);
+
+test!(exclude_either_parent_constructor_none => r#"
+  type MyEither = i64 | string | bool;
+  type MyFiltered = Exclude{MyEither, 1};
+  export fn main {
+    let v: MyEither = "hello".MyEither;
+    let res: Maybe{MyFiltered} = MyFiltered(v);
+    if(res.exists,
+      fn { res.getOrExit.print; },
+      fn { 'void'.print; });
+  }"#;
+  stdout "void\n";
+);
+
+test!(exclude_either_parent_constructor_recursive => r#"
+  type Grandparent = i64 | string | bool | f64;
+  type Parent = Exclude{Grandparent, 3};
+  type Child = Exclude{Parent, 1};
+  export fn main {
+    let gp: Grandparent = 42.Grandparent;
+    let p: Maybe{Parent} = Parent(gp);
+    if(p.exists,
+      fn {
+        let c: Maybe{Child} = Child(p.getOrExit);
+        if(c.exists,
+          fn { c.getOrExit.print; },
+          fn { 'void'.print; });
+      },
+      fn { 'void'.print; });
+  }"#;
+  stdout "42\n";
+);

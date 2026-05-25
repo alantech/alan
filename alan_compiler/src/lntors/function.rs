@@ -1124,6 +1124,60 @@ pub fn from_microstatement(
                                     CType::Type(n, _) => n.clone(),
                                     _ => enum_type.clone().to_callable_string(),
                                 };
+                                // Check for parent constructor: single argument whose type is an
+                                // Either containing a superset of the child's variants
+                                if argstrs.len() == 1 {
+                                    let single_arg_type = match &function.args().first() {
+                                        Some(t) => t.2.clone().degroup(),
+                                        None => Arc::new(CType::Void),
+                                    };
+                                    let parent_type_name = single_arg_type.clone().to_callable_string();
+                                    if let CType::Either(parent_variants, _) = &*single_arg_type {
+                                        // Find which parent variants match child variants
+                                        let mut matched_indices: Vec<usize> = Vec::new();
+                                        for (idx, pv) in parent_variants.iter().enumerate() {
+                                            let parent_key = pv.clone().degroup().to_callable_string();
+                                            for cv in ts {
+                                                if cv.clone().degroup().to_callable_string() == parent_key {
+                                                    matched_indices.push(idx);
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        if !matched_indices.is_empty() && matched_indices.len() < parent_variants.len() {
+                                            let parent_arg = match argstrs[0].strip_prefix("&mut ")
+                                            {
+                                                Some(s) => s.to_string(),
+                                                None => argstrs[0].clone(),
+                                            };
+                                            // Generate match expression: Some(Child::Variant(v)) for matched, None for excluded
+                                            let mut arms = Vec::new();
+                                            for (idx, pv) in parent_variants.iter().enumerate() {
+                                                let variant_name = pv.clone().degroup().to_callable_string();
+                                                if matched_indices.contains(&idx) {
+                                                    arms.push(format!(
+                                                        "{}::{}(v) => Some({}::{}(v))",
+                                                        parent_type_name,
+                                                        variant_name,
+                                                        function.name,
+                                                        variant_name
+                                                    ));
+                                                } else {
+                                                    arms.push(format!(
+                                                        "{}::{}(_) => None",
+                                                        parent_type_name,
+                                                        variant_name
+                                                    ));
+                                                }
+                                            }
+                                            return Ok((
+                                                format!("match {} {{\n    {}\n}}", parent_arg, arms.join(",\n    ")),
+                                                out,
+                                                deps,
+                                            ));
+                                        }
+                                    }
+                                }
                                 for t in ts {
                                     let inner_type = t.clone().degroup();
                                     match &*inner_type {
@@ -1606,8 +1660,8 @@ pub fn from_microstatement(
                                                 deps,
                                             ));
                                         }
-                                    }
-                                }
+                                     }
+                                 }
                                 return Err(format!("Cannot generate a constructor function for {} type as it is not part of the {} type", enum_name, function.name).into());
                             }
                             CType::Tuple(ts, _) => {
@@ -1762,6 +1816,78 @@ pub fn from_microstatement(
                             }
                             otherwise => {
                                 return Err(format!("How did you get here? Trying to create a constructor function {function:?} for {otherwise:?}").into());
+                            }
+                        }
+                    } else if function.args().len() == 1 {
+                        // Check for parent constructor: return type is Maybe{Child} and arg is a superset Either
+                        let ret_inner = match &*ret_type {
+                            CType::Either(ts, _) if ts.len() == 2 => {
+                                if let CType::Void = &*ts[1] {
+                                    Some(ts[0].clone())
+                                } else {
+                                    None
+                                }
+                            }
+                            _ => None,
+                        };
+                        if let Some(child_type_raw) = ret_inner {
+                            // Unwrap Type and Group wrappers to get to the inner type
+                            let mut child_type = child_type_raw.clone().degroup();
+                            loop {
+                                child_type = match &*child_type {
+                                    CType::Type(_, t) => t.clone(),
+                                    CType::Group(t) => t.clone(),
+                                    _ => break,
+                                };
+                            }
+                            let child_name = child_type.clone().to_callable_string();
+                            if function.name == child_name {
+                                let arg_type = function.args()[0].2.clone().degroup();
+                                let parent_type_name = arg_type.clone().to_callable_string();
+                                if let CType::Either(parent_variants, _) = &*arg_type {
+                                    if let CType::Either(child_variants, _) = &*child_type {
+                                        let mut matched_indices: Vec<usize> = Vec::new();
+                                        for (idx, pv) in parent_variants.iter().enumerate() {
+                                            let parent_key = pv.clone().degroup().to_callable_string();
+                                            for cv in child_variants {
+                                                if cv.clone().degroup().to_callable_string() == parent_key {
+                                                    matched_indices.push(idx);
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        if !matched_indices.is_empty() && matched_indices.len() < parent_variants.len() {
+                                            let parent_arg = match argstrs[0].strip_prefix("&mut ") {
+                                                Some(s) => s.to_string(),
+                                                None => argstrs[0].clone(),
+                                            };
+                                            let mut arms = Vec::new();
+                                            for (idx, pv) in parent_variants.iter().enumerate() {
+                                                let variant_name = pv.clone().degroup().to_callable_string();
+                                                if matched_indices.contains(&idx) {
+                                                    arms.push(format!(
+                                                        "{}::{}(v) => Some({}::{}(v))",
+                                                        parent_type_name,
+                                                        variant_name,
+                                                        function.name,
+                                                        variant_name
+                                                    ));
+                                                } else {
+                                                    arms.push(format!(
+                                                        "{}::{}(_) => None",
+                                                        parent_type_name,
+                                                        variant_name
+                                                    ));
+                                                }
+                                            }
+                                            return Ok((
+                                                format!("match {} {{\n    {}\n}}", parent_arg, arms.join(",\n    ")),
+                                                out,
+                                                deps,
+                                            ));
+                                        }
+                                    }
+                                }
                             }
                         }
                     }

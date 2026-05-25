@@ -1281,6 +1281,49 @@ pub fn from_microstatement(
                                         _ => {}
                                     }
                                 }
+                                // Check for parent constructor: single argument whose type is an
+                                // Either containing a superset of the child's variants
+                                if argstrs.len() == 1 {
+                                    let single_arg_type = match &function.args().first() {
+                                        Some(t) => t.2.clone().degroup(),
+                                        None => Arc::new(CType::Void),
+                                    };
+                                    if let CType::Either(parent_variants, _) = &*single_arg_type {
+                                        // Find which parent variants match child variants
+                                        let mut matched_types: Vec<String> = Vec::new();
+                                        for pv in parent_variants.iter() {
+                                            let parent_key = pv.clone().degroup().to_callable_string();
+                                            for cv in ts {
+                                                if cv.clone().degroup().to_callable_string() == parent_key {
+                                                    matched_types.push(parent_key);
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        if !matched_types.is_empty() && matched_types.len() < parent_variants.len() {
+                                            let parent_arg = match argstrs[0].strip_prefix("&mut ")
+                                            {
+                                                Some(s) => s.to_string(),
+                                                None => argstrs[0].clone(),
+                                            };
+                                            // Generate type check: if (typeof arg === 'type') return arg; else return null;
+                                            let type_checks: Vec<String> = matched_types.iter().map(|t| {
+                                                match t.as_str() {
+                                                    "i64" | "u64" | "f64" => format!("typeof {} === 'number'", parent_arg),
+                                                    "string" => format!("typeof {} === 'string'", parent_arg),
+                                                    "bool" => format!("typeof {} === 'boolean'", parent_arg),
+                                                    _ => format!("{}.type === '{}'", parent_arg, t),
+                                                }
+                                            }).collect();
+                                            let condition = type_checks.join(" || ");
+                                            return Ok((
+                                                format!("({} ? {} : null)", condition, parent_arg),
+                                                out,
+                                                deps,
+                                            ));
+                                        }
+                                    }
+                                }
                                 return Err(format!("Cannot generate a constructor function for {} type as it is not part of the {} type", enum_name, function.name).into());
                             }
                             CType::Tuple(ts, _) => {
@@ -1448,6 +1491,75 @@ pub fn from_microstatement(
                             }
                             otherwise => {
                                 return Err(format!("How did you get here? Trying to create a constructor function {function:?} for {otherwise:?}").into());
+                            }
+                        }
+                    } else if function.args().len() == 1 {
+                        // Check for parent constructor: return type is Maybe{Child} and arg is a superset Either
+                        let ret_inner = match &*ret_type {
+                            CType::Either(ts, _) if ts.len() == 2 => {
+                                if let CType::Void = &*ts[1] {
+                                    Some(ts[0].clone())
+                                } else {
+                                    None
+                                }
+                            }
+                            _ => None,
+                        };
+                        if let Some(child_type_raw) = ret_inner {
+                            let mut child_type = child_type_raw.clone().degroup();
+                            loop {
+                                child_type = match &*child_type {
+                                    CType::Type(_, t) => t.clone(),
+                                    CType::Group(t) => t.clone(),
+                                    _ => break,
+                                };
+                            }
+                            let child_name = child_type.clone().to_callable_string();
+                            if function.name == child_name {
+                                let arg_type = function.args()[0].2.clone().degroup();
+                                if let CType::Either(parent_variants, _) = &*arg_type {
+                                    if let CType::Either(child_variants, _) = &*child_type {
+                                        let mut matched_types: Vec<String> = Vec::new();
+                                        for pv in parent_variants.iter() {
+                                            let parent_key = pv.clone().degroup().to_callable_string();
+                                            for cv in child_variants {
+                                                if cv.clone().degroup().to_callable_string() == parent_key {
+                                                    matched_types.push(parent_key);
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        if !matched_types.is_empty() && matched_types.len() < parent_variants.len() {
+                                            let parent_arg = match argstrs[0].strip_prefix("&mut ") {
+                                                Some(s) => s.to_string(),
+                                                None => argstrs[0].clone(),
+                                            };
+                                            let type_checks: Vec<String> = matched_types.iter().map(|t| {
+                                                match t.as_str() {
+                                                    "i64" => format!("{} instanceof alan_std.I64", parent_arg),
+                                                    "u64" => format!("{} instanceof alan_std.U64", parent_arg),
+                                                    "f64" => format!("{} instanceof alan_std.F64", parent_arg),
+                                                    "i32" => format!("{} instanceof alan_std.I32", parent_arg),
+                                                    "u32" => format!("{} instanceof alan_std.U32", parent_arg),
+                                                    "i16" => format!("{} instanceof alan_std.I16", parent_arg),
+                                                    "u16" => format!("{} instanceof alan_std.U16", parent_arg),
+                                                    "i8" => format!("{} instanceof alan_std.I8", parent_arg),
+                                                    "u8" => format!("{} instanceof alan_std.U8", parent_arg),
+                                                    "f32" => format!("{} instanceof alan_std.F32", parent_arg),
+                                                    "string" => format!("typeof {} === 'string'", parent_arg),
+                                                    "bool" => format!("{} instanceof alan_std.Bool", parent_arg),
+                                                    _ => format!("{}.type === '{}'", parent_arg, t),
+                                                }
+                                            }).collect();
+                                            let condition = type_checks.join(" || ");
+                                            return Ok((
+                                                format!("({} ? {} : null)", condition, parent_arg),
+                                                out,
+                                                deps,
+                                            ));
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
