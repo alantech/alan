@@ -16,7 +16,7 @@ pub fn ctype_to_jtype(
         )
         .into()),
         CType::Type(n, t) => match &**t {
-            CType::Either(ts) => {
+        CType::Either(ts, _) => {
                 if ts.len() == 2 && (matches!(*ts[1], CType::Void) || matches!(&*ts[1], CType::Type(n, _) if n == "Error")) {
                     return Ok(("".to_string(), deps));
                 }
@@ -35,7 +35,7 @@ pub fn ctype_to_jtype(
                             deps = res.1;
                         }
                         CType::Void => { /* Do nothing */ }
-                        CType::Tuple(ts) => {
+                        CType::Tuple(ts, _) => {
                             for t in ts {
                                 let res = ctype_to_jtype(t.clone(), deps)?;
                                 deps = res.1;
@@ -56,7 +56,7 @@ pub fn ctype_to_jtype(
                 }
                 Ok(("".to_string(), deps))
             }
-            CType::Tuple(ts) => {
+            CType::Tuple(ts, _) => {
                 let mut out = Vec::new();
                 for (i, t) in ts.iter().enumerate() {
                     match &**t {
@@ -228,7 +228,7 @@ pub fn ctype_to_jtype(
             deps = res.1;
             Ok(("".to_string(), deps)) // TODO: What do we even do with this?
         }
-        CType::Tuple(ts) => {
+        CType::Tuple(ts, _) => {
             for t in ts {
                 let res = ctype_to_jtype(t.clone(), deps)?;
                 deps = res.1;
@@ -240,7 +240,7 @@ pub fn ctype_to_jtype(
             deps = res.1;
             Ok(("".to_string(), deps))
         }
-        CType::Either(ts) => {
+        CType::Either(ts, _) => {
             for t in ts {
                 let res = ctype_to_jtype(t.clone(), deps)?;
                 deps = res.1;

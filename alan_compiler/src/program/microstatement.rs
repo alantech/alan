@@ -864,7 +864,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                     // CType instead of this stuff
                                     let farg_types = match &**i {
                                         CType::Void => Vec::new(),
-                                        CType::Tuple(ts) => ts.clone(),
+                                        CType::Tuple(ts, _) => ts.clone(),
                                         _other => vec![i.clone()],
                                     };
                                     for (a, b) in farg_types.iter().zip(&arg_types) {

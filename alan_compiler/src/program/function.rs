@@ -23,7 +23,7 @@ pub fn type_to_args(t: Arc<CType>) -> Vec<(String, ArgKind, Arc<CType>)> {
         CType::Function(i, _) => {
             let mut args = Vec::new();
             match &**i {
-                CType::Tuple(ts) => {
+                CType::Tuple(ts, _) => {
                     for (i, t) in ts.iter().enumerate() {
                         args.push(match &**t {
                             CType::Field(argname, t) => match &**t {
@@ -53,7 +53,7 @@ pub fn type_to_args(t: Arc<CType>) -> Vec<(String, ArgKind, Arc<CType>)> {
             }
             args
         }
-        CType::Tuple(ts) => {
+        CType::Tuple(ts, _) => {
             let mut args = Vec::new();
             for (i, t) in ts.iter().enumerate() {
                 args.push(match &**t {
@@ -115,6 +115,7 @@ pub fn args_and_rettype_to_type(
                         ))
                     })
                     .collect::<Vec<Arc<CType>>>(),
+                Vec::new(),
             )
         }),
         rettype,

@@ -1957,94 +1957,54 @@ test!(either_dedup_single_unwrap => r#"
     stdout "8\n";
 );
 
-// First/Rest pattern matching for recursive Either processing
+// Exclude constructor tests
 
-test!(first_matches_first_variant => r#"
-    export fn main {
-      let v = Either{string, i64, bool}("hello");
-      first(v).print;
-    }"#;
-    stdout "hello\n";
+test!(exclude_tuple_by_index => r#"
+  type MyTuple = a: i64, b: string, c: bool;
+  type MyFiltered = Exclude{MyTuple, 1};
+  export fn main {
+    let v: MyTuple = MyTuple(42, "hello", true);
+    let res: MyFiltered = MyFiltered(v.a, v.c);
+    res.a.print;
+    res.c.print;
+  }"#;
+  stdout "42\ntrue\n";
 );
 
-test!(first_no_match_returns_void => r#"
-    export fn main {
-      let v = Either{string, i64, bool}(42);
-      first(v).print;
-    }"#;
-    stdout "void\n";
+test!(exclude_tuple_by_index_first => r#"
+  type MyTuple2 = a: i64, b: string, c: bool;
+  type MyFiltered = Exclude{MyTuple2, 0};
+  export fn main {
+    let v: MyTuple2 = MyTuple2(42, "hello", true);
+    let res: MyFiltered = MyFiltered(v.b, v.c);
+    res.b.print;
+    res.c.print;
+  }"#;
+  stdout "hello\ntrue\n";
 );
 
-test!(first_with_two_variants => r#"
-    export fn main {
-      let v = Either{string, i64}("world");
-      first(v).print;
-    }"#;
-    stdout "world\n";
+test!(exclude_tuple_parent_constructor => r#"
+  type MyTuple = a: i64, b: string, c: bool;
+  type MyFiltered = Exclude{MyTuple, 1};
+  export fn main {
+    let v: MyTuple = MyTuple(42, "hello", true);
+    let res: MyFiltered = MyFiltered(v);
+    res.a.print;
+    res.c.print;
+  }"#;
+  stdout "42\ntrue\n";
 );
 
-test!(first_with_two_variants_no_match => r#"
-    export fn main {
-      let v = Either{string, i64}(99);
-      first(v).print;
-    }"#;
-    stdout "void\n";
-);
-
-test!(rest_discards_first_variant => r#"
-    export fn main {
-      let v = Either{string, i64, bool}("hello");
-      rest(v);
-    }"#;
-    stdout "";
-);
-
-test!(rest_preserves_second_variant => r#"
-    export fn main {
-      let v = Either{string, i64, bool}(42);
-      first(rest(v)).print;
-    }"#;
-    stdout "42\n";
-);
-
-test!(rest_preserves_third_variant => r#"
-    export fn main {
-      let v = Either{string, i64, bool}(true);
-      first(rest(v)).print;
-    }"#;
-    stdout "void\n";
-);
-
-test!(rest_with_two_variants_discarded => r#"
-    export fn main {
-      let v = Either{string, i64}("hello");
-      rest(v).print;
-    }"#;
-    stdout "void\n";
-);
-
-test!(rest_with_two_variants_preserved => r#"
-    export fn main {
-      let v = Either{string, i64}(42);
-      rest(v).print;
-    }"#;
-    stdout "42\n";
-);
-
-test!(first_rest_chain => r#"
-    export fn main {
-      let v = Either{string, i64, bool}("hello");
-      first(v).print;
-      first(rest(v)).print;
-    }"#;
-    stdout "hello\nvoid\n";
-);
-
-test!(first_rest_chain_second => r#"
-    export fn main {
-      let v = Either{string, i64, bool}(42);
-      first(v).print;
-      first(rest(v)).print;
-    }"#;
-    stdout "void\n42\n";
+test!(exclude_tuple_parent_constructor_recursive => r#"
+  type Grandparent = a: i64, b: string, c: bool, d: f64;
+  type Parent = Exclude{Grandparent, 3};
+  type Child = Exclude{Parent, 1};
+  export fn main {
+    let gp: Grandparent = Grandparent(42, "hello", true, 3.14);
+    let p: Parent = Parent(gp);
+    let c: Child = Child(p);
+    c.a.print;
+    c.c.print;
+  }"#;
+  stdout "42\ntrue\n";
 );

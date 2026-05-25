@@ -318,11 +318,17 @@ impl<'a> Scope<'a> {
                     .collect::<Vec<Arc<CType>>>();
                 let output = f.rettype();
                 match generics {
-                    None => Arc::new(CType::Function(Arc::new(CType::Tuple(input)), output)),
+                    None => Arc::new(CType::Function(
+                        Arc::new(CType::Tuple(input, Vec::new())),
+                        output,
+                    )),
                     Some(gs) => Arc::new(CType::Generic(
                         f.name.clone(),
                         gs,
-                        Arc::new(CType::Function(Arc::new(CType::Tuple(input)), output)),
+                        Arc::new(CType::Function(
+                            Arc::new(CType::Tuple(input, Vec::new())),
+                            output,
+                        )),
                     )),
                 }
             })

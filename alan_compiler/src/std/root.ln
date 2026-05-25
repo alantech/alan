@@ -269,12 +269,6 @@ fn{Js} exists{T} (m: T!) = {"((a) => new alan_std.Bool(!(a instanceof alan_std.A
 fn{Rs} string(e: Error) = {"format!" :: ("{}", Error) -> string}(e);
 fn{Js} string Property{"message"} :: Error -> string;
 
-/// First and Rest functions for Either type recursion
-fn{Rs} first{T}(v: T) -> Maybe{First{T}} = {"first_either" :: T -> Maybe{First{T}}}(v);
-fn{Js} first{T}(v: T) -> Maybe{First{T}} = {"first_either" :: T -> Maybe{First{T}}}(v);
-fn{Rs} rest{T}(v: T) -> Rest{T} = {"rest_either" :: T -> Rest{T}}(v);
-fn{Js} rest{T}(v: T) -> Rest{T} = {"rest_either" :: T -> Rest{T}}(v);
-
 /// Primitive type casting functions
 fn{Rs} f32 Cast{"f32"} :: Deref{i8} -> f32;
 fn{Js} f32 "new alan_std.F32" <- RootBacking :: i8 -> f32;

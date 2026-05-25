@@ -335,52 +335,6 @@ pub fn from_microstatement(
                     Err("Generic functions should have been resolved before reaching here".into())
                 }
                 FnKind::Normal | FnKind::External(_) => {
-                    // Special handling for first_either and rest_either
-                    if function.name == "first_either" || function.name == "rest_either" {
-                        if args.len() == 1 {
-                            let arg_type = args[0].get_type().degroup();
-                            if let CType::Either(ts) = &*arg_type.clone() {
-                                let (a, o, d) = from_microstatement(&args[0], scope, parent_fn, out, deps)?;
-                                out = o;
-                                deps = d;
-                                let get_check = |t: &Arc<CType>| -> String {
-                                    let cls = match &**t {
-                                        CType::Int(_) | CType::Float(_) => return format!("(typeof {} !== 'undefined')", a),
-                                        CType::TString(_) => "alan_std.Str",
-                                        CType::Type(n, _) if matches!(n.as_str(), "string" | "String") => "alan_std.Str",
-                                        CType::Type(n, _) if n == "i64" => "alan_std.I64",
-                                        CType::Type(n, _) if n == "f32" => "alan_std.F32",
-                                        CType::Type(n, _) if n == "f64" => "alan_std.F64",
-                                        CType::Type(n, _) if n == "i8" => "alan_std.I8",
-                                        CType::Type(n, _) if n == "i16" => "alan_std.I16",
-                                        CType::Type(n, _) if n == "i32" => "alan_std.I32",
-                                        CType::Type(n, _) if n == "u8" => "alan_std.U8",
-                                        CType::Type(n, _) if n == "u16" => "alan_std.U16",
-                                        CType::Type(n, _) if n == "u32" => "alan_std.U32",
-                                        CType::Type(n, _) if n == "u64" => "alan_std.U64",
-                                        CType::Type(n, _) if n == "bool" => "alan_std.Bool",
-                                        CType::Type(n, _) => n,
-                                        CType::Field(n, _) => n,
-                                        _ => &t.clone().to_callable_string(),
-                                    };
-                                    format!("({} instanceof {})", a, cls)
-                                };
-                                if function.name == "first_either" {
-                                    if ts.is_empty() {
-                                        return Ok(("null".to_string(), out, deps));
-                                    }
-                                    let check = get_check(&ts[0]);
-                                    return Ok((format!("({} ? {} : null)", check, a), out, deps));
-                                } else if function.name == "rest_either" {
-                                    if ts.len() <= 1 {
-                                        return Ok(("null".to_string(), out, deps));
-                                    }
-                                    let check = get_check(&ts[0]);
-                                    return Ok((format!("(!({}) ? {} : null)", check, a), out, deps));
-                                }
-                            }
-                        }
-                    }
                     let (_, o, d) = typen::generate(function.rettype(), out, deps)?;
                     out = o;
                     deps = d;
@@ -455,52 +409,6 @@ pub fn from_microstatement(
                     ))
                 }
                 FnKind::Bind(jsname) | FnKind::ExternalBind(jsname, _) => {
-                    // Special handling for first_either and rest_either
-                    if jsname == "first_either" || jsname == "rest_either" {
-                        if args.len() == 1 {
-                            let arg_type = args[0].get_type().degroup();
-                            if let CType::Either(ts) = &*arg_type.clone() {
-                                let (a, o, d) = from_microstatement(&args[0], scope, parent_fn, out, deps)?;
-                                out = o;
-                                deps = d;
-                                let get_check = |t: &Arc<CType>| -> String {
-                                    let cls = match &**t {
-                                        CType::Int(_) | CType::Float(_) => return format!("(typeof {} !== 'undefined')", a),
-                                        CType::TString(_) => "alan_std.Str",
-                                        CType::Type(n, _) if matches!(n.as_str(), "string" | "String") => "alan_std.Str",
-                                        CType::Type(n, _) if n == "i64" => "alan_std.I64",
-                                        CType::Type(n, _) if n == "f32" => "alan_std.F32",
-                                        CType::Type(n, _) if n == "f64" => "alan_std.F64",
-                                        CType::Type(n, _) if n == "i8" => "alan_std.I8",
-                                        CType::Type(n, _) if n == "i16" => "alan_std.I16",
-                                        CType::Type(n, _) if n == "i32" => "alan_std.I32",
-                                        CType::Type(n, _) if n == "u8" => "alan_std.U8",
-                                        CType::Type(n, _) if n == "u16" => "alan_std.U16",
-                                        CType::Type(n, _) if n == "u32" => "alan_std.U32",
-                                        CType::Type(n, _) if n == "u64" => "alan_std.U64",
-                                        CType::Type(n, _) if n == "bool" => "alan_std.Bool",
-                                        CType::Type(n, _) => n,
-                                        CType::Field(n, _) => n,
-                                        _ => &t.clone().to_callable_string(),
-                                    };
-                                    format!("({} instanceof {})", a, cls)
-                                };
-                                if jsname == "first_either" {
-                                    if ts.is_empty() {
-                                        return Ok(("null".to_string(), out, deps));
-                                    }
-                                    let check = get_check(&ts[0]);
-                                    return Ok((format!("({} ? {} : null)", check, a), out, deps));
-                                } else {
-                                    if ts.len() <= 1 {
-                                        return Ok(("null".to_string(), out, deps));
-                                    }
-                                    let check = get_check(&ts[0]);
-                                    return Ok((format!("(!({}) ? {} : null)", check, a), out, deps));
-                                }
-                            }
-                        }
-                    }
                     let mut argstrs = Vec::new();
                     for arg in args {
                         let (a, o, d) = from_microstatement(arg, scope, parent_fn, out, deps)?;
@@ -686,7 +594,7 @@ pub fn from_microstatement(
                             };
                         }
                         match &*input_type {
-                            CType::Tuple(ts) => {
+                            CType::Tuple(ts, _) => {
                                 // Short-circuit for direct `<N>` function calls (which can only be
                                 // generated by the internals of the compiler)
                                 if let Ok(i) = function.name.parse::<i64>() {
@@ -732,61 +640,7 @@ pub fn from_microstatement(
                             CType::Field(..) => {
                                 return Ok((format!("{}.arg0", argstrs[0]), out, deps));
                             }
-                            CType::Either(ts) => {
-                                // Helper to get JS class name for a type
-                                let get_js_class = |t: &Arc<CType>| -> String {
-                                    match &**t {
-                                        CType::TString(_) => "alan_std.Str".to_string(),
-                                        CType::Type(n, _) => match n.as_str() {
-                                            "string" | "String" => "alan_std.Str".to_string(),
-                                            "f32" => "alan_std.F32".to_string(),
-                                            "f64" => "alan_std.F64".to_string(),
-                                            "i8" => "alan_std.I8".to_string(),
-                                            "i16" => "alan_std.I16".to_string(),
-                                            "i32" => "alan_std.I32".to_string(),
-                                            "i64" => "alan_std.I64".to_string(),
-                                            "u8" => "alan_std.U8".to_string(),
-                                            "u16" => "alan_std.U16".to_string(),
-                                            "u32" => "alan_std.U32".to_string(),
-                                            "u64" => "alan_std.U64".to_string(),
-                                            "bool" => "alan_std.Bool".to_string(),
-                                            _ => n.clone(),
-                                        },
-                                        CType::Field(n, _) => n.clone(),
-                                        _ => t.clone().to_callable_string(),
-                                    }
-                                };
-                                // Helper to get instanceof check for a type
-                                let get_instanceof = |t: &Arc<CType>, var: &str| -> String {
-                                    match &**t {
-                                        CType::Int(_) | CType::Float(_) => format!("(typeof {} !== 'undefined')", var),
-                                        _ => format!("({} instanceof {})", var, get_js_class(t)),
-                                    }
-                                };
-                                // Special handling for first{T} function
-                                if function.name == "first" {
-                                    if ts.is_empty() {
-                                        return Ok(("null".to_string(), out, deps));
-                                    }
-                                    let check = get_instanceof(&ts[0], &argstrs[0]);
-                                    return Ok((
-                                        format!("({} ? {} : null)", check, argstrs[0]),
-                                        out,
-                                        deps,
-                                    ));
-                                }
-                                // Special handling for rest{T} function
-                                if function.name == "rest" {
-                                    if ts.len() <= 1 {
-                                        return Ok(("null".to_string(), out, deps));
-                                    }
-                                    let check = get_instanceof(&ts[0], &argstrs[0]);
-                                    return Ok((
-                                        format!("(!({}) ? {} : null)", check, argstrs[0]),
-                                        out,
-                                        deps,
-                                    ));
-                                }
+                            CType::Either(ts, _) => {
                                 // The kinds of types allowed here are `Type`, `Bound`, and
                                 // `ResolvedBoundGeneric`, and `Field`. Other types don't have
                                 // a string name we can match against the function name
@@ -901,7 +755,7 @@ pub fn from_microstatement(
                             CType::Type(_, t) => t.clone(),
                             _ => inner_ret_type,
                         };
-                        if let CType::Either(_) = &*inner_ret_type {
+                        if let CType::Either(_, _) = &*inner_ret_type {
                             return Ok(("null".to_string(), out, deps));
                         }
                     }
@@ -914,7 +768,7 @@ pub fn from_microstatement(
                             _ => ret_type,
                         };
                         match &*inner_ret_type {
-                            CType::Either(ts) => {
+                            CType::Either(ts, _) => {
                                 if argstrs.len() != 2 {
                                     return Err(format!("Invalid arguments {} provided for Either re-assignment function, must be two arguments", argstrs.join(", ")).into());
                                 }
@@ -1088,7 +942,7 @@ pub fn from_microstatement(
                             CType::Array(_) => {
                                 return Ok((format!("[{}]", argstrs.join(", ")), out, deps));
                             }
-                            CType::Either(ts) => {
+                            CType::Either(ts, _) => {
                                 if argstrs.len() > 1 {
                                     return Err(format!("Invalid arguments {} provided for Either constructor function, must be zero or one argument", argstrs.join(", ")).into());
                                 }
@@ -1101,7 +955,7 @@ pub fn from_microstatement(
                                     CType::Type(n, _) => Ok(n.clone()),
                                     CType::Array(_) => Ok(enum_type.clone().to_callable_string()),
                                     CType::Binds(..) => Ok(enum_type.clone().to_callable_string()),
-                                    CType::Tuple(_) => Ok(enum_type.clone().to_callable_string()),
+                                    CType::Tuple(_, _) => Ok(enum_type.clone().to_callable_string()),
                                     otherwise => Err(format!("Cannot generate an constructor function for {} type as the input type has no name?, {:?}", function.name, otherwise)),
                                 }?;
                                 for t in ts {
@@ -1110,7 +964,7 @@ pub fn from_microstatement(
                                         CType::Array(_) => {
                                             return Ok((argstrs[0].clone(), out, deps));
                                         }
-                                        CType::Tuple(ts)
+                                        CType::Tuple(ts, _)
                                             if inner_type.clone().to_callable_string()
                                                 == enum_name =>
                                         {
@@ -1429,9 +1283,99 @@ pub fn from_microstatement(
                                 }
                                 return Err(format!("Cannot generate a constructor function for {} type as it is not part of the {} type", enum_name, function.name).into());
                             }
-                            CType::Tuple(ts) => {
+                            CType::Tuple(ts, _) => {
                                 // TODO: Better type checking here, but it's *probably* being
                                 // done at a higher layer
+                                // Check for parent constructor: single argument whose type is a
+                                // Tuple/Either containing a superset of the child's fields
+                                if argstrs.len() == 1 {
+                                    let single_arg_type = match &function.args().first() {
+                                        Some(t) => t.2.clone().degroup(),
+                                        None => Arc::new(CType::Void),
+                                    };
+                                    if let Some(parent_fields) = match &*single_arg_type {
+                                        CType::Tuple(pf, _) => Some(pf.clone()),
+                                        CType::Either(pf, _) => Some(pf.clone()),
+                                        _ => None,
+                                    } {
+                                        let child_fields: Vec<&Arc<CType>> = ts
+                                            .iter()
+                                            .filter(|t| match &***t {
+                                                CType::Field(_, t) => !matches!(
+                                                    &**t,
+                                                    CType::Int(_)
+                                                        | CType::Float(_)
+                                                        | CType::Bool(_)
+                                                        | CType::TString(_),
+                                                ),
+                                                CType::Int(_)
+                                                | CType::Float(_)
+                                                | CType::Bool(_)
+                                                | CType::TString(_) => false,
+                                                _ => true,
+                                            })
+                                            .collect();
+                                        let mut parent_indices: Vec<usize> = Vec::new();
+                                        let mut all_matched = true;
+                                        for child_field in &child_fields {
+                                            let child_key = (*child_field)
+                                                .clone()
+                                                .degroup()
+                                                .to_callable_string();
+                                            let mut found = false;
+                                            for (idx, pf) in parent_fields.iter().enumerate() {
+                                                if pf.clone().degroup().to_callable_string()
+                                                    == child_key
+                                                {
+                                                    parent_indices.push(idx);
+                                                    found = true;
+                                                    break;
+                                                }
+                                            }
+                                            if !found {
+                                                all_matched = false;
+                                                break;
+                                            }
+                                        }
+                                        if all_matched && !parent_indices.is_empty() {
+                                            let parent_arg = match argstrs[0].strip_prefix("&mut ")
+                                            {
+                                                Some(s) => s.to_string(),
+                                                None => argstrs[0].clone(),
+                                            };
+                                            // Build { childField: parent.childField, ... }
+                                            let field_assigns: Vec<String> = child_fields
+                                                .iter()
+                                                .zip(parent_indices.iter())
+                                                .map(|(cf, pi)| {
+                                                    let child_name = match &***cf {
+                                                        CType::Field(n, _) => n.clone(),
+                                                        _ => format!(
+                                                            "arg{}",
+                                                            (**cf)
+                                                                .clone()
+                                                                .to_callable_string()
+                                                                .len()
+                                                        ),
+                                                    };
+                                                    let parent_name = match &*parent_fields[*pi] {
+                                                        CType::Field(n, _) => n.clone(),
+                                                        _ => format!("arg{}", pi),
+                                                    };
+                                                    format!(
+                                                        "{}: {}.{}",
+                                                        child_name, parent_arg, parent_name
+                                                    )
+                                                })
+                                                .collect();
+                                            return Ok((
+                                                format!("{{\n{}\n}}", field_assigns.join(",\n")),
+                                                out,
+                                                deps,
+                                            ));
+                                        }
+                                    }
+                                }
                                 let filtered_ts = ts
                                     .iter()
                                     .filter(|t| match &***t {
