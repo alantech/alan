@@ -1292,29 +1292,80 @@ pub fn from_microstatement(
                                         // Find which parent variants match child variants
                                         let mut matched_types: Vec<String> = Vec::new();
                                         for pv in parent_variants.iter() {
-                                            let parent_key = pv.clone().degroup().to_callable_string();
+                                            let parent_key =
+                                                pv.clone().degroup().to_callable_string();
                                             for cv in ts {
-                                                if cv.clone().degroup().to_callable_string() == parent_key {
+                                                if cv.clone().degroup().to_callable_string()
+                                                    == parent_key
+                                                {
                                                     matched_types.push(parent_key);
                                                     break;
                                                 }
                                             }
                                         }
-                                        if !matched_types.is_empty() && matched_types.len() < parent_variants.len() {
+                                        if !matched_types.is_empty()
+                                            && matched_types.len() < parent_variants.len()
+                                        {
                                             let parent_arg = match argstrs[0].strip_prefix("&mut ")
                                             {
                                                 Some(s) => s.to_string(),
                                                 None => argstrs[0].clone(),
                                             };
                                             // Generate type check: if (typeof arg === 'type') return arg; else return null;
-                                            let type_checks: Vec<String> = matched_types.iter().map(|t| {
-                                                match t.as_str() {
-                                                    "i64" | "u64" | "f64" => format!("typeof {} === 'number'", parent_arg),
-                                                    "string" => format!("typeof {} === 'string'", parent_arg),
-                                                    "bool" => format!("typeof {} === 'boolean'", parent_arg),
+                                            let type_checks: Vec<String> = matched_types
+                                                .iter()
+                                                .map(|t| match t.as_str() {
+                                                    "i64" => format!(
+                                                        "{} instanceof alan_std.I64",
+                                                        parent_arg
+                                                    ),
+                                                    "u64" => format!(
+                                                        "{} instanceof alan_std.U64",
+                                                        parent_arg
+                                                    ),
+                                                    "f64" => format!(
+                                                        "{} instanceof alan_std.F64",
+                                                        parent_arg
+                                                    ),
+                                                    "i32" => format!(
+                                                        "{} instanceof alan_std.I32",
+                                                        parent_arg
+                                                    ),
+                                                    "u32" => format!(
+                                                        "{} instanceof alan_std.U32",
+                                                        parent_arg
+                                                    ),
+                                                    "i16" => format!(
+                                                        "{} instanceof alan_std.I16",
+                                                        parent_arg
+                                                    ),
+                                                    "u16" => format!(
+                                                        "{} instanceof alan_std.U16",
+                                                        parent_arg
+                                                    ),
+                                                    "i8" => format!(
+                                                        "{} instanceof alan_std.I8",
+                                                        parent_arg
+                                                    ),
+                                                    "u8" => format!(
+                                                        "{} instanceof alan_std.U8",
+                                                        parent_arg
+                                                    ),
+                                                    "f32" => format!(
+                                                        "{} instanceof alan_std.F32",
+                                                        parent_arg
+                                                    ),
+                                                    "string" => format!(
+                                                        "{} instanceof alan_std.Str",
+                                                        parent_arg
+                                                    ),
+                                                    "bool" => format!(
+                                                        "{} instanceof alan_std.Bool",
+                                                        parent_arg
+                                                    ),
                                                     _ => format!("{}.type === '{}'", parent_arg, t),
-                                                }
-                                            }).collect();
+                                                })
+                                                .collect();
                                             let condition = type_checks.join(" || ");
                                             return Ok((
                                                 format!("({} ? {} : null)", condition, parent_arg),
@@ -1521,36 +1572,79 @@ pub fn from_microstatement(
                                     if let CType::Either(child_variants, _) = &*child_type {
                                         let mut matched_types: Vec<String> = Vec::new();
                                         for pv in parent_variants.iter() {
-                                            let parent_key = pv.clone().degroup().to_callable_string();
+                                            let parent_key =
+                                                pv.clone().degroup().to_callable_string();
                                             for cv in child_variants {
-                                                if cv.clone().degroup().to_callable_string() == parent_key {
+                                                if cv.clone().degroup().to_callable_string()
+                                                    == parent_key
+                                                {
                                                     matched_types.push(parent_key);
                                                     break;
                                                 }
                                             }
                                         }
-                                        if !matched_types.is_empty() && matched_types.len() < parent_variants.len() {
-                                            let parent_arg = match argstrs[0].strip_prefix("&mut ") {
+                                        if !matched_types.is_empty()
+                                            && matched_types.len() < parent_variants.len()
+                                        {
+                                            let parent_arg = match argstrs[0].strip_prefix("&mut ")
+                                            {
                                                 Some(s) => s.to_string(),
                                                 None => argstrs[0].clone(),
                                             };
-                                            let type_checks: Vec<String> = matched_types.iter().map(|t| {
-                                                match t.as_str() {
-                                                    "i64" => format!("{} instanceof alan_std.I64", parent_arg),
-                                                    "u64" => format!("{} instanceof alan_std.U64", parent_arg),
-                                                    "f64" => format!("{} instanceof alan_std.F64", parent_arg),
-                                                    "i32" => format!("{} instanceof alan_std.I32", parent_arg),
-                                                    "u32" => format!("{} instanceof alan_std.U32", parent_arg),
-                                                    "i16" => format!("{} instanceof alan_std.I16", parent_arg),
-                                                    "u16" => format!("{} instanceof alan_std.U16", parent_arg),
-                                                    "i8" => format!("{} instanceof alan_std.I8", parent_arg),
-                                                    "u8" => format!("{} instanceof alan_std.U8", parent_arg),
-                                                    "f32" => format!("{} instanceof alan_std.F32", parent_arg),
-                                                    "string" => format!("typeof {} === 'string'", parent_arg),
-                                                    "bool" => format!("{} instanceof alan_std.Bool", parent_arg),
+                                            let type_checks: Vec<String> = matched_types
+                                                .iter()
+                                                .map(|t| match t.as_str() {
+                                                    "i64" => format!(
+                                                        "{} instanceof alan_std.I64",
+                                                        parent_arg
+                                                    ),
+                                                    "u64" => format!(
+                                                        "{} instanceof alan_std.U64",
+                                                        parent_arg
+                                                    ),
+                                                    "f64" => format!(
+                                                        "{} instanceof alan_std.F64",
+                                                        parent_arg
+                                                    ),
+                                                    "i32" => format!(
+                                                        "{} instanceof alan_std.I32",
+                                                        parent_arg
+                                                    ),
+                                                    "u32" => format!(
+                                                        "{} instanceof alan_std.U32",
+                                                        parent_arg
+                                                    ),
+                                                    "i16" => format!(
+                                                        "{} instanceof alan_std.I16",
+                                                        parent_arg
+                                                    ),
+                                                    "u16" => format!(
+                                                        "{} instanceof alan_std.U16",
+                                                        parent_arg
+                                                    ),
+                                                    "i8" => format!(
+                                                        "{} instanceof alan_std.I8",
+                                                        parent_arg
+                                                    ),
+                                                    "u8" => format!(
+                                                        "{} instanceof alan_std.U8",
+                                                        parent_arg
+                                                    ),
+                                                    "f32" => format!(
+                                                        "{} instanceof alan_std.F32",
+                                                        parent_arg
+                                                    ),
+                                                    "string" => format!(
+                                                        "{} instanceof alan_std.Str",
+                                                        parent_arg
+                                                    ),
+                                                    "bool" => format!(
+                                                        "{} instanceof alan_std.Bool",
+                                                        parent_arg
+                                                    ),
                                                     _ => format!("{}.type === '{}'", parent_arg, t),
-                                                }
-                                            }).collect();
+                                                })
+                                                .collect();
                                             let condition = type_checks.join(" || ");
                                             return Ok((
                                                 format!("({} ? {} : null)", condition, parent_arg),

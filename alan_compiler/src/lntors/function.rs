@@ -1131,20 +1131,26 @@ pub fn from_microstatement(
                                         Some(t) => t.2.clone().degroup(),
                                         None => Arc::new(CType::Void),
                                     };
-                                    let parent_type_name = single_arg_type.clone().to_callable_string();
+                                    let parent_type_name =
+                                        single_arg_type.clone().to_callable_string();
                                     if let CType::Either(parent_variants, _) = &*single_arg_type {
                                         // Find which parent variants match child variants
                                         let mut matched_indices: Vec<usize> = Vec::new();
                                         for (idx, pv) in parent_variants.iter().enumerate() {
-                                            let parent_key = pv.clone().degroup().to_callable_string();
+                                            let parent_key =
+                                                pv.clone().degroup().to_callable_string();
                                             for cv in ts {
-                                                if cv.clone().degroup().to_callable_string() == parent_key {
+                                                if cv.clone().degroup().to_callable_string()
+                                                    == parent_key
+                                                {
                                                     matched_indices.push(idx);
                                                     break;
                                                 }
                                             }
                                         }
-                                        if !matched_indices.is_empty() && matched_indices.len() < parent_variants.len() {
+                                        if !matched_indices.is_empty()
+                                            && matched_indices.len() < parent_variants.len()
+                                        {
                                             let parent_arg = match argstrs[0].strip_prefix("&mut ")
                                             {
                                                 Some(s) => s.to_string(),
@@ -1153,7 +1159,8 @@ pub fn from_microstatement(
                                             // Generate match expression: Some(Child::Variant(v)) for matched, None for excluded
                                             let mut arms = Vec::new();
                                             for (idx, pv) in parent_variants.iter().enumerate() {
-                                                let variant_name = pv.clone().degroup().to_callable_string();
+                                                let variant_name =
+                                                    pv.clone().degroup().to_callable_string();
                                                 if matched_indices.contains(&idx) {
                                                     arms.push(format!(
                                                         "{}::{}(v) => Some({}::{}(v))",
@@ -1165,13 +1172,16 @@ pub fn from_microstatement(
                                                 } else {
                                                     arms.push(format!(
                                                         "{}::{}(_) => None",
-                                                        parent_type_name,
-                                                        variant_name
+                                                        parent_type_name, variant_name
                                                     ));
                                                 }
                                             }
                                             return Ok((
-                                                format!("match {} {{\n    {}\n}}", parent_arg, arms.join(",\n    ")),
+                                                format!(
+                                                    "match {} {{\n    {}\n}}",
+                                                    parent_arg,
+                                                    arms.join(",\n    ")
+                                                ),
                                                 out,
                                                 deps,
                                             ));
@@ -1660,8 +1670,8 @@ pub fn from_microstatement(
                                                 deps,
                                             ));
                                         }
-                                     }
-                                 }
+                                    }
+                                }
                                 return Err(format!("Cannot generate a constructor function for {} type as it is not part of the {} type", enum_name, function.name).into());
                             }
                             CType::Tuple(ts, _) => {
@@ -1848,22 +1858,29 @@ pub fn from_microstatement(
                                     if let CType::Either(child_variants, _) = &*child_type {
                                         let mut matched_indices: Vec<usize> = Vec::new();
                                         for (idx, pv) in parent_variants.iter().enumerate() {
-                                            let parent_key = pv.clone().degroup().to_callable_string();
+                                            let parent_key =
+                                                pv.clone().degroup().to_callable_string();
                                             for cv in child_variants {
-                                                if cv.clone().degroup().to_callable_string() == parent_key {
+                                                if cv.clone().degroup().to_callable_string()
+                                                    == parent_key
+                                                {
                                                     matched_indices.push(idx);
                                                     break;
                                                 }
                                             }
                                         }
-                                        if !matched_indices.is_empty() && matched_indices.len() < parent_variants.len() {
-                                            let parent_arg = match argstrs[0].strip_prefix("&mut ") {
+                                        if !matched_indices.is_empty()
+                                            && matched_indices.len() < parent_variants.len()
+                                        {
+                                            let parent_arg = match argstrs[0].strip_prefix("&mut ")
+                                            {
                                                 Some(s) => s.to_string(),
                                                 None => argstrs[0].clone(),
                                             };
                                             let mut arms = Vec::new();
                                             for (idx, pv) in parent_variants.iter().enumerate() {
-                                                let variant_name = pv.clone().degroup().to_callable_string();
+                                                let variant_name =
+                                                    pv.clone().degroup().to_callable_string();
                                                 if matched_indices.contains(&idx) {
                                                     arms.push(format!(
                                                         "{}::{}(v) => Some({}::{}(v))",
@@ -1875,13 +1892,16 @@ pub fn from_microstatement(
                                                 } else {
                                                     arms.push(format!(
                                                         "{}::{}(_) => None",
-                                                        parent_type_name,
-                                                        variant_name
+                                                        parent_type_name, variant_name
                                                     ));
                                                 }
                                             }
                                             return Ok((
-                                                format!("match {} {{\n    {}\n}}", parent_arg, arms.join(",\n    ")),
+                                                format!(
+                                                    "match {} {{\n    {}\n}}",
+                                                    parent_arg,
+                                                    arms.join(",\n    ")
+                                                ),
                                                 out,
                                                 deps,
                                             ));
