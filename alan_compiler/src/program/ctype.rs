@@ -17,6 +17,7 @@ use crate::parse;
 #[derive(Clone, Debug, PartialEq)]
 pub enum CType {
     Void,
+    DerivedVoid(Vec<Arc<CType>>), // void with parent types for Exclude{...} constructors
     Infer(String, String), // TODO: Switch to an Interface here once they exist
     Type(String, Arc<CType>),
     Generic(String, Vec<String>, Arc<CType>),
@@ -195,7 +196,7 @@ impl CType {
             GTE.get_or_init(|| Arc::new(CType::Infer(" >= ".to_string(), " >= ".to_string())));
         while let Some(element) = ctype_stack.pop() {
             match &**element {
-                CType::Void => str_parts.push("()"),
+                CType::Void | CType::DerivedVoid(..) => str_parts.push("()"),
                 CType::Infer(s, _) => str_parts.push(s),
                 CType::Type(n, t) => match strict {
                     true => str_parts.push(n),
@@ -699,7 +700,7 @@ impl CType {
             COMMA.get_or_init(|| Arc::new(CType::Infer(", ".to_string(), ", ".to_string())));
         while let Some(element) = ctype_stack.pop() {
             match &**element {
-                CType::Void => str_parts.push("void"),
+                CType::Void | CType::DerivedVoid(..) => str_parts.push("void"),
                 CType::Infer(s, _) => str_parts.push(s),
                 CType::Type(_, t) => ctype_stack.push(t),
                 CType::Generic(n, gs, _) => {
@@ -1298,6 +1299,7 @@ impl CType {
     pub fn has_infer(self: Arc<CType>) -> bool {
         match &*self {
             CType::Void
+            | CType::DerivedVoid(..)
             | CType::IntrinsicGeneric(..)
             | CType::Int(_)
             | CType::Float(_)
@@ -1372,7 +1374,7 @@ impl CType {
 
     pub fn degroup(self: Arc<CType>) -> Arc<CType> {
         match &*self {
-            CType::Void => self,
+            CType::Void | CType::DerivedVoid(..) => self,
             CType::Infer(..) => self,
             CType::Type(n, t) => Arc::new(CType::Type(n.clone(), t.clone().degroup())),
             CType::Generic(..) => self,
@@ -3750,6 +3752,25 @@ impl CType {
                     }));
                 }
             }
+            CType::DerivedVoid(parents) => {
+                // Generate parent constructor functions that take parent type and return void
+                for parent in parents {
+                    let parent_unwrapped = parent.clone().degroup();
+                    if !matches!(&*parent_unwrapped, CType::Tuple(..) | CType::Either(..)) {
+                        continue;
+                    }
+                    fs.push(Arc::new(Function {
+                        name: constructor_fn_name.clone(),
+                        typen: Arc::new(CType::Function(
+                            Arc::new(CType::Tuple(vec![parent.clone()], Vec::new())),
+                            Arc::new(CType::Void),
+                        )),
+                        microstatements: Vec::new(),
+                        kind: FnKind::Derived,
+                        origin_scope_path: scope.path.clone(),
+                    }));
+                }
+            }
             _ => {} // Don't do anything for other types
         }
         (CType::clone(&t), fs)
@@ -3979,6 +4000,7 @@ impl CType {
         }
         match &*self {
             CType::Void
+            | CType::DerivedVoid(..)
             | CType::Infer(..)
             | CType::Generic(..)
             | CType::IntrinsicGeneric(..)
@@ -4646,11 +4668,11 @@ impl CType {
                         }
                         let filtered: Vec<Arc<CType>> = ts.iter().enumerate().filter(|(idx_in_either, _)| {
                             *idx_in_either != idx
-                        }).map(|(_, t)| t.clone()).collect();
-                        if filtered.is_empty() {
-                            return Arc::new(CType::Void);
-                        }
-                        filtered
+                         }).map(|(_, t)| t.clone()).collect();
+                         if filtered.is_empty() {
+                             return Arc::new(CType::DerivedVoid(parents));
+                         }
+                         filtered
                     }
                     otherwise => {
                         CType::fail(&format!(
@@ -4659,7 +4681,7 @@ impl CType {
                     }
                 };
                 if result.is_empty() {
-                    return Arc::new(CType::Void);
+                    return Arc::new(CType::DerivedVoid(parents));
                 }
                 if result.len() == 1 {
                     return Arc::new(CType::Either(result, parents));
@@ -4689,7 +4711,7 @@ impl CType {
                             *idx_in_tup != idx
                         }).map(|(_, t)| t.clone()).collect();
                         if filtered.is_empty() {
-                            return Arc::new(CType::Void);
+                            return Arc::new(CType::DerivedVoid(parents));
                         }
                         if filtered.len() == 1 {
                             return Arc::new(CType::Tuple(filtered, parents));
@@ -4703,7 +4725,7 @@ impl CType {
                     }
                 };
                 if result.is_empty() {
-                    return Arc::new(CType::Void);
+                    return Arc::new(CType::DerivedVoid(parents));
                 }
                 Arc::new(CType::Tuple(result, parents))
             }
@@ -4806,7 +4828,7 @@ impl CType {
         // particularly for writing to disk or interfacing with network protocols, etc, so I'd
         // prefer to keep it and have some compile-time guarantees we don't normally see.
         match &*t {
-            CType::Void => Arc::new(CType::Int(0)),
+            CType::Void | CType::DerivedVoid(..) => Arc::new(CType::Int(0)),
             CType::Infer(..) => Arc::new(CType::Size(t.clone())),
             CType::Type(_, t) => CType::size(t.clone()),
             CType::Generic(..) => CType::fail("Cannot determine the size of an unbound generic"),

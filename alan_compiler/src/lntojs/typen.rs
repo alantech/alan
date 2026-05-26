@@ -10,7 +10,7 @@ pub fn ctype_to_jtype(
 ) -> Result<(String, OrderedHashMap<String, String>), Box<dyn std::error::Error>> {
     match &*ctype {
         CType::Mut(t) => ctype_to_jtype(t.clone(), deps),
-        CType::Void => Ok(("".to_string(), deps)),
+        CType::Void | CType::DerivedVoid(..) => Ok(("".to_string(), deps)),
         CType::Infer(s, _) => Err(format!(
             "Inferred type matching {s} was not realized before code generation"
         )
@@ -34,7 +34,7 @@ pub fn ctype_to_jtype(
                             let res = ctype_to_jtype(g.clone(), deps)?;
                             deps = res.1;
                         }
-                        CType::Void => { /* Do nothing */ }
+                        CType::Void | CType::DerivedVoid(..) => { /* Do nothing */ }
                         CType::Tuple(ts, _) => {
                             for t in ts {
                                 let res = ctype_to_jtype(t.clone(), deps)?;

@@ -2170,9 +2170,104 @@ test!(exclude_either_parent_constructor_recursive => r#"
   stdout "42\n";
 );
 
-// -.(dot-dash) Exclude operator syntax tests
+// Transitive parent constructor tests: constructing Child directly from Grandparent
 
-test!(exclude_tuple_dotdash_chained => r#"
+test!(exclude_either_parent_constructor_direct_from_grandparent => r#"
+  type Grandparent = i64 | string | bool | f64;
+  type Parent = Exclude{Grandparent, 3};
+  type Child = Exclude{Parent, 1};
+  export fn main {
+    let gp: Grandparent = 42.Grandparent;
+    let c: Maybe{Child} = Child(gp);
+    if(c.exists,
+      fn { c.getOrExit.print; },
+      fn { 'void'.print; });
+  }"#;
+  stdout "42\n";
+);
+
+test!(exclude_either_parent_constructor_direct_none => r#"
+  type Grandparent = i64 | string | bool | f64;
+  type Parent = Exclude{Grandparent, 3};
+  type Child = Exclude{Parent, 1};
+  export fn main {
+    let gp: Grandparent = "hello".Grandparent;
+    let c: Maybe{Child} = Child(gp);
+    if(c.exists,
+      fn { c.getOrExit.print; },
+      fn { 'void'.print; });
+  }"#;
+  stdout "void\n";
+);
+
+test!(exclude_tuple_parent_constructor_direct_from_grandparent => r#"
+  type Grandparent = a: i64, b: string, c: bool, d: f64;
+  type Parent = Exclude{Grandparent, 3};
+  type Child = Exclude{Parent, 1};
+  export fn main {
+    let gp: Grandparent = Grandparent(42, "hello", true, 3.14);
+    let c: Child = Child(gp);
+    c.a.print;
+    c.c.print;
+  }"#;
+  stdout "42\ntrue\n";
+);
+
+// Single-element and void reduction tests
+
+test!(exclude_tuple_single_element_remains_tuple => r#"
+  type MyTuple = a: i64, b: string;
+  type MySingle = Exclude{MyTuple, 1};
+  export fn main {
+    let v: MyTuple = MyTuple(42, "hello");
+    let res: MySingle = MySingle(v);
+    res.a.print;
+  }"#;
+  stdout "42\n";
+);
+
+test!(exclude_either_single_element_remains_either => r#"
+  type MyEither = i64 | string | bool;
+  type MySingle = Exclude{MyEither, 1};
+  export fn main {
+    let v: MyEither = 42.MyEither;
+    let res: Maybe{MySingle} = MySingle(v);
+    if(res.exists,
+      fn { res.getOrExit.i64.print; },
+      fn { 'void'.print; });
+  }"#;
+  stdout "42\n";
+);
+
+test!(exclude_tuple_to_void => r#"
+  type MyTuple = a: i64, b: string;
+  type MyPartial = Exclude{MyTuple, 1};
+  type MyVoid = Exclude{MyPartial, 0};
+  export fn main {
+    let v: MyTuple = MyTuple(42, "hello");
+    let p: MyPartial = MyPartial(v);
+    let res: MyVoid = MyVoid(p);
+    res.print;
+  }"#;
+  stdout "void\n";
+);
+
+test!(exclude_either_to_void => r#"
+  type MyEither = i64 | string;
+  type MySingle = Exclude{MyEither, 1};
+  type MyVoid = Exclude{MySingle, 0};
+  export fn main {
+    let v: MyEither = 42.MyEither;
+    let s: Maybe{MySingle} = MySingle(v);
+    let res: MyVoid = MyVoid(s.getOrExit);
+    res.print;
+  }"#;
+  stdout "void\n";
+);
+
+// -.(dash-dot) "subtract property" Exclude operator syntax tests
+
+test!(exclude_tuple_dashdot_chained => r#"
   type MyTuple = a: i64, b: string, c: bool;
   type MySingle = MyTuple-.a-.c;
   export fn main {

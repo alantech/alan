@@ -59,7 +59,7 @@ pub fn ctype_to_rtype(
         CType::Mut(t) => {
             ctype_to_rtype(t.clone(), deps)
         }
-        CType::Void => Ok(("void".to_string(), deps)),
+        CType::Void | CType::DerivedVoid(..) => Ok(("void".to_string(), deps)),
         CType::Infer(s, _) => Err(format!(
             "Inferred type matching {s} was not realized before code generation"
         )
@@ -90,7 +90,7 @@ pub fn ctype_to_rtype(
                             deps = res.1;
                             enum_type_strs.push(s);
                         }
-                        CType::Void => enum_type_strs.push("void".to_string()),
+                        CType::Void | CType::DerivedVoid(..) => enum_type_strs.push("void".to_string()),
                         CType::Tuple(ts, _) => {
                             let mut out = Vec::new();
                             for t in ts {
@@ -372,7 +372,7 @@ pub fn ctype_to_rtype(
             if ts.len() == 2 {
                 let alan_error = "alan_std::AlanError".to_string();
                 match &*ts[1] {
-                    CType::Void => {
+                    CType::Void | CType::DerivedVoid(..) => {
                         let res = ctype_to_rtype(ts[0].clone(), deps)?;
                         let s = res.0;
                         deps = res.1;
@@ -625,7 +625,7 @@ pub fn generate(
             deps = res.1;
             Ok((s, out, deps))
         }
-        CType::Void => {
+        CType::Void | CType::DerivedVoid(..) => {
             out.insert("void".to_string(), "type void = ();".to_string());
             Ok(("()".to_string(), out, deps))
         }
@@ -661,7 +661,7 @@ pub fn generate(
                             deps = res.1;
                             enum_type_strs.push(format!("{}({})", n, res.0));
                         }
-                        CType::Void => enum_type_strs.push("void".to_string()),
+                        CType::Void | CType::DerivedVoid(..) => enum_type_strs.push("void".to_string()),
                         _otherwise => {
                             let res = ctype_to_rtype(t.clone(), deps)?;
                             deps = res.1;

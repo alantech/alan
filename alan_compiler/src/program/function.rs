@@ -45,7 +45,7 @@ pub fn type_to_args(t: Arc<CType>) -> Vec<(String, ArgKind, Arc<CType>)> {
                     CType::Mut(t) => args.push((argname.clone(), ArgKind::Mut, t.clone())),
                     _otherwise => args.push((argname.clone(), ArgKind::Ref, t.clone())),
                 },
-                CType::Void => { /* Do nothing */ }
+                CType::Void | CType::DerivedVoid(..) => { /* Do nothing */ }
                 CType::Own(t) => args.push(("arg0".to_string(), ArgKind::Own, t.clone())),
                 CType::Deref(t) => args.push(("arg0".to_string(), ArgKind::Deref, t.clone())),
                 CType::Mut(t) => args.push(("arg0".to_string(), ArgKind::Mut, t.clone())),
@@ -77,7 +77,7 @@ pub fn type_to_args(t: Arc<CType>) -> Vec<(String, ArgKind, Arc<CType>)> {
             CType::Mut(t) => vec![(argname.clone(), ArgKind::Mut, t.clone())],
             _otherwise => vec![(argname.clone(), ArgKind::Ref, t.clone())],
         },
-        CType::Void => Vec::new(),
+        CType::Void | CType::DerivedVoid(..) => Vec::new(),
         CType::Own(t) => vec![("arg0".to_string(), ArgKind::Own, t.clone())],
         CType::Deref(t) => vec![("arg0".to_string(), ArgKind::Deref, t.clone())],
         CType::Mut(t) => vec![("arg0".to_string(), ArgKind::Mut, t.clone())],
@@ -544,7 +544,7 @@ impl Function {
         match &*typen {
             CType::Function(i, o) => {
                 match &**o {
-                    CType::Void => { /* Do nothing */ }
+            CType::Void | CType::DerivedVoid(..) => { /* Do nothing */ }
                     CType::Infer(t, _) if t == "unknown" && function_ast.optgenerics.is_none() => {
                         CType::fail(&format!(
                             "The return type for {}({}) could not be inferred.",

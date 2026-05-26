@@ -350,9 +350,9 @@ pub fn baseassignablelist_to_microstatements<'a>(
                             {
                                 let other_function_types = origin_scope.resolve_function_types(v);
                                 function_types = match (&*function_types, &*other_function_types) {
-                                    (CType::Void, CType::Void) => Arc::new(CType::Void),
-                                    (CType::Void, _) => other_function_types,
-                                    (_, CType::Void) => function_types,
+                                     (CType::Void | CType::DerivedVoid(..), CType::Void | CType::DerivedVoid(..)) => Arc::new(CType::Void),
+                                     (CType::Void | CType::DerivedVoid(..), _) => other_function_types,
+                                     (_, CType::Void | CType::DerivedVoid(..)) => function_types,
                                     (CType::AnyOf(t1), CType::AnyOf(t2)) => {
                                         Arc::new(CType::AnyOf({
                                             let mut v = Vec::new();
@@ -381,8 +381,8 @@ pub fn baseassignablelist_to_microstatements<'a>(
                             }
                             Program::return_program(program);
                         }
-                        match &*function_types {
-                            CType::Void => {
+                       match &*function_types {
+                             CType::Void | CType::DerivedVoid(..) => {
                                 // It could be a constant
                                 let maybe_c = scope.resolve_const(v);
                                 match maybe_c {
@@ -624,7 +624,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                 match &*typen {
                     CType::Function(i, o) => {
                         match &**o {
-                            CType::Void => { /* Do nothing */ }
+                            CType::Void | CType::DerivedVoid(..) => { /* Do nothing */ }
                             CType::Infer(t, _) if t == "unknown" => {
                                 CType::fail(&format!(
                                     "The return type for {}({}) could not be inferred.",
@@ -863,7 +863,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                     // TODO: Really need to just have the Function use the Function
                                     // CType instead of this stuff
                                     let farg_types = match &**i {
-                                        CType::Void => Vec::new(),
+                                        CType::Void | CType::DerivedVoid(..) => Vec::new(),
                                         CType::Tuple(ts, _) => ts.clone(),
                                         _other => vec![i.clone()],
                                     };

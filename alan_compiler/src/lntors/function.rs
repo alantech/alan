@@ -1829,6 +1829,10 @@ pub fn from_microstatement(
                             CType::Binds(..) => {
                                 return Ok((argstrs.join(", "), out, deps));
                             }
+                            CType::Void | CType::DerivedVoid(..) => {
+                                // DerivedVoid parent constructor: takes parent, returns void
+                                return Ok(("()".to_string(), out, deps));
+                            }
                             otherwise => {
                                 return Err(format!("How did you get here? Trying to create a constructor function {function:?} for {otherwise:?}").into());
                             }
@@ -2020,7 +2024,7 @@ pub fn generate(
     }
     let ret = function.rettype().degroup();
     let opt_ret_str = match &*ret {
-        CType::Void => None,
+        CType::Void | CType::DerivedVoid(..) => None,
         CType::Type(n, _) if n == "void" => None,
         _otherwise => {
             let (t_str, o, d) = typen::generate(ret, out, deps)?;
