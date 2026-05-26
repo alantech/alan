@@ -661,7 +661,9 @@ pub fn generate(
                             deps = res.1;
                             enum_type_strs.push(format!("{}({})", n, res.0));
                         }
-                        CType::Void | CType::DerivedVoid(..) => enum_type_strs.push("void".to_string()),
+                        CType::Void | CType::DerivedVoid(..) => {
+                            enum_type_strs.push("void".to_string())
+                        }
                         _otherwise => {
                             let res = ctype_to_rtype(t.clone(), deps)?;
                             deps = res.1;

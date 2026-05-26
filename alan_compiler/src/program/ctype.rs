@@ -18,7 +18,7 @@ use crate::parse;
 pub enum CType {
     Void,
     DerivedVoid(Vec<Arc<CType>>), // void with parent types for Exclude{...} constructors
-    Infer(String, String), // TODO: Switch to an Interface here once they exist
+    Infer(String, String),        // TODO: Switch to an Interface here once they exist
     Type(String, Arc<CType>),
     Generic(String, Vec<String>, Arc<CType>),
     Binds(Arc<CType>, Vec<Arc<CType>>),

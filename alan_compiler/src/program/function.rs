@@ -544,7 +544,7 @@ impl Function {
         match &*typen {
             CType::Function(i, o) => {
                 match &**o {
-            CType::Void | CType::DerivedVoid(..) => { /* Do nothing */ }
+                    CType::Void | CType::DerivedVoid(..) => { /* Do nothing */ }
                     CType::Infer(t, _) if t == "unknown" && function_ast.optgenerics.is_none() => {
                         CType::fail(&format!(
                             "The return type for {}({}) could not be inferred.",

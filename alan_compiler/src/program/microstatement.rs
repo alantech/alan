@@ -350,9 +350,14 @@ pub fn baseassignablelist_to_microstatements<'a>(
                             {
                                 let other_function_types = origin_scope.resolve_function_types(v);
                                 function_types = match (&*function_types, &*other_function_types) {
-                                     (CType::Void | CType::DerivedVoid(..), CType::Void | CType::DerivedVoid(..)) => Arc::new(CType::Void),
-                                     (CType::Void | CType::DerivedVoid(..), _) => other_function_types,
-                                     (_, CType::Void | CType::DerivedVoid(..)) => function_types,
+                                    (
+                                        CType::Void | CType::DerivedVoid(..),
+                                        CType::Void | CType::DerivedVoid(..),
+                                    ) => Arc::new(CType::Void),
+                                    (CType::Void | CType::DerivedVoid(..), _) => {
+                                        other_function_types
+                                    }
+                                    (_, CType::Void | CType::DerivedVoid(..)) => function_types,
                                     (CType::AnyOf(t1), CType::AnyOf(t2)) => {
                                         Arc::new(CType::AnyOf({
                                             let mut v = Vec::new();
@@ -381,8 +386,8 @@ pub fn baseassignablelist_to_microstatements<'a>(
                             }
                             Program::return_program(program);
                         }
-                       match &*function_types {
-                             CType::Void | CType::DerivedVoid(..) => {
+                        match &*function_types {
+                            CType::Void | CType::DerivedVoid(..) => {
                                 // It could be a constant
                                 let maybe_c = scope.resolve_const(v);
                                 match maybe_c {
