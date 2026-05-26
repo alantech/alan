@@ -1740,9 +1740,14 @@ pub fn from_microstatement(
                                                 .iter()
                                                 .map(|i| format!("{}.{}", parent_arg, i))
                                                 .collect();
-                                            // Tuples in Rust use (a, b, ...) syntax directly
+                                            // Tuples in Rust use (a, b, ...) syntax directly.
+                                            // Single-element tuples need a trailing comma: (v.1,)
                                             return Ok((
-                                                format!("({})", field_accesses.join(", ")),
+                                                if field_accesses.len() == 1 {
+                                                    format!("({},)", field_accesses[0])
+                                                } else {
+                                                    format!("({})", field_accesses.join(", "))
+                                                },
                                                 out,
                                                 deps,
                                             ));

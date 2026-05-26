@@ -2169,3 +2169,16 @@ test!(exclude_either_parent_constructor_recursive => r#"
   }"#;
   stdout "42\n";
 );
+
+// -.(dot-dash) Exclude operator syntax tests
+
+test!(exclude_tuple_dotdash_chained => r#"
+  type MyTuple = a: i64, b: string, c: bool;
+  type MySingle = MyTuple-.a-.c;
+  export fn main {
+    let v: MyTuple = MyTuple(42, "hello", true);
+    let res: MySingle = MySingle(v);
+    res.b.print;
+  }"#;
+  stdout "hello\n";
+);

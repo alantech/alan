@@ -5761,6 +5761,41 @@ pub fn typebaselist_to_ctype(
                                     }
                                 }
                             }
+                            CType::IntrinsicGeneric(e, 2) if e == "Exclude" => {
+                                match nexttypebase {
+                                    None => {},
+                                    Some(next) => match next {
+                                        parse::TypeBase::GnCall(g) => {
+                                            // Same as Prop: the second arg (the index/field to exclude)
+                                            // can be a bare identifier treated as a string
+                                            if g.typecalllist.len() != 3 {
+                                                CType::fail("The Exclude generic type accepts only two parameters");
+                                            }
+                                            args.push(withtypeoperatorslist_to_ctype(&vec![g.typecalllist[0].clone()], scope)?);
+                                            let second_arg_str = g.typecalllist[2].to_string();
+                                            match second_arg_str.parse::<i128>() {
+                                                Ok(i) => args.push(Arc::new(CType::Int(i))),
+                                                Err(_) => {
+                                                    if let parse::WithTypeOperators::TypeBaseList(tbl) = &g.typecalllist[2] {
+                                                        if tbl.len() > 1 {
+                                                            args.push(withtypeoperatorslist_to_ctype(&vec![g.typecalllist[2].clone()], scope)?);
+                                                        } else {
+                                                            match second_arg_str.as_str() {
+                                                                "true" => args.push(Arc::new(CType::Bool(true))),
+                                                                "false" => args.push(Arc::new(CType::Bool(false))),
+                                                                _ => args.push(Arc::new(CType::TString(second_arg_str)))
+                                                            }
+                                                        }
+                                                    } else {
+                                                        CType::fail("huh?")
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        _ => CType::fail("Cannot follow method style syntax without an operator in between"),
+                                    }
+                                }
+                            }
                             CType::IntrinsicGeneric(f, 2) if f == "Field" => {
                                 match nexttypebase {
                                     None => {},
