@@ -1943,8 +1943,100 @@ test!(either_dedup_explicit => r#"
     fn takeEither(x: NormalEither) = x.print;
     export fn main {
       takeEither(42.DupEither);
-    }"#;
-    stdout "42\n";
+ }"#;
+  stdout "42\n";
+);
+
+// Rest{T} wrapper type tests for parent constructors
+
+test!(rest_tuple_parent_constructor => r#"
+  type MyTuple = a: i64, b: string, c: bool;
+  type MyFiltered = Rest{MyTuple};
+  export fn main {
+    let v: MyTuple = MyTuple(42, "hello", true);
+    let res: MyFiltered = MyFiltered(v);
+    res.b.print;
+    res.c.print;
+  }"#;
+  stdout "hello\ntrue\n";
+);
+
+test!(rest_tuple_parent_constructor_recursive => r#"
+  type Grandparent = a: i64, b: string, c: bool, d: f64;
+  type Parent = Rest{Grandparent};
+  type Child = Rest{Parent};
+  export fn main {
+    let gp: Grandparent = Grandparent(42, "hello", true, 3.14);
+    let p: Parent = Parent(gp);
+    let c: Child = Child(p);
+    c.c.print;
+    c.d.print;
+  }"#;
+  stdout "true\n3.14\n";
+);
+
+test!(rest_either_parent_constructor => r#"
+  type MyEither = i64 | string | bool;
+  type MyFiltered = Rest{MyEither};
+  export fn main {
+    let v: MyEither = "hello".MyEither;
+    let res: Maybe{MyFiltered} = MyFiltered(v);
+    if(res.exists,
+      fn { res.getOrExit.print; },
+      fn { 'void'.print; });
+  }"#;
+  stdout "hello\n";
+);
+
+test!(rest_either_parent_constructor_none => r#"
+  type MyEither = i64 | string | bool;
+  type MyFiltered = Rest{MyEither};
+  export fn main {
+    let v: MyEither = 42.MyEither;
+    let res: Maybe{MyFiltered} = MyFiltered(v);
+    if(res.exists,
+      fn { res.getOrExit.print; },
+      fn { 'void'.print; });
+  }"#;
+  stdout "void\n";
+);
+
+test!(rest_either_parent_constructor_recursive => r#"
+  type Grandparent = i64 | string | bool | f64;
+  type Parent = Rest{Grandparent};
+  type Child = Rest{Parent};
+  export fn main {
+    let gp: Grandparent = true.Grandparent;
+    let p: Maybe{Parent} = Parent(gp);
+    if(p.exists,
+      fn {
+        let c: Maybe{Child} = Child(p.getOrExit);
+        if(c.exists,
+          fn { c.getOrExit.print; },
+          fn { 'void'.print; });
+      },
+      fn { 'void'.print; });
+  }"#;
+  stdout "true\n";
+);
+
+test!(rest_either_parent_constructor_recursive_none => r#"
+  type Grandparent = i64 | string | bool | f64;
+  type Parent = Rest{Grandparent};
+  type Child = Rest{Parent};
+  export fn main {
+    let gp: Grandparent = "hello".Grandparent;
+    let p: Maybe{Parent} = Parent(gp);
+    if(p.exists,
+      fn {
+        let c: Maybe{Child} = Child(p.getOrExit);
+        if(c.exists,
+          fn { c.getOrExit.print; },
+          fn { 'void'.print; });
+      },
+      fn { 'void'.print; });
+  }"#;
+  stdout "void\n";
 );
 
 test!(either_dedup_single_unwrap => r#"
@@ -1955,4 +2047,233 @@ test!(either_dedup_single_unwrap => r#"
       print(a.add(b));
     }"#;
     stdout "8\n";
+);
+
+// Exclude constructor tests
+
+test!(exclude_tuple_by_index => r#"
+  type MyTuple = a: i64, b: string, c: bool;
+  type MyFiltered = Exclude{MyTuple, 1};
+  export fn main {
+    let v: MyTuple = MyTuple(42, "hello", true);
+    let res: MyFiltered = MyFiltered(v.a, v.c);
+    res.a.print;
+    res.c.print;
+  }"#;
+  stdout "42\ntrue\n";
+);
+
+test!(exclude_tuple_by_index_first => r#"
+  type MyTuple2 = a: i64, b: string, c: bool;
+  type MyFiltered = Exclude{MyTuple2, 0};
+  export fn main {
+    let v: MyTuple2 = MyTuple2(42, "hello", true);
+    let res: MyFiltered = MyFiltered(v.b, v.c);
+    res.b.print;
+    res.c.print;
+  }"#;
+  stdout "hello\ntrue\n";
+);
+
+test!(exclude_tuple_parent_constructor => r#"
+  type MyTuple = a: i64, b: string, c: bool;
+  type MyFiltered = Exclude{MyTuple, 1};
+  export fn main {
+    let v: MyTuple = MyTuple(42, "hello", true);
+    let res: MyFiltered = MyFiltered(v);
+    res.a.print;
+    res.c.print;
+  }"#;
+  stdout "42\ntrue\n";
+);
+
+test!(exclude_tuple_parent_constructor_recursive => r#"
+  type Grandparent = a: i64, b: string, c: bool, d: f64;
+  type Parent = Exclude{Grandparent, 3};
+  type Child = Exclude{Parent, 1};
+  export fn main {
+    let gp: Grandparent = Grandparent(42, "hello", true, 3.14);
+    let p: Parent = Parent(gp);
+    let c: Child = Child(p);
+    c.a.print;
+    c.c.print;
+  }"#;
+  stdout "42\ntrue\n";
+);
+
+// Exclude Either tests
+
+test!(exclude_either_by_index => r#"
+  type MyEither = i64 | string | bool;
+  type MyFiltered = Exclude{MyEither, 1};
+  export fn main {
+    let v: MyEither = 42.MyEither;
+    let res: MyFiltered = 42.MyFiltered;
+    res.print;
+  }"#;
+  stdout "42\n";
+);
+
+test!(exclude_either_by_index_first => r#"
+  type MyEither2 = i64 | string | bool;
+  type MyFiltered2 = Exclude{MyEither2, 0};
+  export fn main {
+    let v: MyEither2 = true.MyEither2;
+    let res: MyFiltered2 = true.MyFiltered2;
+    res.print;
+  }"#;
+  stdout "true\n";
+);
+
+test!(exclude_either_parent_constructor => r#"
+  type MyEither = i64 | string | bool;
+  type MyFiltered = Exclude{MyEither, 1};
+  export fn main {
+    let v: MyEither = 42.MyEither;
+    let res: Maybe{MyFiltered} = MyFiltered(v);
+    if(res.exists,
+      fn { res.getOrExit.print; },
+      fn { 'void'.print; });
+  }"#;
+  stdout "42\n";
+);
+
+test!(exclude_either_parent_constructor_none => r#"
+  type MyEither = i64 | string | bool;
+  type MyFiltered = Exclude{MyEither, 1};
+  export fn main {
+    let v: MyEither = "hello".MyEither;
+    let res: Maybe{MyFiltered} = MyFiltered(v);
+    if(res.exists,
+      fn { res.getOrExit.print; },
+      fn { 'void'.print; });
+  }"#;
+  stdout "void\n";
+);
+
+test!(exclude_either_parent_constructor_recursive => r#"
+  type Grandparent = i64 | string | bool | f64;
+  type Parent = Exclude{Grandparent, 3};
+  type Child = Exclude{Parent, 1};
+  export fn main {
+    let gp: Grandparent = 42.Grandparent;
+    let p: Maybe{Parent} = Parent(gp);
+    if(p.exists,
+      fn {
+        let c: Maybe{Child} = Child(p.getOrExit);
+        if(c.exists,
+          fn { c.getOrExit.print; },
+          fn { 'void'.print; });
+      },
+      fn { 'void'.print; });
+  }"#;
+  stdout "42\n";
+);
+
+// Transitive parent constructor tests: constructing Child directly from Grandparent
+
+test!(exclude_either_parent_constructor_direct_from_grandparent => r#"
+  type Grandparent = i64 | string | bool | f64;
+  type Parent = Exclude{Grandparent, 3};
+  type Child = Exclude{Parent, 1};
+  export fn main {
+    let gp: Grandparent = 42.Grandparent;
+    let c: Maybe{Child} = Child(gp);
+    if(c.exists,
+      fn { c.getOrExit.print; },
+      fn { 'void'.print; });
+  }"#;
+  stdout "42\n";
+);
+
+test!(exclude_either_parent_constructor_direct_none => r#"
+  type Grandparent = i64 | string | bool | f64;
+  type Parent = Exclude{Grandparent, 3};
+  type Child = Exclude{Parent, 1};
+  export fn main {
+    let gp: Grandparent = "hello".Grandparent;
+    let c: Maybe{Child} = Child(gp);
+    if(c.exists,
+      fn { c.getOrExit.print; },
+      fn { 'void'.print; });
+  }"#;
+  stdout "void\n";
+);
+
+test!(exclude_tuple_parent_constructor_direct_from_grandparent => r#"
+  type Grandparent = a: i64, b: string, c: bool, d: f64;
+  type Parent = Exclude{Grandparent, 3};
+  type Child = Exclude{Parent, 1};
+  export fn main {
+    let gp: Grandparent = Grandparent(42, "hello", true, 3.14);
+    let c: Child = Child(gp);
+    c.a.print;
+    c.c.print;
+  }"#;
+  stdout "42\ntrue\n";
+);
+
+// Single-element and void reduction tests
+
+test!(exclude_tuple_single_element_remains_tuple => r#"
+  type MyTuple = a: i64, b: string;
+  type MySingle = Exclude{MyTuple, 1};
+  export fn main {
+    let v: MyTuple = MyTuple(42, "hello");
+    let res: MySingle = MySingle(v);
+    res.a.print;
+  }"#;
+  stdout "42\n";
+);
+
+test!(exclude_either_single_element_remains_either => r#"
+  type MyEither = i64 | string | bool;
+  type MySingle = Exclude{MyEither, 1};
+  export fn main {
+    let v: MyEither = 42.MyEither;
+    let res: Maybe{MySingle} = MySingle(v);
+    if(res.exists,
+      fn { res.getOrExit.i64.print; },
+      fn { 'void'.print; });
+  }"#;
+  stdout "42\n";
+);
+
+test!(exclude_tuple_to_void => r#"
+  type MyTuple = a: i64, b: string;
+  type MyPartial = Exclude{MyTuple, 1};
+  type MyVoid = Exclude{MyPartial, 0};
+  export fn main {
+    let v: MyTuple = MyTuple(42, "hello");
+    let p: MyPartial = MyPartial(v);
+    let res: MyVoid = MyVoid(p);
+    res.print;
+  }"#;
+  stdout "void\n";
+);
+
+test!(exclude_either_to_void => r#"
+  type MyEither = i64 | string;
+  type MySingle = Exclude{MyEither, 1};
+  type MyVoid = Exclude{MySingle, 0};
+  export fn main {
+    let v: MyEither = 42.MyEither;
+    let s: Maybe{MySingle} = MySingle(v);
+    let res: MyVoid = MyVoid(s.getOrExit);
+    res.print;
+  }"#;
+  stdout "void\n";
+);
+
+// -.(dash-dot) "subtract property" Exclude operator syntax tests
+
+test!(exclude_tuple_dashdot_chained => r#"
+  type MyTuple = a: i64, b: string, c: bool;
+  type MySingle = MyTuple-.a-.c;
+  export fn main {
+    let v: MyTuple = MyTuple(42, "hello", true);
+    let res: MySingle = MySingle(v);
+    res.b.print;
+  }"#;
+  stdout "hello\n";
 );

@@ -22,7 +22,7 @@ pub fn ctype_to_rtype(
                     Ok((format!(
                         "impl FnMut(&{}) -> {}",
                         match &**i {
-                            CType::Tuple(ts) => {
+                            CType::Tuple(ts, _) => {
                                 let mut out = Vec::new();
                                 for t in ts {
                                     let res = ctype_to_rtype(t.clone(), deps)?;
@@ -59,13 +59,13 @@ pub fn ctype_to_rtype(
         CType::Mut(t) => {
             ctype_to_rtype(t.clone(), deps)
         }
-        CType::Void => Ok(("void".to_string(), deps)),
+        CType::Void | CType::DerivedVoid(..) => Ok(("void".to_string(), deps)),
         CType::Infer(s, _) => Err(format!(
             "Inferred type matching {s} was not realized before code generation"
         )
         .into()),
         CType::Type(_, t) => match &**t {
-            CType::Either(ts) => {
+            CType::Either(ts, _) => {
                 if ts.len() == 2 && (matches!(*ts[1], CType::Void) || matches!(&*ts[1], CType::Type(n, _) if n == "Error")) {
                     return Ok(("".to_string(), deps));
                 }
@@ -90,8 +90,8 @@ pub fn ctype_to_rtype(
                             deps = res.1;
                             enum_type_strs.push(s);
                         }
-                        CType::Void => enum_type_strs.push("void".to_string()),
-                        CType::Tuple(ts) => {
+                        CType::Void | CType::DerivedVoid(..) => enum_type_strs.push("void".to_string()),
+                        CType::Tuple(ts, _) => {
                             let mut out = Vec::new();
                             for t in ts {
                                 let res = ctype_to_rtype(t.clone(), deps)?;
@@ -118,9 +118,9 @@ pub fn ctype_to_rtype(
                     enum_type_strs.join(", ")
                 ), deps))
             }
-            CType::Tuple(ts) => {
-                let mut out = Vec::new();
-                for t in ts {
+                CType::Tuple(ts, _) => {
+                            let mut out = Vec::new();
+                            for t in ts {
                     match &**t {
                         CType::Field(_, t2) => {
                             if !matches!(&**t2, CType::Int(_) | CType::Float(_) | CType::Bool(_) | CType::TString(_)) {
@@ -309,7 +309,7 @@ pub fn ctype_to_rtype(
                 Ok((format!(
                     "impl Fn(&{}) -> {}",
                     match &**i {
-                        CType::Tuple(ts) => {
+                        CType::Tuple(ts, _) => {
                             let mut out = Vec::new();
                             for t in ts {
                                 let res = ctype_to_rtype(t.clone(), deps)?;
@@ -334,9 +334,9 @@ pub fn ctype_to_rtype(
                 ), deps))
             }
         },
-        CType::Tuple(ts) => {
-            let mut out = Vec::new();
-            for t in ts {
+                   CType::Tuple(ts, _) => {
+                            let mut out = Vec::new();
+                            for t in ts {
                 match &**t {
                     CType::Field(_, t2) => {
                         if !matches!(&**t2, CType::Int(_) | CType::Float(_) | CType::Bool(_) | CType::TString(_)) {
@@ -364,15 +364,15 @@ pub fn ctype_to_rtype(
             let res = ctype_to_rtype(v.clone(), deps)?;
             let s = res.0;
             deps = res.1;
-            Ok((format!("/* {k} */ {s}"), deps))
+             Ok((format!("/* {k} */ {s}"), deps))
         }
-        CType::Either(ts) => {
+        CType::Either(ts, _) => {
             // Special handling to convert `Either{T, void}` to `Option<T>` and `Either{T, Error}`
             // to `Result<T, AlanError>`
             if ts.len() == 2 {
                 let alan_error = "alan_std::AlanError".to_string();
                 match &*ts[1] {
-                    CType::Void => {
+                    CType::Void | CType::DerivedVoid(..) => {
                         let res = ctype_to_rtype(ts[0].clone(), deps)?;
                         let s = res.0;
                         deps = res.1;
@@ -420,9 +420,9 @@ pub fn ctype_to_rtype(
                                 }
                                 Ok((format!("Result<{}, {}>", s, "alan_std::AlanError"), deps))
                             }
-                            _ => Ok((Arc::new(CType::Either(ts.clone())).to_callable_string(), deps)),
+                            _ => Ok((Arc::new(CType::Either(ts.clone(), Vec::new())).to_callable_string(), deps)),
                         }
-                        _ => Ok((Arc::new(CType::Either(ts.clone())).to_callable_string(), deps)),
+                        _ => Ok((Arc::new(CType::Either(ts.clone(), Vec::new())).to_callable_string(), deps)),
                     }
                     CType::Type(_, t) => match &**t {
                         CType::Binds(rustname, _) => match &**rustname {
@@ -467,13 +467,13 @@ pub fn ctype_to_rtype(
                                     }
                                     Ok((format!("Result<{}, {}>", s, "alan_std::AlanError"), deps))
                                 }
-                                _ => Ok((Arc::new(CType::Either(ts.clone())).to_callable_string(), deps)),
+                                _ => Ok((Arc::new(CType::Either(ts.clone(), Vec::new())).to_callable_string(), deps)),
                             }
-                            _ => Ok((Arc::new(CType::Either(ts.clone())).to_callable_string(), deps)),
+                            _ => Ok((Arc::new(CType::Either(ts.clone(), Vec::new())).to_callable_string(), deps)),
                         }
-                        _ => Ok((Arc::new(CType::Either(ts.clone())).to_callable_string(), deps)),
+                        _ => Ok((Arc::new(CType::Either(ts.clone(), Vec::new())).to_callable_string(), deps)),
                     }
-                    _ => Ok((Arc::new(CType::Either(ts.clone())).to_callable_string(), deps)),
+                    _ => Ok((Arc::new(CType::Either(ts.clone(), Vec::new())).to_callable_string(), deps)),
                 }
             } else {
                 for t in ts {
@@ -481,7 +481,7 @@ pub fn ctype_to_rtype(
                     let res = ctype_to_rtype(t.clone(), deps)?;
                     deps = res.1;
                 }
-                Ok((Arc::new(CType::Either(ts.clone())).to_callable_string(), deps))
+                Ok((Arc::new(CType::Either(ts.clone(), Vec::new())).to_callable_string(), deps))
             }
         }
         CType::AnyOf(_) => Ok(("".to_string(), deps)), // Does this make any sense in Rust?
@@ -600,7 +600,7 @@ pub fn generate(
         // TODO: The complexity of this function indicates more fundamental issues in the type
         // generation. This needs a rethink and rewrite.
         CType::Type(_name, t) => match &**t {
-            CType::Either(_) => {
+            CType::Either(_, _) => {
                 let res = generate(t.clone(), out, deps)?;
                 out = res.1;
                 deps = res.2;
@@ -619,17 +619,17 @@ pub fn generate(
                 Ok((s, out, deps))
             }
         },
-        CType::Tuple(_) => {
+        CType::Tuple(_, _) => {
             let res = ctype_to_rtype(typen, deps)?;
             let s = res.0;
             deps = res.1;
             Ok((s, out, deps))
         }
-        CType::Void => {
+        CType::Void | CType::DerivedVoid(..) => {
             out.insert("void".to_string(), "type void = ();".to_string());
             Ok(("()".to_string(), out, deps))
         }
-        CType::Either(ts) => {
+        CType::Either(ts, _) => {
             // Make sure every sub-type exists
             for t in ts {
                 let res = generate(t.clone(), out, deps)?;
@@ -637,10 +637,50 @@ pub fn generate(
                 deps = res.2;
             }
 
-            let res = ctype_to_rtype(typen, deps)?;
-            let out_str = res.0;
-            deps = res.1;
-            Ok((out_str, out, deps)) // TODO: Put something into out?
+            // Check if this is a 2-variant Either that maps to Option/Result
+            if ts.len() == 2 && matches!(*ts[1], CType::Void) {
+                let res = ctype_to_rtype(ts[0].clone(), deps)?;
+                deps = res.1;
+                Ok((format!("Option<{}>", res.0), out, deps))
+            } else if ts.len() == 2 && matches!(&*ts[1], CType::Type(n, _) if n == "Error") {
+                let res = ctype_to_rtype(ts[0].clone(), deps)?;
+                deps = res.1;
+                Ok((format!("Result<{}, alan_std::AlanError>", res.0), out, deps))
+            } else {
+                // Build the enum definition for 3+ variant Either
+                let mut enum_type_strs = Vec::new();
+                for t in ts {
+                    match &**t {
+                        CType::Field(k, v) => {
+                            let res = ctype_to_rtype(v.clone(), deps)?;
+                            deps = res.1;
+                            enum_type_strs.push(format!("{}({})", k, res.0));
+                        }
+                        CType::Type(n, t) => {
+                            let res = ctype_to_rtype(t.clone(), deps)?;
+                            deps = res.1;
+                            enum_type_strs.push(format!("{}({})", n, res.0));
+                        }
+                        CType::Void | CType::DerivedVoid(..) => {
+                            enum_type_strs.push("void".to_string())
+                        }
+                        _otherwise => {
+                            let res = ctype_to_rtype(t.clone(), deps)?;
+                            deps = res.1;
+                            let name = t.clone().to_callable_string();
+                            enum_type_strs.push(format!("{}({})", name, res.0));
+                        }
+                    }
+                }
+                let enum_key = typen.to_callable_string();
+                let enum_def = format!(
+                    "#[derive(Clone)]\nenum {} {{ {} }}",
+                    enum_key,
+                    enum_type_strs.join(", ")
+                );
+                out.insert(enum_key.clone(), enum_def);
+                Ok((enum_key, out, deps))
+            }
         }
         CType::Group(g) => {
             let res = generate(g.clone(), out, deps)?;

@@ -17,7 +17,8 @@ use crate::parse;
 #[derive(Clone, Debug, PartialEq)]
 pub enum CType {
     Void,
-    Infer(String, String), // TODO: Switch to an Interface here once they exist
+    DerivedVoid(Vec<Arc<CType>>), // void with parent types for Exclude{...} constructors
+    Infer(String, String),        // TODO: Switch to an Interface here once they exist
     Type(String, Arc<CType>),
     Generic(String, Vec<String>, Arc<CType>),
     Binds(Arc<CType>, Vec<Arc<CType>>),
@@ -47,10 +48,11 @@ pub enum CType {
     Nodejs(Arc<CType>),
     From(Arc<CType>),
     Import(Arc<CType>, Arc<CType>),
-    Tuple(Vec<Arc<CType>>),
+    Tuple(Vec<Arc<CType>>, Vec<Arc<CType>>),
     Field(String, Arc<CType>),
-    Either(Vec<Arc<CType>>),
+    Either(Vec<Arc<CType>>, Vec<Arc<CType>>),
     Prop(Arc<CType>, Arc<CType>),
+    Exclude(Arc<CType>, Arc<CType>),
     AnyOf(Vec<Arc<CType>>),
     Buffer(Arc<CType>, Arc<CType>),
     Array(Arc<CType>),
@@ -65,6 +67,7 @@ pub enum CType {
     Max(Vec<Arc<CType>>),
     Neg(Arc<CType>),
     Len(Arc<CType>),
+
     Size(Arc<CType>),
     FileStr(Arc<CType>),
     Concat(Arc<CType>, Arc<CType>),
@@ -193,7 +196,7 @@ impl CType {
             GTE.get_or_init(|| Arc::new(CType::Infer(" >= ".to_string(), " >= ".to_string())));
         while let Some(element) = ctype_stack.pop() {
             match &**element {
-                CType::Void => str_parts.push("()"),
+                CType::Void | CType::DerivedVoid(..) => str_parts.push("()"),
                 CType::Infer(s, _) => str_parts.push(s),
                 CType::Type(n, t) => match strict {
                     true => str_parts.push(n),
@@ -396,7 +399,7 @@ impl CType {
                         ctype_stack.push(n);
                     }
                 },
-                CType::Tuple(ts) => {
+                CType::Tuple(ts, _) => {
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
                             ctype_stack.push(comma);
@@ -412,7 +415,7 @@ impl CType {
                     }
                     false => ctype_stack.push(t),
                 },
-                CType::Either(ts) => {
+                CType::Either(ts, _) => {
                     for (i, t) in ts.iter().rev().enumerate() {
                         if i != 0 {
                             ctype_stack.push(or);
@@ -423,6 +426,13 @@ impl CType {
                 CType::Prop(t, p) => {
                     ctype_stack.push(p);
                     ctype_stack.push(dot);
+                    ctype_stack.push(t);
+                }
+                CType::Exclude(t, p) => {
+                    str_parts.push("Exclude{");
+                    ctype_stack.push(close_brace);
+                    ctype_stack.push(p);
+                    ctype_stack.push(comma);
                     ctype_stack.push(t);
                 }
                 CType::AnyOf(ts) => {
@@ -690,7 +700,7 @@ impl CType {
             COMMA.get_or_init(|| Arc::new(CType::Infer(", ".to_string(), ", ".to_string())));
         while let Some(element) = ctype_stack.pop() {
             match &**element {
-                CType::Void => str_parts.push("void"),
+                CType::Void | CType::DerivedVoid(..) => str_parts.push("void"),
                 CType::Infer(s, _) => str_parts.push(s),
                 CType::Type(_, t) => ctype_stack.push(t),
                 CType::Generic(n, gs, _) => {
@@ -885,7 +895,7 @@ impl CType {
                     ctype_stack.push(comma);
                     ctype_stack.push(n);
                 }
-                CType::Tuple(ts) => {
+                CType::Tuple(ts, _) => {
                     str_parts.push("Tuple{");
                     ctype_stack.push(close_brace);
                     for (i, t) in ts.iter().rev().enumerate() {
@@ -902,7 +912,7 @@ impl CType {
                     ctype_stack.push(close_brace);
                     ctype_stack.push(t);
                 }
-                CType::Either(ts) => {
+                CType::Either(ts, _) => {
                     str_parts.push("Either{");
                     ctype_stack.push(close_brace);
                     for (i, t) in ts.iter().rev().enumerate() {
@@ -914,6 +924,13 @@ impl CType {
                 }
                 CType::Prop(t, p) => {
                     str_parts.push("Prop{");
+                    ctype_stack.push(close_brace);
+                    ctype_stack.push(p);
+                    ctype_stack.push(comma);
+                    ctype_stack.push(t);
+                }
+                CType::Exclude(t, p) => {
+                    str_parts.push("Exclude{");
                     ctype_stack.push(close_brace);
                     ctype_stack.push(p);
                     ctype_stack.push(comma);
@@ -1221,13 +1238,45 @@ impl CType {
             CType::TString(s) if s.starts_with(|c: char| c.is_ascii_digit()) => {
                 format!("_{}", self.clone().to_functional_string())
             }
-            CType::Type(n, t) => match **t {
+            CType::Type(n, t) => match &**t {
                 CType::Int(_) | CType::Float(_) => {
                     format!("_{}", self.clone().to_functional_string())
                 }
                 CType::Binds(..) => n.clone(),
+                CType::Exclude(et, ep) => {
+                    let resolved = CType::exclude(et.clone(), ep.clone());
+                    if matches!(&*resolved, CType::Exclude(..)) {
+                        self.clone().to_functional_string()
+                    } else {
+                        resolved.to_callable_string()
+                    }
+                }
+                CType::Type(_, inner) => {
+                    if matches!(&**inner, CType::Exclude(..)) {
+                        let (et, ep) = match &**inner {
+                            CType::Exclude(et, ep) => (et.clone(), ep.clone()),
+                            _ => unreachable!(),
+                        };
+                        let resolved = CType::exclude(et, ep);
+                        if matches!(&*resolved, CType::Exclude(..)) {
+                            self.clone().to_functional_string()
+                        } else {
+                            resolved.to_callable_string()
+                        }
+                    } else {
+                        self.clone().to_functional_string()
+                    }
+                }
                 _ => self.clone().to_functional_string(),
             },
+            CType::Exclude(t, p) => {
+                let resolved = CType::exclude(t.clone(), p.clone());
+                if matches!(&*resolved, CType::Exclude(..)) {
+                    self.clone().to_functional_string()
+                } else {
+                    resolved.to_callable_string()
+                }
+            }
             _ => self.clone().to_functional_string(),
         }
         .chars()
@@ -1250,6 +1299,7 @@ impl CType {
     pub fn has_infer(self: Arc<CType>) -> bool {
         match &*self {
             CType::Void
+            | CType::DerivedVoid(..)
             | CType::IntrinsicGeneric(..)
             | CType::Int(_)
             | CType::Float(_)
@@ -1292,10 +1342,11 @@ impl CType {
             | CType::Dependency(a, b)
             | CType::Import(a, b)
             | CType::Prop(a, b)
+            | CType::Exclude(a, b)
             | CType::Buffer(a, b)
             | CType::Concat(a, b) => a.clone().has_infer() || b.clone().has_infer(),
-            CType::Tuple(ts)
-            | CType::Either(ts)
+            CType::Tuple(ts, _)
+            | CType::Either(ts, _)
             | CType::AnyOf(ts)
             | CType::Add(ts)
             | CType::Sub(ts)
@@ -1323,7 +1374,7 @@ impl CType {
 
     pub fn degroup(self: Arc<CType>) -> Arc<CType> {
         match &*self {
-            CType::Void => self,
+            CType::Void | CType::DerivedVoid(..) => self,
             CType::Infer(..) => self,
             CType::Type(n, t) => Arc::new(CType::Type(n.clone(), t.clone().degroup())),
             CType::Generic(..) => self,
@@ -1365,18 +1416,29 @@ impl CType {
             CType::Import(n, d) => {
                 Arc::new(CType::Import(n.clone().degroup(), d.clone().degroup()))
             }
-            CType::Tuple(ts) => Arc::new(CType::Tuple(
+            CType::Tuple(ts, parents) => Arc::new(CType::Tuple(
                 ts.iter()
+                    .map(|t| t.clone().degroup())
+                    .collect::<Vec<Arc<CType>>>(),
+                parents
+                    .iter()
                     .map(|t| t.clone().degroup())
                     .collect::<Vec<Arc<CType>>>(),
             )),
             CType::Field(l, t) => Arc::new(CType::Field(l.clone(), t.clone().degroup())),
-            CType::Either(ts) => Arc::new(CType::Either(
+            CType::Either(ts, parents) => Arc::new(CType::Either(
                 ts.iter()
+                    .map(|t| t.clone().degroup())
+                    .collect::<Vec<Arc<CType>>>(),
+                parents
+                    .iter()
                     .map(|t| t.clone().degroup())
                     .collect::<Vec<Arc<CType>>>(),
             )),
             CType::Prop(t, p) => Arc::new(CType::Prop(t.clone().degroup(), p.clone().degroup())),
+            CType::Exclude(t, p) => {
+                Arc::new(CType::Exclude(t.clone().degroup(), p.clone().degroup()))
+            }
             CType::AnyOf(ts) => Arc::new(CType::AnyOf(
                 ts.iter()
                     .map(|t| t.clone().degroup())
@@ -1682,14 +1744,14 @@ impl CType {
                     }
                     (CType::Function(i1, o1), CType::Function(i2, o2)) => {
                         match &**i1 {
-                            CType::Tuple(ts1) if ts1.len() == 1 => {
+                            CType::Tuple(ts1, _) if ts1.len() == 1 => {
                                 arg.push(ts1[0].clone());
                             }
                             _otherwise => arg.push(i1.clone()),
                         }
                         arg.push(o1.clone());
                         match &**i2 {
-                            CType::Tuple(ts2) if ts2.len() == 1 => {
+                            CType::Tuple(ts2, _) if ts2.len() == 1 => {
                                 input.push(ts2[0].clone());
                             }
                             _otherwise => input.push(i2.clone()),
@@ -1758,7 +1820,7 @@ impl CType {
                         input.push(n2.clone());
                         input.push(d2.clone());
                     }
-                    (CType::Tuple(ts1), CType::Tuple(ts2)) => {
+                    (CType::Tuple(ts1, _), CType::Tuple(ts2, _)) => {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched tuple types {} and {} found during inference",
@@ -1781,6 +1843,12 @@ impl CType {
                         input.push(t2.clone());
                         input.push(p2.clone());
                     }
+                    (CType::Exclude(t1, p1), CType::Exclude(t2, p2)) => {
+                        arg.push(t1.clone());
+                        arg.push(p1.clone());
+                        input.push(t2.clone());
+                        input.push(p2.clone());
+                    }
                     (a, CType::Prop(t, p)) => {
                         // TODO: There's probably a generalized way to handle things like this, but
                         // for now, just hardwire this particular generic resolution used for the
@@ -1792,7 +1860,7 @@ impl CType {
                             CType::StringCast(sc) => match &**sc {
                                 CType::Infer(..) => match &**t {
                                     CType::Type(_, it) => match &**it {
-                                        CType::Tuple(tp) => {
+                                        CType::Tuple(tp, _) => {
                                             let mut found = false;
                                             for r in tp {
                                                 if let CType::Field(l, v) = &**r {
@@ -1821,7 +1889,7 @@ impl CType {
                                             return Err("Property extraction inference only possible on a tuple type".into());
                                         }
                                     },
-                                    CType::Tuple(tp) => {
+                                    CType::Tuple(tp, _) => {
                                         let mut found = false;
                                         for r in tp {
                                             if let CType::Field(l, v) = &**r {
@@ -1862,7 +1930,7 @@ impl CType {
                                                 match &**sc {
                                                     CType::Infer(..) => match &**t {
                                                         CType::Type(_, it) => match &**it {
-                                                            CType::Tuple(tp) => {
+                                                            CType::Tuple(tp, _) => {
                                                                 let mut found = false;
                                                                 for r in tp {
                                                                     if let CType::Field(l, v) = &**r
@@ -1888,7 +1956,7 @@ impl CType {
                                                                 return Err("Property extraction inference only possible on a tuple type".into());
                                                             }
                                                         },
-                                                        CType::Tuple(tp) => {
+                                                        CType::Tuple(tp, _) => {
                                                             let mut found = false;
                                                             for r in tp {
                                                                 if let CType::Field(l, v) = &**r {
@@ -1956,7 +2024,7 @@ impl CType {
                         arg.push(t1.clone());
                         input.push(i.clone());
                     }
-                    (CType::Either(ts1), CType::Either(ts2)) => {
+                    (CType::Either(ts1, _), CType::Either(ts2, _)) => {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched either types {} and {} found during inference",
@@ -2719,7 +2787,7 @@ impl CType {
                     // TODO: Do this the right way with `infer_generics`, but I need to refactor a
                     // lot to get the scope into this function. For now, let's just assume if the
                     // lengths of the input tuples are the same, we're fine, and if not, we're not.
-                    matches!((&**i1, &**i2), (CType::Tuple(ts1), CType::Tuple(ts2)) if ts1.len() == ts2.len())
+                    matches!((&**i1, &**i2), (CType::Tuple(ts1, _), CType::Tuple(ts2, _)) if ts1.len() == ts2.len())
                 } else {
                     // Should be impossible
                     false
@@ -3129,6 +3197,7 @@ impl CType {
                                         ))
                                     })
                                     .collect::<Vec<Arc<CType>>>(),
+                                Vec::new(),
                             )),
                             rettype,
                         ));
@@ -3155,7 +3224,7 @@ impl CType {
                     origin_scope_path: scope.path.clone(),
                 }));
             }
-            CType::Tuple(ts) => {
+            CType::Tuple(ts, parents) => {
                 // The constructor function needs to grab the types from all
                 // arguments to construct the desired product type. For any type
                 // that is marked as a field, we also want to create an accessor
@@ -3294,13 +3363,44 @@ impl CType {
                 fs.push(Arc::new(Function {
                     name: constructor_fn_name.clone(),
                     typen: Arc::new(CType::Function(
-                        Arc::new(CType::Tuple(actual_ts.clone())),
+                        Arc::new(CType::Tuple(actual_ts.clone(), Vec::new())),
                         t.clone(),
                     )),
                     microstatements: Vec::new(),
                     kind: FnKind::Derived,
                     origin_scope_path: scope.path.clone(),
                 }));
+                // Generate parent constructor functions for each parent type
+                for parent in parents {
+                    let parent_unwrapped = parent.clone().degroup();
+                    let parent_fields = match &*parent_unwrapped {
+                        CType::Tuple(pf, _) => pf.clone(),
+                        CType::Either(pf, _) => pf.clone(),
+                        _ => continue,
+                    };
+                    // Build the list of field indices in the parent that match our fields
+                    let mut indices = Vec::new();
+                    for child_field in &actual_ts {
+                        let child_key = child_field.clone().degroup().to_callable_string();
+                        for (idx, pf) in parent_fields.iter().enumerate() {
+                            if pf.clone().degroup().to_callable_string() == child_key {
+                                indices.push(idx);
+                                break;
+                            }
+                        }
+                    }
+                    // Create the parent constructor: fn TypeName(arg: ParentType) -> TypeName
+                    fs.push(Arc::new(Function {
+                        name: constructor_fn_name.clone(),
+                        typen: Arc::new(CType::Function(
+                            Arc::new(CType::Tuple(vec![parent.clone()], Vec::new())),
+                            t.clone(),
+                        )),
+                        microstatements: Vec::new(),
+                        kind: FnKind::Derived,
+                        origin_scope_path: scope.path.clone(),
+                    }));
+                }
             }
             CType::Field(n, f) => {
                 // This is a "baby tuple" of just one value. So we follow the Tuple logic, but
@@ -3392,7 +3492,8 @@ impl CType {
                     origin_scope_path: scope.path.clone(),
                 }));
             }
-            CType::Either(ts) => {
+
+            CType::Either(ts, parents) => {
                 // There are an equal number of constructor functions and accessor
                 // functions, one for each inner type of the sum type.
                 for e in ts {
@@ -3400,10 +3501,10 @@ impl CType {
                     fs.push(Arc::new(Function {
                         name: constructor_fn_name.clone(),
                         typen: Arc::new(CType::Function(
-                            Arc::new(CType::Tuple(vec![Arc::new(CType::Field(
-                                "arg0".to_string(),
-                                e.clone(),
-                            ))])),
+                            Arc::new(CType::Tuple(
+                                vec![Arc::new(CType::Field("arg0".to_string(), e.clone()))],
+                                Vec::new(),
+                            )),
                             t.clone(),
                         )),
                         microstatements: Vec::new(),
@@ -3414,7 +3515,7 @@ impl CType {
                     fs.push(Arc::new(Function {
                         name: "store".to_string(),
                         typen: Arc::new(CType::Function(
-                            Arc::new(CType::Tuple(vec![t.clone(), e.clone()])),
+                            Arc::new(CType::Tuple(vec![t.clone(), e.clone()], Vec::new())),
                             t.clone(),
                         )),
                         microstatements: Vec::new(),
@@ -3438,7 +3539,10 @@ impl CType {
                             name: n.clone(),
                             typen: Arc::new(CType::Function(
                                 t.clone(),
-                                Arc::new(CType::Either(vec![i.clone(), Arc::new(CType::Void)])),
+                                Arc::new(CType::Either(
+                                    vec![i.clone(), Arc::new(CType::Void)],
+                                    Vec::new(),
+                                )),
                             )),
                             microstatements: Vec::new(),
                             kind: FnKind::Derived,
@@ -3448,7 +3552,10 @@ impl CType {
                             name: n.clone(),
                             typen: Arc::new(CType::Function(
                                 t.clone(),
-                                Arc::new(CType::Either(vec![e.clone(), Arc::new(CType::Void)])),
+                                Arc::new(CType::Either(
+                                    vec![e.clone(), Arc::new(CType::Void)],
+                                    Vec::new(),
+                                )),
                             )),
                             microstatements: Vec::new(),
                             kind: FnKind::Derived,
@@ -3456,6 +3563,42 @@ impl CType {
                         })),
                         _ => {} // We can't make names for other types
                     }
+                }
+                // Generate parent constructor functions for each parent type
+                for parent in parents {
+                    let parent_unwrapped = parent.clone().degroup();
+                    let parent_fields = match &*parent_unwrapped {
+                        CType::Tuple(pf, _) => pf.clone(),
+                        CType::Either(pf, _) => pf.clone(),
+                        _ => continue,
+                    };
+                    // Build the list of field indices in the parent that match our fields
+                    let mut indices = Vec::new();
+                    for child_field in ts {
+                        let child_key = child_field.clone().degroup().to_callable_string();
+                        for (idx, pf) in parent_fields.iter().enumerate() {
+                            if pf.clone().degroup().to_callable_string() == child_key {
+                                indices.push(idx);
+                                break;
+                            }
+                        }
+                    }
+                    // Create the parent constructor: fn TypeName(arg: ParentType) -> Maybe{TypeName}
+                    // Returns Maybe because the parent may hold the excluded variant
+                    let maybe_ret = Arc::new(CType::Either(
+                        vec![t.clone(), Arc::new(CType::Void)],
+                        Vec::new(),
+                    ));
+                    fs.push(Arc::new(Function {
+                        name: constructor_fn_name.clone(),
+                        typen: Arc::new(CType::Function(
+                            Arc::new(CType::Tuple(vec![parent.clone()], Vec::new())),
+                            maybe_ret,
+                        )),
+                        microstatements: Vec::new(),
+                        kind: FnKind::Derived,
+                        origin_scope_path: scope.path.clone(),
+                    }));
                 }
             }
             CType::Buffer(b, s) => {
@@ -3479,13 +3622,16 @@ impl CType {
                     fs.push(Arc::new(Function {
                         name: constructor_fn_name.clone(),
                         typen: Arc::new(CType::Function(
-                            Arc::new(CType::Tuple({
-                                let mut v = Vec::new();
-                                for _ in 0..size {
-                                    v.push(b.clone());
-                                }
-                                v
-                            })),
+                            Arc::new(CType::Tuple(
+                                {
+                                    let mut v = Vec::new();
+                                    for _ in 0..size {
+                                        v.push(b.clone());
+                                    }
+                                    v
+                                },
+                                Vec::new(),
+                            )),
                             t.clone(),
                         )),
                         microstatements: Vec::new(),
@@ -3606,6 +3752,25 @@ impl CType {
                     }));
                 }
             }
+            CType::DerivedVoid(parents) => {
+                // Generate parent constructor functions that take parent type and return void
+                for parent in parents {
+                    let parent_unwrapped = parent.clone().degroup();
+                    if !matches!(&*parent_unwrapped, CType::Tuple(..) | CType::Either(..)) {
+                        continue;
+                    }
+                    fs.push(Arc::new(Function {
+                        name: constructor_fn_name.clone(),
+                        typen: Arc::new(CType::Function(
+                            Arc::new(CType::Tuple(vec![parent.clone()], Vec::new())),
+                            Arc::new(CType::Void),
+                        )),
+                        microstatements: Vec::new(),
+                        kind: FnKind::Derived,
+                        origin_scope_path: scope.path.clone(),
+                    }));
+                }
+            }
             _ => {} // Don't do anything for other types
         }
         (CType::clone(&t), fs)
@@ -3674,7 +3839,7 @@ impl CType {
                 }
                 // Let's just avoid the "bare field" type definition and auto-wrap into a tuple
                 if let CType::Field(..) = &*inner_type {
-                    inner_type = Arc::new(CType::Tuple(vec![inner_type]));
+                    inner_type = Arc::new(CType::Tuple(vec![inner_type], Vec::new()));
                 }
                 // Magic hackery to convert a `From` type into an `Import` type if it's the top-level type
                 inner_type = match &*inner_type {
@@ -3835,6 +4000,7 @@ impl CType {
         }
         match &*self {
             CType::Void
+            | CType::DerivedVoid(..)
             | CType::Infer(..)
             | CType::Generic(..)
             | CType::IntrinsicGeneric(..)
@@ -3890,8 +4056,12 @@ impl CType {
                 n.clone().swap_subtype(old_type.clone(), new_type.clone()),
                 d.clone().swap_subtype(old_type, new_type),
             )),
-            CType::Tuple(ts) => Arc::new(CType::Tuple(
+            CType::Tuple(ts, parents) => Arc::new(CType::Tuple(
                 ts.iter()
+                    .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
+                    .collect::<Vec<Arc<CType>>>(),
+                parents
+                    .iter()
                     .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
                     .collect::<Vec<Arc<CType>>>(),
             )),
@@ -3899,8 +4069,12 @@ impl CType {
                 name.clone(),
                 t.clone().swap_subtype(old_type, new_type),
             )),
-            CType::Either(ts) => Arc::new(CType::Either(
+            CType::Either(ts, parents) => Arc::new(CType::Either(
                 ts.iter()
+                    .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
+                    .collect::<Vec<Arc<CType>>>(),
+                parents
+                    .iter()
                     .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
                     .collect::<Vec<Arc<CType>>>(),
             )),
@@ -3962,6 +4136,10 @@ impl CType {
                 .unwrap(),
             CType::Neg(t) => CType::neg(t.clone().swap_subtype(old_type, new_type)),
             CType::Len(t) => CType::len(t.clone().swap_subtype(old_type, new_type)),
+            CType::Exclude(t, p) => CType::exclude(
+                t.clone().swap_subtype(old_type.clone(), new_type.clone()),
+                p.clone().swap_subtype(old_type, new_type),
+            ),
             CType::Size(t) => CType::size(t.clone().swap_subtype(old_type, new_type)),
             CType::FileStr(t) => CType::filestr(t.clone().swap_subtype(old_type, new_type)),
             CType::Concat(a, b) => CType::concat(
@@ -4216,7 +4394,7 @@ impl CType {
         let mut out_vec = Vec::new();
         for arg in args {
             match &*arg {
-                CType::Tuple(ts) => {
+                CType::Tuple(ts, _) => {
                     for t in ts {
                         out_vec.push(t.clone());
                     }
@@ -4224,13 +4402,13 @@ impl CType {
                 _other => out_vec.push(arg),
             }
         }
-        Arc::new(CType::Tuple(out_vec))
+        Arc::new(CType::Tuple(out_vec, Vec::new()))
     }
     pub fn either(args: Vec<Arc<CType>>) -> Arc<CType> {
         let mut out_vec = Vec::new();
         for arg in args {
             match &*arg {
-                CType::Either(ts) => {
+                CType::Either(ts, _) => {
                     for t in ts {
                         out_vec.push(t.clone());
                     }
@@ -4251,7 +4429,7 @@ impl CType {
         if deduped.len() == 1 {
             deduped.into_iter().next().unwrap()
         } else {
-            Arc::new(CType::Either(deduped))
+            Arc::new(CType::Either(deduped, Vec::new()))
         }
     }
     pub fn prop(t: Arc<CType>, p: Arc<CType>) -> Arc<CType> {
@@ -4285,8 +4463,17 @@ impl CType {
                     "Properties must be a name or integer location, not {otherwise:?}",
                 ))),
             },
-            CType::Tuple(ts) | CType::Either(ts) => match &*p {
+            CType::Tuple(ts, _) | CType::Either(ts, _) => match &*p {
                 CType::TString(s) => {
+                    if let Ok(i) = s.parse::<i128>() {
+                        if (0..ts.len()).contains(&(i as usize)) {
+                            return ts[i as usize].clone();
+                        } else {
+                            return Arc::new(CType::Fail(format!(
+                                "{i} is out of bounds for type {t:?}"
+                            )));
+                        }
+                    }
                     for inner in ts {
                         if let CType::Field(n, f) = &**inner {
                             if n == s {
@@ -4355,7 +4542,7 @@ impl CType {
                 _other => out_vec.push(arg),
             }
         }
-        Arc::new(CType::Either(out_vec))
+        Arc::new(CType::Either(out_vec, Vec::new()))
     }
     pub fn field(mut args: Vec<Arc<CType>>) -> Arc<CType> {
         if args.len() != 2 {
@@ -4417,20 +4604,221 @@ impl CType {
     }
     pub fn len(t: Arc<CType>) -> Arc<CType> {
         match &*t {
-            CType::Tuple(tup) => Arc::new(CType::Int(tup.len() as i128)),
+            CType::Tuple(tup, _) => Arc::new(CType::Int(tup.len() as i128)),
             CType::Buffer(_, l) => match **l {
                 CType::Int(l) => Arc::new(CType::Int(l)),
                 _ => {
                     CType::fail("Cannot get a compile time length for an invalid Buffer definition")
                 }
             },
-            CType::Either(eit) => Arc::new(CType::Int(eit.len() as i128)),
+            CType::Either(eit, _) => Arc::new(CType::Int(eit.len() as i128)),
             CType::Array(_) => {
                 CType::fail("Cannot get a compile time length for a variable-length array")
             }
             CType::Infer(..) => Arc::new(CType::Len(t)),
             _ => Arc::new(CType::Int(1)),
         }
+    }
+    pub fn exclude(t: Arc<CType>, n: Arc<CType>) -> Arc<CType> {
+        if t.clone().has_infer() || n.clone().has_infer() {
+            return Arc::new(CType::Exclude(t, n));
+        }
+        // Collect parent types from the original type, including transitive parents
+        let mut parents = Vec::new();
+        // Add the original type as the direct parent
+        parents.push(t.clone());
+        // Collect transitive parents from the unwrapped type
+        let unwrapped = t.clone().degroup();
+        match &*unwrapped {
+            CType::Type(_, inner) => {
+                match &**inner {
+                    CType::Tuple(_, inner_parents) => parents.extend(inner_parents.clone()),
+                    CType::Either(_, inner_parents) => parents.extend(inner_parents.clone()),
+                    _ => {}
+                }
+                return CType::exclude(inner.clone(), n);
+            }
+            CType::Group(inner) => {
+                return CType::exclude(inner.clone(), n);
+            }
+            CType::Tuple(_, inner_parents) => parents.extend(inner_parents.clone()),
+            CType::Either(_, inner_parents) => parents.extend(inner_parents.clone()),
+            _ => {}
+        }
+        match &*unwrapped {
+            CType::Infer(..) => unreachable!(),
+            CType::Either(ts, _) => {
+                let result = match &*n {
+                    CType::TString(s) => {
+                        let filtered: Vec<Arc<CType>> = ts.iter().filter(|t| {
+                            match &***t {
+                                CType::Field(name, _) => name != s,
+                                _ => (**t).clone().to_callable_string() != *s,
+                            }
+                        }).cloned().collect();
+                        if filtered.len() == ts.len() {
+                            return Arc::new(CType::Fail(format!("Variant with name {s} not found in Either type")));
+                        }
+                        filtered
+                    }
+                    CType::Int(i) => {
+                        let idx = *i as usize;
+                        if idx >= ts.len() {
+                            return Arc::new(CType::Fail(format!("Index {idx} out of bounds for Either type with {} variants", ts.len())));
+                        }
+                        let filtered: Vec<Arc<CType>> = ts.iter().enumerate().filter(|(idx_in_either, _)| {
+                            *idx_in_either != idx
+                         }).map(|(_, t)| t.clone()).collect();
+                         if filtered.is_empty() {
+                             return Arc::new(CType::DerivedVoid(parents));
+                         }
+                         filtered
+                    }
+                    otherwise => {
+                        CType::fail(&format!(
+                            "Exclude index must be a name or integer, not {otherwise:?}"
+                        ))
+                    }
+                };
+                if result.is_empty() {
+                    return Arc::new(CType::DerivedVoid(parents));
+                }
+                if result.len() == 1 {
+                    return Arc::new(CType::Either(result, parents));
+                }
+                Arc::new(CType::Either(result, parents))
+            }
+            CType::Tuple(ts, _) => {
+                let result = match &*n {
+                    CType::TString(s) => {
+                        let filtered: Vec<Arc<CType>> = ts.iter().filter(|t| {
+                            match &***t {
+                                CType::Field(name, _) => name != s,
+                                _ => (**t).clone().to_callable_string() != *s,
+                            }
+                        }).cloned().collect();
+                        if filtered.len() == ts.len() {
+                            return Arc::new(CType::Fail(format!("Element with name {s} not found in Tuple type")));
+                        }
+                        filtered
+                    }
+                    CType::Int(i) => {
+                        let idx = *i as usize;
+                        if idx >= ts.len() {
+                            return Arc::new(CType::Fail(format!("Index {idx} out of bounds for Tuple type with {} elements", ts.len())));
+                        }
+                        let filtered: Vec<Arc<CType>> = ts.iter().enumerate().filter(|(idx_in_tup, _)| {
+                            *idx_in_tup != idx
+                        }).map(|(_, t)| t.clone()).collect();
+                        if filtered.is_empty() {
+                            return Arc::new(CType::DerivedVoid(parents));
+                        }
+                        if filtered.len() == 1 {
+                            return Arc::new(CType::Tuple(filtered, parents));
+                        }
+                        return Arc::new(CType::Tuple(filtered, parents));
+                    }
+                    otherwise => {
+                        CType::fail(&format!(
+                            "Exclude index must be a name or integer, not {otherwise:?}"
+                        ))
+                    }
+                };
+                if result.is_empty() {
+                    return Arc::new(CType::DerivedVoid(parents));
+                }
+                Arc::new(CType::Tuple(result, parents))
+            }
+            CType::Field(name, _) => {
+                match &*n {
+                    CType::TString(s) => {
+                        if name == s {
+                            Arc::new(CType::Void)
+                        } else {
+                            Arc::new(CType::Fail(format!("Field name {s} does not match {name}")))
+                        }
+                    }
+                    CType::Int(i) => {
+                        if *i == 0 {
+                            Arc::new(CType::Void)
+                        } else {
+                            Arc::new(CType::Fail("Cannot exclude value (index 1) from Field type, only label (index 0)".to_string()))
+                        }
+                    }
+                    otherwise => {
+                        CType::fail(&format!(
+                            "Exclude index must be a name or integer, not {otherwise:?}"
+                        ))
+                    }
+                }
+            }
+            otherwise => CType::fail(&format!(
+                "Cannot exclude from type {otherwise:?}. Only Either, Tuple, and Field types are supported."
+            )),
+         }
+    }
+    // After exclude produces a Tuple/Either with parents, check the scope for an existing type
+    // with matching field structure. If found, merge the parent lists and return the updated type.
+    pub fn merge_exclude_parents(result: Arc<CType>, scope: &Scope) -> Arc<CType> {
+        let (fields, parents) = match &*result {
+            CType::Tuple(fields, parents) => (fields.clone(), parents.clone()),
+            CType::Either(fields, parents) => (fields.clone(), parents.clone()),
+            _ => return result,
+        };
+        if parents.is_empty() {
+            return result;
+        }
+        let result_fields_keys: Vec<String> = fields
+            .iter()
+            .map(|f| f.clone().degroup().to_callable_string())
+            .collect();
+        let result_key = result.clone().to_callable_string();
+        // Search scope for a type with matching structure but potentially different parents
+        if let Some(existing) = scope.types.get(&result_key) {
+            let existing_fields = match &**existing {
+                CType::Tuple(f, _) => f.clone(),
+                CType::Either(f, _) => f.clone(),
+                _ => return result,
+            };
+            // Compare field structure by callable string
+            let existing_fields_keys: Vec<String> = existing_fields
+                .iter()
+                .map(|f| f.clone().degroup().to_callable_string())
+                .collect();
+            if existing_fields_keys == result_fields_keys {
+                // Same field structure, merge parents
+                match &**existing {
+                    CType::Tuple(f, ep) => {
+                        let mut merged = ep.clone();
+                        for p in &parents {
+                            let pkey = p.clone().degroup().to_callable_string();
+                            if !merged
+                                .iter()
+                                .any(|mp| mp.clone().degroup().to_callable_string() == pkey)
+                            {
+                                merged.push(p.clone());
+                            }
+                        }
+                        return Arc::new(CType::Tuple(f.clone(), merged));
+                    }
+                    CType::Either(f, ep) => {
+                        let mut merged = ep.clone();
+                        for p in &parents {
+                            let pkey = p.clone().degroup().to_callable_string();
+                            if !merged
+                                .iter()
+                                .any(|mp| mp.clone().degroup().to_callable_string() == pkey)
+                            {
+                                merged.push(p.clone());
+                            }
+                        }
+                        return Arc::new(CType::Either(f.clone(), merged));
+                    }
+                    _ => {}
+                }
+            }
+        }
+        result
     }
     pub fn size(t: Arc<CType>) -> Arc<CType> {
         // TODO: Implementing this might require all types be made C-style structs under the hood,
@@ -4440,7 +4828,7 @@ impl CType {
         // particularly for writing to disk or interfacing with network protocols, etc, so I'd
         // prefer to keep it and have some compile-time guarantees we don't normally see.
         match &*t {
-            CType::Void => Arc::new(CType::Int(0)),
+            CType::Void | CType::DerivedVoid(..) => Arc::new(CType::Int(0)),
             CType::Infer(..) => Arc::new(CType::Size(t.clone())),
             CType::Type(_, t) => CType::size(t.clone()),
             CType::Generic(..) => CType::fail("Cannot determine the size of an unbound generic"),
@@ -4476,7 +4864,7 @@ impl CType {
             CType::Bool(_) => Arc::new(CType::Int(1)),
             CType::TString(s) => Arc::new(CType::Int(s.capacity() as i128)),
             CType::Group(t) | CType::Field(_, t) => CType::size(t.clone()),
-            CType::Tuple(ts) => {
+            CType::Tuple(ts, _) => {
                 let sizes = ts
                     .clone()
                     .into_iter()
@@ -4491,7 +4879,7 @@ impl CType {
                 }
                 Arc::new(CType::Int(out_size))
             }
-            CType::Either(ts) => {
+            CType::Either(ts, _) => {
                 let sizes = ts
                     .clone()
                     .into_iter()
@@ -4716,7 +5104,7 @@ impl CType {
         match &*c {
             CType::Bool(cond) => {
                 match &*t {
-                    CType::Tuple(tup) => {
+                    CType::Tuple(tup, _) => {
                         if tup.len() == 2 {
                             match cond {
                                 true => tup[0].clone(),
@@ -5284,7 +5672,7 @@ pub fn typebaselist_to_ctype(
                         }
                         parse::Constants::Strn(s) => {
                             prior_value = Some(match &*prior_value.unwrap() {
-                                CType::Tuple(ts) => {
+                                CType::Tuple(ts, _) => {
                                     let mut out = None;
                                     for t in ts {
                                         if let CType::Field(f, c) = &**t {
@@ -5317,13 +5705,13 @@ pub fn typebaselist_to_ctype(
                                     Err(_) => CType::fail("Indexing into a type must be done with positive integers"),
                                 };
                                     prior_value = Some(match &*prior_value.unwrap() {
-                                        CType::Tuple(ts) => match ts.get(idx) {
+                                        CType::Tuple(ts, _) => match ts.get(idx) {
                                             Some(t) => t.clone(),
                                             None => CType::fail(&format!(
                                                 "{idx} is larger than the size of {ts:?}"
                                             )),
                                         },
-                                        CType::Either(ts) => match ts.get(idx) {
+                                        CType::Either(ts, _) => match ts.get(idx) {
                                             Some(t) => t.clone(),
                                             None => CType::fail(&format!(
                                                 "{idx} is larger than the size of {ts:?}"
@@ -5383,6 +5771,41 @@ pub fn typebaselist_to_ctype(
                                                                 "true" => args.push(Arc::new(CType::Bool(true))),
                                                                 "false" => args.push(Arc::new(CType::Bool(false))),
                                                                 _ => args.push(Arc::new(CType::TString(argstr)))
+                                                            }
+                                                        }
+                                                    } else {
+                                                        CType::fail("huh?")
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        _ => CType::fail("Cannot follow method style syntax without an operator in between"),
+                                    }
+                                }
+                            }
+                            CType::IntrinsicGeneric(e, 2) if e == "Exclude" => {
+                                match nexttypebase {
+                                    None => {},
+                                    Some(next) => match next {
+                                        parse::TypeBase::GnCall(g) => {
+                                            // Same as Prop: the second arg (the index/field to exclude)
+                                            // can be a bare identifier treated as a string
+                                            if g.typecalllist.len() != 3 {
+                                                CType::fail("The Exclude generic type accepts only two parameters");
+                                            }
+                                            args.push(withtypeoperatorslist_to_ctype(&vec![g.typecalllist[0].clone()], scope)?);
+                                            let second_arg_str = g.typecalllist[2].to_string();
+                                            match second_arg_str.parse::<i128>() {
+                                                Ok(i) => args.push(Arc::new(CType::Int(i))),
+                                                Err(_) => {
+                                                    if let parse::WithTypeOperators::TypeBaseList(tbl) = &g.typecalllist[2] {
+                                                        if tbl.len() > 1 {
+                                                            args.push(withtypeoperatorslist_to_ctype(&vec![g.typecalllist[2].clone()], scope)?);
+                                                        } else {
+                                                            match second_arg_str.as_str() {
+                                                                "true" => args.push(Arc::new(CType::Bool(true))),
+                                                                "false" => args.push(Arc::new(CType::Bool(false))),
+                                                                _ => args.push(Arc::new(CType::TString(second_arg_str)))
                                                             }
                                                         }
                                                     } else {
@@ -5530,6 +5953,11 @@ pub fn typebaselist_to_ctype(
                                         "Field" => CType::field(args.clone()),
                                         "Either" => CType::either(args.clone()),
                                         "Prop" => CType::prop(args[0].clone(), args[1].clone()),
+                                        "Exclude" => {
+                                            let resolved =
+                                                CType::exclude(args[0].clone(), args[1].clone());
+                                            CType::merge_exclude_parents(resolved, scope)
+                                        }
                                         "AnyOf" => CType::anyof(args.clone()),
                                         "Buffer" => CType::buffer(args.clone()),
                                         "Array" => Arc::new(CType::Array(args[0].clone())),

@@ -89,7 +89,7 @@ impl<'a> Scope<'a> {
                         | "Rust" | "Nodejs" | "From" | "Array" | "Fail" | "Neg" | "Len" | "Size"
                         | "FileStr" | "Env" | "EnvExists" | "Not") => s = CType::from_generic(s, g, 1),
                         g @ ("Function" | "Call" | "Dependency" | "Import" | "Field"
-                        | "Prop" | "Buffer" | "Add" | "Sub" | "Mul" | "Div" | "Mod"
+                        | "Prop" | "Exclude" | "Buffer" | "Add" | "Sub" | "Mul" | "Div" | "Mod"
                         | "Pow" | "Min" | "Max" | "Concat" | "And" | "Or" | "Xor" | "Nand"
                         | "Nor" | "Xnor" | "Eq" | "Neq" | "Lt" | "Lte" | "Gt" | "Gte") => s = CType::from_generic(s, g, 2),
                         g @ ("If" | "Binds" | "Tuple" | "Either" | "AnyOf") => {
@@ -318,11 +318,17 @@ impl<'a> Scope<'a> {
                     .collect::<Vec<Arc<CType>>>();
                 let output = f.rettype();
                 match generics {
-                    None => Arc::new(CType::Function(Arc::new(CType::Tuple(input)), output)),
+                    None => Arc::new(CType::Function(
+                        Arc::new(CType::Tuple(input, Vec::new())),
+                        output,
+                    )),
                     Some(gs) => Arc::new(CType::Generic(
                         f.name.clone(),
                         gs,
-                        Arc::new(CType::Function(Arc::new(CType::Tuple(input)), output)),
+                        Arc::new(CType::Function(
+                            Arc::new(CType::Tuple(input, Vec::new())),
+                            output,
+                        )),
                     )),
                 }
             })
