@@ -1004,7 +1004,7 @@ pub fn from_microstatement(
                                             }
                                             return Ok((argstrs[0].clone(), out, deps));
                                         }
-                                        CType::Either(ts)
+                                        CType::Either(ts, _)
                                             if inner_type.clone().to_callable_string()
                                                 == enum_name =>
                                         {
