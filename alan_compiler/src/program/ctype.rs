@@ -5273,13 +5273,22 @@ impl CType {
             (CType::Float(a), CType::Float(b)) => CType::Bool(*a == *b),
             (CType::TString(a), CType::TString(b)) => CType::Bool(*a == *b),
             (CType::Bool(a), CType::Bool(b)) => CType::Bool(*a == *b),
-            (&CType::Infer(..), &CType::Infer(..) | &CType::Int(_) | &CType::Float(_) | &CType::TString(_) | &CType::Bool(_)) => {
-                CType::TEq(vec![a.clone(), b.clone()])
-            }
-            (&CType::Int(_) | &CType::Float(_) | &CType::TString(_) | &CType::Bool(_), &CType::Infer(..)) => {
-                CType::TEq(vec![a.clone(), b.clone()])
-            }
-            (a, b) => CType::Bool(Arc::new(a.clone()).to_callable_string() == Arc::new(b.clone()).to_callable_string())
+            (
+                &CType::Infer(..),
+                &CType::Infer(..)
+                | &CType::Int(_)
+                | &CType::Float(_)
+                | &CType::TString(_)
+                | &CType::Bool(_),
+            ) => CType::TEq(vec![a.clone(), b.clone()]),
+            (
+                &CType::Int(_) | &CType::Float(_) | &CType::TString(_) | &CType::Bool(_),
+                &CType::Infer(..),
+            ) => CType::TEq(vec![a.clone(), b.clone()]),
+            (a, b) => CType::Bool(
+                Arc::new(a.clone()).to_callable_string()
+                    == Arc::new(b.clone()).to_callable_string(),
+            ),
         })
     }
     pub fn neq(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
@@ -5294,13 +5303,22 @@ impl CType {
             (CType::Float(a), CType::Float(b)) => CType::Bool(*a != *b),
             (CType::TString(a), CType::TString(b)) => CType::Bool(*a != *b),
             (CType::Bool(a), CType::Bool(b)) => CType::Bool(*a != *b),
-            (&CType::Infer(..), &CType::Infer(..) | &CType::Int(_) | &CType::Float(_) | &CType::TString(_) | &CType::Bool(_)) => {
-                CType::Neq(vec![a.clone(), b.clone()])
-            }
-            (&CType::Int(_) | &CType::Float(_) | &CType::TString(_) | &CType::Bool(_), &CType::Infer(..)) => {
-                CType::Neq(vec![a.clone(), b.clone()])
-            }
-            (a, b) => CType::Bool(Arc::new(a.clone()).to_callable_string() != Arc::new(b.clone()).to_callable_string())
+            (
+                &CType::Infer(..),
+                &CType::Infer(..)
+                | &CType::Int(_)
+                | &CType::Float(_)
+                | &CType::TString(_)
+                | &CType::Bool(_),
+            ) => CType::Neq(vec![a.clone(), b.clone()]),
+            (
+                &CType::Int(_) | &CType::Float(_) | &CType::TString(_) | &CType::Bool(_),
+                &CType::Infer(..),
+            ) => CType::Neq(vec![a.clone(), b.clone()]),
+            (a, b) => CType::Bool(
+                Arc::new(a.clone()).to_callable_string()
+                    != Arc::new(b.clone()).to_callable_string(),
+            ),
         })
     }
     pub fn lt(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
