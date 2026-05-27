@@ -4616,6 +4616,7 @@ impl CType {
                 CType::fail("Cannot get a compile time length for a variable-length array")
             }
             CType::Infer(..) => Arc::new(CType::Len(t)),
+            CType::Void | CType::DerivedVoid(_) => Arc::new(CType::Int(0)),
             _ => Arc::new(CType::Int(1)),
         }
     }
@@ -5278,7 +5279,7 @@ impl CType {
             (&CType::Int(_) | &CType::Float(_) | &CType::TString(_) | &CType::Bool(_), &CType::Infer(..)) => {
                 CType::TEq(vec![a.clone(), b.clone()])
             }
-            _ => CType::fail("Eq{A, B} must be provided two values of the same type, one of: integer, float, string, boolean"),
+            (a, b) => CType::Bool(Arc::new(a.clone()).to_callable_string() == Arc::new(b.clone()).to_callable_string())
         })
     }
     pub fn neq(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
@@ -5299,7 +5300,7 @@ impl CType {
             (&CType::Int(_) | &CType::Float(_) | &CType::TString(_) | &CType::Bool(_), &CType::Infer(..)) => {
                 CType::Neq(vec![a.clone(), b.clone()])
             }
-            _ => CType::fail("Neq{A, B} must be provided two values of the same type, one of: integer, float, string, boolean"),
+            (a, b) => CType::Bool(Arc::new(a.clone()).to_callable_string() != Arc::new(b.clone()).to_callable_string())
         })
     }
     pub fn lt(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {

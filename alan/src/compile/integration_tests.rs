@@ -2277,3 +2277,131 @@ test!(exclude_tuple_dashdot_chained => r#"
   }"#;
   stdout "hello\n";
 );
+
+// Len{Void} returns 0 tests (Void created by excluding all fields from a tuple)
+
+test!(len_void_returns_zero => r#"
+  type SingleField = a: i64;
+  export fn main {
+    if({Len{Exclude{SingleField, 0}}}() == 0,
+      fn { 'zero'.print; },
+      fn { 'not zero'.print; });
+  }"#;
+  stdout "zero\n";
+);
+
+test!(len_void_numeric_output => r#"
+  type SingleField = a: i64;
+  export fn main {
+    print({Len{Exclude{SingleField, 0}}}());
+  }"#;
+  stdout "0\n";
+);
+
+test!(len_void_vs_types => r#"
+  type SingleField = a: i64;
+  export fn main {
+    print({Len{Exclude{SingleField, 0}}}());
+    print({Len{i64}}());
+  }"#;
+  stdout "0\n1\n";
+);
+
+// Eq and Neq type comparison tests
+
+test!(eq_same_types_returns_true => r#"
+  export fn main {
+    if({Eq{i64, i64}}(),
+      fn { 'true'.print; },
+      fn { 'false'.print; });
+  }"#;
+  stdout "true\n";
+);
+
+test!(eq_different_types_returns_false => r#"
+  export fn main {
+    if({Eq{i64, string}}(),
+      fn { 'true'.print; },
+      fn { 'false'.print; });
+  }"#;
+  stdout "false\n";
+);
+
+test!(neq_different_types_returns_true => r#"
+  export fn main {
+    if({Neq{i64, string}}(),
+      fn { 'true'.print; },
+      fn { 'false'.print; });
+  }"#;
+  stdout "true\n";
+);
+
+test!(neq_same_types_returns_false => r#"
+  export fn main {
+    if({Neq{string, string}}(),
+      fn { 'true'.print; },
+      fn { 'false'.print; });
+  }"#;
+  stdout "false\n";
+);
+
+test!(eq_generic_type_check => r#"
+  export fn main {
+    if({Eq{i64, i64}}(),
+      fn { 'is i64'.print; },
+      fn { 'not i64'.print; });
+    if({Eq{string, i64}}(),
+      fn { 'is i64'.print; },
+      fn { 'not i64'.print; });
+    if({Eq{bool, i64}}(),
+      fn { 'is i64'.print; },
+      fn { 'not i64'.print; });
+  }"#;
+  stdout "is i64\nnot i64\nnot i64\n";
+);
+
+test!(neq_generic_type_guard => r#"
+  type SingleField = a: i64;
+  type MyVoid = Exclude{SingleField, 0};
+  fn isNotVoid{T}() -> bool = {Neq{T, Exclude{SingleField, 0}}}();
+
+  export fn main {
+    if(isNotVoid{i64}(),
+      fn { 'i64 is not void'.print; },
+      fn { 'unexpected'.print; });
+    if(isNotVoid{MyVoid}(),
+      fn { 'unexpected'.print; },
+      fn { 'void is void'.print; });
+  }"#;
+  stdout "i64 is not void\nvoid is void\n";
+);
+
+test!(eq_tuple_types => r#"
+  type MyTuple = i64, string;
+  type SameTuple = i64, string;
+  type DiffTuple = string, i64;
+  export fn main {
+    if({Eq{MyTuple, SameTuple}}(),
+      fn { 'same'.print; },
+      fn { 'different'.print; });
+    if({Eq{MyTuple, DiffTuple}}(),
+      fn { 'same'.print; },
+      fn { 'different'.print; });
+  }"#;
+  stdout "same\ndifferent\n";
+);
+
+test!(len_and_eq_combined => r#"
+  type SingleField = a: i64;
+  fn emptyType{T}() -> bool = {Len{T}}() == 0;
+
+  export fn main {
+    if(emptyType{Exclude{SingleField, 0}}(),
+      fn { 'Void is empty'.print; },
+      fn { 'Void not empty'.print; });
+    if(emptyType{i64}(),
+      fn { 'i64 is empty'.print; },
+      fn { 'i64 not empty'.print; });
+  }"#;
+  stdout "Void is empty\ni64 not empty\n";
+);
