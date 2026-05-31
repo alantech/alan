@@ -15,7 +15,11 @@ pub use argkind::ArgKind;
 pub use constn::Const;
 pub use ctype::CType;
 pub use export::Export;
+
+pub use fnkind::CfnKind;
+
 pub use fnkind::FnKind;
+
 pub use function::Function;
 pub use microstatement::Microstatement;
 pub use operatormapping::OperatorMapping;

@@ -5,7 +5,7 @@ use std::sync::Arc;
 use ordered_hash_map::OrderedHashMap;
 
 use crate::lntors::typen;
-use crate::program::{ArgKind, CType, FnKind, Function, Microstatement, Program, Scope};
+use crate::program::{ArgKind, CfnKind, CType, FnKind, Function, Microstatement, Program, Scope};
 
 #[allow(clippy::type_complexity)]
 pub fn from_microstatement(
@@ -207,7 +207,9 @@ pub fn from_microstatement(
                             | FnKind::Generic(..)
                             | FnKind::Derived
                             | FnKind::DerivedVariadic
-                            | FnKind::Static => {
+                            | FnKind::Static
+                            | FnKind::Cfn(..)
+                            | FnKind::CfnRealized(_) => {
                                 let mut arg_strs = Vec::new();
                                 for arg in &fun.args() {
                                     arg_strs.push(arg.2.clone().to_callable_string());
@@ -376,7 +378,8 @@ pub fn from_microstatement(
                 }
             }
             match &function.kind {
-                FnKind::Generic(..) | FnKind::BoundGeneric(..) | FnKind::ExternalGeneric(..) => {
+                FnKind::Generic(..) | FnKind::BoundGeneric(..) | FnKind::ExternalGeneric(..)
+                | FnKind::Cfn(..) => {
                     Err("Generic functions should have been resolved before reaching here".into())
                 }
                 FnKind::Normal | FnKind::External(_) => {
@@ -387,22 +390,15 @@ pub fn from_microstatement(
                     for arg in &function.args() {
                         arg_strs.push(arg.2.clone().to_callable_string());
                     }
-                    // Come up with a function name that is unique so Rust doesn't choke on
-                    // duplicate function names that are allowed in Alan
                     let rustname = format!("{}_{}", function.name, arg_strs.join("_")).to_string();
-                    // Make the function we need, but with the name we're
                     let res = generate(rustname.clone(), function, scope, out, deps)?;
                     out = res.0;
                     deps = res.1;
-                    // Now call this function
                     let mut argstrs = Vec::new();
                     for (i, arg) in args.iter().enumerate() {
                         let (a, o, d) = from_microstatement(arg, parent_fn, scope, out, deps)?;
                         out = o;
                         deps = d;
-                        // If the argument is itself a function, this is the only place in Rust
-                        // where you can't pass by reference, so we check the type and change
-                        // the argument output accordingly.
                         let arg_type = arg.get_type();
                         match &*arg_type {
                             CType::Function(..) => argstrs.push(a.to_string()),
@@ -418,8 +414,6 @@ pub fn from_microstatement(
                                     }
                                     argstrs.push(format!("{prefix}{a}"));
                                 }
-                                // Because we create clones for these two right now, we always need
-                                // this
                                 ArgKind::Ref | ArgKind::Deref => argstrs.push(format!("&{a}")),
                                 ArgKind::Own => argstrs.push(a.clone()),
                             },
@@ -613,6 +607,34 @@ pub fn from_microstatement(
                         _ => unreachable!(),
                     }
                 }
+                FnKind::CfnRealized(CfnKind::Clone) => {
+                    // Generate .clone() for the argument. Handles Shared{T} specially.
+                    let (_, o, d) = typen::generate(function.rettype(), out, deps)?;
+                    out = o;
+                    deps = d;
+                    let mut argstrs = Vec::new();
+                    for arg in args {
+                        let (a, o, d) = from_microstatement(arg, parent_fn, scope, out, deps)?;
+                        out = o;
+                        deps = d;
+                        let arg_type = arg.get_type();
+                        match &*arg_type {
+                            CType::Function(..) => argstrs.push(a.to_string()),
+                            _ => argstrs.push(a.to_string()),
+                        }
+                    }
+                    let arg_type = args[0].get_type();
+                    match &*arg_type {
+                        CType::Shared(_inner) => {
+                            Ok((
+                                format!("std::sync::Arc::new(std::sync::RwLock::new((*{}).read().unwrap().clone()))", argstrs[0]),
+                                out,
+                                deps,
+                            ))
+                        }
+                        _ => Ok((format!("{}.clone()", argstrs[0]), out, deps)),
+                    }
+                }
                 FnKind::Derived | FnKind::DerivedVariadic => {
                     // The initial work to get the values to construct the type is the same as
                     // with bound functions, though.
@@ -658,23 +680,31 @@ pub fn from_microstatement(
                     // 3) If the input type is an either and the name of the function matches
                     //    the name of a sub-type, it returns a Maybe{T} for the type in
                     //    question. (This conflicts with (1) so it's checked first.)
-                    if function.args().len() == 1 {
-                        // This is a wacky unwrapping logic...
+                    if function.args().len() == 1 && argstrs.len() > 0 {
+                        // Auto-deref Shared{T}: unwrap Arc<RwLock<T>> before accessing inner properties
+                        let is_shared = matches!(&*args[0].get_type().degroup(), CType::Shared(_));
+                        let shared_prefix = if is_shared {
+                            format!("({}).read().unwrap()", argstrs[0])
+                        } else {
+                            argstrs[0].clone()
+                        };
                         let mut input_type = &function.args()[0].2;
-                        while matches!(&**input_type, CType::Type(..) | CType::Group(_)) {
+                        while matches!(&**input_type, CType::Type(..) | CType::Group(_) | CType::Shared(_)) {
                             input_type = match &**input_type {
                                 CType::Type(_, t) => t,
                                 CType::Group(t) => t,
+                                CType::Shared(t) => t,
                                 _ => input_type,
                             };
                         }
                         match &**input_type {
-                            CType::Tuple(ts, _) => {
-                                // Short-circuit for direct `<N>` function calls (which can only be
-                                // generated by the internals of the compiler)
-                                if let Ok(i) = function.name.parse::<i64>() {
-                                    return Ok((format!("{}.{}", argstrs[0], i), out, deps));
-                                }
+                             CType::Tuple(ts, _) => {
+                                 // Short-circuit for direct `<N>` function calls (which can only be
+                                 // generated by the internals of the compiler)
+                                 if let Ok(i) = function.name.parse::<i64>() {
+                                     let clone_suffix = if is_shared { ".clone()" } else { "" };
+                                     return Ok((format!("{}.{}{}", shared_prefix, i, clone_suffix), out, deps));
+                                 }
                                 let accessor_field = ts
                                     .iter()
                                     .filter(|t1| match &***t1 {
@@ -696,9 +726,10 @@ pub fn from_microstatement(
                                         CType::Field(n, _) => *n == function.name,
                                         _ => false,
                                     });
-                                if let Some((i, _)) = accessor_field {
-                                    return Ok((format!("{}.{}", argstrs[0], i), out, deps));
-                                }
+                              if let Some((i, _)) = accessor_field {
+                                     let clone_suffix = if is_shared { ".clone()" } else { "" };
+                                     return Ok((format!("{}.{}{}", shared_prefix, i, clone_suffix), out, deps));
+                                 }
                             }
                             CType::Buffer(_, s) => {
                                 // Similarly short-circuit for direct `<N>` function calls
@@ -706,50 +737,35 @@ pub fn from_microstatement(
                                     if let CType::Int(l) = **s {
                                         if i128::from(i) < l {
                                             return Ok((
-                                                format!("{}[{}]", argstrs[0], i),
-                                                out,
-                                                deps,
-                                            ));
+                                                 format!("{}[{}]{}", shared_prefix, i, if is_shared { ".clone()" } else { "" }),
+                                                 out,
+                                                 deps,
+                                             ));
                                         }
                                     }
                                 }
                             }
                             CType::Field(..) => {
-                                return Ok((format!("{}.0", argstrs[0]), out, deps));
+                                return Ok((format!("{}.0{}", shared_prefix, if is_shared { ".clone()" } else { "" }), out, deps));
                             }
                             CType::Either(ts, _) => {
                                 let enum_type = function.args()[0].2.clone().degroup();
                                 let enum_name = enum_type.to_callable_string();
-                                // The kinds of types allowed here are `Type`, `Bound`, and
-                                // `ResolvedBoundGeneric`, and `Field`. Other types don't have
-                                // a string name we can match against the function name
                                 let accessor_field = ts.iter().find(|t| match &***t {
                                     CType::Field(n, _) => *n == function.name,
                                     CType::Type(n, _) => *n == function.name,
                                     _ => false,
                                 });
-                                // We're assuming the enum sub-type naming scheme also follows
-                                // the convention of matching the type name or field name,
-                                // which works because we're generating all of the code that
-                                // defines the enums. We also need the name of the enum for
-                                // this to work, so we're assuming we got it from the first
-                                // function argument. We blow up here if the first argument is
-                                // *not* a Type we can get an enum name from (it *shouldn't* be
-                                // possible, but..)
-                                // We pass through to the main path if we can't find a matching
-                                // name
                                 if accessor_field.is_some() {
-                                    // Special-casing for Option and Result mapping. TODO:
-                                    // Make this more centralized
                                     if ts.len() == 2 {
                                         if let CType::Void = &*ts[1] {
-                                            return Ok((argstrs[0].clone(), out, deps));
+                                            return Ok((shared_prefix, out, deps));
                                         } else if let CType::Type(name, _) = &*ts[1] {
                                             if name == "Error" {
                                                 if function.name == "Error" {
-                                                    return Ok((format!("(match &{} {{ Err(e) => Some(e.clone()), _ => None }})", argstrs[0]), out, deps));
+                                                    return Ok((format!("(match &{} {{ Err(e) => Some(e.clone()), _ => None }})", shared_prefix), out, deps));
                                                 } else {
-                                                    return Ok((format!("(match &{} {{ Ok(v) => Some(v.clone()), _ => None }})", argstrs[0]), out, deps));
+                                                    return Ok((format!("(match &{} {{ Ok(v) => Some(v.clone()), _ => None }})", shared_prefix), out, deps));
                                                 }
                                             }
                                         }
@@ -757,7 +773,7 @@ pub fn from_microstatement(
                                     return Ok((
                                         format!(
                                             "(match &{} {{ {}::{}(v) => Some(v.clone()), _ => None }})",
-                                            argstrs[0], enum_name, function.name
+                                            shared_prefix, enum_name, function.name
                                         ),
                                         out,
                                         deps,
@@ -1106,6 +1122,19 @@ pub fn from_microstatement(
                                             })
                                             .collect::<Vec<String>>()
                                             .join(", ")
+                                    ),
+                                    out,
+                                    deps,
+                                ));
+                            }
+                            CType::Shared(_) => {
+                                return Ok((
+                                    format!(
+                                        "std::sync::Arc::new(std::sync::RwLock::new({}))",
+                                        match argstrs[0].strip_prefix("&mut ") {
+                                            Some(v) => v.to_string(),
+                                            None => argstrs[0].clone(),
+                                        }
                                     ),
                                     out,
                                     deps,
@@ -1919,6 +1948,28 @@ pub fn from_microstatement(
                                 }
                             }
                         }
+                    }
+                    // Fallback: Check if return type is Shared for constructor generation
+                    // when function name doesn't match (e.g., inferred generic constructors)
+                    let mut fallback_ret = ret_type.clone();
+                    while matches!(&*fallback_ret, CType::Type(..)) {
+                        fallback_ret = match &*fallback_ret {
+                            CType::Type(_, t) => t.clone(),
+                            _ => fallback_ret,
+                        };
+                    }
+                    if let CType::Shared(_) = &*fallback_ret {
+                        return Ok((
+                            format!(
+                                "std::sync::Arc::new(std::sync::RwLock::new({}))",
+                                match argstrs[0].strip_prefix("&mut ") {
+                                    Some(v) => v.to_string(),
+                                    None => argstrs[0].clone(),
+                                }
+                            ),
+                            out,
+                            deps,
+                        ));
                     }
                     Err(format!(
                         "Trying to create an automatic function for {} but the return type is {}",

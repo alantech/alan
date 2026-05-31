@@ -6,7 +6,7 @@ use ordered_hash_map::OrderedHashMap;
 
 use crate::lntojs::typen;
 use crate::parse::{booln, integer, real};
-use crate::program::{ArgKind, CType, FnKind, Function, Microstatement, Program, Scope};
+use crate::program::{ArgKind, CfnKind, CType, FnKind, Function, Microstatement, Program, Scope};
 
 #[allow(clippy::type_complexity)]
 pub fn from_microstatement(
@@ -205,7 +205,9 @@ pub fn from_microstatement(
                         | FnKind::Generic(..)
                         | FnKind::Derived
                         | FnKind::DerivedVariadic
-                        | FnKind::Static => {
+                        | FnKind::Static
+                        | FnKind::Cfn(..)
+                        | FnKind::CfnRealized(_) => {
                             let mut arg_strs = Vec::new();
                             for arg in &fun.args() {
                                 arg_strs.push(arg.2.clone().to_callable_string());
@@ -331,7 +333,8 @@ pub fn from_microstatement(
                 deps = res.1;
             }
             match &function.kind {
-                FnKind::Generic(..) | FnKind::BoundGeneric(..) | FnKind::ExternalGeneric(..) => {
+                FnKind::Generic(..) | FnKind::BoundGeneric(..) | FnKind::ExternalGeneric(..)
+                | FnKind::Cfn(..) => {
                     Err("Generic functions should have been resolved before reaching here".into())
                 }
                 FnKind::Normal | FnKind::External(_) => {
@@ -347,14 +350,10 @@ pub fn from_microstatement(
                             arg_strs.push(arg_str);
                         }
                     }
-                    // Come up with a function name that is unique so Javascript doesn't choke on
-                    // duplicate function names that are allowed in Alan
                     let jsname = format!("{}_{}", function.name, arg_strs.join("_")).to_string();
-                    // Make the function we need, but with the name we're
                     let res = generate(jsname.clone(), function, scope, out, deps)?;
                     out = res.0;
                     deps = res.1;
-                    // Now call this function
                     let mut argstrs = Vec::new();
                     for arg in args {
                         let (a, o, d) = from_microstatement(arg, scope, parent_fn, out, deps)?;
@@ -534,6 +533,41 @@ pub fn from_microstatement(
                         _ => unreachable!(),
                     }
                 }
+                FnKind::CfnRealized(CfnKind::Clone) => {
+                    // Inject a compiler-generated `clone` helper function into the output if not
+                    // already present, then call it. This replaces the alan_std.clone dependency.
+                    let (_, o, d) = typen::generate(function.rettype(), out, deps)?;
+                    out = o;
+                    deps = d;
+                    let mut argstrs = Vec::new();
+                    for arg in args {
+                        let (a, o, d) = from_microstatement(arg, scope, parent_fn, out, deps)?;
+                        out = o;
+                        deps = d;
+                        argstrs.push(a.to_string());
+                    }
+                    // Inject the clone helper function if it doesn't exist yet
+                    if !out.contains_key("clone") {
+                        out.insert(
+                            "clone".to_string(),
+                            "function clone(v) {\n\
+                             if (v === null) return null;\n\
+                             if (v instanceof Map) return new Map([...v.entries()].map(kv => [clone(kv[0]), clone(kv[1])]));\n\
+                             if (typeof v === 'object' && v !== null && typeof v.build === 'function') return v.build(clone(v.val));\n\
+                             if (typeof v === 'object' && v !== null && typeof v.map === 'function') return v.map(clone);\n\
+                             if (typeof v === 'object' && v !== null && typeof v.store === 'function') return new (Object.getPrototypeOf(v).constructor)(clone(v.map));\n\
+                             if (typeof v === 'object' && v !== null && v.val !== undefined && typeof v.val !== 'object') return new (Object.getPrototypeOf(v).constructor)(v.val);\n\
+                             if (typeof v === 'object' && v !== null) return Object.fromEntries([...Object.entries(v)].map(kv => [kv[0], clone(kv[1])]));\n\
+                             return v;\n\
+                             }".to_string(),
+                        );
+                    }
+                    Ok((
+                        format!("clone({})", argstrs[0]),
+                        out,
+                        deps,
+                    ))
+                }
                 FnKind::Derived | FnKind::DerivedVariadic => {
                     // The initial work to get the values to construct the type is the same as
                     // with bound functions, though.
@@ -583,7 +617,7 @@ pub fn from_microstatement(
                     // 3) If the input type is an either and the name of the function matches
                     //    the name of a sub-type, it returns a Maybe{T} for the type in
                     //    question. (This conflicts with (1) so it's checked first.)
-                    if function.args().len() == 1 {
+                    if function.args().len() == 1 && argstrs.len() > 0 {
                         // This is a wacky unwrapping logic...
                         let mut input_type = function.args()[0].2.clone();
                         while matches!(&*input_type, CType::Type(..) | CType::Group(_)) {
@@ -941,6 +975,9 @@ pub fn from_microstatement(
                             }
                             CType::Array(_) => {
                                 return Ok((format!("[{}]", argstrs.join(", ")), out, deps));
+                            }
+                            CType::Shared(_) => {
+                                return Ok((argstrs[0].clone(), out, deps));
                             }
                             CType::Either(ts, _) => {
                                 if argstrs.len() > 1 {
@@ -1700,6 +1737,18 @@ pub fn from_microstatement(
                                 }
                             }
                         }
+                    }
+                    // Fallback: Check if return type is Shared for constructor generation
+                    // when function name doesn't match (e.g., inferred generic constructors)
+                    let mut fallback_ret = ret_type.clone();
+                    while matches!(&*fallback_ret, CType::Type(..)) {
+                        fallback_ret = match &*fallback_ret {
+                            CType::Type(_, t) => t.clone(),
+                            _ => fallback_ret,
+                        };
+                    }
+                    if let CType::Shared(_) = &*fallback_ret {
+                        return Ok((argstrs[0].clone(), out, deps));
                     }
                     Err(format!(
                         "Trying to create an automatic function for {} but the return type is {}",

@@ -4,6 +4,13 @@ use crate::parse;
 
 use super::CType;
 
+/// Kinds of compiler-provided (cfn) functions. Each variant tells the codegen
+/// exactly what to emit, with no name-based matching required.
+#[derive(Clone, Debug)]
+pub enum CfnKind {
+    Clone,
+}
+
 #[derive(Clone, Debug)]
 pub enum FnKind {
     Normal,
@@ -16,4 +23,10 @@ pub enum FnKind {
     External(Arc<CType>),
     ExternalBind(String, Arc<CType>),
     ExternalGeneric(Vec<(String, Arc<CType>)>, String, Arc<CType>),
+    /// Compiler-provided generic function (from `cfn` syntax). Generic parameters
+    /// are listed first; the `CfnKind` tells codegen what to emit.
+    Cfn(CfnKind, Vec<(String, Arc<CType>)>),
+    /// Realized instance of a compiler-provided function. The `CfnKind` survives
+    /// realization so codegen can match on it directly.
+    CfnRealized(CfnKind),
 }

@@ -568,6 +568,7 @@ build!(letn, token!("let"));
 build!(constn, token!("const"));
 build!(export, token!("export"));
 build!(ctype, token!("ctype"));
+build!(cfn, token!("cfn"));
 build!(typen, token!("type"));
 build!(fnn, token!("fn"));
 build!(quote, token!("'"));
@@ -779,6 +780,17 @@ named_and!(ctypes: CTypes =>
     opttypegenerics: Option<GnCall> as opt(gncall),
     c: String as optblank,
     optsemicolon: String as optsemicolon,
+);
+named_and!(cfns: CFns =>
+    cfn: String as cfn,
+    a: String as blank,
+    name: String as variable,
+    b: String as optblank,
+    opttypegenerics: Option<GnCall> as opt(gncall),
+    c: String as optwhitespace,
+    typesignature: Vec<WithTypeOperators> as typeassignables,
+    d: String as optblank,
+    semicolon: String as semicolon,
 );
 named_or!(constants: Constants =>
     Bool: String as booln,
@@ -1292,6 +1304,7 @@ named_or!(rootelements: RootElements =>
     Functions: Functions as functions,
     Types: Types as types,
     CTypes: CTypes as ctypes,
+    CFns: CFns as cfns,
     ConstDeclaration: ConstDeclaration as constdeclaration,
     Interfaces: Interfaces as interfaces,
 );

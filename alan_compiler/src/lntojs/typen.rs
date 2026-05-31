@@ -258,6 +258,11 @@ pub fn ctype_to_jtype(
             deps = res.1;
             Ok(("".to_string(), deps))
         }
+        CType::Shared(t) => {
+            let res = ctype_to_jtype(t.clone(), deps)?;
+            deps = res.1;
+            Ok(("".to_string(), deps))
+        }
         CType::Fail(m) => CType::fail(m),
         otherwise => CType::fail(&format!("Lower stage of the compiler received unresolved algebraic type {}, cannot deal with it here. Please report this error.", Arc::new(otherwise.clone()).to_functional_string())),
     }

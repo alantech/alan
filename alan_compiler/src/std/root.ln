@@ -21,7 +21,7 @@ ctype AnyOf{A, B}; // The AnyOf type is kinda like a Tuple, in that all sub-type
 
 /// Host types
 ctype Binds{T}; // A direct reference into the platform language's type system
-ctype BindsAs{A, B}; // Specify that the first type should be *treated* as the second within Alan. Useful for binding special types in Rust
+ctype Shared{T}; // A shared, reference-counted, thread-safe wrapper around a type. Auto-derefs on property/method access.
 ctype Call{N, F}; // A reference to a function call (or method, etc) in the platform language
 ctype Infix{O}; // A reference to a native infix operation in the platform language
 ctype Prefix{O}; // A reference to a native prefix operation in the platform language
@@ -197,11 +197,8 @@ type{Js} Dict{K, V} = Binds{"Map", K, V};
 type{Rs} Set{V} = Binds{"std::collections::HashSet", V};
 type{Js} Set{V} = Binds{"alan_std.FuzzySet" <- RootBacking, V};
 
-// Binding the Arc, RwLock and creating the Shared types
-type{Rs} Arc{T} = Binds{"std::sync::Arc", T};
-type{Rs} RwLock{T} = Binds{"std::sync::RwLock", T};
-type{Rs} Shared{T} = Arc{RwLock{T}};
-type{Js} Shared{T} = T; // TODO: Better solution here
+// Compiler-provided functions for Shared and clone
+cfn clone{T} T -> T;
 
 // Basic trig constants (this language is meant for GPGPU, this makes sense in the root scope)
 const e = 2.718281828459045;
@@ -246,8 +243,6 @@ infix wrr as >>> precedence 5;
 infix store as = precedence 0;
 
 /// Functions for (potentially) every type
-fn{Rs} clone{T} (v: T) -> T = {Method{"clone"} :: (v: T) -> T}(v);
-fn{Js} clone{T} (v: T) -> T = {"alan_std.clone" <- RootBacking :: (v: T) -> T}(v);
 fn void{T}(v: T) -> void {}
 fn void() -> void {}
 fn{Rs} store{T} (a: Mut{T}, b: T) -> T = {"std::mem::replace" :: (Mut{T}, Own{T}) -> T}(a, b);
@@ -1675,10 +1670,8 @@ fn{Js} product{V} (a: Set{V}, b: Set{V}) = {Method{"product"} :: (Set{V}, Set{V}
 fn mul{V}(a: Set{V}, b: Set{V}) = product(a, b);
 
 /// Shared implementation
-fn{Rs} Shared{T}(v: T) = {"std::sync::Arc::new" :: (arg: Own{RwLock{T}}) -> Arc{RwLock{T}}}({"std::sync::RwLock::new" :: (arg: Own{T}) -> RwLock{T}}(v));
-fn{Rs} read{T}(v: Shared{T}) = {Method{"read().unwrap"} :: (arg: Shared{T}) -> BindsAs{Binds{"std::sync::RwLockReadGuard", T}, T}}(v); // TODO: Expose this Result type when multithreading is accessible in the language
-fn{Rs} write{T}(v: Shared{T}) = {Method{"write().unwrap"} :: (arg: Shared{T}) -> BindsAs{Binds{"std::sync::RwLockWriteGuard", T}, T}}(v); // TODO: Expose this Result type when multithreading is accessible in the language
-fn{Rs} close{T}(v: T) = {Method{"drop"} :: (arg: T) -> ()}(v); // TODO: How would this even work in JS?
+fn{Rs} read{T}(v: Shared{T}) -> T = {"*arg.read().unwrap()"} :: (Shared{T}) -> T;
+fn{Rs} write{T}(v: Shared{T}) -> Mut{T} = {"*arg.write().unwrap()"} :: (Shared{T}) -> Mut{T};
 
 /// Tree implementation
 

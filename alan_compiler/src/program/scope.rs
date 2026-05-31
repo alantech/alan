@@ -2,8 +2,11 @@ use std::sync::{Arc, OnceLock};
 
 use ordered_hash_map::OrderedHashMap;
 
+use super::ctype::withtypeoperatorslist_to_ctype;
+use super::function::type_to_args;
 use super::ArgKind;
 use super::CType;
+use super::CfnKind;
 use super::Const;
 use super::Export;
 use super::FnKind;
@@ -86,8 +89,14 @@ impl<'a> Scope<'a> {
                         }
                         g @ ("Int" | "Float" | "Bool" | "String" | "Group" | "Unwrap" | "Infix"
                         | "Prefix" | "Method" | "Property" | "Cast" | "Own" | "Deref" | "Mut"
-                        | "Rust" | "Nodejs" | "From" | "Array" | "Fail" | "Neg" | "Len" | "Size"
-                        | "FileStr" | "Env" | "EnvExists" | "Not") => s = CType::from_generic(s, g, 1),
+                        | "Rust" | "Nodejs" | "From" | "Fail" | "Neg"
+                        | "Len" | "Size" | "FileStr" | "Env" | "EnvExists" | "Not") => {
+                            s = CType::from_generic(s, g, 1)
+                        }
+                        g @ ("Shared" | "Array") => {
+                            // Register the intrinsic generic type
+                            s = CType::from_generic(s, g, 1);
+                        }
                         g @ ("BindsAs" | "Function" | "Call" | "Dependency" | "Import" | "Field"
                         | "Prop" | "Exclude" | "Buffer" | "Add" | "Sub" | "Mul" | "Div" | "Mod"
                         | "Pow" | "Min" | "Max" | "Concat" | "And" | "Or" | "Xor" | "Nand"
@@ -99,6 +108,92 @@ impl<'a> Scope<'a> {
                         unknown => {
                             panic!("Unknown ctype {unknown} defined in root scope. There's something wrong with the compiler.");
                         }
+                    }
+                }
+                parse::RootElements::CFns(c) => {
+                    if !is_root {
+                        return Err("cfns can only be defined in the compiler internals".into());
+                    }
+                    let mut generics: Vec<(String, Arc<CType>)> = Vec::new();
+                    if let Some(ref g) = c.opttypegenerics {
+                        let mut i = 0;
+                        while i < g.typecalllist.len() {
+                            match (
+                                g.typecalllist.get(i),
+                                g.typecalllist.get(i + 1),
+                            ) {
+                                (Some(t1), Some(t2)) if t2.to_string().trim() == "," => {
+                                    generics.push((
+                                        t1.to_string().trim().to_string(),
+                                        Arc::new(CType::Infer(
+                                            t1.to_string().trim().to_string(),
+                                            "Any".to_string(),
+                                        )),
+                                    ));
+                                    i += 2;
+                                }
+                                (Some(t1), None) => {
+                                    generics.push((
+                                        t1.to_string().trim().to_string(),
+                                        Arc::new(CType::Infer(
+                                            t1.to_string().trim().to_string(),
+                                            "Any".to_string(),
+                                        )),
+                                    ));
+                                    i += 1;
+                                }
+                                _ => {
+                                    i += 1;
+                                }
+                            }
+                        }
+                    }
+                    let mut temp_scope = s.child();
+                    for g in &generics {
+                        temp_scope = CType::from_ctype(temp_scope, g.0.clone(), g.1.clone());
+                    }
+                    let ctype = withtypeoperatorslist_to_ctype(&c.typesignature, &temp_scope)?;
+                    let (input_type, rettype) = match &*ctype {
+                        CType::Function(i, o) => (i.clone(), o.clone()),
+                        _ => {
+                            return Err(format!(
+                                "cfn {} must have a function type signature",
+                                c.name
+                            ).into());
+                        }
+                    };
+                    let is_generic = !generics.is_empty();
+                    let kind = match c.name.as_str() {
+                        "clone" => {
+                            if is_generic {
+                                FnKind::Cfn(CfnKind::Clone, generics)
+                            } else {
+                                FnKind::CfnRealized(CfnKind::Clone)
+                            }
+                        }
+                        unknown => {
+                            return Err(format!(
+                                "Unknown cfn {} defined in root scope. There's something wrong with the compiler.",
+                                unknown
+                            ).into());
+                        }
+                    };
+                    let function = Arc::new(Function {
+                        name: c.name.clone(),
+                        typen: Arc::new(CType::Function(input_type, rettype)),
+                        microstatements: Vec::new(),
+                        kind,
+                        origin_scope_path: s.path.clone(),
+                    });
+                    let key = if is_generic {
+                        function.name.clone()
+                    } else {
+                        format!("{}_{}", function.name, type_to_args(function.typen.clone()).iter().map(|a| a.2.clone().to_callable_string()).collect::<Vec<_>>().join("_"))
+                    };
+                    if let Some(v) = s.functions.get_mut(&key) {
+                        v.push(function);
+                    } else {
+                        s.functions.insert(key, vec![function]);
                     }
                 }
                 parse::RootElements::Interfaces(_) => {
@@ -303,10 +398,12 @@ impl<'a> Scope<'a> {
                     | FnKind::ExternalBind(_, _)
                     | FnKind::Derived
                     | FnKind::DerivedVariadic
-                    | FnKind::Static => None,
+                    | FnKind::Static
+                    | FnKind::CfnRealized(_) => None,
                     FnKind::Generic(gs, _)
                     | FnKind::BoundGeneric(gs, _)
-                    | FnKind::ExternalGeneric(gs, _, _) => {
+                    | FnKind::ExternalGeneric(gs, _, _)
+                    | FnKind::Cfn(_, gs) => {
                         Some(gs.iter().map(|(g, _)| g.clone()).collect::<Vec<String>>())
                     }
                 };
@@ -404,10 +501,12 @@ impl<'a> Scope<'a> {
                 | FnKind::ExternalBind(_, _)
                 | FnKind::Derived
                 | FnKind::DerivedVariadic
-                | FnKind::Static => { /* Do nothing */ }
+                | FnKind::Static
+                | FnKind::CfnRealized(_) => { /* Do nothing */ }
                 FnKind::Generic(g, _)
                 | FnKind::BoundGeneric(g, _)
-                | FnKind::ExternalGeneric(g, _, _) => {
+                | FnKind::ExternalGeneric(g, _, _)
+                | FnKind::Cfn(_, g) => {
                     // TODO: Check interface constraints once interfaces exist
                     if g.len() != generic_types.len() {
                         continue;
@@ -429,12 +528,14 @@ impl<'a> Scope<'a> {
                 | FnKind::ExternalBind(_, _)
                 | FnKind::Derived
                 | FnKind::DerivedVariadic
-                | FnKind::Static => {
+                | FnKind::Static
+                | FnKind::CfnRealized(_) => {
                     panic!("This should be impossible. If reached it would generate faulty code");
                 }
                 FnKind::Generic(gen_args, _)
                 | FnKind::BoundGeneric(gen_args, _)
-                | FnKind::ExternalGeneric(gen_args, _, _) => {
+                | FnKind::ExternalGeneric(gen_args, _, _)
+                | FnKind::Cfn(_, gen_args) => {
                     let args = f
                         .args()
                         .iter()
@@ -501,7 +602,8 @@ impl<'a> Scope<'a> {
                     match &generic_f.kind {
                         FnKind::Generic(gen_args, _)
                         | FnKind::BoundGeneric(gen_args, _)
-                        | FnKind::ExternalGeneric(gen_args, _, _) => {
+                        | FnKind::ExternalGeneric(gen_args, _, _)
+                        | FnKind::Cfn(_, gen_args) => {
                             for arg in gen_args {
                                 temp_scope.types.remove(&arg.0);
                             }
@@ -600,7 +702,8 @@ impl<'a> Scope<'a> {
                 | FnKind::Bind(_)
                 | FnKind::ExternalBind(_, _)
                 | FnKind::Derived
-                | FnKind::Static => {
+                | FnKind::Static
+                | FnKind::CfnRealized(_) => {
                     if args.len() != f.args().len() {
                         continue;
                     }
@@ -622,7 +725,8 @@ impl<'a> Scope<'a> {
                 }
                 FnKind::Generic(g, _)
                 | FnKind::BoundGeneric(g, _)
-                | FnKind::ExternalGeneric(g, _, _) => {
+                | FnKind::ExternalGeneric(g, _, _)
+                | FnKind::Cfn(_, g) => {
                     if args.len() != f.args().len() {
                         continue;
                     }
@@ -721,7 +825,9 @@ impl<'a> Scope<'a> {
                 }
                 FnKind::Generic(_, _)
                 | FnKind::BoundGeneric(_, _)
-                | FnKind::ExternalGeneric(_, _, _) => { /* Do nothing */ }
+                | FnKind::ExternalGeneric(_, _, _)
+                | FnKind::Cfn(_, _)
+                | FnKind::CfnRealized(_) => { /* Do nothing */ }
             }
         }
         None
