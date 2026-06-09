@@ -757,6 +757,11 @@ impl Function {
                 for (i, (n, _)) in gen_args.iter().enumerate() {
                     scope.types.insert(n.clone(), generic_types[i].clone());
                 }
+                let realized_name = format!(
+                    "{}_{}",
+                    generic_function.name,
+                    generic_types.iter().map(|t| t.clone().to_callable_string()).collect::<Vec<_>>().join("_")
+                );
                 let microstatements = {
                     let mut ms = Vec::new();
                     for (name, kind, typen) in &args {
@@ -804,33 +809,26 @@ impl Function {
                         }
                     }
                 }
-                let name = format!(
-                    "{}_{}",
-                    generic_function.name,
-                    generic_types
-                        .iter()
-                        .map(|t| t.clone().to_callable_string())
-                        .collect::<Vec<String>>()
-                        .join("_")
-                ); // Really bad
+                // Create the actual realized function
                 let f = Arc::new(Function {
-                    name,
-                    // TODO: Can I eliminate this indirection?
+                    name: realized_name.clone(),
                     typen: args_and_rettype_to_type(args, rettype),
                     microstatements,
                     kind,
                     origin_scope_path: scope.path.clone(),
                 });
+                // Insert under suffixed name, deduplicating by both name and signature
                 if scope.functions.contains_key(&f.name) {
                     let func_vec = scope.functions.get_mut(&f.name).unwrap();
-                    func_vec.insert(0, f.clone());
+                    if !func_vec.iter().any(|fn_| fn_.name == f.name && fn_.typen == f.typen) {
+                        func_vec.insert(0, f.clone());
+                    }
                 } else {
                     scope.functions.insert(f.name.clone(), vec![f.clone()]);
                 }
                 let res = match scope.functions.get(&f.name) {
                     None => Err("This should be impossible. Cannot get the function we just added to the scope"),
-                    Some(fs) => Ok(fs.first().unwrap().clone()), // We know it's the first one
-                                                                // because we just put it there
+                    Some(fs) => Ok(fs.first().unwrap().clone()),
                 }?;
                 Ok((scope, res))
             }

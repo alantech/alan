@@ -779,12 +779,23 @@ pub fn baseassignablelist_to_microstatements<'a>(
                     arg_types.push(arg.get_type());
                 }
                 let ctype = withtypeoperatorslist_to_ctype(&g.typecalllist, &scope)?;
-                let name = ctype.clone().to_callable_string();
+                let callable_name = ctype.clone().to_callable_string();
+                // For intrinsic generics wrapping resolved types, construct alias-preserved name
+                let alias_name: Option<String> = match &*ctype {
+                    CType::Shared(inner) | CType::Array(inner) => {
+                        let inner_name = inner.clone().to_callable_string();
+                        let outer = match &*ctype {
+                            CType::Shared(_) => "Shared",
+                            CType::Array(_) => "Array",
+                            _ => unreachable!(),
+                        };
+                        Some(format!("{}{{{}}}", outer, inner_name))
+                    }
+                    _ => None,
+                };
+                let name = alias_name.clone().unwrap_or(callable_name.clone());
                 scope = CType::from_ctype(scope, name.clone(), ctype.clone());
                 let temp_scope = scope.child();
-                // Now we are sure the type and function exist, and we know the name for the
-                // function. It would be best if we could just pass it to ourselves and run the
-                // `FuncCall` logic below, but it's easier at the moment to duplicate :( TODO
                 let res = temp_scope.resolve_function(&name, &arg_types);
                 match res {
                     Some((mut temp_scope, f)) => {
@@ -812,7 +823,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
             BaseChunk::FuncCall(prior, f, g) => {
                 // Get all of the arguments for the function into an array. If there's a prior
                 // value it becomes the first argument.
-                let mut arg_microstatements = match prior {
+                  let mut arg_microstatements = match prior {
                     Some(p) => vec![p.clone()],
                     None => Vec::new(),
                 };
@@ -981,12 +992,12 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                                         merge!(temp_scope, s);
                                                     }
                                                 }
-                                            } else {
-                                                arg_microstatements[i] = Microstatement::Value {
-                                                    typen: actual_typen.clone(),
-                                                    representation: representation.clone(),
-                                                };
-                                            }
+                                           } else {
+                                                 arg_microstatements[i] = Microstatement::Value {
+                                                     typen: actual_typen.clone(),
+                                                     representation: representation.clone(),
+                                                 };
+                                             }
                                         }
                                     }
                                     _ => { /* Do nothing */ }
@@ -1003,11 +1014,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                             return Err(format!(
                                 "Could not find a function with a call signature of {}({})",
                                 f,
-                                arg_types
-                                    .iter()
-                                    .map(|a| a.clone().to_string())
-                                    .collect::<Vec<String>>()
-                                    .join(", ")
+                                arg_types.iter().map(|a| a.clone().to_string()).collect::<Vec<String>>().join(", ")
                             )
                             .into());
                         }
@@ -1119,12 +1126,18 @@ pub fn baseassignablelist_to_microstatements<'a>(
                         let res = CType::from_ast(scope, &parse_type, false)?;
                         scope = res.0;
                         let t = res.1;
-                        let real_name = Arc::new(t).to_callable_string();
-                        // Now we are sure the type and function exist, and we know the name for the
-                        // function. It would be best if we could just pass it to ourselves and run the
-                        // `FuncCall` logic below, but it's easier at the moment to duplicate :( TODO
+                        // Try the type alias name first (e.g. TreeInner_T_), then fall back to
+                        // the callable string of the expanded type (e.g. Tuple_Field_valsL_...)
+                        let callable_name = Arc::new(t.clone()).to_callable_string();
                         let temp_scope = scope.child();
-                        let res = temp_scope.resolve_function(&real_name, &arg_types);
+                        let res = temp_scope.resolve_function(&name, &arg_types);
+                        let res = match res {
+                            Some((s, f)) => Some((s, f)),
+                            None => {
+                                let temp_scope2 = scope.child();
+                                temp_scope2.resolve_function(&callable_name, &arg_types)
+                            }
+                        };
                         match res {
                             Some((mut temp_scope, func)) => {
                                 temp_scope.functions.insert(f.clone(), vec![func.clone()]);
@@ -1138,16 +1151,12 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                 })
                             }
                             None => {
-                                return Err(format!(
-                                    "A function with the signature {}({}) does not exist",
-                                    real_name,
-                                    arg_types
-                                        .iter()
-                                        .map(|a| a.clone().to_string())
-                                        .collect::<Vec<String>>()
-                                        .join(", ")
-                                )
-                                .into());
+                                let arg_str = arg_types.iter().map(|a| a.clone().to_string()).collect::<Vec<_>>().join(", ");
+                                 return Err(format!(
+                                     "A function with the signature {}({}) or {}({}) does not exist",
+                                     name, arg_str, callable_name, arg_str
+                                 )
+                                 .into());
                             }
                         }
                     }

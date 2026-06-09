@@ -1625,6 +1625,23 @@ impl CType {
                         arg.push(a.clone());
                         input.push(t2.clone());
                     }
+                    (CType::Shared(a2), CType::Shared(b2)) => {
+                        arg.push(a2.clone());
+                        input.push(b2.clone());
+                    }
+                    // Transparent Shared: unwrap when only one side is Shared
+                    (CType::Shared(a2), other) => {
+                        arg.push(a2.clone());
+                        input.push(Arc::new(other.clone()));
+                    }
+                    (other, CType::Shared(b2)) => {
+                        arg.push(Arc::new(other.clone()));
+                        input.push(b2.clone());
+                    }
+                    (CType::Array(a2), CType::Array(b2)) => {
+                        arg.push(a2.clone());
+                        input.push(b2.clone());
+                    }
                     (CType::Generic(_, _, t), CType::Function(..))
                         if matches!(&**t, CType::Function(..)) =>
                     {
@@ -2058,10 +2075,6 @@ impl CType {
                         arg.push(s1.clone());
                         input.push(t2.clone());
                         input.push(s2.clone());
-                    }
-                    (CType::Array(t1), CType::Array(t2)) => {
-                        arg.push(t1.clone());
-                        input.push(t2.clone());
                     }
                     (CType::AnyOf(ts), CType::Infer(g, _)) => {
                         // Found an interesting inference situation where more than one answer may
@@ -2785,7 +2798,10 @@ impl CType {
     }
     pub fn accepts(self: Arc<CType>, arg: Arc<CType>) -> bool {
         match (&*self, &*arg) {
+            // Shared{T} is transparent: Shared{T} accepts T, and T accepts Shared{T}
             (CType::Shared(a), CType::Shared(b)) => a.clone().accepts(b.clone()),
+            (CType::Shared(a), other) => a.clone().accepts(Arc::new(other.clone())),
+            (self_type, CType::Shared(b)) => Arc::new(self_type.clone()).accepts(b.clone()),
             (_a, CType::AnyOf(ts)) => {
                 for t in ts {
                     if self.clone().accepts(t.clone()) {

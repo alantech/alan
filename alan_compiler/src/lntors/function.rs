@@ -49,23 +49,27 @@ pub fn from_microstatement(
         Microstatement::Assignment {
             name,
             value,
-            mutable: _,
+            mutable,
         } => {
             let (val, o, d) = from_microstatement(value, parent_fn, scope, out, deps)?;
-            // I wish I didn't have to write the following line because you can't re-assign a
-            // variable in a let destructuring, afaict
             out = o;
             deps = d;
+            let final_val = match val.strip_prefix("&mut ") {
+                Some(s) => s.to_string(),
+                None => val,
+            };
+            // Clone Shared (Arc) assignments so they can be moved into closures safely
+            let assigned = if matches!(&*value.get_type(), CType::Shared(_)) {
+                format!("{}.clone()", final_val)
+            } else {
+                final_val
+            };
             Ok((
                 format!(
                     "let {}{} = {}",
-                    // TODO: Shouldn't always be mut
-                    "mut ",
+                    if *mutable { "mut " } else { "" },
                     name,
-                    match val.strip_prefix("&mut ") {
-                        Some(s) => s,
-                        None => &val,
-                    }
+                    assigned
                 ),
                 out,
                 deps,
@@ -400,24 +404,57 @@ pub fn from_microstatement(
                         out = o;
                         deps = d;
                         let arg_type = arg.get_type();
-                        match &*arg_type {
-                            CType::Function(..) => argstrs.push(a.to_string()),
-                            _ => match function.args()[i].1 {
-                                ArgKind::Mut => {
-                                    let mut prefix = "&mut ";
-                                    for (name, kind, _) in &parent_fn.args() {
-                                        if name == &a {
-                                            if let ArgKind::Mut = kind {
-                                                prefix = "";
-                                            }
-                                        }
-                                    }
-                                    argstrs.push(format!("{prefix}{a}"));
-                                }
-                                ArgKind::Ref | ArgKind::Deref => argstrs.push(format!("&{a}")),
-                                ArgKind::Own => argstrs.push(a.clone()),
-                            },
-                        }
+                        let expected_type = &function.args()[i].2;
+                        // Auto-deref Shared{T}: inject .read().unwrap() when Shared{T} -> T
+                        let maybe_deref = if matches!(&*arg_type, CType::Shared(_inner)) {
+                            let inner_type = match &*arg_type {
+                                CType::Shared(t) => t,
+                                _ => &arg_type,
+                            };
+                            if inner_type.clone().degroup().to_strict_string(false)
+                                == expected_type.clone().degroup().to_strict_string(false)
+                            {
+                                Some(format!("(*({a}).read().unwrap()).clone()"))
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        };
+                   match &*arg_type {
+                             CType::Function(..) => argstrs.push(a.to_string()),
+                             _ => match function.args()[i].1 {
+                                 ArgKind::Mut => {
+                                     if let Some(_) = maybe_deref {
+                                         argstrs.push(format!("&mut (*({a}).write().unwrap())"));
+                                     } else {
+                                         let mut prefix = "&mut ";
+                                         for (name, kind, _) in &parent_fn.args() {
+                                             if name == &a {
+                                                 if let ArgKind::Mut = kind {
+                                                     prefix = "";
+                                                 }
+                                             }
+                                         }
+                                         argstrs.push(format!("{prefix}{a}"));
+                                     }
+                                 }
+                                 ArgKind::Ref | ArgKind::Deref => {
+                                     if let Some(_) = maybe_deref {
+                                         argstrs.push(format!("&(*({a}).read().unwrap())"));
+                                     } else {
+                                         argstrs.push(format!("&{a}"));
+                                     }
+                                 }
+                                 ArgKind::Own => {
+                                     if let Some(deref_expr) = maybe_deref {
+                                         argstrs.push(deref_expr);
+                                     } else {
+                                         argstrs.push(a.clone());
+                                     }
+                                 }
+                             },
+                         }
                     }
                     if let FnKind::External(d) = &function.kind {
                         match &**d {
@@ -626,11 +663,8 @@ pub fn from_microstatement(
                     let arg_type = args[0].get_type();
                     match &*arg_type {
                         CType::Shared(_inner) => {
-                            Ok((
-                                format!("std::sync::Arc::new(std::sync::RwLock::new((*{}).read().unwrap().clone()))", argstrs[0]),
-                                out,
-                                deps,
-                            ))
+                            // Shared{T} is Arc<RwLock<T>>, so .clone() should be a shallow Arc clone
+                            Ok((format!("{}.clone()", argstrs[0]), out, deps))
                         }
                         _ => Ok((format!("{}.clone()", argstrs[0]), out, deps)),
                     }
@@ -682,9 +716,93 @@ pub fn from_microstatement(
                     //    question. (This conflicts with (1) so it's checked first.)
                     if function.args().len() == 1 && argstrs.len() > 0 {
                         // Auto-deref Shared{T}: unwrap Arc<RwLock<T>> before accessing inner properties
-                        let is_shared = matches!(&*args[0].get_type().degroup(), CType::Shared(_));
+                        let arg0_type = args[0].get_type();
+                        let mut is_shared = false;
+                        // Check actual argument type for Shared
+                        {
+                            let mut arg0_inner = &*arg0_type.clone().degroup();
+                            while matches!(&*arg0_inner, CType::Type(..) | CType::Group(_) | CType::Shared(_)) {
+                                if matches!(&*arg0_inner, CType::Shared(_)) {
+                                    is_shared = true;
+                                }
+                                arg0_inner = match &*arg0_inner {
+                                    CType::Type(_, t) => t,
+                                    CType::Group(t) => t,
+                                    CType::Shared(t) => t,
+                                    _ => arg0_inner,
+                                };
+                            }
+                        }
+                        // Check if arg0 type is Shared (from type info)
+                        is_shared = is_shared || matches!(&*args[0].get_type(), CType::Shared(_));
+                        // Also check parent fn for Assignment that created this local var as Shared
+                        if !is_shared {
+                            let arg_name = match &args[0] {
+                                Microstatement::FnCall { function: arg_fn, .. } => arg_fn.name.clone(),
+                                Microstatement::Value { representation, .. } => representation.clone(),
+                                _ => String::new(),
+                            };
+                            if !arg_name.is_empty() {
+                                // Check function parameters
+                                for (pname, _, ptype) in parent_fn.args() {
+                                    if *pname == arg_name {
+                                        if let Ok((rust_type, _, _)) = typen::generate(ptype.clone(), out.clone(), deps.clone()) {
+                                            if rust_type.starts_with("std::sync::Arc<std::sync::RwLock<") {
+                                                is_shared = true;
+                                            }
+                                        }
+                                        break;
+                                    }
+                                }
+                                // Recursively search microstatements for Assignment
+                                if !is_shared {
+                                    fn search_shared(ms: &Microstatement, name: &str, found: &mut bool) {
+                                        if *found { return; }
+                                        match ms {
+                                            Microstatement::Assignment { name: aname, value, .. } => {
+                                                if aname == name {
+                                                    let vtype = value.get_type();
+                                                    if matches!(&*vtype, CType::Shared(_)) {
+                                                        *found = true;
+                                                    }
+                                                }
+                                            }
+                                            Microstatement::FnCall { function, args } => {
+                                                for nested_ms in &function.microstatements {
+                                                    search_shared(nested_ms, name, found);
+                                                }
+                                                for arg in args {
+                                                    search_shared(arg, name, found);
+                                                }
+                                            }
+                                            Microstatement::Array { vals, .. } => {
+                                                for v in vals { search_shared(v, name, found); }
+                                            }
+                                            Microstatement::Return { value } => {
+                                                if let Some(v) = value { search_shared(v, name, found); }
+                                            }
+                                            Microstatement::Closure { function } => {
+                                                for nested_ms in &function.microstatements {
+                                                    search_shared(nested_ms, name, found);
+                                                }
+                                            }
+                                            Microstatement::VarCall { args, .. } => {
+                                                for arg in args { search_shared(arg, name, found); }
+                                            }
+                                            _ => {}
+                                        }
+                                    }
+                                    let mut found = false;
+                                    for ms in &parent_fn.microstatements {
+                                        search_shared(ms, &arg_name, &mut found);
+                                        if found { break; }
+                                    }
+                                    is_shared = found;
+                                }
+                            }
+                        }
                         let shared_prefix = if is_shared {
-                            format!("({}).read().unwrap()", argstrs[0])
+                            format!("({}).write().unwrap()", argstrs[0])
                         } else {
                             argstrs[0].clone()
                         };
@@ -702,9 +820,9 @@ pub fn from_microstatement(
                                  // Short-circuit for direct `<N>` function calls (which can only be
                                  // generated by the internals of the compiler)
                                  if let Ok(i) = function.name.parse::<i64>() {
-                                     let clone_suffix = if is_shared { ".clone()" } else { "" };
-                                     return Ok((format!("{}.{}{}", shared_prefix, i, clone_suffix), out, deps));
-                                 }
+                                      let clone_suffix = if is_shared { "" } else { "" };
+                                      return Ok((format!("{}.{}{}", shared_prefix, i, clone_suffix), out, deps));
+                                  }
                                 let accessor_field = ts
                                     .iter()
                                     .filter(|t1| match &***t1 {
@@ -726,10 +844,10 @@ pub fn from_microstatement(
                                         CType::Field(n, _) => *n == function.name,
                                         _ => false,
                                     });
-                              if let Some((i, _)) = accessor_field {
-                                     let clone_suffix = if is_shared { ".clone()" } else { "" };
-                                     return Ok((format!("{}.{}{}", shared_prefix, i, clone_suffix), out, deps));
-                                 }
+                          if let Some((i, _)) = accessor_field {
+                                      let clone_suffix = if is_shared { "" } else { "" };
+                                      return Ok((format!("{}.{}{}", shared_prefix, i, clone_suffix), out, deps));
+                                  }
                             }
                             CType::Buffer(_, s) => {
                                 // Similarly short-circuit for direct `<N>` function calls

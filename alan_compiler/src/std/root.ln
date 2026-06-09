@@ -1387,7 +1387,7 @@ fn{Rs} len{T} (a: T[]) = {Cast{"i64"} :: Deref{Binds{"usize"}} -> i64}(
 fn{Js} len{T} (a: T[]) = {Property{"length"} :: T[] -> i32}(a).i64;
 fn{Rs} get{T} "alan_std::getarray" <- RootBacking :: (T[], i64) -> T?;
 fn{Js} get{T} (a: T[], i: i64) = if((i >= 0) & (i < a.len),
-  fn = {Method{"at"} :: (T[], i32) -> T}(a, i.i32));
+  fn = clone({Method{"at"} :: (T[], i32) -> T}(a, i.i32)));
 fn get{T} (a: Maybe{T[]}, i: i64) = if(a.exists, fn = (a!!).get(i), fn = {T?}());
 fn push{T} (a: Mut{T[]}, v: T) = {Method{"push"} :: (Mut{T[]}, Own{T})}(a, v);
 fn{Rs} pop{T} (a: Mut{T[]}) -> T? = {Method{"pop"} :: Mut{T[]} -> T?}(a);
@@ -1412,7 +1412,7 @@ fn{Js} reduce{T, U} "(async (a, i, f) => { let out = i; for (let i = 0; i < a.le
 fn{Rs} concat{T} "alan_std::concat" <- RootBacking :: (T[], T[]) -> T[];
 fn{Js} concat{T} (a: T[], b: T[]) -> T[] = {Method{"concat"} :: (T[], T[]) -> T[]}(a, b);
 fn{Rs} append{T} "alan_std::append" <- RootBacking :: (Mut{T[]}, T[]);
-fn{Js} append{T} "((a, b) => { for (let v in b) { a.push(v); } })" :: (Mut{T[]}, T[]);
+fn{Js} append{T} "((a, b) => { for (let v of b) { a.push(v); } })" :: (Mut{T[]}, T[]);
 fn{Rs} filled{T} "alan_std::filled" <- RootBacking :: (T, i64) -> T[];
 fn{Js} filled{T} "((v, c) => { let out = []; for (let i = 0n; i < c; i++) { out.push(v); } return out; })" :: (T, i64) -> T[];
 fn{Rs} has{T} (a: T[], v: T) = {Method{"contains"} :: (T[], T) -> bool}(a, v);
@@ -1438,7 +1438,7 @@ fn{Js} some{T} (a: T[], f: T -> bool) = {"(async (a, f) => { for (let v of a) { 
 fn{Rs} repeat{T} "alan_std::repeatarray" <- RootBacking :: (T[], i64) -> T[];
 fn{Js} repeat{T} (a: T[], c: i64) = {"((a, c) => { let out = []; for (let i = 0n; i < c; i++) { out.push(...a); } return out; })" :: (T[], i64) -> T[]}(a, c);
 fn{Rs} store{T} "alan_std::storearray" <- RootBacking :: (Mut{T[]}, i64, T) -> void!;
-fn{Js} store{T} (a: T[], i: i64, v: T) = {"((a, i, v) => { if (i < 0n || i > BigInt(a.length)) { return new alan_std.AlanError(new alan_std.Str(`Provided array index ${i.toString()} is greater than the length of the array`)); } else { a.splice(Number(i), 0, v); } })" :: (T[], i64, T) -> void!}(a, i, v);
+fn{Js} store{T} (a: T[], i: i64, v: T) = {"((a, i, v) => { let idx = Number(i); if (idx < 0 || idx > a.length) { return new alan_std.AlanError(new alan_std.Str(`Provided array index ${i.toString()} is greater than the length of the array`)); } else if (idx < a.length) { a.splice(idx, 0, v); } else { a.push(v); } })" :: (T[], i64, T) -> void!}(a, i, v);
 fn{Rs} delete{T} "alan_std::deletearray" <- RootBacking :: (Mut{T[]}, i64) -> T!;
 fn{Js} delete{T} (a: T[], i: i64) = {"((a, i) => { if (i < 0n || i >= BigInt(a.length)) { return new alan_std.AlanError(new alan_std.Str(`Provided array index ${i.toString()} is beyond the bounds of the array`)); } else { return a.splice(Number(i), 1)[0]; } })" :: (T[], i64) -> T!}(a, i);
 fn{Rs} last{T} (v: T[]) = {Method{"cloned"} :: T? -> T?}({Method{"last"} :: T[] -> T?}(v));
@@ -1669,10 +1669,6 @@ fn{Rs} product{V} "alan_std::productset" <- RootBacking :: (Set{V}, Set{V}) -> S
 fn{Js} product{V} (a: Set{V}, b: Set{V}) = {Method{"product"} :: (Set{V}, Set{V}) -> Set{(V, V)}}(a, b);
 fn mul{V}(a: Set{V}, b: Set{V}) = product(a, b);
 
-/// Shared implementation
-fn{Rs} read{T}(v: Shared{T}) -> T = {"*arg.read().unwrap()"} :: (Shared{T}) -> T;
-fn{Rs} write{T}(v: Shared{T}) -> Mut{T} = {"*arg.write().unwrap()"} :: (Shared{T}) -> Mut{T};
-
 /// Tree implementation
 
 // The TreeInner type houses all of the values attached to a tree in an array and two secondary
@@ -1692,7 +1688,7 @@ type Node{T} =
   id: i64,
   tree: Tree{T};
 
-fn Tree{T}(rootVal: T) = Shared(TreeInner{T}(
+fn Tree{T}(rootVal: T) = {Shared{TreeInner{T}}}(TreeInner{T}(
   Array{T}(rootVal),
   Array{Maybe{i64}}(Maybe{i64}()),
   Array{Array{i64}}(Array{i64}())));
@@ -1709,12 +1705,12 @@ fn Tree{T}(n: Node{T}) = n.tree;
 }*/
 fn rootNode{T}(t: Tree{T}) = Node{T}(0, t);
 
-fn len{T}(t: Tree{T}) = t.read.vals.len;
+fn len{T}(t: Tree{T}) = t.vals.len;
 
 fn Node{T}(t: Tree{T}, i: i64) = if(t.len > i, fn () = Node{T}(i, t));
 
 fn parent{T}(n: Node{T}) {
-  let parentId = n.tree.read.parentIdxs[n.id];
+  let parentId = n.tree.parentIdxs[n.id];
   return if(parentId.exists,
     if(exists(parentId!!),
       fn () = Node{T}(parentId.getOrExit.getOrExit, n.tree)),
@@ -1724,7 +1720,7 @@ fn parent{T}(n: Node{T}) {
 fn children{T}(n: Node{T}) = if(
   n.tree.len > n.id,
   fn {
-    let tree = n.tree.read;
+    let tree = n.tree;
     let childIds = tree.childrenIdxs[n.id] ?? Array{i64}();
     return childIds
       .filter(fn (id: i64) = tree.parentIdxs[id]!! ?? -1 == n.id)
@@ -1737,10 +1733,12 @@ fn children{T}(t: Tree{T}) = t.rootNode.children;
 fn addChild{T}(n: Node{T}, val: T) {
   let idx = n.tree.len;
   let parentIdx = n.id;
-  let tree = n.tree.write;
-  tree.vals.push(val);
-  tree.parentIdxs.push(Maybe{i64}(parentIdx));
-  tree.childrenIdxs.push(Array{i64}());
+  n.tree.vals.push(val);
+  n.tree.parentIdxs.push(Maybe{i64}(parentIdx));
+  n.tree.childrenIdxs.push(Array{i64}());
+  let parentChildren = n.tree.childrenIdxs[parentIdx].getOrExit;
+  parentChildren.push(idx);
+  n.tree.childrenIdxs.store(parentIdx, parentChildren);
   return Node{T}(idx, n.tree.clone);
 }
 
@@ -1748,15 +1746,17 @@ fn addChild{T}(n: Node{T}, t: Tree{T}) {
   let idxOffset = n.tree.len;
   let idx = idxOffset.clone(); // TODO: Lower stage of compiler should be doing this
   let parentIdx = n.id;
-  let tree = n.tree.write;
-  tree.vals.append(t.vals);
-  tree.parentIdxs.append(t.parentIdxs.map(fn (pId: Maybe{i64}) = if(pId.exists,
+  n.tree.vals.append(t.vals);
+  n.tree.parentIdxs.append(t.parentIdxs.map(fn (pId: Maybe{i64}) = if(pId.exists,
     fn () = Maybe{i64}(pId!! + idxOffset),
     fn () = Maybe{i64}(idx))));
-  tree.childrenIdxs.append(
+  n.tree.childrenIdxs.append(
     t.childrenIdxs.map(
       fn (ids: Array{i64}) = ids.map(
         fn (id: i64) = id + idxOffset)));
+  let parentChildren = n.tree.childrenIdxs[parentIdx].getOrExit;
+  parentChildren.push(idx);
+  n.tree.childrenIdxs.store(parentIdx, parentChildren);
   return Node{T}(idx, n.tree);
 }
 fn addChild{T}(t: Tree{T}, val: T) = t.rootNode.addChild(val);
@@ -1764,23 +1764,21 @@ fn addChild{T}(t: Tree{T}, val: T) = t.rootNode.addChild(val);
 fn delete{T}(n: Node{T}) {
   // TODO: Actually drop the node value after the tree has too many dead values.
   let nodeId = n.id;
-  let tree = n.tree.write;
-  let parentId = tree.parentIdxs[n.id].getOrExit;
+  let parentId = n.tree.parentIdxs[n.id].getOrExit;
   let childrenIds = n.children.map(fn (childNode: Node{T}) = childNode.id);
   // First, update the children to point at their grandparent
   childrenIds.map(fn (childId: i64) {
-    tree.parentIdxs.store(childId, parentId.clone);
+    n.tree.parentIdxs.store(childId, parentId.clone);
   });
   // Next, update the current node's parent to no longer count the node as a child, assuming there
   // is a parent, and attach the children
   if(parentId.exists, fn {
-    let parentsChildren = tree
+    let parentsChildren = n.tree
       .childrenIdxs[parentId.getOrExit]
       .getOrExit
       .filter(fn (childId: i64) = childId != nodeId);
     parentsChildren.append(childrenIds);
-    parentsChildren.print;
-    tree.childrenIdxs.store(parentId.getOrExit, parentsChildren);
+    n.tree.childrenIdxs.store(parentId.getOrExit, parentsChildren);
   });
 }
 
@@ -1805,21 +1803,21 @@ fn prune{T}(n: Node{T}) {
 // TODO: Implement `subtree` to create a new tree consisting of the specified node as its root and
 // only its own children as the children of the tree.
 
-fn getOr{T}(n: Node{T}, t: T) = n.tree.read.vals[n.id] ?? t;
+fn getOr{T}(n: Node{T}, t: T) = n.tree.vals[n.id] ?? t;
 
-fn getOrExit{T}(n: Node{T}) = n.tree.read.vals[n.id].getOrExit;
+fn getOrExit{T}(n: Node{T}) = n.tree.vals[n.id].getOrExit;
 
-fn Array{T}(t: Tree{T}) = t.read.vals.map(
+fn Array{T}(t: Tree{T}) = t.vals.map(
   fn (_: T, i: i64) = Node{T}(t, i)!!);
 
 fn map{T, U}(t: Tree{T}, mapper: (Node{T}) -> Node{U}) = Tree{U}(
   t.Array.map(mapper),
-  t.read.parentIdxs.clone(),
-  t.read.childrenIdxs.clone());
+  t.parentIdxs.clone(),
+  t.childrenIdxs.clone());
 fn map{T, U}(t: Tree{T}, mapper: (Node{T}, i64) -> Node{U}) = Tree{U}(
   t.Array.map(mapper),
-  t.read.parentIdxs,
-  t.read.childrenIdxs);
+  t.parentIdxs,
+  t.childrenIdxs);
 
 fn every{T}(t: Tree{T}, f: (Node{T}) -> bool) = t.Array.every(f);
 

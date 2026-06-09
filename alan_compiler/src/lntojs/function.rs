@@ -546,6 +546,11 @@ pub fn from_microstatement(
                         deps = d;
                         argstrs.push(a.to_string());
                     }
+                    // For Shared{T}, just pass through the reference (shallow clone)
+                    let arg_type = args[0].get_type();
+                    if matches!(&*arg_type, CType::Shared(_)) {
+                        return Ok((argstrs[0].clone(), out, deps));
+                    }
                     // Inject the clone helper function if it doesn't exist yet
                     if !out.contains_key("clone") {
                         out.insert(

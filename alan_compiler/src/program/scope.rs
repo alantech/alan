@@ -554,26 +554,22 @@ impl<'a> Scope<'a> {
             }
         }
         let mut match_index = None;
-        for (i, possible_args) in possible_args_vec.iter().enumerate() {
+        for (idx, possible_args) in possible_args_vec.iter().enumerate() {
             let mut args_match = true;
             for (i, arg) in args.iter().enumerate() {
-                // This is pretty cheap, but for now, a "non-strict" string representation
-                // of the CTypes is how we'll match the args against each other. TODO: Do
-                // this without constructing a string to compare against each other.
-                if !possible_args[i].2.clone().accepts(arg.clone()) {
+                let fnarg = possible_args[i].2.clone();
+                let callarg = arg.clone();
+                if !fnarg.clone().accepts(callarg.clone()) {
                     args_match = false;
                     break;
                 }
             }
             if args_match {
-                match_index = Some(i);
+                match_index = Some(idx);
                 break;
             }
         }
         if let Some(i) = match_index {
-            // We've found a match. We now need to return the resolved generic function.
-            // If any of the arguments is *itself* a generic function that we have resolved, we
-            // *also* need to resolve that as well.
             let generic_f = generic_fs.get(i).unwrap();
             for arg in args {
                 match &**arg {
@@ -596,7 +592,7 @@ impl<'a> Scope<'a> {
             }
             let temp_scope = self.child();
             match Function::from_generic_function(temp_scope, generic_f, generic_types.to_vec()) {
-                Err(_) => return None, // TODO: Should this be a panic?
+                Err(_) => return None,
                 Ok((mut temp_scope, realized_f)) => {
                     // Don't merge the generic types
                     match &generic_f.kind {
@@ -619,7 +615,7 @@ impl<'a> Scope<'a> {
     }
 
     pub fn resolve_function(
-        self,
+        mut self,
         function: &String,
         args: &[Arc<CType>],
     ) -> Option<(Scope<'a>, Arc<Function>)> {
@@ -634,7 +630,62 @@ impl<'a> Scope<'a> {
         } else {
             match self.resolve_function_generic_args(function, args) {
                 Some(gs) => self.resolve_generic_function(function, &gs, args),
-                None => None,
+                None => {
+                   // Check if the function name matches an intrinsic generic type and create
+                    // a constructor on-demand for the realized type (e.g. Shared(T) -> Shared{T})
+                    if args.len() <= 1 {
+                        // Extract base type name from "Shared{...}" or "Array{...}" patterns
+                        let base_name = function.split('{').next().unwrap_or(function);
+                        if let Some(t) = self.resolve_type(base_name) {
+                            if let CType::IntrinsicGeneric(type_name, 1) = &*t {
+                                if type_name.as_str() == "Shared" || type_name.as_str() == "Array" {
+                                    let arg_type = if args.len() == 1 {
+                                        args[0].clone()
+                                    } else {
+                                        Arc::new(CType::Void)
+                                    };
+                                    let realized = match type_name.as_str() {
+                                        "Shared" => Arc::new(CType::Shared(arg_type.clone())),
+                                        "Array" => Arc::new(CType::Array(arg_type.clone())),
+                                        _ => unreachable!(),
+                                    };
+                                    let realized_name = function.clone();
+                                    let rettype = realized.clone();
+                                    let f = Arc::new(Function {
+                                        name: realized_name.clone(),
+                                        typen: Arc::new(CType::Function(
+                                            arg_type,
+                                            rettype,
+                                        )),
+                                        microstatements: Vec::new(),
+                                        kind: FnKind::Derived,
+                                        origin_scope_path: self.path.clone(),
+                                    });
+                                    let temp_scope = self.child();
+                                    let mut temp_scope = temp_scope;
+                                    temp_scope.types.insert(realized_name.clone(), realized);
+                                    temp_scope.functions.insert(realized_name, vec![f.clone()]);
+                                    merge!(self, temp_scope);
+                                    return Some((self, f));
+                                }
+                            }
+                        }
+                    }
+                    // Auto-deref fallback for Mut{T}: try with inner type
+                    if args.len() >= 1 {
+                        let inner = match &*args[0] {
+                            CType::Mut(inner) => Some(inner.clone()),
+                            _ => None,
+                        };
+                        if let Some(inner) = inner {
+                            let new_args: Vec<Arc<CType>> = std::iter::once(inner).chain(args[1..].iter().cloned()).collect();
+                            if let Some(result) = self.resolve_function(function, &new_args) {
+                                return Some(result);
+                            }
+                        }
+                    }
+                    None
+                }
             }
         }
     }
@@ -726,13 +777,13 @@ impl<'a> Scope<'a> {
                 FnKind::Generic(g, _)
                 | FnKind::BoundGeneric(g, _)
                 | FnKind::ExternalGeneric(g, _, _)
-                | FnKind::Cfn(_, g) => {
+             | FnKind::Cfn(_, g) => {
                     if args.len() != f.args().len() {
                         continue;
                     }
                     match CType::infer_generics(self, g, &f.args(), args) {
-                        Ok(gs) => return Some(gs),
-                        Err(_) => { /* Do nothing */ }
+                         Ok(gs) => return Some(gs),
+                         Err(_) => {}
                     };
                 }
             }
@@ -805,7 +856,8 @@ impl<'a> Scope<'a> {
                 | FnKind::Bind(_)
                 | FnKind::ExternalBind(_, _)
                 | FnKind::Derived
-                | FnKind::Static => {
+                | FnKind::Static
+                | FnKind::CfnRealized(_) => {
                     if args.len() != f.args().len() {
                         continue;
                     }
@@ -826,8 +878,7 @@ impl<'a> Scope<'a> {
                 FnKind::Generic(_, _)
                 | FnKind::BoundGeneric(_, _)
                 | FnKind::ExternalGeneric(_, _, _)
-                | FnKind::Cfn(_, _)
-                | FnKind::CfnRealized(_) => { /* Do nothing */ }
+                | FnKind::Cfn(_, _) => { /* Do nothing */ }
             }
         }
         None
