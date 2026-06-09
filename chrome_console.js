@@ -12,9 +12,10 @@ import { chromium } from 'playwright';
   });
   const context = await browser.newContext();
   const page = await context.newPage();
-  page.on('console', msg => console.log(msg.text()));
+  page.on('console', msg => process.stdout.write(msg.text() + '\n'));
+  page.on('pageerror', err => console.error(err.message));
   await page.goto(process.argv.pop());
-  await new Promise((r) => setTimeout(r, 5000)); // TODO: Better way to determine completion
+  await new Promise((r) => setTimeout(r, 15000)); // Increased from 5s to 15s for GPU init
   await context.close();
   await browser.close();
 })();

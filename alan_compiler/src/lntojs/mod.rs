@@ -48,12 +48,12 @@ pub fn lntojs(
     )?;
     let main_call = if let CType::Type(n, _) = &*func[0].rettype() {
         if n == "ExitCode" {
-            "main().then(process.exit);"
+            "main().then(process.exit).catch(e => console.error(e));"
         } else {
-            "main();"
+            "main().catch(e => console.error(e));"
         }
     } else {
-        "main();"
+        "main().catch(e => console.error(e));"
     };
     Program::return_program(program);
     Ok((
