@@ -631,7 +631,7 @@ impl<'a> Scope<'a> {
             match self.resolve_function_generic_args(function, args) {
                 Some(gs) => self.resolve_generic_function(function, &gs, args),
                 None => {
-                   // Check if the function name matches an intrinsic generic type and create
+                    // Check if the function name matches an intrinsic generic type and create
                     // a constructor on-demand for the realized type (e.g. Shared(T) -> Shared{T})
                     if args.len() <= 1 {
                         // Extract base type name from "Shared{...}" or "Array{...}" patterns
@@ -653,10 +653,7 @@ impl<'a> Scope<'a> {
                                     let rettype = realized.clone();
                                     let f = Arc::new(Function {
                                         name: realized_name.clone(),
-                                        typen: Arc::new(CType::Function(
-                                            arg_type,
-                                            rettype,
-                                        )),
+                                        typen: Arc::new(CType::Function(arg_type, rettype)),
                                         microstatements: Vec::new(),
                                         kind: FnKind::Derived,
                                         origin_scope_path: self.path.clone(),
@@ -678,7 +675,9 @@ impl<'a> Scope<'a> {
                             _ => None,
                         };
                         if let Some(inner) = inner {
-                            let new_args: Vec<Arc<CType>> = std::iter::once(inner).chain(args[1..].iter().cloned()).collect();
+                            let new_args: Vec<Arc<CType>> = std::iter::once(inner)
+                                .chain(args[1..].iter().cloned())
+                                .collect();
                             if let Some(result) = self.resolve_function(function, &new_args) {
                                 return Some(result);
                             }
@@ -777,13 +776,13 @@ impl<'a> Scope<'a> {
                 FnKind::Generic(g, _)
                 | FnKind::BoundGeneric(g, _)
                 | FnKind::ExternalGeneric(g, _, _)
-             | FnKind::Cfn(_, g) => {
+                | FnKind::Cfn(_, g) => {
                     if args.len() != f.args().len() {
                         continue;
                     }
                     match CType::infer_generics(self, g, &f.args(), args) {
-                         Ok(gs) => return Some(gs),
-                         Err(_) => {}
+                        Ok(gs) => return Some(gs),
+                        Err(_) => {}
                     };
                 }
             }

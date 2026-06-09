@@ -5983,7 +5983,7 @@ pub fn typebaselist_to_ctype(
                                     // TODO: Is there a better way to do this?
                                     match name.as_str() {
                                         "Binds" => CType::binds(args),
-                                     "Shared" => Arc::new(CType::Shared(args[0].clone())),
+                                        "Shared" => Arc::new(CType::Shared(args[0].clone())),
                                         "Int" => CType::intcast(args[0].clone()),
                                         "Float" => CType::floatcast(args[0].clone()),
                                         "Bool" => CType::boolcast(args[0].clone()),

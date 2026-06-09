@@ -1724,7 +1724,7 @@ fn children{T}(n: Node{T}) = if(
     let childIds = tree.childrenIdxs[n.id] ?? Array{i64}();
     return childIds
       .filter(fn (id: i64) = tree.parentIdxs[id]!! ?? -1 == n.id)
-      .map(fn (id: i64) = Node{T}(id, n.tree.clone));
+      .map(fn (id: i64) = Node{T}(id, n.tree));
   },
   fn = Array{Node{T}}());
 
@@ -1739,7 +1739,7 @@ fn addChild{T}(n: Node{T}, val: T) {
   let parentChildren = n.tree.childrenIdxs[parentIdx].getOrExit;
   parentChildren.push(idx);
   n.tree.childrenIdxs.store(parentIdx, parentChildren);
-  return Node{T}(idx, n.tree.clone);
+  return Node{T}(idx, n.tree);
 }
 
 fn addChild{T}(n: Node{T}, t: Tree{T}) {

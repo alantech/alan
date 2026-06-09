@@ -823,7 +823,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
             BaseChunk::FuncCall(prior, f, g) => {
                 // Get all of the arguments for the function into an array. If there's a prior
                 // value it becomes the first argument.
-                  let mut arg_microstatements = match prior {
+                let mut arg_microstatements = match prior {
                     Some(p) => vec![p.clone()],
                     None => Vec::new(),
                 };
@@ -992,12 +992,17 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                                         merge!(temp_scope, s);
                                                     }
                                                 }
-                                           } else {
-                                                 arg_microstatements[i] = Microstatement::Value {
-                                                     typen: actual_typen.clone(),
-                                                     representation: representation.clone(),
-                                                 };
-                                             }
+                                            } else {
+                                                // Don't strip Shared wrapper: preserve original type
+                                                // so codegen can detect Shared{T} for deep clone, etc.
+                                                if !matches!(typen.as_ref(), CType::Shared(..)) {
+                                                    arg_microstatements[i] =
+                                                        Microstatement::Value {
+                                                            typen: actual_typen.clone(),
+                                                            representation: representation.clone(),
+                                                        };
+                                                }
+                                            }
                                         }
                                     }
                                     _ => { /* Do nothing */ }
@@ -1007,14 +1012,18 @@ pub fn baseassignablelist_to_microstatements<'a>(
 
                             prior_value = Some(Microstatement::FnCall {
                                 function: fun.clone(), // TODO: Drop the clone
-                                args: arg_microstatements,
+                                args: arg_microstatements.clone(),
                             });
                         }
                         None => {
                             return Err(format!(
                                 "Could not find a function with a call signature of {}({})",
                                 f,
-                                arg_types.iter().map(|a| a.clone().to_string()).collect::<Vec<String>>().join(", ")
+                                arg_types
+                                    .iter()
+                                    .map(|a| a.clone().to_string())
+                                    .collect::<Vec<String>>()
+                                    .join(", ")
                             )
                             .into());
                         }
@@ -1151,12 +1160,16 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                 })
                             }
                             None => {
-                                let arg_str = arg_types.iter().map(|a| a.clone().to_string()).collect::<Vec<_>>().join(", ");
-                                 return Err(format!(
-                                     "A function with the signature {}({}) or {}({}) does not exist",
-                                     name, arg_str, callable_name, arg_str
-                                 )
-                                 .into());
+                                let arg_str = arg_types
+                                    .iter()
+                                    .map(|a| a.clone().to_string())
+                                    .collect::<Vec<_>>()
+                                    .join(", ");
+                                return Err(format!(
+                                    "A function with the signature {}({}) or {}({}) does not exist",
+                                    name, arg_str, callable_name, arg_str
+                                )
+                                .into());
                             }
                         }
                     }

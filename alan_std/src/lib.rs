@@ -382,21 +382,21 @@ pub fn repeatarray<T: std::clone::Clone>(a: &[T], c: &i64) -> Vec<T> {
 /// that situation)
 #[inline(always)]
 pub fn storearray<T: std::clone::Clone>(a: &mut Vec<T>, i: &i64, v: &T) -> Result<(), AlanError> {
-     let idx = *i as usize;
-     match idx > a.len() {
-         true => {
-             Err(format!("Provided array index {i} is greater than the length of the array").into())
-         }
-         false => {
-             if idx < a.len() {
-                  a.insert(idx, v.clone());
-              } else {
-                  a.push(v.clone());
-              }
-             Ok(())
-         }
-     }
- }
+    let idx = *i as usize;
+    match idx > a.len() {
+        true => {
+            Err(format!("Provided array index {i} is greater than the length of the array").into())
+        }
+        false => {
+            if idx < a.len() {
+                a.insert(idx, v.clone());
+            } else {
+                a.push(v.clone());
+            }
+            Ok(())
+        }
+    }
+}
 
 /// `deletearray` deletes a value at the specified index, but fails if the index is out-of-bounds.
 /// If it succeeds, it returns the value wrapped in a Fallible.

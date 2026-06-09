@@ -6,7 +6,7 @@ use ordered_hash_map::OrderedHashMap;
 
 use crate::lntojs::typen;
 use crate::parse::{booln, integer, real};
-use crate::program::{ArgKind, CfnKind, CType, FnKind, Function, Microstatement, Program, Scope};
+use crate::program::{ArgKind, CType, CfnKind, FnKind, Function, Microstatement, Program, Scope};
 
 #[allow(clippy::type_complexity)]
 pub fn from_microstatement(
@@ -333,7 +333,9 @@ pub fn from_microstatement(
                 deps = res.1;
             }
             match &function.kind {
-                FnKind::Generic(..) | FnKind::BoundGeneric(..) | FnKind::ExternalGeneric(..)
+                FnKind::Generic(..)
+                | FnKind::BoundGeneric(..)
+                | FnKind::ExternalGeneric(..)
                 | FnKind::Cfn(..) => {
                     Err("Generic functions should have been resolved before reaching here".into())
                 }
@@ -546,11 +548,6 @@ pub fn from_microstatement(
                         deps = d;
                         argstrs.push(a.to_string());
                     }
-                    // For Shared{T}, just pass through the reference (shallow clone)
-                    let arg_type = args[0].get_type();
-                    if matches!(&*arg_type, CType::Shared(_)) {
-                        return Ok((argstrs[0].clone(), out, deps));
-                    }
                     // Inject the clone helper function if it doesn't exist yet
                     if !out.contains_key("clone") {
                         out.insert(
@@ -567,11 +564,7 @@ pub fn from_microstatement(
                              }".to_string(),
                         );
                     }
-                    Ok((
-                        format!("clone({})", argstrs[0]),
-                        out,
-                        deps,
-                    ))
+                    Ok((format!("clone({})", argstrs[0]), out, deps))
                 }
                 FnKind::Derived | FnKind::DerivedVariadic => {
                     // The initial work to get the values to construct the type is the same as

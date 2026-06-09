@@ -760,7 +760,11 @@ impl Function {
                 let realized_name = format!(
                     "{}_{}",
                     generic_function.name,
-                    generic_types.iter().map(|t| t.clone().to_callable_string()).collect::<Vec<_>>().join("_")
+                    generic_types
+                        .iter()
+                        .map(|t| t.clone().to_callable_string())
+                        .collect::<Vec<_>>()
+                        .join("_")
                 );
                 let microstatements = {
                     let mut ms = Vec::new();
@@ -820,7 +824,10 @@ impl Function {
                 // Insert under suffixed name, deduplicating by both name and signature
                 if scope.functions.contains_key(&f.name) {
                     let func_vec = scope.functions.get_mut(&f.name).unwrap();
-                    if !func_vec.iter().any(|fn_| fn_.name == f.name && fn_.typen == f.typen) {
+                    if !func_vec
+                        .iter()
+                        .any(|fn_| fn_.name == f.name && fn_.typen == f.typen)
+                    {
                         func_vec.insert(0, f.clone());
                     }
                 } else {
