@@ -89,13 +89,9 @@ impl<'a> Scope<'a> {
                         }
                         g @ ("Int" | "Float" | "Bool" | "String" | "Group" | "Unwrap" | "Infix"
                         | "Prefix" | "Method" | "Property" | "Cast" | "Own" | "Deref" | "Mut"
-                        | "Rust" | "Nodejs" | "From" | "Fail" | "Neg"
+                        | "Rust" | "Nodejs" | "From" | "Shared" | "Array" | "Fail" | "Neg"
                         | "Len" | "Size" | "FileStr" | "Env" | "EnvExists" | "Not") => {
                             s = CType::from_generic(s, g, 1)
-                        }
-                        g @ ("Shared" | "Array") => {
-                            // Register the intrinsic generic type
-                            s = CType::from_generic(s, g, 1);
                         }
                         g @ ("BindsAs" | "Function" | "Call" | "Dependency" | "Import" | "Field"
                         | "Prop" | "Exclude" | "Buffer" | "Add" | "Sub" | "Mul" | "Div" | "Mod"

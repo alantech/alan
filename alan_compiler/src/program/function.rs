@@ -5,8 +5,6 @@ use super::microstatement::{statement_to_microstatements, Microstatement};
 use super::scope::merge;
 use super::ArgKind;
 
-#[allow(unused_imports)]
-use super::CfnKind;
 use super::Export;
 use super::FnKind;
 use super::Scope;
