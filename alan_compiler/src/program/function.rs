@@ -4,6 +4,7 @@ use super::ctype::{withtypeoperatorslist_to_ctype, CType};
 use super::microstatement::{statement_to_microstatements, Microstatement};
 use super::scope::merge;
 use super::ArgKind;
+
 use super::Export;
 use super::FnKind;
 use super::Scope;
@@ -599,7 +600,8 @@ impl Function {
             | FnKind::ExternalBind(_, _)
             | FnKind::Derived
             | FnKind::DerivedVariadic
-            | FnKind::Static => {
+            | FnKind::Static
+            | FnKind::CfnRealized(_) => {
                 Err("Should be impossible. Attempted to realize a non-generic function".into())
             }
             FnKind::BoundGeneric(gen_args, generic_fn_string)
@@ -704,13 +706,26 @@ impl Function {
                 }
                 let res = match scope.functions.get(&f.name) {
                     None => Err("This should be impossible. Cannot get the function we just added to the scope"),
-                    Some(fs) => Ok(fs.last().unwrap().clone()), // We know it's the last one
+                    Some(fs) => Ok(fs.first().unwrap().clone()), // We know it's the first one
                                                                 // because we just put it there
                 }?;
                 Ok((scope, res))
             }
             FnKind::Generic(gen_args, statements) => {
-                let kind = FnKind::Normal;
+                // Empty-body generic functions that return a type (constructors) should
+                // use FnKind::Derived so constructor code generation kicks in.
+                // A constructor is: name matches return type name AND return type is not void.
+                let ret_degrouped = generic_function.rettype().degroup();
+                let is_constructor = match &*ret_degrouped {
+                    CType::Void | CType::DerivedVoid(..) => false,
+                    CType::Type(name, _) => name == &generic_function.name && name != "void",
+                    _ => false,
+                };
+                let kind = if statements.is_empty() && is_constructor {
+                    FnKind::Derived
+                } else {
+                    FnKind::Normal
+                };
                 let args = generic_function
                     .args()
                     .iter()
@@ -740,6 +755,15 @@ impl Function {
                 for (i, (n, _)) in gen_args.iter().enumerate() {
                     scope.types.insert(n.clone(), generic_types[i].clone());
                 }
+                let realized_name = format!(
+                    "{}_{}",
+                    generic_function.name,
+                    generic_types
+                        .iter()
+                        .map(|t| t.clone().to_callable_string())
+                        .collect::<Vec<_>>()
+                        .join("_")
+                );
                 let microstatements = {
                     let mut ms = Vec::new();
                     for (name, kind, typen) in &args {
@@ -787,6 +811,66 @@ impl Function {
                         }
                     }
                 }
+                // Create the actual realized function
+                let f = Arc::new(Function {
+                    name: realized_name.clone(),
+                    typen: args_and_rettype_to_type(args, rettype),
+                    microstatements,
+                    kind,
+                    origin_scope_path: scope.path.clone(),
+                });
+                // Insert under suffixed name, deduplicating by both name and signature
+                if scope.functions.contains_key(&f.name) {
+                    let func_vec = scope.functions.get_mut(&f.name).unwrap();
+                    if !func_vec
+                        .iter()
+                        .any(|fn_| fn_.name == f.name && fn_.typen == f.typen)
+                    {
+                        func_vec.insert(0, f.clone());
+                    }
+                } else {
+                    scope.functions.insert(f.name.clone(), vec![f.clone()]);
+                }
+                let res = match scope.functions.get(&f.name) {
+                    None => Err("This should be impossible. Cannot get the function we just added to the scope"),
+                    Some(fs) => Ok(fs.first().unwrap().clone()),
+                }?;
+                Ok((scope, res))
+            }
+            FnKind::Cfn(cfn_kind, gen_args) => {
+                // Realize a compiler-provided generic function. The CfnKind survives
+                // realization so codegen can match on it directly (no name-based matching).
+                let args = generic_function
+                    .args()
+                    .iter()
+                    .map(|(name, kind, argtype)| {
+                        (name.clone(), kind.clone(), {
+                            let mut a = argtype.clone();
+                            for ((_, o), n) in gen_args.iter().zip(generic_types.iter()) {
+                                a = a.swap_subtype(o.clone(), n.clone());
+                            }
+                            a
+                        })
+                    })
+                    .collect::<Vec<(String, ArgKind, Arc<CType>)>>();
+                for (_, _, arg) in &args {
+                    scope = CType::from_ctype(scope, arg.clone().to_callable_string(), arg.clone());
+                }
+                let rettype = {
+                    let mut a = generic_function.rettype().clone();
+                    for ((_, o), n) in gen_args.iter().zip(generic_types.iter()) {
+                        a = a.swap_subtype(o.clone(), n.clone());
+                    }
+                    a
+                };
+                let mut microstatements = Vec::new();
+                for (name, kind, typen) in &args {
+                    microstatements.push(Microstatement::Arg {
+                        name: name.clone(),
+                        kind: kind.clone(),
+                        typen: typen.clone(),
+                    });
+                }
                 let name = format!(
                     "{}_{}",
                     generic_function.name,
@@ -795,13 +879,12 @@ impl Function {
                         .map(|t| t.clone().to_callable_string())
                         .collect::<Vec<String>>()
                         .join("_")
-                ); // Really bad
+                );
                 let f = Arc::new(Function {
                     name,
-                    // TODO: Can I eliminate this indirection?
                     typen: args_and_rettype_to_type(args, rettype),
                     microstatements,
-                    kind,
+                    kind: FnKind::CfnRealized(cfn_kind.clone()),
                     origin_scope_path: scope.path.clone(),
                 });
                 if scope.functions.contains_key(&f.name) {
@@ -812,8 +895,7 @@ impl Function {
                 }
                 let res = match scope.functions.get(&f.name) {
                     None => Err("This should be impossible. Cannot get the function we just added to the scope"),
-                    Some(fs) => Ok(fs.last().unwrap().clone()), // We know it's the last one
-                                                                // because we just put it there
+                    Some(fs) => Ok(fs.first().unwrap().clone()),
                 }?;
                 Ok((scope, res))
             }

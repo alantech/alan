@@ -283,6 +283,12 @@ pub fn ctype_to_rtype(
                 _ => CType::fail("Bound types must be strings or rust imports"),
             }
         }
+        CType::Shared(t) => {
+            let res = ctype_to_rtype(t.clone(), deps)?;
+            let s = res.0;
+            deps = res.1;
+            Ok((format!("std::sync::Arc<std::sync::RwLock<{s}>>"), deps))
+        }
         CType::IntrinsicGeneric(name, _) => Ok((name.clone(), deps)), // How would this even be reached?
         CType::Int(i) => Ok((i.to_string(), deps)),
         CType::Float(f) => Ok((f.to_string(), deps)),

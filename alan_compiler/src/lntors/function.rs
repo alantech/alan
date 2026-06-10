@@ -5,7 +5,7 @@ use std::sync::Arc;
 use ordered_hash_map::OrderedHashMap;
 
 use crate::lntors::typen;
-use crate::program::{ArgKind, CType, FnKind, Function, Microstatement, Program, Scope};
+use crate::program::{ArgKind, CType, CfnKind, FnKind, Function, Microstatement, Program, Scope};
 
 #[allow(clippy::type_complexity)]
 pub fn from_microstatement(
@@ -49,23 +49,27 @@ pub fn from_microstatement(
         Microstatement::Assignment {
             name,
             value,
-            mutable: _,
+            mutable,
         } => {
             let (val, o, d) = from_microstatement(value, parent_fn, scope, out, deps)?;
-            // I wish I didn't have to write the following line because you can't re-assign a
-            // variable in a let destructuring, afaict
             out = o;
             deps = d;
+            let final_val = match val.strip_prefix("&mut ") {
+                Some(s) => s.to_string(),
+                None => val,
+            };
+            // Clone Shared (Arc) assignments so they can be moved into closures safely
+            let assigned = if matches!(&*value.get_type(), CType::Shared(_)) {
+                format!("{}.clone()", final_val)
+            } else {
+                final_val
+            };
             Ok((
                 format!(
                     "let {}{} = {}",
-                    // TODO: Shouldn't always be mut
-                    "mut ",
+                    if *mutable { "mut " } else { "" },
                     name,
-                    match val.strip_prefix("&mut ") {
-                        Some(s) => s,
-                        None => &val,
-                    }
+                    assigned
                 ),
                 out,
                 deps,
@@ -207,7 +211,9 @@ pub fn from_microstatement(
                             | FnKind::Generic(..)
                             | FnKind::Derived
                             | FnKind::DerivedVariadic
-                            | FnKind::Static => {
+                            | FnKind::Static
+                            | FnKind::Cfn(..)
+                            | FnKind::CfnRealized(_) => {
                                 let mut arg_strs = Vec::new();
                                 for arg in &fun.args() {
                                     arg_strs.push(arg.2.clone().to_callable_string());
@@ -376,7 +382,10 @@ pub fn from_microstatement(
                 }
             }
             match &function.kind {
-                FnKind::Generic(..) | FnKind::BoundGeneric(..) | FnKind::ExternalGeneric(..) => {
+                FnKind::Generic(..)
+                | FnKind::BoundGeneric(..)
+                | FnKind::ExternalGeneric(..)
+                | FnKind::Cfn(..) => {
                     Err("Generic functions should have been resolved before reaching here".into())
                 }
                 FnKind::Normal | FnKind::External(_) => {
@@ -387,41 +396,67 @@ pub fn from_microstatement(
                     for arg in &function.args() {
                         arg_strs.push(arg.2.clone().to_callable_string());
                     }
-                    // Come up with a function name that is unique so Rust doesn't choke on
-                    // duplicate function names that are allowed in Alan
                     let rustname = format!("{}_{}", function.name, arg_strs.join("_")).to_string();
-                    // Make the function we need, but with the name we're
                     let res = generate(rustname.clone(), function, scope, out, deps)?;
                     out = res.0;
                     deps = res.1;
-                    // Now call this function
                     let mut argstrs = Vec::new();
                     for (i, arg) in args.iter().enumerate() {
                         let (a, o, d) = from_microstatement(arg, parent_fn, scope, out, deps)?;
                         out = o;
                         deps = d;
-                        // If the argument is itself a function, this is the only place in Rust
-                        // where you can't pass by reference, so we check the type and change
-                        // the argument output accordingly.
                         let arg_type = arg.get_type();
+                        let expected_type = &function.args()[i].2;
+                        // Auto-deref Shared{T}: inject .read().unwrap() when Shared{T} -> T
+                        let maybe_deref = if matches!(&*arg_type, CType::Shared(_inner)) {
+                            let inner_type = match &*arg_type {
+                                CType::Shared(t) => t,
+                                _ => &arg_type,
+                            };
+                            if inner_type.clone().degroup().to_strict_string(false)
+                                == expected_type.clone().degroup().to_strict_string(false)
+                            {
+                                Some(format!("(*({a}).read().unwrap()).clone()"))
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        };
                         match &*arg_type {
                             CType::Function(..) => argstrs.push(a.to_string()),
                             _ => match function.args()[i].1 {
                                 ArgKind::Mut => {
-                                    let mut prefix = "&mut ";
-                                    for (name, kind, _) in &parent_fn.args() {
-                                        if name == &a {
-                                            if let ArgKind::Mut = kind {
-                                                prefix = "";
+                                    if maybe_deref.is_some() {
+                                        argstrs.push(format!("&mut (*({a}).write().unwrap())"));
+                                    } else {
+                                        let mut prefix = "&mut ";
+                                        for (name, kind, _) in &parent_fn.args() {
+                                            if name == &a {
+                                                if let ArgKind::Mut = kind {
+                                                    prefix = "";
+                                                }
                                             }
                                         }
+                                        argstrs.push(format!("{prefix}{a}"));
                                     }
-                                    argstrs.push(format!("{prefix}{a}"));
                                 }
-                                // Because we create clones for these two right now, we always need
-                                // this
-                                ArgKind::Ref | ArgKind::Deref => argstrs.push(format!("&{a}")),
-                                ArgKind::Own => argstrs.push(a.clone()),
+                                ArgKind::Ref | ArgKind::Deref => {
+                                    if maybe_deref.is_some() {
+                                        argstrs.push(format!("&(*({a}).read().unwrap())"));
+                                    } else {
+                                        argstrs.push(format!("&{a}"));
+                                    }
+                                }
+                                ArgKind::Own => {
+                                    if let Some(deref_expr) = maybe_deref {
+                                        argstrs.push(deref_expr);
+                                    } else if matches!(&*arg_type, CType::Shared(_)) {
+                                        argstrs.push(format!("{}.clone()", a));
+                                    } else {
+                                        argstrs.push(a.clone());
+                                    }
+                                }
                             },
                         }
                     }
@@ -613,6 +648,35 @@ pub fn from_microstatement(
                         _ => unreachable!(),
                     }
                 }
+                FnKind::CfnRealized(CfnKind::Clone) => {
+                    // Generate .clone() for the argument. Handles Shared{T} specially.
+                    let (_, o, d) = typen::generate(function.rettype(), out, deps)?;
+                    out = o;
+                    deps = d;
+                    let mut argstrs = Vec::new();
+                    for arg in args {
+                        let (a, o, d) = from_microstatement(arg, parent_fn, scope, out, deps)?;
+                        out = o;
+                        deps = d;
+                        let arg_type = arg.get_type();
+                        match &*arg_type {
+                            CType::Function(..) => argstrs.push(a.to_string()),
+                            _ => argstrs.push(a.to_string()),
+                        }
+                    }
+                    let arg_type = args[0].get_type();
+                    match &*arg_type {
+                        CType::Shared(_) => {
+                            // Deep clone: unwrap Arc<RwLock<T>>, clone inner T, rewrap
+                            Ok((
+                                 format!("std::sync::Arc::new(std::sync::RwLock::new(({}).read().unwrap().clone()))", argstrs[0]),
+                                out,
+                                deps,
+                            ))
+                        }
+                        _ => Ok((format!("{}.clone()", argstrs[0]), out, deps)),
+                    }
+                }
                 FnKind::Derived | FnKind::DerivedVariadic => {
                     // The initial work to get the values to construct the type is the same as
                     // with bound functions, though.
@@ -624,7 +688,12 @@ pub fn from_microstatement(
                         let (a, o, d) = from_microstatement(arg, parent_fn, scope, out, deps)?;
                         out = o;
                         deps = d;
-                        argstrs.push(a.to_string());
+                        let arg_type = arg.get_type();
+                        if matches!(&*arg_type, CType::Shared(_)) {
+                            argstrs.push(format!("{}.clone()", a));
+                        } else {
+                            argstrs.push(a.to_string());
+                        }
                     }
                     // The behavior of the generated code depends on the structure of the
                     // return type and the input types. We also do some logic based on the name
@@ -658,13 +727,136 @@ pub fn from_microstatement(
                     // 3) If the input type is an either and the name of the function matches
                     //    the name of a sub-type, it returns a Maybe{T} for the type in
                     //    question. (This conflicts with (1) so it's checked first.)
-                    if function.args().len() == 1 {
-                        // This is a wacky unwrapping logic...
+                    if function.args().len() == 1 && !argstrs.is_empty() {
+                        // Auto-deref Shared{T}: unwrap Arc<RwLock<T>> before accessing inner properties
+                        let arg0_type = args[0].get_type();
+                        let mut is_shared = false;
+                        // Check actual argument type for Shared
+                        {
+                            let mut arg0_inner = &*arg0_type.clone().degroup();
+                            while matches!(
+                                arg0_inner,
+                                CType::Type(..) | CType::Group(_) | CType::Shared(_)
+                            ) {
+                                if matches!(arg0_inner, CType::Shared(_)) {
+                                    is_shared = true;
+                                }
+                                arg0_inner = match arg0_inner {
+                                    CType::Type(_, t) => t,
+                                    CType::Group(t) => t,
+                                    CType::Shared(t) => t,
+                                    _ => arg0_inner,
+                                };
+                            }
+                        }
+                        // Check if arg0 type is Shared (from type info)
+                        is_shared = is_shared || matches!(&*args[0].get_type(), CType::Shared(_));
+                        // Also check parent fn for Assignment that created this local var as Shared
+                        if !is_shared {
+                            let arg_name = match &args[0] {
+                                Microstatement::FnCall {
+                                    function: arg_fn, ..
+                                } => arg_fn.name.clone(),
+                                Microstatement::Value { representation, .. } => {
+                                    representation.clone()
+                                }
+                                _ => String::new(),
+                            };
+                            if !arg_name.is_empty() {
+                                // Check function parameters
+                                for (pname, _, ptype) in parent_fn.args() {
+                                    if *pname == arg_name {
+                                        if let Ok((rust_type, _, _)) = typen::generate(
+                                            ptype.clone(),
+                                            out.clone(),
+                                            deps.clone(),
+                                        ) {
+                                            if rust_type
+                                                .starts_with("std::sync::Arc<std::sync::RwLock<")
+                                            {
+                                                is_shared = true;
+                                            }
+                                        }
+                                        break;
+                                    }
+                                }
+                                // Recursively search microstatements for Assignment
+                                if !is_shared {
+                                    fn search_shared(
+                                        ms: &Microstatement,
+                                        name: &str,
+                                        found: &mut bool,
+                                    ) {
+                                        if *found {
+                                            return;
+                                        }
+                                        match ms {
+                                            Microstatement::Assignment {
+                                                name: aname,
+                                                value,
+                                                ..
+                                            } => {
+                                                if aname == name {
+                                                    let vtype = value.get_type();
+                                                    if matches!(&*vtype, CType::Shared(_)) {
+                                                        *found = true;
+                                                    }
+                                                }
+                                            }
+                                            Microstatement::FnCall { function, args } => {
+                                                for nested_ms in &function.microstatements {
+                                                    search_shared(nested_ms, name, found);
+                                                }
+                                                for arg in args {
+                                                    search_shared(arg, name, found);
+                                                }
+                                            }
+                                            Microstatement::Array { vals, .. } => {
+                                                for v in vals {
+                                                    search_shared(v, name, found);
+                                                }
+                                            }
+                                            Microstatement::Return { value: Some(v) } => {
+                                                search_shared(v, name, found);
+                                            }
+                                            Microstatement::Closure { function } => {
+                                                for nested_ms in &function.microstatements {
+                                                    search_shared(nested_ms, name, found);
+                                                }
+                                            }
+                                            Microstatement::VarCall { args, .. } => {
+                                                for arg in args {
+                                                    search_shared(arg, name, found);
+                                                }
+                                            }
+                                            _ => {}
+                                        }
+                                    }
+                                    let mut found = false;
+                                    for ms in &parent_fn.microstatements {
+                                        search_shared(ms, &arg_name, &mut found);
+                                        if found {
+                                            break;
+                                        }
+                                    }
+                                    is_shared = found;
+                                }
+                            }
+                        }
+                        let shared_prefix = if is_shared {
+                            format!("({}).write().unwrap()", argstrs[0])
+                        } else {
+                            argstrs[0].clone()
+                        };
                         let mut input_type = &function.args()[0].2;
-                        while matches!(&**input_type, CType::Type(..) | CType::Group(_)) {
+                        while matches!(
+                            &**input_type,
+                            CType::Type(..) | CType::Group(_) | CType::Shared(_)
+                        ) {
                             input_type = match &**input_type {
                                 CType::Type(_, t) => t,
                                 CType::Group(t) => t,
+                                CType::Shared(t) => t,
                                 _ => input_type,
                             };
                         }
@@ -673,7 +865,12 @@ pub fn from_microstatement(
                                 // Short-circuit for direct `<N>` function calls (which can only be
                                 // generated by the internals of the compiler)
                                 if let Ok(i) = function.name.parse::<i64>() {
-                                    return Ok((format!("{}.{}", argstrs[0], i), out, deps));
+                                    let clone_suffix = "";
+                                    return Ok((
+                                        format!("{}.{}{}", shared_prefix, i, clone_suffix),
+                                        out,
+                                        deps,
+                                    ));
                                 }
                                 let accessor_field = ts
                                     .iter()
@@ -697,7 +894,12 @@ pub fn from_microstatement(
                                         _ => false,
                                     });
                                 if let Some((i, _)) = accessor_field {
-                                    return Ok((format!("{}.{}", argstrs[0], i), out, deps));
+                                    let clone_suffix = "";
+                                    return Ok((
+                                        format!("{}.{}{}", shared_prefix, i, clone_suffix),
+                                        out,
+                                        deps,
+                                    ));
                                 }
                             }
                             CType::Buffer(_, s) => {
@@ -706,7 +908,12 @@ pub fn from_microstatement(
                                     if let CType::Int(l) = **s {
                                         if i128::from(i) < l {
                                             return Ok((
-                                                format!("{}[{}]", argstrs[0], i),
+                                                format!(
+                                                    "{}[{}]{}",
+                                                    shared_prefix,
+                                                    i,
+                                                    if is_shared { ".clone()" } else { "" }
+                                                ),
                                                 out,
                                                 deps,
                                             ));
@@ -715,41 +922,34 @@ pub fn from_microstatement(
                                 }
                             }
                             CType::Field(..) => {
-                                return Ok((format!("{}.0", argstrs[0]), out, deps));
+                                return Ok((
+                                    format!(
+                                        "{}.0{}",
+                                        shared_prefix,
+                                        if is_shared { ".clone()" } else { "" }
+                                    ),
+                                    out,
+                                    deps,
+                                ));
                             }
                             CType::Either(ts, _) => {
                                 let enum_type = function.args()[0].2.clone().degroup();
                                 let enum_name = enum_type.to_callable_string();
-                                // The kinds of types allowed here are `Type`, `Bound`, and
-                                // `ResolvedBoundGeneric`, and `Field`. Other types don't have
-                                // a string name we can match against the function name
                                 let accessor_field = ts.iter().find(|t| match &***t {
                                     CType::Field(n, _) => *n == function.name,
                                     CType::Type(n, _) => *n == function.name,
                                     _ => false,
                                 });
-                                // We're assuming the enum sub-type naming scheme also follows
-                                // the convention of matching the type name or field name,
-                                // which works because we're generating all of the code that
-                                // defines the enums. We also need the name of the enum for
-                                // this to work, so we're assuming we got it from the first
-                                // function argument. We blow up here if the first argument is
-                                // *not* a Type we can get an enum name from (it *shouldn't* be
-                                // possible, but..)
-                                // We pass through to the main path if we can't find a matching
-                                // name
                                 if accessor_field.is_some() {
-                                    // Special-casing for Option and Result mapping. TODO:
-                                    // Make this more centralized
                                     if ts.len() == 2 {
                                         if let CType::Void = &*ts[1] {
-                                            return Ok((argstrs[0].clone(), out, deps));
+                                            return Ok((shared_prefix, out, deps));
                                         } else if let CType::Type(name, _) = &*ts[1] {
                                             if name == "Error" {
                                                 if function.name == "Error" {
-                                                    return Ok((format!("(match &{} {{ Err(e) => Some(e.clone()), _ => None }})", argstrs[0]), out, deps));
+                                                    return Ok((format!("(match &{} {{ Err(e) => Some(e.clone()), _ => None }})", shared_prefix), out, deps));
                                                 } else {
-                                                    return Ok((format!("(match &{} {{ Ok(v) => Some(v.clone()), _ => None }})", argstrs[0]), out, deps));
+                                                    return Ok((format!("(match &{} {{ Ok(v) => Some(v.clone()), _ => None }})", shared_prefix), out, deps));
                                                 }
                                             }
                                         }
@@ -757,7 +957,7 @@ pub fn from_microstatement(
                                     return Ok((
                                         format!(
                                             "(match &{} {{ {}::{}(v) => Some(v.clone()), _ => None }})",
-                                            argstrs[0], enum_name, function.name
+                                            shared_prefix, enum_name, function.name
                                         ),
                                         out,
                                         deps,
@@ -1106,6 +1306,19 @@ pub fn from_microstatement(
                                             })
                                             .collect::<Vec<String>>()
                                             .join(", ")
+                                    ),
+                                    out,
+                                    deps,
+                                ));
+                            }
+                            CType::Shared(_) => {
+                                return Ok((
+                                    format!(
+                                        "std::sync::Arc::new(std::sync::RwLock::new({}))",
+                                        match argstrs[0].strip_prefix("&mut ") {
+                                            Some(v) => v.to_string(),
+                                            None => argstrs[0].clone(),
+                                        }
                                     ),
                                     out,
                                     deps,
@@ -1919,6 +2132,28 @@ pub fn from_microstatement(
                                 }
                             }
                         }
+                    }
+                    // Fallback: Check if return type is Shared for constructor generation
+                    // when function name doesn't match (e.g., inferred generic constructors)
+                    let mut fallback_ret = ret_type.clone();
+                    while matches!(&*fallback_ret, CType::Type(..)) {
+                        fallback_ret = match &*fallback_ret {
+                            CType::Type(_, t) => t.clone(),
+                            _ => fallback_ret,
+                        };
+                    }
+                    if let CType::Shared(_) = &*fallback_ret {
+                        return Ok((
+                            format!(
+                                "std::sync::Arc::new(std::sync::RwLock::new({}))",
+                                match argstrs[0].strip_prefix("&mut ") {
+                                    Some(v) => v.to_string(),
+                                    None => argstrs[0].clone(),
+                                }
+                            ),
+                            out,
+                            deps,
+                        ));
                     }
                     Err(format!(
                         "Trying to create an automatic function for {} but the return type is {}",

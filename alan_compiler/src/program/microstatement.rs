@@ -342,49 +342,54 @@ pub fn baseassignablelist_to_microstatements<'a>(
                     None => {
                         // It could be a function.
                         let mut function_types = scope.resolve_function_types(v);
-                        if parent_fn.is_some() && parent_fn.unwrap().origin_scope_path != scope.path
-                        {
-                            let program = Program::get_program();
-                            if let Ok(origin_scope) =
-                                program.scope_by_file(&parent_fn.unwrap().origin_scope_path)
-                            {
-                                let other_function_types = origin_scope.resolve_function_types(v);
-                                function_types = match (&*function_types, &*other_function_types) {
-                                    (
-                                        CType::Void | CType::DerivedVoid(..),
-                                        CType::Void | CType::DerivedVoid(..),
-                                    ) => Arc::new(CType::Void),
-                                    (CType::Void | CType::DerivedVoid(..), _) => {
-                                        other_function_types
-                                    }
-                                    (_, CType::Void | CType::DerivedVoid(..)) => function_types,
-                                    (CType::AnyOf(t1), CType::AnyOf(t2)) => {
-                                        Arc::new(CType::AnyOf({
-                                            let mut v = Vec::new();
-                                            v.append(&mut t1.clone());
-                                            v.append(&mut t2.clone());
-                                            v
-                                        }))
-                                    }
-                                    (_, CType::AnyOf(t2)) => Arc::new(CType::AnyOf({
-                                        let mut v = Vec::new();
-                                        v.push(function_types);
-                                        v.append(&mut t2.clone());
-                                        v
-                                    })),
-                                    (CType::AnyOf(t1), _) => Arc::new(CType::AnyOf({
-                                        let mut v = Vec::new();
-                                        v.append(&mut t1.clone());
-                                        v.push(other_function_types);
-                                        v
-                                    })),
-                                    (_, _) => Arc::new(CType::AnyOf(vec![
-                                        function_types,
-                                        other_function_types,
-                                    ])),
-                                };
+                        if let Some(pf) = &parent_fn {
+                            if pf.origin_scope_path != scope.path {
+                                let program = Program::get_program();
+                                if let Ok(origin_scope) =
+                                    program.scope_by_file(&pf.origin_scope_path)
+                                {
+                                    let other_function_types =
+                                        origin_scope.resolve_function_types(v);
+                                    function_types =
+                                        match (&*function_types, &*other_function_types) {
+                                            (
+                                                CType::Void | CType::DerivedVoid(..),
+                                                CType::Void | CType::DerivedVoid(..),
+                                            ) => Arc::new(CType::Void),
+                                            (CType::Void | CType::DerivedVoid(..), _) => {
+                                                other_function_types
+                                            }
+                                            (_, CType::Void | CType::DerivedVoid(..)) => {
+                                                function_types
+                                            }
+                                            (CType::AnyOf(t1), CType::AnyOf(t2)) => {
+                                                Arc::new(CType::AnyOf({
+                                                    let mut v = Vec::new();
+                                                    v.append(&mut t1.clone());
+                                                    v.append(&mut t2.clone());
+                                                    v
+                                                }))
+                                            }
+                                            (_, CType::AnyOf(t2)) => Arc::new(CType::AnyOf({
+                                                let mut v = Vec::new();
+                                                v.push(function_types);
+                                                v.append(&mut t2.clone());
+                                                v
+                                            })),
+                                            (CType::AnyOf(t1), _) => Arc::new(CType::AnyOf({
+                                                let mut v = Vec::new();
+                                                v.append(&mut t1.clone());
+                                                v.push(other_function_types);
+                                                v
+                                            })),
+                                            (_, _) => Arc::new(CType::AnyOf(vec![
+                                                function_types,
+                                                other_function_types,
+                                            ])),
+                                        };
+                                }
+                                Program::return_program(program);
                             }
-                            Program::return_program(program);
                         }
                         match &*function_types {
                             CType::Void | CType::DerivedVoid(..) => {
@@ -779,12 +784,23 @@ pub fn baseassignablelist_to_microstatements<'a>(
                     arg_types.push(arg.get_type());
                 }
                 let ctype = withtypeoperatorslist_to_ctype(&g.typecalllist, &scope)?;
-                let name = ctype.clone().to_callable_string();
+                let callable_name = ctype.clone().to_callable_string();
+                // For intrinsic generics wrapping resolved types, construct alias-preserved name
+                let alias_name: Option<String> = match &*ctype {
+                    CType::Shared(inner) | CType::Array(inner) => {
+                        let inner_name = inner.clone().to_callable_string();
+                        let outer = match &*ctype {
+                            CType::Shared(_) => "Shared",
+                            CType::Array(_) => "Array",
+                            _ => unreachable!(),
+                        };
+                        Some(format!("{}{{{}}}", outer, inner_name))
+                    }
+                    _ => None,
+                };
+                let name = alias_name.clone().unwrap_or(callable_name.clone());
                 scope = CType::from_ctype(scope, name.clone(), ctype.clone());
                 let temp_scope = scope.child();
-                // Now we are sure the type and function exist, and we know the name for the
-                // function. It would be best if we could just pass it to ourselves and run the
-                // `FuncCall` logic below, but it's easier at the moment to duplicate :( TODO
                 let res = temp_scope.resolve_function(&name, &arg_types);
                 match res {
                     Some((mut temp_scope, f)) => {
@@ -931,14 +947,15 @@ pub fn baseassignablelist_to_microstatements<'a>(
                         Some((mut temp_scope, fun)) => {
                             // Success! Let's emit this
                             // TODO: Do a better job at type rewriting here
+                            let funargs = fun.args();
                             #[allow(clippy::needless_range_loop)]
-                            for i in 0..fun.args().len() {
+                            for i in 0..funargs.len() {
                                 match &arg_microstatements[i] {
                                     Microstatement::Value {
                                         typen,
                                         representation,
                                     } => {
-                                        let actual_typen = fun.args()[i].2.clone();
+                                        let actual_typen = funargs[i].2.clone();
                                         if typen != &actual_typen {
                                             if matches!(&*actual_typen, CType::Function(..)) {
                                                 let temp_scope_2 = temp_scope.child();
@@ -981,10 +998,15 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                                     }
                                                 }
                                             } else {
-                                                arg_microstatements[i] = Microstatement::Value {
-                                                    typen: actual_typen.clone(),
-                                                    representation: representation.clone(),
-                                                };
+                                                // Don't strip Shared wrapper: preserve original type
+                                                // so codegen can detect Shared{T} for deep clone, etc.
+                                                if !matches!(typen.as_ref(), CType::Shared(..)) {
+                                                    arg_microstatements[i] =
+                                                        Microstatement::Value {
+                                                            typen: actual_typen.clone(),
+                                                            representation: representation.clone(),
+                                                        };
+                                                }
                                             }
                                         }
                                     }
@@ -995,7 +1017,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
 
                             prior_value = Some(Microstatement::FnCall {
                                 function: fun.clone(), // TODO: Drop the clone
-                                args: arg_microstatements,
+                                args: arg_microstatements.clone(),
                             });
                         }
                         None => {
@@ -1118,12 +1140,18 @@ pub fn baseassignablelist_to_microstatements<'a>(
                         let res = CType::from_ast(scope, &parse_type, false)?;
                         scope = res.0;
                         let t = res.1;
-                        let real_name = Arc::new(t).to_callable_string();
-                        // Now we are sure the type and function exist, and we know the name for the
-                        // function. It would be best if we could just pass it to ourselves and run the
-                        // `FuncCall` logic below, but it's easier at the moment to duplicate :( TODO
+                        // Try the type alias name first (e.g. TreeInner_T_), then fall back to
+                        // the callable string of the expanded type (e.g. Tuple_Field_valsL_...)
+                        let callable_name = Arc::new(t.clone()).to_callable_string();
                         let temp_scope = scope.child();
-                        let res = temp_scope.resolve_function(&real_name, &arg_types);
+                        let res = temp_scope.resolve_function(&name, &arg_types);
+                        let res = match res {
+                            Some((s, f)) => Some((s, f)),
+                            None => {
+                                let temp_scope2 = scope.child();
+                                temp_scope2.resolve_function(&callable_name, &arg_types)
+                            }
+                        };
                         match res {
                             Some((mut temp_scope, func)) => {
                                 temp_scope.functions.insert(f.clone(), vec![func.clone()]);
@@ -1137,14 +1165,14 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                 })
                             }
                             None => {
+                                let arg_str = arg_types
+                                    .iter()
+                                    .map(|a| a.clone().to_string())
+                                    .collect::<Vec<_>>()
+                                    .join(", ");
                                 return Err(format!(
-                                    "A function with the signature {}({}) does not exist",
-                                    real_name,
-                                    arg_types
-                                        .iter()
-                                        .map(|a| a.clone().to_string())
-                                        .collect::<Vec<String>>()
-                                        .join(", ")
+                                    "A function with the signature {}({}) or {}({}) does not exist",
+                                    name, arg_str, callable_name, arg_str
                                 )
                                 .into());
                             }
@@ -1542,7 +1570,7 @@ pub fn statement_to_microstatements<'a>(
         parse::Statement::ArrayAssignment(arrayassignment) => {
             let mut args = Vec::new();
             let res = baseassignablelist_to_microstatements(
-                &[arrayassignment.name.clone()],
+                std::slice::from_ref(&arrayassignment.name),
                 parent_fn,
                 scope,
                 microstatements,
@@ -1573,7 +1601,10 @@ pub fn statement_to_microstatements<'a>(
                 // TODO: Do we really need this temp_scope?
                 let temp_scope = scope.child();
                 match temp_scope.resolve_function(&"store".to_string(), &arg_types) {
-                    Some((_, f)) => Ok(f),
+                    Some((s, f)) => {
+                        merge!(scope, s);
+                        Ok(f)
+                    }
                     None => Err(format!(
                         "Could not find store function with arguments {}",
                         arg_types

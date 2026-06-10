@@ -22,6 +22,7 @@ pub enum CType {
     Type(String, Arc<CType>),
     Generic(String, Vec<String>, Arc<CType>),
     Binds(Arc<CType>, Vec<Arc<CType>>),
+    Shared(Arc<CType>),
     IntrinsicGeneric(String, usize),
     IntCast(Arc<CType>),
     Int(i128),
@@ -220,6 +221,11 @@ impl CType {
                         ctype_stack.push(comma);
                     }
                     ctype_stack.push(n);
+                }
+                CType::Shared(t) => {
+                    str_parts.push("Shared{");
+                    ctype_stack.push(close_brace);
+                    ctype_stack.push(t);
                 }
                 CType::IntrinsicGeneric(s, l) => {
                     str_parts.push(s);
@@ -721,6 +727,11 @@ impl CType {
                         ctype_stack.push(comma);
                     }
                     ctype_stack.push(n);
+                }
+                CType::Shared(t) => {
+                    str_parts.push("Shared{");
+                    ctype_stack.push(close_brace);
+                    ctype_stack.push(t);
                 }
                 CType::IntrinsicGeneric(s, u) => {
                     str_parts.push(s);
@@ -1328,6 +1339,7 @@ impl CType {
             | CType::From(t)
             | CType::Array(t)
             | CType::Field(_, t)
+            | CType::Shared(t)
             | CType::Neg(t)
             | CType::Len(t)
             | CType::Size(t)
@@ -1384,6 +1396,7 @@ impl CType {
                     .map(|t| t.clone().degroup())
                     .collect::<Vec<Arc<CType>>>(),
             )),
+            CType::Shared(t) => Arc::new(CType::Shared(t.clone().degroup())),
             CType::IntrinsicGeneric(..) => self,
             CType::IntCast(t) => Arc::new(CType::IntCast(t.clone().degroup())),
             CType::Int(_) => self,
@@ -1611,6 +1624,23 @@ impl CType {
                     (_, CType::Type(_, t2)) if !matches!(&**t2, CType::Binds(..)) => {
                         arg.push(a.clone());
                         input.push(t2.clone());
+                    }
+                    (CType::Shared(a2), CType::Shared(b2)) => {
+                        arg.push(a2.clone());
+                        input.push(b2.clone());
+                    }
+                    // Transparent Shared: unwrap when only one side is Shared
+                    (CType::Shared(a2), other) => {
+                        arg.push(a2.clone());
+                        input.push(Arc::new(other.clone()));
+                    }
+                    (other, CType::Shared(b2)) => {
+                        arg.push(Arc::new(other.clone()));
+                        input.push(b2.clone());
+                    }
+                    (CType::Array(a2), CType::Array(b2)) => {
+                        arg.push(a2.clone());
+                        input.push(b2.clone());
                     }
                     (CType::Generic(_, _, t), CType::Function(..))
                         if matches!(&**t, CType::Function(..)) =>
@@ -2045,10 +2075,6 @@ impl CType {
                         arg.push(s1.clone());
                         input.push(t2.clone());
                         input.push(s2.clone());
-                    }
-                    (CType::Array(t1), CType::Array(t2)) => {
-                        arg.push(t1.clone());
-                        input.push(t2.clone());
                     }
                     (CType::AnyOf(ts), CType::Infer(g, _)) => {
                         // Found an interesting inference situation where more than one answer may
@@ -2772,6 +2798,10 @@ impl CType {
     }
     pub fn accepts(self: Arc<CType>, arg: Arc<CType>) -> bool {
         match (&*self, &*arg) {
+            // Shared{T} is transparent: Shared{T} accepts T, and T accepts Shared{T}
+            (CType::Shared(a), CType::Shared(b)) => a.clone().accepts(b.clone()),
+            (CType::Shared(a), other) => a.clone().accepts(Arc::new(other.clone())),
+            (self_type, CType::Shared(b)) => Arc::new(self_type.clone()).accepts(b.clone()),
             (_a, CType::AnyOf(ts)) => {
                 for t in ts {
                     if self.clone().accepts(t.clone()) {
@@ -3212,17 +3242,19 @@ impl CType {
                 }
             }
             CType::Type(n, _) => {
-                // This is just an alias
-                fs.push(Arc::new(Function {
-                    name: constructor_fn_name.clone(),
-                    typen: Arc::new(CType::Function(
-                        Arc::new(CType::Field(n.clone(), self.clone())),
-                        t.clone(),
-                    )),
-                    microstatements: Vec::new(),
-                    kind: FnKind::Derived,
-                    origin_scope_path: scope.path.clone(),
-                }));
+                // This is just an alias, but avoid circular derives
+                if name != constructor_fn_name {
+                    fs.push(Arc::new(Function {
+                        name: constructor_fn_name.clone(),
+                        typen: Arc::new(CType::Function(
+                            Arc::new(CType::Field(n.clone(), self.clone())),
+                            t.clone(),
+                        )),
+                        microstatements: Vec::new(),
+                        kind: FnKind::Derived,
+                        origin_scope_path: scope.path.clone(),
+                    }));
+                }
             }
             CType::Tuple(ts, parents) => {
                 // The constructor function needs to grab the types from all
@@ -3666,6 +3698,17 @@ impl CType {
                     origin_scope_path: scope.path.clone(),
                 }));
             }
+            CType::Shared(s) => {
+                // Shared constructor takes one argument of the inner type and
+                // wraps it in Arc<RwLock<T>>
+                fs.push(Arc::new(Function {
+                    name: constructor_fn_name.clone(),
+                    typen: Arc::new(CType::Function(s.clone(), t.clone())),
+                    microstatements: Vec::new(),
+                    kind: FnKind::Derived,
+                    origin_scope_path: scope.path.clone(),
+                }));
+            }
             CType::Int(i) => {
                 // TODO: Support construction of other integer types
                 let int64 = scope.resolve_type("i64").unwrap().clone();
@@ -4021,6 +4064,7 @@ impl CType {
                     .map(|gtr| gtr.clone().swap_subtype(old_type.clone(), new_type.clone()))
                     .collect::<Vec<Arc<CType>>>(),
             )),
+            CType::Shared(t) => Arc::new(CType::Shared(t.clone().swap_subtype(old_type, new_type))),
             CType::IntCast(i) => CType::intcast(i.clone().swap_subtype(old_type, new_type)),
             CType::FloatCast(f) => CType::floatcast(f.clone().swap_subtype(old_type, new_type)),
             CType::BoolCast(b) => CType::boolcast(b.clone().swap_subtype(old_type, new_type)),
@@ -5939,6 +5983,7 @@ pub fn typebaselist_to_ctype(
                                     // TODO: Is there a better way to do this?
                                     match name.as_str() {
                                         "Binds" => CType::binds(args),
+                                        "Shared" => Arc::new(CType::Shared(args[0].clone())),
                                         "Int" => CType::intcast(args[0].clone()),
                                         "Float" => CType::floatcast(args[0].clone()),
                                         "Bool" => CType::boolcast(args[0].clone()),
