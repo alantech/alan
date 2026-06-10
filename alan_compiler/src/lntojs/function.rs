@@ -554,6 +554,8 @@ pub fn from_microstatement(
                             "clone".to_string(),
                             "function clone(v) {\n\
                              if (v === null) return null;\n\
+                             if (typeof v === 'object' && v !== null && v.rawBuffer !== undefined) return v;\n\
+                             if (typeof v === 'object' && v !== null && typeof v.gpuTypeName === 'string') return v;\n\
                              if (v instanceof Map) return new Map([...v.entries()].map(kv => [clone(kv[0]), clone(kv[1])]));\n\
                              if (typeof v === 'object' && v !== null && typeof v.build === 'function') return v.build(clone(v.val));\n\
                              if (typeof v === 'object' && v !== null && typeof v.map === 'function') return v.map(clone);\n\
