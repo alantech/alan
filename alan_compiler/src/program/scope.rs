@@ -665,7 +665,7 @@ impl<'a> Scope<'a> {
                         }
                     }
                     // Auto-deref fallback for Mut{T}: try with inner type
-                    if args.len() >= 1 {
+                    if !args.is_empty() {
                         let inner = match &*args[0] {
                             CType::Mut(inner) => Some(inner.clone()),
                             _ => None,
@@ -776,10 +776,9 @@ impl<'a> Scope<'a> {
                     if args.len() != f.args().len() {
                         continue;
                     }
-                    match CType::infer_generics(self, g, &f.args(), args) {
-                        Ok(gs) => return Some(gs),
-                        Err(_) => {}
-                    };
+                    if let Ok(gs) = CType::infer_generics(self, g, &f.args(), args) {
+                        return Some(gs);
+                    }
                 }
             }
         }

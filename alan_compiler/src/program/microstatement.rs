@@ -342,49 +342,54 @@ pub fn baseassignablelist_to_microstatements<'a>(
                     None => {
                         // It could be a function.
                         let mut function_types = scope.resolve_function_types(v);
-                        if parent_fn.is_some() && parent_fn.unwrap().origin_scope_path != scope.path
-                        {
-                            let program = Program::get_program();
-                            if let Ok(origin_scope) =
-                                program.scope_by_file(&parent_fn.unwrap().origin_scope_path)
-                            {
-                                let other_function_types = origin_scope.resolve_function_types(v);
-                                function_types = match (&*function_types, &*other_function_types) {
-                                    (
-                                        CType::Void | CType::DerivedVoid(..),
-                                        CType::Void | CType::DerivedVoid(..),
-                                    ) => Arc::new(CType::Void),
-                                    (CType::Void | CType::DerivedVoid(..), _) => {
-                                        other_function_types
-                                    }
-                                    (_, CType::Void | CType::DerivedVoid(..)) => function_types,
-                                    (CType::AnyOf(t1), CType::AnyOf(t2)) => {
-                                        Arc::new(CType::AnyOf({
-                                            let mut v = Vec::new();
-                                            v.append(&mut t1.clone());
-                                            v.append(&mut t2.clone());
-                                            v
-                                        }))
-                                    }
-                                    (_, CType::AnyOf(t2)) => Arc::new(CType::AnyOf({
-                                        let mut v = Vec::new();
-                                        v.push(function_types);
-                                        v.append(&mut t2.clone());
-                                        v
-                                    })),
-                                    (CType::AnyOf(t1), _) => Arc::new(CType::AnyOf({
-                                        let mut v = Vec::new();
-                                        v.append(&mut t1.clone());
-                                        v.push(other_function_types);
-                                        v
-                                    })),
-                                    (_, _) => Arc::new(CType::AnyOf(vec![
-                                        function_types,
-                                        other_function_types,
-                                    ])),
-                                };
+                        if let Some(pf) = &parent_fn {
+                            if pf.origin_scope_path != scope.path {
+                                let program = Program::get_program();
+                                if let Ok(origin_scope) =
+                                    program.scope_by_file(&pf.origin_scope_path)
+                                {
+                                    let other_function_types =
+                                        origin_scope.resolve_function_types(v);
+                                    function_types =
+                                        match (&*function_types, &*other_function_types) {
+                                            (
+                                                CType::Void | CType::DerivedVoid(..),
+                                                CType::Void | CType::DerivedVoid(..),
+                                            ) => Arc::new(CType::Void),
+                                            (CType::Void | CType::DerivedVoid(..), _) => {
+                                                other_function_types
+                                            }
+                                            (_, CType::Void | CType::DerivedVoid(..)) => {
+                                                function_types
+                                            }
+                                            (CType::AnyOf(t1), CType::AnyOf(t2)) => {
+                                                Arc::new(CType::AnyOf({
+                                                    let mut v = Vec::new();
+                                                    v.append(&mut t1.clone());
+                                                    v.append(&mut t2.clone());
+                                                    v
+                                                }))
+                                            }
+                                            (_, CType::AnyOf(t2)) => Arc::new(CType::AnyOf({
+                                                let mut v = Vec::new();
+                                                v.push(function_types);
+                                                v.append(&mut t2.clone());
+                                                v
+                                            })),
+                                            (CType::AnyOf(t1), _) => Arc::new(CType::AnyOf({
+                                                let mut v = Vec::new();
+                                                v.append(&mut t1.clone());
+                                                v.push(other_function_types);
+                                                v
+                                            })),
+                                            (_, _) => Arc::new(CType::AnyOf(vec![
+                                                function_types,
+                                                other_function_types,
+                                            ])),
+                                        };
+                                }
+                                Program::return_program(program);
                             }
-                            Program::return_program(program);
                         }
                         match &*function_types {
                             CType::Void | CType::DerivedVoid(..) => {
@@ -1565,7 +1570,7 @@ pub fn statement_to_microstatements<'a>(
         parse::Statement::ArrayAssignment(arrayassignment) => {
             let mut args = Vec::new();
             let res = baseassignablelist_to_microstatements(
-                &[arrayassignment.name.clone()],
+                std::slice::from_ref(&arrayassignment.name),
                 parent_fn,
                 scope,
                 microstatements,

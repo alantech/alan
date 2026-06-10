@@ -76,7 +76,7 @@ macro_rules! or {
 /// The `and` macro matches all of the given rules in a tuple, returning them all as a single
 /// string
 macro_rules! and {
-  ( $($rule:expr),+ $(,)? ) => {recognize((($($rule,)+)))}
+  ( $($rule:expr),+ $(,)? ) => {recognize(($($rule,)+))}
 }
 
 /// The `charset` macro matches a single character in the given character set. Multiple such sets

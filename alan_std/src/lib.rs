@@ -812,15 +812,12 @@ impl GPU {
                 memory_hints: wgpu::MemoryHints::Performance,
                 trace: wgpu::Trace::Off,
             });
-            match futures::executor::block_on(device_future) {
-                Ok((device, queue)) => {
-                    out.push(GPU {
-                        adapter,
-                        device,
-                        queue,
-                    });
-                }
-                Err(_) => {}
+            if let Ok((device, queue)) = futures::executor::block_on(device_future) {
+                out.push(GPU {
+                    adapter,
+                    device,
+                    queue,
+                });
             };
         }
         out
@@ -859,13 +856,13 @@ pub fn optimal_local_group(global: [i64; 3]) -> [i64; 3] {
     // Clamp to [8, maxInvocations]
     target = target.max(8).min(max_invocations);
     // Snap to nearest multiple of 8 (hardware alignment)
-    target = ((target + 7) / 8) * 8;
+    target = target.div_ceil(8) * 8;
     // Shape: prefer S*S*1, then D*8*1
     let sqrt = (target as f64).sqrt() as u64;
     if sqrt >= 8 && sqrt * sqrt == target {
         return [sqrt as i64, sqrt as i64, 1];
     }
-    if target % 8 == 0 {
+    if target.is_multiple_of(8) {
         return [(target / 8) as i64, 8, 1];
     }
     [target as i64, 1, 1]
@@ -1424,7 +1421,7 @@ where
             let mut size = self.context.window.as_ref().unwrap().inner_size();
             size.width = size.width.max(1);
             size.height = size.height.max(1);
-            self.context.buffer_width = Some(if (4 * size.width) % 256 == 0 {
+            self.context.buffer_width = Some(if (4 * size.width).is_multiple_of(256) {
                 4 * size.width
             } else {
                 (4 * size.width) + (256 - ((4 * size.width) % 256))

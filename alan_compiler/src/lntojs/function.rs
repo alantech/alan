@@ -616,7 +616,7 @@ pub fn from_microstatement(
                     // 3) If the input type is an either and the name of the function matches
                     //    the name of a sub-type, it returns a Maybe{T} for the type in
                     //    question. (This conflicts with (1) so it's checked first.)
-                    if function.args().len() == 1 && argstrs.len() > 0 {
+                    if function.args().len() == 1 && !argstrs.is_empty() {
                         // This is a wacky unwrapping logic...
                         let mut input_type = function.args()[0].2.clone();
                         while matches!(&*input_type, CType::Type(..) | CType::Group(_)) {
