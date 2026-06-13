@@ -26,7 +26,11 @@ fn build_shared_vars(parent_fn: &Function) -> OrderedHashMap<String, Arc<CType>>
         if let Microstatement::Assignment { name, value, .. } = ms {
             match value.as_ref() {
                 // Any FnCall that returns a Shared type or is a .clone on a Shared
-                Microstatement::FnCall { function, args: fn_args, .. } => {
+                Microstatement::FnCall {
+                    function,
+                    args: fn_args,
+                    ..
+                } => {
                     let mut rt = function.rettype();
                     if let CType::Type(_, t) = rt.as_ref() {
                         rt = t.clone();
@@ -44,9 +48,7 @@ fn build_shared_vars(parent_fn: &Function) -> OrderedHashMap<String, Arc<CType>>
                             if let CType::Shared(inner) = arg_type.as_ref() {
                                 shared_vars.insert(name.clone(), inner.clone());
                             }
-                        } else if let Microstatement::Value { representation, .. } =
-                            &fn_args[0]
-                        {
+                        } else if let Microstatement::Value { representation, .. } = &fn_args[0] {
                             if let Some(inner) = shared_vars.get(representation) {
                                 shared_vars.insert(name.clone(), inner.clone());
                             }
