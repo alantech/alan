@@ -2405,3 +2405,16 @@ test!(len_and_eq_combined => r#"
   }"#;
   stdout "Void is empty\ni64 not empty\n";
 );
+
+test!(shared_basic => r#"
+  export fn main {
+    let shared = {Shared{i64}}(42);
+
+    let a = shared;
+    let b = shared;
+
+    a.store(100);
+    b.print;
+  }"#;
+  stdout "100\n";
+);

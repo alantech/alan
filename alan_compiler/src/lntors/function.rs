@@ -7,6 +7,71 @@ use ordered_hash_map::OrderedHashMap;
 use crate::lntors::typen;
 use crate::program::{ArgKind, CType, CfnKind, FnKind, Function, Microstatement, Program, Scope};
 
+/// Build a map of variable names to the inner type of their Shared{T} wrapper,
+/// by tracing variable assignments back to their origin. A variable is considered
+/// Shared if it was assigned from a Shared constructor call, or from another variable
+/// that is Shared. This avoids relying on get_type() which may transparently unwrap Shared.
+fn build_shared_vars(parent_fn: &Function) -> OrderedHashMap<String, Arc<CType>> {
+    let mut shared_vars: OrderedHashMap<String, Arc<CType>> = OrderedHashMap::new();
+
+    // First pass: check function parameters
+    for (_, _, ptype) in parent_fn.args() {
+        if let CType::Shared(_inner) = ptype.as_ref() {
+            // Parameter is Shared, add to map
+        }
+    }
+
+    // Second pass: scan microstatements for assignments
+    for ms in &parent_fn.microstatements {
+        if let Microstatement::Assignment { name, value, .. } = ms {
+            match value.as_ref() {
+                // Direct Shared constructor call
+                Microstatement::FnCall { function, .. } => {
+                    if function.name.starts_with("Shared") {
+                        // Unwrap Type{...} wrapper to get to Shared{...}
+                        let mut rt = function.rettype();
+                        if let CType::Type(_, t) = rt.as_ref() {
+                            rt = t.clone();
+                        }
+                        if let CType::Shared(inner) = rt.as_ref() {
+                            shared_vars.insert(name.clone(), inner.clone());
+                        }
+                    }
+                }
+                // Assigned from another variable — trace later
+                Microstatement::Value { .. } => {
+                    // Will be resolved in the trace pass below
+                }
+                _ => {}
+            }
+        }
+    }
+
+    // Third pass: trace variable chains to resolve indirect Shared assignments
+    let mut changed = true;
+    while changed {
+        changed = false;
+        for ms in &parent_fn.microstatements {
+            if let Microstatement::Assignment { name, value, .. } = ms {
+                if let Microstatement::Value { representation, .. } = value.as_ref() {
+                    if representation != name
+                        && !shared_vars.contains_key(name)
+                        && shared_vars.contains_key(representation)
+                    {
+                        shared_vars.insert(
+                            name.clone(),
+                            shared_vars.get(representation).unwrap().clone(),
+                        );
+                        changed = true;
+                    }
+                }
+            }
+        }
+    }
+
+    shared_vars
+}
+
 #[allow(clippy::type_complexity)]
 pub fn from_microstatement(
     microstatement: &Microstatement,
@@ -59,7 +124,24 @@ pub fn from_microstatement(
                 None => val,
             };
             // Clone Shared (Arc) assignments so they can be moved into closures safely
-            let assigned = if matches!(&*value.get_type(), CType::Shared(_)) {
+            let value_type = value.get_type();
+            let is_shared = match &*value_type {
+                CType::Shared(_) => true,
+                CType::Type(_, t) => matches!(&**t, CType::Shared(_)),
+                _ => false,
+            };
+            // Also check if the assigned value is a variable that originates from Shared
+            let is_shared_var = if !is_shared {
+                if let Microstatement::Value { representation, .. } = value.as_ref() {
+                    let shared_vars = build_shared_vars(parent_fn);
+                    shared_vars.contains_key(representation)
+                } else {
+                    false
+                }
+            } else {
+                false
+            };
+            let assigned = if is_shared || is_shared_var {
                 format!("{}.clone()", final_val)
             } else {
                 final_val
@@ -401,25 +483,30 @@ pub fn from_microstatement(
                     out = res.0;
                     deps = res.1;
                     let mut argstrs = Vec::new();
+                    let shared_vars = build_shared_vars(parent_fn);
                     for (i, arg) in args.iter().enumerate() {
                         let (a, o, d) = from_microstatement(arg, parent_fn, scope, out, deps)?;
                         out = o;
                         deps = d;
                         let arg_type = arg.get_type();
-                        let expected_type = &function.args()[i].2;
-                        // Auto-deref Shared{T}: inject .read().unwrap() when Shared{T} -> T
-                        let maybe_deref = if matches!(&*arg_type, CType::Shared(_inner)) {
-                            let inner_type = match &*arg_type {
-                                CType::Shared(t) => t,
-                                _ => &arg_type,
-                            };
-                            if inner_type.clone().degroup().to_strict_string(false)
-                                == expected_type.clone().degroup().to_strict_string(false)
-                            {
-                                Some(format!("(*({a}).read().unwrap()).clone()"))
-                            } else {
-                                None
-                            }
+                        // Check if this arg variable is a Shared type
+                        let arg_name = match arg {
+                            Microstatement::Value { representation, .. } => representation.clone(),
+                            Microstatement::FnCall {
+                                function: arg_fn, ..
+                            } => arg_fn.name.clone(),
+                            _ => String::new(),
+                        };
+                        let arg_is_shared = matches!(&*arg_type, CType::Shared(_))
+                            || (!arg_name.is_empty() && shared_vars.contains_key(&arg_name));
+                        let param_is_shared = match &*function.args()[i].2 {
+                            CType::Shared(_) => true,
+                            CType::Type(_, t) => matches!(&**t, CType::Shared(_)),
+                            _ => false,
+                        };
+                        let needs_deref = arg_is_shared && !param_is_shared;
+                        let maybe_deref = if needs_deref {
+                            Some(format!("(*({a}).read().unwrap()).clone()"))
                         } else {
                             None
                         };
@@ -427,7 +514,7 @@ pub fn from_microstatement(
                             CType::Function(..) => argstrs.push(a.to_string()),
                             _ => match function.args()[i].1 {
                                 ArgKind::Mut => {
-                                    if maybe_deref.is_some() {
+                                    if arg_is_shared {
                                         argstrs.push(format!("&mut (*({a}).write().unwrap())"));
                                     } else {
                                         let mut prefix = "&mut ";
@@ -442,7 +529,7 @@ pub fn from_microstatement(
                                     }
                                 }
                                 ArgKind::Ref | ArgKind::Deref => {
-                                    if maybe_deref.is_some() {
+                                    if needs_deref {
                                         argstrs.push(format!("&(*({a}).read().unwrap())"));
                                     } else {
                                         argstrs.push(format!("&{a}"));
@@ -451,7 +538,7 @@ pub fn from_microstatement(
                                 ArgKind::Own => {
                                     if let Some(deref_expr) = maybe_deref {
                                         argstrs.push(deref_expr);
-                                    } else if matches!(&*arg_type, CType::Shared(_)) {
+                                    } else if arg_is_shared {
                                         argstrs.push(format!("{}.clone()", a));
                                     } else {
                                         argstrs.push(a.clone());
@@ -504,32 +591,61 @@ pub fn from_microstatement(
                 }
                 FnKind::Bind(rustname) | FnKind::ExternalBind(rustname, _) => {
                     let mut argstrs = Vec::new();
+                    let shared_vars = build_shared_vars(parent_fn);
                     for (i, arg) in args.iter().enumerate() {
                         let (a, o, d) = from_microstatement(arg, parent_fn, scope, out, deps)?;
                         out = o;
                         deps = d;
-                        // If the argument is itself a function, this is the only place in Rust
-                        // where you can't pass by reference, so we check the type and change
-                        // the argument output accordingly.
                         let arg_type = arg.get_type();
+                        let arg_name = match arg {
+                            Microstatement::Value { representation, .. } => representation.clone(),
+                            Microstatement::FnCall {
+                                function: arg_fn, ..
+                            } => arg_fn.name.clone(),
+                            _ => String::new(),
+                        };
+                        let arg_is_shared = matches!(&*arg_type, CType::Shared(_))
+                            || (!arg_name.is_empty() && shared_vars.contains_key(&arg_name));
+                        let param_is_shared = match &*function.args()[i].2 {
+                            CType::Shared(_) => true,
+                            CType::Type(_, t) => matches!(&**t, CType::Shared(_)),
+                            _ => false,
+                        };
+                        let needs_deref = arg_is_shared && !param_is_shared;
                         match &*arg_type {
                             CType::Function(..) => argstrs.push(a.to_string()),
                             _ => match function.args()[i].1 {
                                 ArgKind::Mut => {
-                                    let mut prefix = "&mut ";
-                                    for (name, kind, _) in &parent_fn.args() {
-                                        if name == &a {
-                                            if let ArgKind::Mut = kind {
-                                                prefix = "";
+                                    if arg_is_shared {
+                                        argstrs.push(format!("&mut (*({a}).write().unwrap())"));
+                                    } else {
+                                        let mut prefix = "&mut ";
+                                        for (name, kind, _) in &parent_fn.args() {
+                                            if name == &a {
+                                                if let ArgKind::Mut = kind {
+                                                    prefix = "";
+                                                }
                                             }
                                         }
+                                        argstrs.push(format!("{prefix}{a}"));
                                     }
-                                    argstrs.push(format!("{prefix}{a}"));
                                 }
-                                // Because we create clones for these two right now, we always need
-                                // this
-                                ArgKind::Ref | ArgKind::Deref => argstrs.push(format!("&{a}")),
-                                ArgKind::Own => argstrs.push(a.clone()),
+                                ArgKind::Ref | ArgKind::Deref => {
+                                    if needs_deref {
+                                        argstrs.push(format!("&(*({a}).read().unwrap())"));
+                                    } else {
+                                        argstrs.push(format!("&{a}"));
+                                    }
+                                }
+                                ArgKind::Own => {
+                                    if needs_deref {
+                                        argstrs.push(format!("(*({a}).read().unwrap()).clone()"));
+                                    } else if arg_is_shared {
+                                        argstrs.push(format!("{}.clone()", a));
+                                    } else {
+                                        argstrs.push(a.clone());
+                                    }
+                                }
                             },
                         }
                     }
@@ -751,7 +867,7 @@ pub fn from_microstatement(
                         }
                         // Check if arg0 type is Shared (from type info)
                         is_shared = is_shared || matches!(&*args[0].get_type(), CType::Shared(_));
-                        // Also check parent fn for Assignment that created this local var as Shared
+                        // Also check if the variable is a Shared by tracing to origin
                         if !is_shared {
                             let arg_name = match &args[0] {
                                 Microstatement::FnCall {
@@ -763,84 +879,8 @@ pub fn from_microstatement(
                                 _ => String::new(),
                             };
                             if !arg_name.is_empty() {
-                                // Check function parameters
-                                for (pname, _, ptype) in parent_fn.args() {
-                                    if *pname == arg_name {
-                                        if let Ok((rust_type, _, _)) = typen::generate(
-                                            ptype.clone(),
-                                            out.clone(),
-                                            deps.clone(),
-                                        ) {
-                                            if rust_type
-                                                .starts_with("std::sync::Arc<std::sync::RwLock<")
-                                            {
-                                                is_shared = true;
-                                            }
-                                        }
-                                        break;
-                                    }
-                                }
-                                // Recursively search microstatements for Assignment
-                                if !is_shared {
-                                    fn search_shared(
-                                        ms: &Microstatement,
-                                        name: &str,
-                                        found: &mut bool,
-                                    ) {
-                                        if *found {
-                                            return;
-                                        }
-                                        match ms {
-                                            Microstatement::Assignment {
-                                                name: aname,
-                                                value,
-                                                ..
-                                            } => {
-                                                if aname == name {
-                                                    let vtype = value.get_type();
-                                                    if matches!(&*vtype, CType::Shared(_)) {
-                                                        *found = true;
-                                                    }
-                                                }
-                                            }
-                                            Microstatement::FnCall { function, args } => {
-                                                for nested_ms in &function.microstatements {
-                                                    search_shared(nested_ms, name, found);
-                                                }
-                                                for arg in args {
-                                                    search_shared(arg, name, found);
-                                                }
-                                            }
-                                            Microstatement::Array { vals, .. } => {
-                                                for v in vals {
-                                                    search_shared(v, name, found);
-                                                }
-                                            }
-                                            Microstatement::Return { value: Some(v) } => {
-                                                search_shared(v, name, found);
-                                            }
-                                            Microstatement::Closure { function } => {
-                                                for nested_ms in &function.microstatements {
-                                                    search_shared(nested_ms, name, found);
-                                                }
-                                            }
-                                            Microstatement::VarCall { args, .. } => {
-                                                for arg in args {
-                                                    search_shared(arg, name, found);
-                                                }
-                                            }
-                                            _ => {}
-                                        }
-                                    }
-                                    let mut found = false;
-                                    for ms in &parent_fn.microstatements {
-                                        search_shared(ms, &arg_name, &mut found);
-                                        if found {
-                                            break;
-                                        }
-                                    }
-                                    is_shared = found;
-                                }
+                                let shared_vars = build_shared_vars(parent_fn);
+                                is_shared = shared_vars.contains_key(&arg_name);
                             }
                         }
                         let shared_prefix = if is_shared {

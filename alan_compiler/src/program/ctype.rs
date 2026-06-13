@@ -1629,12 +1629,17 @@ impl CType {
                         arg.push(a2.clone());
                         input.push(b2.clone());
                     }
-                    // Transparent Shared: unwrap when only one side is Shared
-                    (CType::Shared(a2), other) => {
+                    // Shared{T} can match Mut{T} since it provides mutable access
+                    (CType::Shared(a2), CType::Mut(b2)) => {
+                        arg.push(a2.clone());
+                        input.push(b2.clone());
+                    }
+                    // Transparent Shared: unwrap when only one side is Shared (but not Mut)
+                    (CType::Shared(a2), other) if !matches!(other, CType::Mut(..)) => {
                         arg.push(a2.clone());
                         input.push(Arc::new(other.clone()));
                     }
-                    (other, CType::Shared(b2)) => {
+                    (other, CType::Shared(b2)) if !matches!(other, CType::Mut(..)) => {
                         arg.push(Arc::new(other.clone()));
                         input.push(b2.clone());
                     }
@@ -2798,7 +2803,12 @@ impl CType {
     }
     pub fn accepts(self: Arc<CType>, arg: Arc<CType>) -> bool {
         match (&*self, &*arg) {
+            // Type{name, t} wrapper is transparent: unwrap to compare inner type
+            (_, CType::Type(_, t)) => self.clone().accepts(t.clone()),
             // Shared{T} is transparent: Shared{T} accepts T, and T accepts Shared{T}
+            // Shared{T} can also be used where Mut{T} is expected (provides mutable access)
+            (CType::Shared(a), CType::Mut(b)) => a.clone().accepts(b.clone()),
+            (CType::Mut(a), CType::Shared(b)) => a.clone().accepts(b.clone()),
             (CType::Shared(a), CType::Shared(b)) => a.clone().accepts(b.clone()),
             (CType::Shared(a), other) => a.clone().accepts(Arc::new(other.clone())),
             (self_type, CType::Shared(b)) => Arc::new(self_type.clone()).accepts(b.clone()),
