@@ -516,9 +516,7 @@ pub fn from_microstatement(
                             CType::Function(..) => argstrs.push(a.to_string()),
                             _ => match function.args()[i].1 {
                                 ArgKind::Mut => {
-                                    if needs_deref {
-                                        argstrs.push(format!("&mut (*({a}).write().unwrap())"));
-                                    } else if arg_is_shared && param_is_shared {
+                                    if arg_is_shared {
                                         argstrs.push(format!("&mut (*({a}).write().unwrap())"));
                                     } else {
                                         let mut prefix = "&mut ";
@@ -535,8 +533,6 @@ pub fn from_microstatement(
                                 ArgKind::Ref | ArgKind::Deref => {
                                     if needs_deref {
                                         argstrs.push(format!("&(*({a}).read().unwrap())"));
-                                    } else if arg_is_shared && param_is_shared {
-                                        argstrs.push(format!("&{a}"));
                                     } else {
                                         argstrs.push(format!("&{a}"));
                                     }
@@ -622,9 +618,7 @@ pub fn from_microstatement(
                             CType::Function(..) => argstrs.push(a.to_string()),
                             _ => match function.args()[i].1 {
                                 ArgKind::Mut => {
-                                    if needs_deref {
-                                        argstrs.push(format!("&mut (*({a}).write().unwrap())"));
-                                    } else if arg_is_shared && param_is_shared {
+                                    if arg_is_shared {
                                         argstrs.push(format!("&mut (*({a}).write().unwrap())"));
                                     } else {
                                         let mut prefix = "&mut ";
@@ -641,8 +635,6 @@ pub fn from_microstatement(
                                 ArgKind::Ref | ArgKind::Deref => {
                                     if needs_deref {
                                         argstrs.push(format!("&(*({a}).read().unwrap())"));
-                                    } else if arg_is_shared && param_is_shared {
-                                        argstrs.push(format!("&{a}"));
                                     } else {
                                         argstrs.push(format!("&{a}"));
                                     }
