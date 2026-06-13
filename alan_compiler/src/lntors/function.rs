@@ -39,10 +39,8 @@ fn build_shared_vars(parent_fn: &Function) -> OrderedHashMap<String, Arc<CType>>
                     }
                 }
                 // Assigned from another variable — trace later
-                Microstatement::Value { representation, .. } => {
-                    if representation != name {
-                        // Will be resolved in the trace pass below
-                    }
+                Microstatement::Value { .. } => {
+                    // Will be resolved in the trace pass below
                 }
                 _ => {}
             }
