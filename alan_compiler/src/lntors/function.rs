@@ -25,16 +25,33 @@ fn build_shared_vars(parent_fn: &Function) -> OrderedHashMap<String, Arc<CType>>
     for ms in &parent_fn.microstatements {
         if let Microstatement::Assignment { name, value, .. } = ms {
             match value.as_ref() {
-                // Direct Shared constructor call
-                Microstatement::FnCall { function, .. } => {
-                    if function.name.starts_with("Shared") {
-                        // Unwrap Type{...} wrapper to get to Shared{...}
-                        let mut rt = function.rettype();
-                        if let CType::Type(_, t) = rt.as_ref() {
-                            rt = t.clone();
-                        }
-                        if let CType::Shared(inner) = rt.as_ref() {
-                            shared_vars.insert(name.clone(), inner.clone());
+                // Any FnCall that returns a Shared type or is a .clone on a Shared
+                Microstatement::FnCall {
+                    function,
+                    args: fn_args,
+                    ..
+                } => {
+                    let mut rt = function.rettype();
+                    if let CType::Type(_, t) = rt.as_ref() {
+                        rt = t.clone();
+                    }
+                    if let CType::Shared(inner) = rt.as_ref() {
+                        shared_vars.insert(name.clone(), inner.clone());
+                    }
+                    // .clone on a Shared produces a Shared (deep clone), even though
+                    // the inferred return type is the inner type
+                    if matches!(function.kind, FnKind::CfnRealized(CfnKind::Clone))
+                        && fn_args.len() == 1
+                    {
+                        let arg_type = fn_args[0].get_type();
+                        if matches!(&*arg_type, CType::Shared(_)) {
+                            if let CType::Shared(inner) = arg_type.as_ref() {
+                                shared_vars.insert(name.clone(), inner.clone());
+                            }
+                        } else if let Microstatement::Value { representation, .. } = &fn_args[0] {
+                            if let Some(inner) = shared_vars.get(representation) {
+                                shared_vars.insert(name.clone(), inner.clone());
+                            }
                         }
                     }
                 }
@@ -781,8 +798,20 @@ pub fn from_microstatement(
                         }
                     }
                     let arg_type = args[0].get_type();
-                    match &*arg_type {
-                        CType::Shared(_) => {
+                    let is_shared = matches!(&*arg_type, CType::Shared(_))
+                        || (!matches!(&*arg_type, CType::Function(..))
+                            && match &args[0] {
+                                Microstatement::Value { representation, .. } => {
+                                    let shared_vars = build_shared_vars(parent_fn);
+                                    shared_vars.contains_key(representation)
+                                }
+                                Microstatement::FnCall { function, .. } => {
+                                    matches!(&*function.rettype(), CType::Shared(_))
+                                }
+                                _ => false,
+                            });
+                    match is_shared {
+                        true => {
                             // Deep clone: unwrap Arc<RwLock<T>>, clone inner T, rewrap
                             Ok((
                                  format!("std::sync::Arc::new(std::sync::RwLock::new(({}).read().unwrap().clone()))", argstrs[0]),

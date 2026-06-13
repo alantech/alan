@@ -2418,3 +2418,14 @@ test!(shared_basic => r#"
   }"#;
   stdout "100\n";
 );
+
+test!(shared_clone => r#"
+  export fn main {
+    let original = {Shared{i64}}(42);
+    let copy = original.clone;
+
+    original.store(100);
+    copy.print;
+  }"#;
+  stdout "42\n";
+);
