@@ -1578,7 +1578,7 @@ where
                         return;
                     }
                 };
-                
+
                 let mut encoder =
                     device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
                 let context_array = (self.context_fn)(&mut self.context);
