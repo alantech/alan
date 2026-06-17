@@ -5226,7 +5226,7 @@ fn{Rs} stderr (s: string) {
 fn{Js} stderr "((s) => process.stderr.write(s.val))" :: string;
 
 /// Testing types and functions
-/*
+/***
  * This is what I *want*, but the Rust codegen is trying to clone the array of closure functions,
  * which is *not* cloneable, and I don't want to have to gate testing on a complete rewrite of the
  * last stage of the compiler, so I'm going to go with a simpler implementation for now and leave
