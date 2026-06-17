@@ -68,6 +68,12 @@ pub struct Formatter {
     in_chain: bool,
 }
 
+impl Default for Formatter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Formatter {
     pub fn new() -> Self {
         Formatter {
@@ -457,7 +463,7 @@ impl Formatter {
                         self.write(&o.op);
                         let shunt = trailing
                             .as_ref()
-                            .map_or(false, |tc| should_shunt_comment(self.col, tc));
+                            .is_some_and(|tc| should_shunt_comment(self.col, tc));
                         if let Some(tc) = &trailing {
                             if shunt {
                                 let text = strip_comment_markers(tc);
@@ -477,8 +483,8 @@ impl Formatter {
                     // All other type operators: use original inline whitespace
                     // to determine spacing (preserves prefix/postfix/infix intent)
                     _ => {
-                        let has_leading = o.a.split('\n').last().unwrap_or("").contains(' ')
-                            || o.a.split('\n').last().unwrap_or("").contains('\t');
+                        let has_leading = o.a.split('\n').next_back().unwrap_or("").contains(' ')
+                            || o.a.split('\n').next_back().unwrap_or("").contains('\t');
                         let has_trailing = o.b.split('\n').next().unwrap_or("").contains(' ')
                             || o.b.split('\n').next().unwrap_or("").contains('\t');
                         let is_postfix = !has_leading && has_trailing;
@@ -488,7 +494,7 @@ impl Formatter {
                         self.write(&o.op);
                         let shunt = trailing
                             .as_ref()
-                            .map_or(false, |tc| should_shunt_comment(self.col, tc));
+                            .is_some_and(|tc| should_shunt_comment(self.col, tc));
                         if let Some(tc) = &trailing {
                             if shunt {
                                 let text = strip_comment_markers(tc);
@@ -503,10 +509,8 @@ impl Formatter {
                         }
                         if shunt || o.b.contains('\n') {
                             self.newline_and_indent();
-                        } else {
-                            if has_trailing && !(is_last && is_postfix) {
-                                self.space();
-                            }
+                        } else if has_trailing && !(is_last && is_postfix) {
+                            self.space();
                         }
                     }
                 }
@@ -749,7 +753,7 @@ impl Formatter {
         for (i, wt) in list.iter().enumerate() {
             let break_before_arrow = match wt {
                 WithTypeOperators::Operators(o) if o.op.as_str() == "->" => {
-                    list.get(i + 1).map_or(false, |next| {
+                    list.get(i + 1).is_some_and(|next| {
                         self.col
                             + self.function_type_part_width(wt, line_start)
                             + self.function_type_part_width(next, false)
@@ -795,8 +799,8 @@ impl Formatter {
             }
             WithTypeOperators::Operators(o) => {
                 let mut len = o.op.len();
-                let has_leading = o.a.split('\n').last().unwrap_or("").contains(' ')
-                    || o.a.split('\n').last().unwrap_or("").contains('\t');
+                let has_leading = o.a.split('\n').next_back().unwrap_or("").contains(' ')
+                    || o.a.split('\n').next_back().unwrap_or("").contains('\t');
                 let has_trailing = o.b.split('\n').next().unwrap_or("").contains(' ')
                     || o.b.split('\n').next().unwrap_or("").contains('\t');
                 if has_leading && !line_start {
@@ -824,7 +828,7 @@ impl Formatter {
                 self.write(&o.op);
                 let shunt = trailing
                     .as_ref()
-                    .map_or(false, |tc| should_shunt_comment(self.col, tc));
+                    .is_some_and(|tc| should_shunt_comment(self.col, tc));
                 if let Some(tc) = &trailing {
                     if shunt {
                         let text = strip_comment_markers(tc);
@@ -841,15 +845,15 @@ impl Formatter {
                 }
             }
             _ => {
-                let has_leading = o.a.split('\n').last().unwrap_or("").contains(' ')
-                    || o.a.split('\n').last().unwrap_or("").contains('\t');
+                let has_leading = o.a.split('\n').next_back().unwrap_or("").contains(' ')
+                    || o.a.split('\n').next_back().unwrap_or("").contains('\t');
                 if has_leading && !line_start {
                     self.space();
                 }
                 self.write(&o.op);
                 let shunt = trailing
                     .as_ref()
-                    .map_or(false, |tc| should_shunt_comment(self.col, tc));
+                    .is_some_and(|tc| should_shunt_comment(self.col, tc));
                 if let Some(tc) = &trailing {
                     if shunt {
                         let text = strip_comment_markers(tc);
@@ -1217,7 +1221,7 @@ impl Formatter {
                     let trailing = extract_trailing_comment(before);
                     let shunt = trailing
                         .as_ref()
-                        .map_or(false, |tc| should_shunt_comment(self.col, tc));
+                        .is_some_and(|tc| should_shunt_comment(self.col, tc));
                     if let Some(tc) = &trailing {
                         if shunt {
                             let text = strip_comment_markers(tc);
@@ -1325,8 +1329,8 @@ impl Formatter {
                 let has_trailing_ws = !trailing.is_empty();
                 let has_leading_newline = leading.contains('\n') || leading.contains('\r');
                 let has_trailing_newline = trailing.contains('\n') || trailing.contains('\r');
-                let has_leading_inline = leading.split('\n').last().unwrap_or("").contains(' ')
-                    || leading.split('\n').last().unwrap_or("").contains('\t');
+                let has_leading_inline = leading.split('\n').next_back().unwrap_or("").contains(' ')
+                    || leading.split('\n').next_back().unwrap_or("").contains('\t');
                 let has_trailing_inline = trailing.split('\n').next().unwrap_or("").contains(' ')
                     || trailing.split('\n').next().unwrap_or("").contains('\t');
                 let is_infix = has_leading_ws && has_trailing_ws;
@@ -1583,7 +1587,7 @@ fn strip_comment_markers(text: &str) -> String {
         let mut words: Vec<String> = Vec::new();
         for line in &lines {
             let trimmed = line.trim();
-            let content = trimmed.strip_prefix('*').unwrap_or(&trimmed).trim();
+            let content = trimmed.strip_prefix('*').unwrap_or(trimmed).trim();
             if !content.is_empty() {
                 for w in content.split_whitespace() {
                     words.push(w.to_string());
@@ -1669,7 +1673,7 @@ mod tests {
                 continue;
             }
             if ch == '/' && chars.peek() == Some(&'/') {
-                while let Some(c) = chars.next() {
+                for c in chars.by_ref() {
                     if c == '\n' {
                         break;
                     }
@@ -2071,7 +2075,7 @@ mod tests {
         let fmt_code = strip_code(&formatted);
         for (i, (sc, fc)) in src_code.chars().zip(fmt_code.chars()).enumerate() {
             if sc != fc {
-                let ctx_start = if i > 80 { i - 80 } else { 0 };
+                let ctx_start = i.saturating_sub(80);
                 eprintln!("First diff at {}: src='{}' fmt='{}'", i, sc, fc);
                 eprintln!(
                     "Src ctx: {:?}",
@@ -2167,7 +2171,7 @@ mod tests {
             let twice_len = twice.len();
             for i in 0..once_len.min(twice_len) {
                 if once.as_bytes()[i] != twice.as_bytes()[i] {
-                    let start = if i > 40 { i - 40 } else { 0 };
+                    let start = i.saturating_sub(40);
                     eprintln!("Raw diff at byte {}:", i);
                     eprintln!("Once: {:?}", &once[start..i + 10.min(once_len - i)]);
                     eprintln!("Twice: {:?}", &twice[start..i + 10.min(twice_len - i)]);
@@ -2295,7 +2299,7 @@ mod tests {
 
         let fmt_lines: Vec<&str> = formatted.lines().collect();
         for (i, fl) in fmt_lines.iter().enumerate() {
-            if fl.find("//").is_some() {
+            if fl.contains("//") {
                 eprintln!("fmt line {}: {}", i + 1, fl.trim());
             }
         }

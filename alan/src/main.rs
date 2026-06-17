@@ -166,11 +166,9 @@ fn fmt_command(files: &[String], check: bool) -> Result<(), Box<dyn std::error::
                 print!("{}", diff);
                 had_diff = true;
             }
-        } else {
-            if src != formatted {
-                write(path, &formatted)?;
-                println!("Formatted {}", file_path);
-            }
+        } else if src != formatted {
+            write(path, &formatted)?;
+            println!("Formatted {}", file_path);
         }
     }
 
@@ -187,7 +185,7 @@ fn collect_ln_files(dir: &Path, out: &mut Vec<String>) -> Result<(), Box<dyn std
         let path = entry.path();
         if path.is_dir() {
             collect_ln_files(&path, out)?;
-        } else if path.extension().map_or(false, |e| e == "ln") {
+        } else if path.extension().is_some_and(|e| e == "ln") {
             out.push(path.to_string_lossy().to_string());
         }
     }
@@ -238,8 +236,8 @@ fn diff_format(src: &str, formatted: &str, file_path: &str) -> String {
     for (gi, group) in groups.iter().enumerate() {
         match group {
             DiffGroup::Equal(lines) => {
-                if hunk_start.is_some() {
-                    if lines.len() > 2 * CONTEXT {
+                if hunk_start.is_some()
+                    && lines.len() > 2 * CONTEXT {
                         // End current hunk with CONTEXT trailing lines
                         let start = hunk_start.unwrap();
                         if start < gi {
@@ -247,7 +245,6 @@ fn diff_format(src: &str, formatted: &str, file_path: &str) -> String {
                         }
                         hunk_start = None;
                     }
-                }
             }
             _ => {
                 if hunk_start.is_none() {
@@ -300,10 +297,12 @@ fn diff_format(src: &str, formatted: &str, file_path: &str) -> String {
         ));
 
         // Emit the groups in this hunk
-        let mut groups_in_hunk: Vec<(usize, &DiffGroup)> = Vec::new();
-        for gi in include_start..include_end {
-            groups_in_hunk.push((gi, &groups[gi]));
-        }
+        let groups_in_hunk: Vec<(usize, &DiffGroup)> = groups
+            .iter()
+            .enumerate()
+            .skip(include_start)
+            .take(include_end - include_start)
+            .collect();
 
         // If the first included group is Equal and starts before first_change_gi,
         // we need to take only the last CONTEXT lines of it
