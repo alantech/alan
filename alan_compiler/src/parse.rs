@@ -1122,7 +1122,13 @@ pub fn assignablelist_with_seps(input: &str) -> IResult<&str, AssignableList> {
             Err(_) => break,
         }
     }
-    Ok((i, AssignableList { elements, separators }))
+    Ok((
+        i,
+        AssignableList {
+            elements,
+            separators,
+        },
+    ))
 }
 named_and!(arraybase: ArrayBase =>
     openarr: String as openarr,

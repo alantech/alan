@@ -294,7 +294,10 @@ fn diff_format(src: &str, formatted: &str, file_path: &str) -> String {
         let fmt_start = fmt_before[include_start] + 1;
         let src_count = src_before[include_end].saturating_sub(src_before[include_start]);
         let fmt_count = fmt_before[include_end].saturating_sub(fmt_before[include_start]);
-        out.push_str(&format!("{}{}@@ -{},{} +{},{} @@{}\n", BOLD, CYAN, src_start, src_count, fmt_start, fmt_count, RESET));
+        out.push_str(&format!(
+            "{}{}@@ -{},{} +{},{} @@{}\n",
+            BOLD, CYAN, src_start, src_count, fmt_start, fmt_count, RESET
+        ));
 
         // Emit the groups in this hunk
         let mut groups_in_hunk: Vec<(usize, &DiffGroup)> = Vec::new();

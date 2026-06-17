@@ -110,19 +110,32 @@ impl Render for OpMap {
 
 impl Render for FnOpPrecedence {
     fn render(&self) -> String {
-        format!("{}{}{}", self.fntoop.render(), self.blank, self.opprecedence.render())
+        format!(
+            "{}{}{}",
+            self.fntoop.render(),
+            self.blank,
+            self.opprecedence.render()
+        )
     }
 }
 
 impl Render for PrecedenceFnOp {
     fn render(&self) -> String {
-        format!("{}{}{}", self.opprecedence.render(), self.blank, self.fntoop.render())
+        format!(
+            "{}{}{}",
+            self.opprecedence.render(),
+            self.blank,
+            self.fntoop.render()
+        )
     }
 }
 
 impl Render for FnToOp {
     fn render(&self) -> String {
-        format!("{}{}{}{}{}", self.fnname, self.a, self.asn, self.b, self.operator)
+        format!(
+            "{}{}{}{}{}",
+            self.fnname, self.a, self.asn, self.b, self.operator
+        )
     }
 }
 
@@ -159,19 +172,32 @@ impl Render for TypeOpMap {
 
 impl Render for TypeFnOpPrecedence {
     fn render(&self) -> String {
-        format!("{}{}{}", self.fntoop.render(), self.blank, self.opprecedence.render())
+        format!(
+            "{}{}{}",
+            self.fntoop.render(),
+            self.blank,
+            self.opprecedence.render()
+        )
     }
 }
 
 impl Render for TypePrecedenceFnOp {
     fn render(&self) -> String {
-        format!("{}{}{}", self.opprecedence.render(), self.blank, self.fntoop.render())
+        format!(
+            "{}{}{}",
+            self.opprecedence.render(),
+            self.blank,
+            self.fntoop.render()
+        )
     }
 }
 
 impl Render for TypeFnToOp {
     fn render(&self) -> String {
-        format!("{}{}{}{}{}", self.fnname, self.a, self.asn, self.b, self.operator)
+        format!(
+            "{}{}{}{}{}",
+            self.fnname, self.a, self.asn, self.b, self.operator
+        )
     }
 }
 

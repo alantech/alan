@@ -177,7 +177,7 @@ impl Formatter {
 }
 
 impl Formatter {
-    pub     fn root_elem_width(elem: &RootElements) -> usize {
+    pub fn root_elem_width(elem: &RootElements) -> usize {
         match elem {
             RootElements::CTypes(ct) => 6 + ct.name.len() + 1,
             RootElements::Types(t) => 5 + t.fulltypename.typename.len() + 1,
@@ -246,7 +246,10 @@ impl Formatter {
                             self.newline();
                             if !own_line.is_empty() {
                                 self.write_own_line_comments(&own_line);
-                            } else if trailing.is_empty() && has_blank_line(next_ws) && !next_ws.starts_with(' ') {
+                            } else if trailing.is_empty()
+                                && has_blank_line(next_ws)
+                                && !next_ws.starts_with(' ')
+                            {
                                 self.newline();
                             }
                             i += 2;
@@ -452,11 +455,14 @@ impl Formatter {
                             self.newline_and_indent();
                         }
                         self.write(&o.op);
-                        let shunt = trailing.as_ref().map_or(false, |tc| should_shunt_comment(self.col, tc));
+                        let shunt = trailing
+                            .as_ref()
+                            .map_or(false, |tc| should_shunt_comment(self.col, tc));
                         if let Some(tc) = &trailing {
                             if shunt {
                                 let text = strip_comment_markers(tc);
-                                let max_inner = LINE_WIDTH.saturating_sub(self.indent * INDENT_SIZE + 4);
+                                let max_inner =
+                                    LINE_WIDTH.saturating_sub(self.indent * INDENT_SIZE + 4);
                                 let wrapped = word_wrap(&text, max_inner);
                                 self.write_comment_block(&wrapped);
                             } else {
@@ -480,11 +486,14 @@ impl Formatter {
                             self.space();
                         }
                         self.write(&o.op);
-                        let shunt = trailing.as_ref().map_or(false, |tc| should_shunt_comment(self.col, tc));
+                        let shunt = trailing
+                            .as_ref()
+                            .map_or(false, |tc| should_shunt_comment(self.col, tc));
                         if let Some(tc) = &trailing {
                             if shunt {
                                 let text = strip_comment_markers(tc);
-                                let max_inner = LINE_WIDTH.saturating_sub(self.indent * INDENT_SIZE + 4);
+                                let max_inner =
+                                    LINE_WIDTH.saturating_sub(self.indent * INDENT_SIZE + 4);
                                 let wrapped = word_wrap(&text, max_inner);
                                 self.write_comment_block(&wrapped);
                             } else {
@@ -630,7 +639,8 @@ impl Formatter {
                     btmp.write(";");
                     let block_form = btmp.into_output();
                     let block_first_line = block_form.lines().next().unwrap_or("");
-                    let block_too_wide = (tmp_indent * INDENT_SIZE) + block_first_line.len() > LINE_WIDTH;
+                    let block_too_wide =
+                        (tmp_indent * INDENT_SIZE) + block_first_line.len() > LINE_WIDTH;
                     let block_multi_line = block_form.contains('\n');
                     if !block_too_wide && !block_multi_line {
                         self.write(" {");
@@ -740,7 +750,10 @@ impl Formatter {
             let break_before_arrow = match wt {
                 WithTypeOperators::Operators(o) if o.op.as_str() == "->" => {
                     list.get(i + 1).map_or(false, |next| {
-                        self.col + self.function_type_part_width(wt, line_start) + self.function_type_part_width(next, false) > LINE_WIDTH
+                        self.col
+                            + self.function_type_part_width(wt, line_start)
+                            + self.function_type_part_width(next, false)
+                            > LINE_WIDTH
                     })
                 }
                 _ => false,
@@ -797,7 +810,11 @@ impl Formatter {
         }
     }
 
-    fn fmt_wrapped_function_type_operator(&mut self, o: &TypeOperatorsWithWhitespace, line_start: bool) {
+    fn fmt_wrapped_function_type_operator(
+        &mut self,
+        o: &TypeOperatorsWithWhitespace,
+        line_start: bool,
+    ) {
         let trailing = extract_trailing_comment(&o.b);
         match o.op.as_str() {
             "." | "-." | "[" => {
@@ -805,7 +822,9 @@ impl Formatter {
                     self.newline_and_indent();
                 }
                 self.write(&o.op);
-                let shunt = trailing.as_ref().map_or(false, |tc| should_shunt_comment(self.col, tc));
+                let shunt = trailing
+                    .as_ref()
+                    .map_or(false, |tc| should_shunt_comment(self.col, tc));
                 if let Some(tc) = &trailing {
                     if shunt {
                         let text = strip_comment_markers(tc);
@@ -828,7 +847,9 @@ impl Formatter {
                     self.space();
                 }
                 self.write(&o.op);
-                let shunt = trailing.as_ref().map_or(false, |tc| should_shunt_comment(self.col, tc));
+                let shunt = trailing
+                    .as_ref()
+                    .map_or(false, |tc| should_shunt_comment(self.col, tc));
                 if let Some(tc) = &trailing {
                     if shunt {
                         let text = strip_comment_markers(tc);
@@ -909,7 +930,9 @@ impl Formatter {
                     if i + 1 < fb.statements.len() {
                         if let Statement::A(ws) = &fb.statements[i + 1] {
                             let (own_line, trailing) = separate_comments(ws);
-                            let any_long = trailing.iter().any(|tc| should_shunt_statement_comment(self, stmt, tc));
+                            let any_long = trailing
+                                .iter()
+                                .any(|tc| should_shunt_statement_comment(self, stmt, tc));
                             if any_long {
                                 if need_newline_for_content {
                                     self.newline();
@@ -1153,7 +1176,9 @@ impl Formatter {
     }
 
     fn wrapped_assign_chain_break_index(&self, bal: &[BaseAssignable]) -> Option<usize> {
-        let first_method_sep = bal.iter().position(|ba| matches!(ba, BaseAssignable::MethodSep(_)))?;
+        let first_method_sep = bal
+            .iter()
+            .position(|ba| matches!(ba, BaseAssignable::MethodSep(_)))?;
         if self.col + self.inline_baseassignable_list_width(bal) > LINE_WIDTH {
             Some(first_method_sep)
         } else {
@@ -1190,11 +1215,14 @@ impl Formatter {
                 if let Some(dot_pos) = ws.find('.') {
                     let before = &ws[..dot_pos];
                     let trailing = extract_trailing_comment(before);
-                    let shunt = trailing.as_ref().map_or(false, |tc| should_shunt_comment(self.col, tc));
+                    let shunt = trailing
+                        .as_ref()
+                        .map_or(false, |tc| should_shunt_comment(self.col, tc));
                     if let Some(tc) = &trailing {
                         if shunt {
                             let text = strip_comment_markers(tc);
-                            let max_inner = LINE_WIDTH.saturating_sub(self.indent * INDENT_SIZE + 4);
+                            let max_inner =
+                                LINE_WIDTH.saturating_sub(self.indent * INDENT_SIZE + 4);
                             let wrapped = word_wrap(&text, max_inner);
                             self.write_comment_block(&wrapped);
                         } else {
@@ -1236,8 +1264,8 @@ impl Formatter {
     fn fmt_fncall(&mut self, fc: &FnCall) {
         let saved_in_chain = self.in_chain;
         self.in_chain = false;
-        let needs_break = fc.assignablelist.elements.len() > 1
-            && line_would_exceed(self, &fc.assignablelist);
+        let needs_break =
+            fc.assignablelist.elements.len() > 1 && line_would_exceed(self, &fc.assignablelist);
         if needs_break {
             self.write("(");
             self.indent += 1;
@@ -1453,7 +1481,7 @@ fn extract_trailing_comment(ws: &str) -> Option<String> {
 }
 
 fn line_would_exceed(f: &Formatter, al: &AssignableList) -> bool {
-    let mut est = f.col + 1;  // +1 for the opening (
+    let mut est = f.col + 1; // +1 for the opening (
     for (i, args) in al.elements.iter().enumerate() {
         for wo in args {
             match wo {
@@ -1678,13 +1706,17 @@ mod tests {
     }
 
     fn all_fn_bodies_equiv(a: &Ln, b: &Ln) -> bool {
-        let fns_a: Vec<&FullFunctionBody> = a.body.iter()
+        let fns_a: Vec<&FullFunctionBody> = a
+            .body
+            .iter()
             .filter_map(|e| match e {
                 RootElements::Functions(f) => Some(&f.fullfunctionbody),
                 _ => None,
             })
             .collect();
-        let fns_b: Vec<&FullFunctionBody> = b.body.iter()
+        let fns_b: Vec<&FullFunctionBody> = b
+            .body
+            .iter()
             .filter_map(|e| match e {
                 RootElements::Functions(f) => Some(&f.fullfunctionbody),
                 _ => None,
@@ -1703,11 +1735,8 @@ mod tests {
 
     fn body_equiv(a: &FullFunctionBody, b: &FullFunctionBody) -> bool {
         match (a, b) {
-            (FullFunctionBody::AssignFunction(af),
-             FullFunctionBody::FunctionBody(fb))
-            | (FullFunctionBody::FunctionBody(fb),
-               FullFunctionBody::AssignFunction(af)) =>
-            {
+            (FullFunctionBody::AssignFunction(af), FullFunctionBody::FunctionBody(fb))
+            | (FullFunctionBody::FunctionBody(fb), FullFunctionBody::AssignFunction(af)) => {
                 assignables_eq_single_return(af, fb)
             }
             (FullFunctionBody::AssignFunction(afa), FullFunctionBody::AssignFunction(afb)) => {
@@ -1717,7 +1746,10 @@ mod tests {
                 if fba.statements.len() != fbb.statements.len() {
                     return false;
                 }
-                fba.statements.iter().zip(fbb.statements.iter()).all(|(x, y)| stmt_eq(x, y))
+                fba.statements
+                    .iter()
+                    .zip(fbb.statements.iter())
+                    .all(|(x, y)| stmt_eq(x, y))
             }
             _ => a == b,
         }
@@ -1725,42 +1757,42 @@ mod tests {
 
     fn stmt_eq(a: &Statement, b: &Statement) -> bool {
         match (a, b) {
-            (Statement::Returns(ra), Statement::Returns(rb)) => {
-                match (&ra.retval, &rb.retval) {
-                    (Some(va), Some(vb)) => assignables_eq(&va.assignables, &vb.assignables),
-                    (None, None) => true,
-                    _ => false,
-                }
-            }
+            (Statement::Returns(ra), Statement::Returns(rb)) => match (&ra.retval, &rb.retval) {
+                (Some(va), Some(vb)) => assignables_eq(&va.assignables, &vb.assignables),
+                (None, None) => true,
+                _ => false,
+            },
             (Statement::Assignables(aa), Statement::Assignables(ba)) => {
                 assignables_eq(&aa.assignables, &ba.assignables)
             }
-            (Statement::Declarations(da), Statement::Declarations(db)) => {
-                match (da, db) {
-                    (Declarations::Let(la), Declarations::Let(lb)) => assignables_eq(&la.assignables, &lb.assignables),
-                    (Declarations::Const(ca), Declarations::Const(cb)) => assignables_eq(&ca.assignables, &cb.assignables),
-                    _ => false,
+            (Statement::Declarations(da), Statement::Declarations(db)) => match (da, db) {
+                (Declarations::Let(la), Declarations::Let(lb)) => {
+                    assignables_eq(&la.assignables, &lb.assignables)
                 }
-            }
+                (Declarations::Const(ca), Declarations::Const(cb)) => {
+                    assignables_eq(&ca.assignables, &cb.assignables)
+                }
+                _ => false,
+            },
             (Statement::A(_), Statement::A(_)) => true,
             _ => a == b,
         }
     }
 
     fn assignables_eq_single_return(af: &AssignFunction, fb: &FunctionBody) -> bool {
-        let non_ws: Vec<&Statement> = fb.statements.iter()
+        let non_ws: Vec<&Statement> = fb
+            .statements
+            .iter()
             .filter(|s| !matches!(s, Statement::A(_)))
             .collect();
         if non_ws.len() != 1 {
             return false;
         }
         match non_ws[0] {
-            Statement::Returns(ret) => {
-                match &ret.retval {
-                    Some(rv) => assignables_eq(&af.assignables, &rv.assignables),
-                    None => af.assignables.is_empty(),
-                }
-            }
+            Statement::Returns(ret) => match &ret.retval {
+                Some(rv) => assignables_eq(&af.assignables, &rv.assignables),
+                None => af.assignables.is_empty(),
+            },
             _ => false,
         }
     }
@@ -1785,7 +1817,9 @@ mod tests {
     fn ba_eq(a: &BaseAssignable, b: &BaseAssignable) -> bool {
         match (a, b) {
             (BaseAssignable::Variable(av), BaseAssignable::Variable(bv)) => av == bv,
-            (BaseAssignable::MethodSep(am), BaseAssignable::MethodSep(bm)) => am.trim() == bm.trim(),
+            (BaseAssignable::MethodSep(am), BaseAssignable::MethodSep(bm)) => {
+                am.trim() == bm.trim()
+            }
             (BaseAssignable::Constants(ac), BaseAssignable::Constants(bc)) => ac == bc,
             (BaseAssignable::Functions(af), BaseAssignable::Functions(bf)) => {
                 af.fnn == bf.fnn
@@ -1794,19 +1828,27 @@ mod tests {
             }
             (BaseAssignable::FnCall(afc), BaseAssignable::FnCall(bfc)) => {
                 afc.assignablelist.elements.len() == bfc.assignablelist.elements.len()
-                    && afc.assignablelist.elements.iter()
+                    && afc
+                        .assignablelist
+                        .elements
+                        .iter()
                         .zip(bfc.assignablelist.elements.iter())
                         .all(|(ea, eb)| assignables_eq(ea, eb))
             }
             (BaseAssignable::GnCall(agc), BaseAssignable::GnCall(bgc)) => {
                 agc.typecalllist.len() == bgc.typecalllist.len()
-                    && agc.typecalllist.iter()
+                    && agc
+                        .typecalllist
+                        .iter()
                         .zip(bgc.typecalllist.iter())
                         .all(|(ta, tb)| wto_eq(ta, tb))
             }
             (BaseAssignable::Array(aa), BaseAssignable::Array(ba)) => {
                 aa.assignablelist.elements.len() == ba.assignablelist.elements.len()
-                    && aa.assignablelist.elements.iter()
+                    && aa
+                        .assignablelist
+                        .elements
+                        .iter()
                         .zip(ba.assignablelist.elements.iter())
                         .all(|(ea, eb)| assignables_eq(ea, eb))
             }
@@ -1819,7 +1861,9 @@ mod tests {
             (WithTypeOperators::TypeBaseList(al), WithTypeOperators::TypeBaseList(bl)) => {
                 al.iter().zip(bl.iter()).all(|(x, y)| tb_eq(x, y))
             }
-            (WithTypeOperators::Operators(ao), WithTypeOperators::Operators(bo)) => ao.op.trim() == bo.op.trim(),
+            (WithTypeOperators::Operators(ao), WithTypeOperators::Operators(bo)) => {
+                ao.op.trim() == bo.op.trim()
+            }
             _ => false,
         }
     }
@@ -1830,7 +1874,9 @@ mod tests {
             (TypeBase::Constants(ac), TypeBase::Constants(bc)) => ac == bc,
             (TypeBase::GnCall(agc), TypeBase::GnCall(bgc)) => {
                 agc.typecalllist.len() == bgc.typecalllist.len()
-                    && agc.typecalllist.iter()
+                    && agc
+                        .typecalllist
+                        .iter()
                         .zip(bgc.typecalllist.iter())
                         .all(|(ta, tb)| wto_eq(ta, tb))
             }
@@ -1846,7 +1892,10 @@ mod tests {
     fn test_trailing_comment_shunt() {
         // Short trailing comment: fits on line, stays inline
         let short = canonical_fmt("ctype Type; // short\nctype Generic; // also short\n");
-        assert_eq!(short, "ctype Type; // short\nctype Generic; // also short\n");
+        assert_eq!(
+            short,
+            "ctype Type; // short\nctype Generic; // also short\n"
+        );
 
         // Long trailing comment: exceeds 100 cols, shunted before the same statement
         let long = canonical_fmt(
@@ -1981,7 +2030,10 @@ mod tests {
         let regular = canonical_fmt(
             "/**\n * This is a regular doc comment that spans multiple lines and should be reflowed\n **/",
         );
-        assert_eq!(regular, "// This is a regular doc comment that spans multiple lines and should be reflowed\n");
+        assert_eq!(
+            regular,
+            "// This is a regular doc comment that spans multiple lines and should be reflowed\n"
+        );
     }
 
     #[test]
@@ -2005,7 +2057,10 @@ mod tests {
     #[test]
     fn test_if_else() {
         let out = canonical_fmt("fn test() { if true { let x = 1; } else { let x = 2; } }");
-        assert_eq!(out, "fn test() {\n  if true {\n    let x = 1;\n  } else {\n    let x = 2;\n  }\n}\n");
+        assert_eq!(
+            out,
+            "fn test() {\n  if true {\n    let x = 1;\n  } else {\n    let x = 2;\n  }\n}\n"
+        );
     }
 
     #[test]
@@ -2018,19 +2073,37 @@ mod tests {
             if sc != fc {
                 let ctx_start = if i > 80 { i - 80 } else { 0 };
                 eprintln!("First diff at {}: src='{}' fmt='{}'", i, sc, fc);
-                eprintln!("Src ctx: {:?}", &src_code[ctx_start..std::cmp::min(src_code.len(), i+50)]);
-                eprintln!("Fmt ctx: {:?}", &fmt_code[ctx_start..std::cmp::min(fmt_code.len(), i+50)]);
+                eprintln!(
+                    "Src ctx: {:?}",
+                    &src_code[ctx_start..std::cmp::min(src_code.len(), i + 50)]
+                );
+                eprintln!(
+                    "Fmt ctx: {:?}",
+                    &fmt_code[ctx_start..std::cmp::min(fmt_code.len(), i + 50)]
+                );
                 break;
             }
         }
         if src_code.len() != fmt_code.len() {
             eprintln!("Length: src={} fmt={}", src_code.len(), fmt_code.len());
             if src_code.len() > fmt_code.len() {
-                eprintln!("Extra at end of src: {:?}", &src_code[fmt_code.len()..std::cmp::min(src_code.len(), fmt_code.len()+200)]);
-                eprintln!("End of fmt: {:?}", &fmt_code[fmt_code.len().saturating_sub(200)..]);
+                eprintln!(
+                    "Extra at end of src: {:?}",
+                    &src_code[fmt_code.len()..std::cmp::min(src_code.len(), fmt_code.len() + 200)]
+                );
+                eprintln!(
+                    "End of fmt: {:?}",
+                    &fmt_code[fmt_code.len().saturating_sub(200)..]
+                );
             } else {
-                eprintln!("Extra at end of fmt: {:?}", &fmt_code[src_code.len()..std::cmp::min(fmt_code.len(), src_code.len()+200)]);
-                eprintln!("End of src: {:?}", &src_code[src_code.len().saturating_sub(200)..]);
+                eprintln!(
+                    "Extra at end of fmt: {:?}",
+                    &fmt_code[src_code.len()..std::cmp::min(fmt_code.len(), src_code.len() + 200)]
+                );
+                eprintln!(
+                    "End of src: {:?}",
+                    &src_code[src_code.len().saturating_sub(200)..]
+                );
             }
         }
         assert!(
@@ -2084,7 +2157,11 @@ mod tests {
                 }
             }
             if once_code.len() != twice_code.len() {
-                eprintln!("Idempotence length: once={} twice={}", once_code.len(), twice_code.len());
+                eprintln!(
+                    "Idempotence length: once={} twice={}",
+                    once_code.len(),
+                    twice_code.len()
+                );
             }
             let once_len = once.len();
             let twice_len = twice.len();
@@ -2092,8 +2169,8 @@ mod tests {
                 if once.as_bytes()[i] != twice.as_bytes()[i] {
                     let start = if i > 40 { i - 40 } else { 0 };
                     eprintln!("Raw diff at byte {}:", i);
-                    eprintln!("Once: {:?}", &once[start..i+10.min(once_len - i)]);
-                    eprintln!("Twice: {:?}", &twice[start..i+10.min(twice_len - i)]);
+                    eprintln!("Once: {:?}", &once[start..i + 10.min(once_len - i)]);
+                    eprintln!("Twice: {:?}", &twice[start..i + 10.min(twice_len - i)]);
                     break;
                 }
             }
@@ -2146,9 +2223,7 @@ mod tests {
         for text in &src_texts {
             let found = formatted.contains(text.as_str());
             if !found {
-                let stripped = strip_comment_markers(
-                    &format!("// {}", text)
-                );
+                let stripped = strip_comment_markers(&format!("// {}", text));
                 let found_in_block = stripped.contains(text.as_str());
                 if !found_in_block {
                     eprintln!("Comment text MISSING in {}: {:?}", label, text);
@@ -2163,7 +2238,10 @@ mod tests {
         let formatted = canonical_fmt(&src);
         let src_comments = count_comments(&src);
         let fmt_comments = count_comments(&formatted);
-        eprintln!("root.ln comments: src={} fmt={}", src_comments, fmt_comments);
+        eprintln!(
+            "root.ln comments: src={} fmt={}",
+            src_comments, fmt_comments
+        );
         check_no_comment_text_loss(&src, &formatted, "root.ln");
         // Marker count may differ due to // → /* */ restructuring
     }
@@ -2194,12 +2272,15 @@ mod tests {
         let formatted = canonical_fmt(&src);
         let src_comments = count_comments(&src);
         let fmt_comments = count_comments(&formatted);
-        eprintln!("test.ln comments: src={} fmt={}", src_comments, fmt_comments);
+        eprintln!(
+            "test.ln comments: src={} fmt={}",
+            src_comments, fmt_comments
+        );
 
         let mut src_comment_lines: Vec<(usize, &str)> = Vec::new();
         for (i, _) in src.match_indices("//") {
-            let line_start = src[..i].rfind('\n').map(|p| p+1).unwrap_or(0);
-            let line_end = src[i..].find('\n').map(|p| i+p).unwrap_or(src.len());
+            let line_start = src[..i].rfind('\n').map(|p| p + 1).unwrap_or(0);
+            let line_end = src[i..].find('\n').map(|p| i + p).unwrap_or(src.len());
             let line = &src[line_start..line_end];
             src_comment_lines.push((line_start, line.trim()));
         }
@@ -2215,7 +2296,7 @@ mod tests {
         let fmt_lines: Vec<&str> = formatted.lines().collect();
         for (i, fl) in fmt_lines.iter().enumerate() {
             if fl.find("//").is_some() {
-                eprintln!("fmt line {}: {}", i+1, fl.trim());
+                eprintln!("fmt line {}: {}", i + 1, fl.trim());
             }
         }
 
