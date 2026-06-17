@@ -1,27 +1,57 @@
-/**
+/*
  * The Alan root scope. The functions and types it binds from Rust are either part of the standard
  * library, or are defined in the sibling root.rs file
- **/
-
+ */
 /// Type system setup
-
-// Declaration of the types the compiler-time type system is built on. There are four groups of these compiler-defined types: meta types of the type system itself, host types to interact with the host language, type types to construct your own types, and compute types that perform compile-time computation
-
+/*
+ * Declaration of the types the compiler-time type system is built on. There are four groups of
+ * these compiler-defined types: meta types of the type system itself, host types to interact with
+ * the host language, type types to construct your own types, and compute types that perform
+ * compile-time computation
+ */
 /// Meta types
 ctype Type; // Any kind of concrete type
 ctype Generic; // Any type that is a generic type (not yet realized into a concrete type)
-ctype Int{T}; // An integer used *to define a type*, like the length of a fixed array. Can be used as a generic to cast a type into an integer, or fail otherwise
-ctype Float{T}; // A float used to define a type. I have no idea why you'd want this, yet. Can be used as a generic to cast a type into a float, or fail otherwise
-ctype Bool{T}; // A bool used to define a type. Heavily used for conditional compilation. Can be used as a generic to cast a type into a bool, or fail otherwise
-ctype String{T}; // A string used to define a type. Useful for conditional inclusion of files/code. Can be used as a generic to cast a type into a string
+/*
+ * An integer used *to define a type*, like the length of a fixed array. Can be used as a generic
+ * to cast a type into an integer, or fail otherwise
+ */
+ctype Int{T};
+/*
+ * A float used to define a type. I have no idea why you'd want this, yet. Can be used as a generic
+ * to cast a type into a float, or fail otherwise
+ */
+ctype Float{T};
+/*
+ * A bool used to define a type. Heavily used for conditional compilation. Can be used as a generic
+ * to cast a type into a bool, or fail otherwise
+ */
+ctype Bool{T};
+/*
+ * A string used to define a type. Useful for conditional inclusion of files/code. Can be used as a
+ * generic to cast a type into a string
+ */
+ctype String{T};
 ctype Group{G}; // A grouping of type statements `()`. Useful to allow for tuples of tuples
-ctype Unwrap{T}; // Unwraps a type into its definition. Useful for creating a new type that extends an existing type, or iteratively building up a type
+/*
+ * Unwraps a type into its definition. Useful for creating a new type that extends an existing
+ * type, or iteratively building up a type
+ */
+ctype Unwrap{T};
 ctype Function{I, O}; // A function type, indicating the input and output of the function
-ctype AnyOf{A, B}; // The AnyOf type is kinda like a Tuple, in that all sub-types are present, but it only *resolves* into one of these types above it. Useful for choosing the "best" integer, or a particular function by name.
-
+/*
+ * The AnyOf type is kinda like a Tuple, in that all sub-types are present, but it only *resolves*
+ * into one of these types above it. Useful for choosing the "best" integer, or a particular
+ * function by name.
+ */
+ctype AnyOf{A, B};
 /// Host types
 ctype Binds{T}; // A direct reference into the platform language's type system
-ctype Shared{T}; // A shared, reference-counted, thread-safe wrapper around a type. Auto-derefs on property/method access.
+/*
+ * A shared, reference-counted, thread-safe wrapper around a type. Auto-derefs on property/method
+ * access.
+ */
+ctype Shared{T};
 ctype Call{N, F}; // A reference to a function call (or method, etc) in the platform language
 ctype Infix{O}; // A reference to a native infix operation in the platform language
 ctype Prefix{O}; // A reference to a native prefix operation in the platform language
@@ -29,36 +59,92 @@ ctype Method{F}; // A reference to a native method in the platform language
 ctype Property{P}; // A reference to a native property in the platform language
 ctype Cast{T}; // A reference to a native type in the platform language to cast to
 ctype Own{T}; // Specifying that the native code needs an owned version of the type
-ctype Deref{T}; // Specifying that the native code needs an owned version of the type and it is safe to dereference the reference
-ctype Mut{T}; // Specifying that the function (native or otherwise) needs a mutable reference of the type
-ctype Dependency{N, V}; // The representation of a dependency (of some form or another). Does nothing on its own
+/*
+ * Specifying that the native code needs an owned version of the type and it is safe to dereference
+ * the reference
+ */
+ctype Deref{T};
+// Specifying that the function (native or otherwise) needs a mutable reference of the type
+ctype Mut{T};
+// The representation of a dependency (of some form or another). Does nothing on its own
+ctype Dependency{N, V};
 ctype Rust{D}; // Specifying that the provided dependency is a Rust dependency.
 ctype Nodejs{D}; // Specifying that the provided dependency is a Node.js dependency.
 ctype Import{N, D}; // Imports the named value from the dependency.
-ctype From{D}; // Pulls the desired value from the dependency. Magically figures out which is needed through compiler trickery.
-
+/*
+ * Pulls the desired value from the dependency. Magically figures out which is needed through
+ * compiler trickery.
+ */
+ctype From{D};
 /// Type types
 ctype Tuple{A, B}; // A tuple of two (or more) types in a single compound type
 ctype Field{L, V}; // Labeling a type with a property name. Useful to turn tuples into structs
-ctype Either{A, B}; // An either type, allowing the value to be from *one* of the specified types, kinda like Rust enums
-ctype Buffer{T, S}; // A buffer type, a pre-allocated, fixed-length array of the specified type the specified amount
-ctype Array{T}; // An array type, a variable-length array of the specified type the specified amount. This would usually be an stdlib type built in the language itself, but we're just going to re-use the one in the platform language
-
+// An either type, allowing the value to be from *one* of the specified types, kinda like Rust enums
+ctype Either{A, B};
+// A buffer type, a pre-allocated, fixed-length array of the specified type the specified amount
+ctype Buffer{T, S};
+/*
+ * An array type, a variable-length array of the specified type the specified amount. This would
+ * usually be an stdlib type built in the language itself, but we're just going to re-use the one
+ * in the platform language
+ */
+ctype Array{T};
 /// Compute types
 ctype Prop{T, P}; // Extracts the inner type from the outer type by the property name or number
-ctype Exclude{T, N}; // Returns the type with the specified property or index excluded, works with Either, Tuple, and Field
-ctype Len{A}; // Returns the length of the input type in terms of the number of elements it contains, which is most useful for Buffers, Tuples, and Either, causes a compiler failure for Arrays, and returns 1 for everything else
-ctype Size{T}; // Returns the size in bytes of the type in question, if possible, causing a compiler failure otherwise.
-ctype FileStr{F}; // Read a file and return a string constant, useful for including large strings from a separate, nearby file, or fails if it doesn't exist
+/*
+ * Returns the type with the specified property or index excluded, works with Either, Tuple, and
+ * Field
+ */
+ctype Exclude{T, N};
+/*
+ * Returns the length of the input type in terms of the number of elements it contains, which is
+ * most useful for Buffers, Tuples, and Either, causes a compiler failure for Arrays, and returns 1
+ * for everything else
+ */
+ctype Len{A};
+/*
+ * Returns the size in bytes of the type in question, if possible, causing a compiler failure
+ * otherwise.
+ */
+ctype Size{T};
+/*
+ * Read a file and return a string constant, useful for including large strings from a separate,
+ * nearby file, or fails if it doesn't exist
+ */
+ctype FileStr{F};
 ctype Concat{A, B}; // Concatenates two strings together at compile time
-ctype Env{K}; // Read an environment variable at compile time and return a string of the value. Returns an empty string if the key doesn't exist. Intended to be used with...
+/*
+ * Read an environment variable at compile time and return a string of the value. Returns an empty
+ * string if the key doesn't exist. Intended to be used with...
+ */
+ctype Env{K};
 ctype EnvExists{K}; // Returns a boolean if the environment variable key exists at compile time, and...
-ctype Fail{M}; // A special type that if ever encountered at compile time causes the compilation to fail with the specified error message. Useful with conditional types
-ctype If{C, A, B}; // A conditional type, if C is true, resolves to A, otherwise to B. There's also a simpler version...
-ctype If{C, T}; // That expects a two-type tuple and extracts the first tuple type for true and the second for false, which can be bound to symbolic syntax
-ctype Env{K, D}; // Finally, since the majority of the time this is what you'd want, this variant of `Env` takes a default value to use when the key does not exist, making this another conditional type
+/*
+ * A special type that if ever encountered at compile time causes the compilation to fail with the
+ * specified error message. Useful with conditional types
+ */
+ctype Fail{M};
+/*
+ * A conditional type, if C is true, resolves to A, otherwise to B. There's also a simpler
+ * version...
+ */
+ctype If{C, A, B};
+/*
+ * That expects a two-type tuple and extracts the first tuple type for true and the second for
+ * false, which can be bound to symbolic syntax
+ */
+ctype If{C, T};
+/*
+ * Finally, since the majority of the time this is what you'd want, this variant of `Env` takes a
+ * default value to use when the key does not exist, making this another conditional type
+ */
+ctype Env{K, D};
 ctype Neg{A}; // Negate the value
-ctype Add{A, B}; // Combines the Int or Float types together at compile time into a new Int or Float. Fails if an Int and Float are mixed.
+/*
+ * Combines the Int or Float types together at compile time into a new Int or Float. Fails if an
+ * Int and Float are mixed.
+ */
+ctype Add{A, B};
 ctype Sub{A, B}; // Same, but subtracts them
 ctype Mul{A, B}; // Multiplication
 ctype Div{A, B}; // Division
@@ -73,26 +159,59 @@ ctype Xor{A, B}; // Performs a boolean or bitwise XOR on the inputs
 ctype Nand{A, B}; // Performs a boolean or bitwise NAND on the inputs
 ctype Nor{A, B}; // Performs a boolean or bitwise NOR on the inputs
 ctype Xnor{A, B}; // Performs a boolean or bitwise XNOR on the inputs (same as EQ for booleans)
-ctype Eq{A, B}; // Returns true if the two types are the same (or are the same int, float, bool, or string), false otherwise
+/*
+ * Returns true if the two types are the same (or are the same int, float, bool, or string), false
+ * otherwise
+ */
+ctype Eq{A, B};
 ctype Neq{A, B}; // Returns true if the two types are difference
 ctype Lt{A, B}; // Returns true if A is less than B (and are an int or float)
 ctype Lte{A, B}; // Returns true if A is less than or equal to B
 ctype Gt{A, B}; // Returns true if A is greater than B
 ctype Gte{A, B}; // Returns true if A is greater than or equal to B
 // Defining the operators in the type system; they can be defined before the types themselves
-type infix Function as -> precedence 4; // I -> O, where I is the input and O is the output. With Tuples and Fields you can reconstruct arguments for functions.
+/*
+ * I -> O, where I is the input and O is the output. With Tuples and Fields you can reconstruct
+ * arguments for functions.
+ */
+type infix Function as -> precedence 4;
 type infix Call as :: precedence 0; // N :: F, where N is the native function (or method) and F is the function type
 type infix Dependency as @ precedence 1; // N @ V, where N is the name of the dependency and V is the version
-type infix Import as <- precedence 0; // N <- D, where N is the name of the value to be imported and D is the dependency to pull it from
-type prefix From as <-- precedence 0; // <- D, where D is the dependency to pull a value or values from, TODO: Switch to <- once disambiguation is fixed
-type infix Tuple as , precedence 0; // A, B, C, ... The tuple type combines with other tuple types to become a larger tuple type. To have a tuple of tuples, you need to `Group` the inner tuple, eg `(a, b), c`
-type infix Field as : precedence 1; // Foo: Bar, let's you specify a property access label for the type, useful for syntactic sugar on a tuple type and the Either type (eventually).
+// N <- D, where N is the name of the value to be imported and D is the dependency to pull it from
+type infix Import as <- precedence 0;
+/*
+ * <- D, where D is the dependency to pull a value or values from, TODO: Switch to <- once
+ * disambiguation is fixed
+ */
+type prefix From as <-- precedence 0;
+/*
+ * A, B, C, ... The tuple type combines with other tuple types to become a larger tuple type. To
+ * have a tuple of tuples, you need to `Group` the inner tuple, eg `(a, b), c`
+ */
+type infix Tuple as , precedence 0;
+/*
+ * Foo: Bar, let's you specify a property access label for the type, useful for syntactic sugar on
+ * a tuple type and the Either type (eventually).
+ */
+type infix Field as : precedence 1;
 type infix Either as | precedence 0; // A | B, the type has a singular value from only one of the types at once.
-type infix Prop as . precedence 6; // A.B, returns the sub-type within A referenced by property B. Allows an inverse of a Tuple or Either type, accessed by either the Field name or an integer index
-type infix Exclude as -. precedence 6; // A-.B, removes the sub-type from A at the specified property B. Allows an inverse of a Tuple or Either type, removing by either the Field name or an integer index
+/*
+ * A.B, returns the sub-type within A referenced by property B. Allows an inverse of a Tuple or
+ * Either type, accessed by either the Field name or an integer index
+ */
+type infix Prop as . precedence 6;
+/*
+ * A-.B, removes the sub-type from A at the specified property B. Allows an inverse of a Tuple or
+ * Either type, removing by either the Field name or an integer index
+ */
+type infix Exclude as -. precedence 6;
 type infix AnyOf as & precedence 0; // A & B, which can be passed to a function that takes A or B as necessary.
 type infix Buffer as [ precedence 2; // Technically allows `Foo[3` by itself to be valid syntax, but...
-type postfix Self as ] precedence 11; // This one goes to eleven. Technically not necessary, but allows for `Foo[3]` to do the "right thing" and become a buffer of size 3
+/*
+ * This one goes to eleven. Technically not necessary, but allows for `Foo[3]` to do the "right
+ * thing" and become a buffer of size 3
+ */
+type postfix Self as ] precedence 11;
 type postfix Array as [] precedence 5; // Allows `Foo[]` to do the right thing
 type postfix Maybe as ? precedence 5; // Allows `Foo?` for nullable types. Should this have a precedence of 5?
 type postfix Fallible as ! precedence 5; // Allows `Foo!` for fallible types. Same question on the precedence.
@@ -102,11 +221,19 @@ type infix Mul as * precedence 4;
 type infix Div as / precedence 4;
 type infix Mod as % precedence 4;
 type infix Pow as ** precedence 5;
-type infix If as :? precedence 1; // C puts this kind of thing as a very high precedence. I'm not sure if I want to follow it. I feel like that would force grouping parens everywhere.
+/*
+ * C puts this kind of thing as a very high precedence. I'm not sure if I want to follow it. I feel
+ * like that would force grouping parens everywhere.
+ */
+type infix If as :? precedence 1;
 type infix And as && precedence 4;
 type infix Or as || precedence 3;
 type infix Xor as ^ precedence 3;
-type prefix Not as ~ precedence 5; // TODO: Temporarily change this from ! to ~ until the operator prefix/postfix tiebreaker is updated to accept whichever *works* rather than prefer prefix
+/*
+ * TODO: Temporarily change this from ! to ~ until the operator prefix/postfix tiebreaker is
+ * updated to accept whichever *works* rather than prefer prefix
+ */
+type prefix Not as ~ precedence 5;
 type infix Nand as !& precedence 4;
 type infix Nor as !| precedence 3;
 type infix Xnor as !^ precedence 3;
@@ -116,7 +243,6 @@ type infix Lt as < precedence 1;
 type infix Lte as <= precedence 1;
 type infix Gt as > precedence 1;
 type infix Gte as >= precedence 1;
-
 // Environment variable-derived boolean constants to be used by the root scope (or your own code)
 type Test = Env{"ALAN_TARGET"} == "test";
 type Release = Env{"ALAN_TARGET"} == "release";
@@ -131,11 +257,9 @@ type x86_64 = Env{"ALAN_ARCH"} == "x86_64";
 type arm_32 = Env{"ALAN_ARCH"} == "arm_32";
 type arm_64 = Env{"ALAN_ARCH"} == "arm_64";
 type Browser = Env{"ALAN_PLATFORM"} == "browser"; // Technically not necessary, always also Js
-
 // Importing the Root Scope backing implementation and supporting 3rd party libraries
 type{Rs} RootBacking = Rust{"alan_std" @ "https://github.com/alantech/alan.git"};
 type{Js} RootBacking = Nodejs{"alan_std" @ "https://github.com/alantech/alan.git"};
-
 // Defining derived types
 type void = ();
 type Self{T} = T;
@@ -145,13 +269,11 @@ type Fallible{T} = T | Error;
 type Maybe{T} = T | ();
 type First{T} = Prop{T, 0};
 type Rest{T} = Exclude{T, 0};
-
 // Binding the float types
 type{Rs} f32 = Binds{"f32"};
 type{Js} f32 = Binds{"alan_std.F32" <- RootBacking};
 type{Rs} f64 = Binds{"f64"};
 type{Js} f64 = Binds{"alan_std.F64" <- RootBacking};
-
 // Binding the integer types
 type{Rs} u8 = Binds{"u8"};
 type{Js} u8 = Binds{"alan_std.U8" <- RootBacking};
@@ -169,42 +291,33 @@ type{Rs} i32 = Binds{"i32"};
 type{Js} i32 = Binds{"alan_std.I32" <- RootBacking};
 type{Rs} i64 = Binds{"i64"};
 type{Js} i64 = Binds{"alan_std.I64" <- RootBacking};
-
 // Binding the string types
 type{Rs} string = Binds{"String"};
 type{Js} string = Binds{"alan_std.Str" <- RootBacking};
-
 // Binding the boolean types
 type{Rs} bool = Binds{"bool"};
 type{Js} bool = Binds{"alan_std.Bool" <- RootBacking};
-
 // Binding the exit code type
 type{Rs} ExitCode = Binds{"std::process::ExitCode"};
 type{Js} ExitCode = Binds{"Number"};
-
 // Binding the time types
 type{Rs} Instant = Binds{"std::time::Instant"};
 type{Rs} Duration = Binds{"std::time::Duration"};
 type{Js} Performance = Binds{"Performance"}
-
 // Binding the uuid type
 type{Rs} uuid = Binds{"alan_std::Uuid" <- RootBacking};
 type{Js} uuid = Binds{"alan_std.uuidv4" <- RootBacking};
-
 // Binding the Dict and Set types
 type{Rs} Dict{K, V} = Binds{"alan_std::OrderedHashMap" <- RootBacking, K, V};
 type{Js} Dict{K, V} = Binds{"Map", K, V};
 type{Rs} Set{V} = Binds{"std::collections::HashSet", V};
 type{Js} Set{V} = Binds{"alan_std.FuzzySet" <- RootBacking, V};
-
 // Compiler-provided functions for Shared and clone
 cfn clone{T} T -> T;
-
 // Basic trig constants (this language is meant for GPGPU, this makes sense in the root scope)
 const e = 2.718281828459045;
 const pi = 3.141592653589793;
 const tau = 6.283185307179586;
-
 /// Built-in operator definitions; can be defined before the functions are
 infix add as + precedence 5;
 infix sub as - precedence 5;
@@ -241,13 +354,13 @@ infix shr as >> precedence 5;
 infix wrl as <<< precedence 5;
 infix wrr as >>> precedence 5;
 infix store as = precedence 0;
-
 /// Functions for (potentially) every type
 fn void{T}(v: T) -> void {}
 fn void() -> void {}
 fn{Rs} store{T} (a: Mut{T}, b: T) -> T = {"std::mem::replace" :: (Mut{T}, Own{T}) -> T}(a, b);
-fn{Js} store{T} (a: Mut{T}, b: T) -> T = {"((a, b) => Object.keys(b).forEach((k) => a[k] = b[k]))" :: (Mut{T}, T) -> T}(a, b);
-
+fn{Js} store{T} (a: Mut{T}, b: T) -> T {
+  return {"((a, b) => Object.keys(b).forEach((k) => a[k] = b[k]))" :: (Mut{T}, T) -> T}(a, b);
+}
 /// Fallible, Maybe, and Either functions
 fn{Rs} Maybe{T}(v: T!) = {Method{"ok"} :: T! -> T?}(v);
 fn{Rs} Fallible{T}(v: T?, e: Error) = {Method{"ok_or"} :: (T?, Error) -> T!}(v, e);
@@ -255,23 +368,36 @@ fn getOr{T, U}(v: U, d: T) = {T}(v) ?? d;
 fn{Rs} getOr{T} (v: T?, d: T) = {Method{"unwrap_or"} :: (Own{T?}, Own{T}) -> T}(v, d);
 fn{Js} getOr{T} (v: T?, d: T) = {"((v, d) => v ?? d)" :: (T?, T) -> T}(v, d);
 fn{Rs} getOr{T} (v: T!, d: T) = {Method{"unwrap_or"} :: (Own{T!}, Own{T}) -> T}(v, d);
-fn{Js} getOr{T} (v: T!, d: T) = {"((v, d) => v instanceof alan_std.AlanError ? d : v)" :: (T!, T) -> T}(v, d);
+fn{Js} getOr{T} (v: T!, d: T) {
+  return {"((v, d) => v instanceof alan_std.AlanError ? d : v)" :: (T!, T) -> T}(v, d);
+}
 fn{Rs} getOrExit{T} (v: T!) = {Method{"unwrap"} :: Own{T!} -> T}(v);
-fn{Js} getOrExit{T} (v: T!) = {"((a) => { if (!(a instanceof alan_std.AlanError)) { return a; } else { process.exit(101); } })" :: T! -> T}(v);
+fn{Js} getOrExit{T} (v: T!) =
+  {
+    "((a) => { if (!(a instanceof alan_std.AlanError)) { return a; } else { process.exit(101); } })"
+    :: T! -> T
+  }(v);
 fn{Rs} getOrExit{T} (v: T?) = {Method{"unwrap"} :: Own{T?} -> T}(v);
-fn{Js} getOrExit{T} (v: T?) = {"((a) => { if (a !== null && a !== undefined) { return a; } else { process.exit(101); } })" :: T? -> T}(v);
-fn{Rs} Error{T} (e: string) = {"Err" :: Own{Error} -> T!}(
-  {Method{"into"} :: Own{string} -> Error}(e));
+fn{Js} getOrExit{T} (v: T?) =
+  {
+    "((a) => { if (a !== null && a !== undefined) { return a; } else { process.exit(101); } })"
+    :: T? -> T
+  }(v);
+fn{Rs} Error{T} (e: string) {
+  return {"Err" :: Own{Error} -> T!}({Method{"into"} :: Own{string} -> Error}(e));
+}
 fn{Rs} Error (e: string) = {Method{"into"} :: Own{string} -> Error}(e);
 fn{Js} Error{T} "new alan_std.AlanError" <- RootBacking :: string -> T!;
 fn{Js} Error "new alan_std.AlanError" <- RootBacking :: string -> Error;
 fn{Rs} exists{T} (m: T?) = {Method{"is_some"} :: T? -> bool}(m);
-fn{Js} exists{T} (m: T?) = {"((a) => new alan_std.Bool(a !== null))" <- RootBacking :: T? -> bool}(m);
+fn{Js} exists{T} (m: T?) {
+  return {"((a) => new alan_std.Bool(a !== null))" <- RootBacking :: T? -> bool}(m);
+}
 fn{Rs} exists{T} (m: T!) = {Method{"is_ok"} :: T! -> bool}(m);
-fn{Js} exists{T} (m: T!) = {"((a) => new alan_std.Bool(!(a instanceof alan_std.AlanError)))" <- RootBacking :: T! -> bool}(m);
+fn{Js} exists{T} (m: T!) =
+  {"((a) => new alan_std.Bool(!(a instanceof alan_std.AlanError)))" <- RootBacking :: T! -> bool}(m);
 fn{Rs} string(e: Error) = {"format!" :: ("{}", Error) -> string}(e);
 fn{Js} string Property{"message"} :: Error -> string;
-
 /// Primitive type casting functions
 fn{Rs} f32 Cast{"f32"} :: Deref{i8} -> f32;
 fn{Js} f32 "new alan_std.F32" <- RootBacking :: i8 -> f32;
@@ -292,8 +418,12 @@ fn{Js} f32 "new alan_std.F32" <- RootBacking :: u64 -> f32;
 fn f32(f: f32) = f;
 fn{Rs} f32 Cast{"f32"} :: Deref{f64} -> f32;
 fn{Js} f32 "new alan_std.F32" <- RootBacking :: f64 -> f32;
-fn{Rs} f32 Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"} :: string -> f32!;
-fn{Js} f32 "((s) => { let f = parseFloat(s.val); if (Number.isNaN(f)) { return alan_std.nanToError(f); } else { return new alan_std.F32(f); } })" :: string -> f32!;
+fn{Rs} f32
+  Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"}
+  :: string -> f32!;
+fn{Js} f32
+  "((s) => { let f = parseFloat(s.val); if (Number.isNaN(f)) { return alan_std.nanToError(f); } else { return new alan_std.F32(f); } })"
+  :: string -> f32!;
 
 fn{Rs} f64 Cast{"f64"} :: Deref{i8} -> f64;
 fn{Js} f64 "new alan_std.F64" <- RootBacking :: i8 -> f64;
@@ -314,8 +444,12 @@ fn{Js} f64 "new alan_std.F64" <- RootBacking :: u64 -> f64;
 fn{Rs} f64 Cast{"f64"} :: Deref{f32} -> f64;
 fn{Js} f64 "new alan_std.F64" <- RootBacking :: f32 -> f64;
 fn f64(f: f64) = f;
-fn{Rs} f64 Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"} :: string -> f64!;
-fn{Js} f64 "((s) => { let f = parseFloat(s.val); if (Number.isNaN(f)) { return alan_std.nanToError(f); } else { return new alan_std.F32(f); } })" :: string -> f64!;
+fn{Rs} f64
+  Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"}
+  :: string -> f64!;
+fn{Js} f64
+  "((s) => { let f = parseFloat(s.val); if (Number.isNaN(f)) { return alan_std.nanToError(f); } else { return new alan_std.F32(f); } })"
+  :: string -> f64!;
 
 fn{Rs} u8 Cast{"u8"} :: Deref{i8} -> u8;
 fn{Js} u8 "new alan_std.U8" <- RootBacking :: i8 -> u8;
@@ -336,8 +470,13 @@ fn{Rs} u8 Cast{"u8"} :: Deref{f32} -> u8;
 fn{Js} u8 "((f) => new alan_std.U8(Math.floor(f.val)))" <- RootBacking :: f32 -> u8;
 fn{Rs} u8 Cast{"u8"} :: Deref{f64} -> u8;
 fn{Js} u8 "((f) => new alan_std.U8(Math.floor(f.val)))" <- RootBacking :: f64 -> u8;
-fn{Rs} u8 Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"} :: string -> u8!;
-fn{Js} u8 "((s) => { let v = parseInt(s.val); if (Number.isNaN(v)) { return new alan_std.AlanError(new alan_std.Str('Not a Number')); } else { return new alan_std.U8(v); } })" <- RootBacking :: string -> u8!;
+fn{Rs} u8
+  Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"}
+  :: string -> u8!;
+fn{Js} u8
+  "((s) => { let v = parseInt(s.val); if (Number.isNaN(v)) { return new alan_std.AlanError(new alan_std.Str('Not a Number')); } else { return new alan_std.U8(v); } })"
+  <- RootBacking
+  :: string -> u8!;
 
 fn{Rs} u16 Cast{"u16"} :: Deref{i8} -> u16;
 fn{Js} u16 "new alan_std.U16" <- RootBacking :: i8 -> u16;
@@ -358,8 +497,13 @@ fn{Rs} u16 Cast{"u16"} :: Deref{f32} -> u16;
 fn{Js} u16 "((f) => new alan_std.U16(Math.floor(f.val)))" <- RootBacking :: f32 -> u16;
 fn{Rs} u16 Cast{"u16"} :: Deref{f64} -> u16;
 fn{Js} u16 "((f) => new alan_std.U16(Math.floor(f.val)))" <- RootBacking :: f64 -> u16;
-fn{Rs} u16 Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"} :: string -> u16!;
-fn{Js} u16 "((s) => { let v = parseInt(s.val); if (Number.isNaN(v)) { return new alan_std.AlanError(new alan_std.Str('Not a Number')); } else { return new alan_std.U16(v); } })" <- RootBacking :: string -> u16!;
+fn{Rs} u16
+  Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"}
+  :: string -> u16!;
+fn{Js} u16
+  "((s) => { let v = parseInt(s.val); if (Number.isNaN(v)) { return new alan_std.AlanError(new alan_std.Str('Not a Number')); } else { return new alan_std.U16(v); } })"
+  <- RootBacking
+  :: string -> u16!;
 
 fn{Rs} u32 Cast{"u32"} :: Deref{i8} -> u32;
 fn{Js} u32 "new alan_std.U32" <- RootBacking :: i8 -> u32;
@@ -380,8 +524,13 @@ fn{Rs} u32 Cast{"u32"} :: Deref{f32} -> u32;
 fn{Js} u32 "((f) => new alan_std.U32(Math.floor(f.val)))" <- RootBacking :: f32 -> u32;
 fn{Rs} u32 Cast{"u32"} :: Deref{f64} -> u32;
 fn{Js} u32 "((f) => new alan_std.U32(Math.floor(f.val)))" <- RootBacking :: f64 -> u32;
-fn{Rs} u32 Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"} :: string -> u32!;
-fn{Js} u32 "((s) => { let v = parseInt(s.val); if (Number.isNaN(v)) { return new alan_std.AlanError(new alan_std.Str('Not a Number')); } else { return new alan_std.U32(v); } })" <- RootBacking :: string -> u32!;
+fn{Rs} u32
+  Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"}
+  :: string -> u32!;
+fn{Js} u32
+  "((s) => { let v = parseInt(s.val); if (Number.isNaN(v)) { return new alan_std.AlanError(new alan_std.Str('Not a Number')); } else { return new alan_std.U32(v); } })"
+  <- RootBacking
+  :: string -> u32!;
 
 fn{Rs} u64 Cast{"u64"} :: Deref{i8} -> u64;
 fn{Js} u64 "new alan_std.U64" <- RootBacking :: i8 -> u64;
@@ -402,8 +551,13 @@ fn{Rs} u64 Cast{"u64"} :: Deref{f32} -> u64;
 fn{Js} u64 "((f) => new alan_std.U64(Math.floor(f.val)))" <- RootBacking :: f32 -> u64;
 fn{Rs} u64 Cast{"u64"} :: Deref{f64} -> u64;
 fn{Js} u64 "((f) => new alan_std.U64(Math.floor(f.val)))" <- RootBacking :: f64 -> u64;
-fn{Rs} u64 Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"} :: string -> u64!;
-fn{Js} u64 "((s) => { try { return new alan_std.U64(BigInt(s.val)) } catch (e) { return new alan_std.AlanError(new alan_std.Str(e.message)); } })" <- RootBacking :: string -> u64!;
+fn{Rs} u64
+  Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"}
+  :: string -> u64!;
+fn{Js} u64
+  "((s) => { try { return new alan_std.U64(BigInt(s.val)) } catch (e) { return new alan_std.AlanError(new alan_std.Str(e.message)); } })"
+  <- RootBacking
+  :: string -> u64!;
 
 fn i8(i: i8) = i;
 fn{Rs} i8 Cast{"i8"} :: Deref{i16} -> i8;
@@ -425,8 +579,13 @@ fn{Js} i8 "((f) => new alan_std.I8(Math.floor(f.val)))" <- RootBacking :: f32 ->
 fn{Rs} i8 Cast{"i8"} :: Deref{f64} -> i8;
 fn{Js} i8 "((f) => new alan_std.I8(Math.floor(f.val)))" <- RootBacking :: f64 -> i8;
 // TODO: LOL, what a hack
-fn{Rs} i8 Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"} :: string -> i8!;
-fn{Js} i8 "((s) => { let v = parseInt(s.val); if (Number.isNaN(v)) { return new alan_std.AlanError(new alan_std.Str('Not a Number')); } else { return new alan_std.I8(v); } })" <- RootBacking :: string -> i8!;
+fn{Rs} i8
+  Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"}
+  :: string -> i8!;
+fn{Js} i8
+  "((s) => { let v = parseInt(s.val); if (Number.isNaN(v)) { return new alan_std.AlanError(new alan_std.Str('Not a Number')); } else { return new alan_std.I8(v); } })"
+  <- RootBacking
+  :: string -> i8!;
 
 fn{Rs} i16 Cast{"i16"} :: Deref{i8} -> i16;
 fn{Js} i16 "new alan_std.I16" <- RootBacking :: i8 -> i16;
@@ -447,8 +606,13 @@ fn{Rs} i16 Cast{"i16"} :: Deref{f32} -> i16;
 fn{Js} i16 "((f) => new alan_std.I16(Math.floor(f.val)))" <- RootBacking :: f32 -> i16;
 fn{Rs} i16 Cast{"i16"} :: Deref{f64} -> i16;
 fn{Js} i16 "((f) => new alan_std.I16(Math.floor(f.val)))" <- RootBacking :: f64 -> i16;
-fn{Rs} i16 Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"} :: string -> i16!;
-fn{Js} i16 "((s) => { let v = parseInt(s.val); if (Number.isNaN(v)) { return new alan_std.AlanError(new alan_std.Str('Not a Number')); } else { return new alan_std.I16(v); } })" <- RootBacking :: string -> i16!;
+fn{Rs} i16
+  Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"}
+  :: string -> i16!;
+fn{Js} i16
+  "((s) => { let v = parseInt(s.val); if (Number.isNaN(v)) { return new alan_std.AlanError(new alan_std.Str('Not a Number')); } else { return new alan_std.I16(v); } })"
+  <- RootBacking
+  :: string -> i16!;
 
 fn{Rs} i32 Cast{"i32"} :: Deref{i8} -> i32;
 fn{Js} i32 "new alan_std.I32" <- RootBacking :: i8 -> i32;
@@ -469,10 +633,16 @@ fn{Rs} i32 Cast{"i32"} :: Deref{f32} -> i32;
 fn{Js} i32 "((f) => new alan_std.I32(Math.floor(f.val)))" <- RootBacking :: f32 -> i32;
 fn{Rs} i32 Cast{"i32"} :: Deref{f64} -> i32;
 fn{Js} i32 "((f) => new alan_std.I32(Math.floor(f.val)))" <- RootBacking :: f64 -> i32;
-fn{Js} i32 (f: f64) -> i32 = {"new alan_std.I32" <- RootBacking :: f64 -> i32}(
-  {"Math.floor" :: f64 -> f64}(f));
-fn{Rs} i32 Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"} :: string -> i32!;
-fn{Js} i32 "((s) => { let v = parseInt(s.val); if (Number.isNaN(v)) { return new alan_std.AlanError(new alan_std.Str('Not a Number')); } else { return new alan_std.I32(v); } })" <- RootBacking :: string -> i32!;
+fn{Js} i32 (f: f64) -> i32 {
+  return {"new alan_std.I32" <- RootBacking :: f64 -> i32}({"Math.floor" :: f64 -> f64}(f));
+}
+fn{Rs} i32
+  Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"}
+  :: string -> i32!;
+fn{Js} i32
+  "((s) => { let v = parseInt(s.val); if (Number.isNaN(v)) { return new alan_std.AlanError(new alan_std.Str('Not a Number')); } else { return new alan_std.I32(v); } })"
+  <- RootBacking
+  :: string -> i32!;
 
 fn{Rs} i64 Cast{"i64"} :: Deref{i8} -> i64;
 fn{Js} i64 "new alan_std.I64" <- RootBacking :: i8 -> i64;
@@ -493,8 +663,13 @@ fn{Rs} i64 Cast{"i64"} :: Deref{f32} -> i64;
 fn{Js} i64 "((f) => new alan_std.I64(Math.floor(f.val)))" <- RootBacking :: f32 -> i64;
 fn{Rs} i64 Cast{"i64"} :: Deref{f64} -> i64;
 fn{Js} i64 "((f) => new alan_std.I64(Math.floor(f.val)))" <- RootBacking :: f64 -> i64;
-fn{Rs} i64 Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"} :: string -> i64!;
-fn{Js} i64 "((s) => { try { return new alan_std.I64(BigInt(s.val)) } catch (e) { return new alan_std.AlanError(new alan_std.Str(e.message)); } })" <- RootBacking :: string -> i64!;
+fn{Rs} i64
+  Method{"parse().map_err(|s| alan_std::AlanError { message: alan_std::stringify(s) }).into"}
+  :: string -> i64!;
+fn{Js} i64
+  "((s) => { try { return new alan_std.I64(BigInt(s.val)) } catch (e) { return new alan_std.AlanError(new alan_std.Str(e.message)); } })"
+  <- RootBacking
+  :: string -> i64!;
 
 fn{Rs} bool (i: i8) = {Infix{"!="} :: (Deref{i8}, Deref{i8}) -> bool}(i, 0.i8);
 fn{Js} bool "((i) => new alan_std.Bool(i.val != 0))" <- RootBacking :: i8 -> bool;
@@ -519,53 +694,109 @@ fn{Js} bool "((f) => new alan_std.Bool(f.val != 0.0))" <- RootBacking :: f64 -> 
 fn{Rs} bool(s: string) = {Infix{"=="} :: (string, string) -> bool}(s, "true");
 fn{Js} bool "((s) => new alan_std.Bool(s.val == 'true'))" <- RootBacking :: string -> bool;
 fn bool(b: bool) = b;
-
 /// Bitcasting functions (TODO: Is there a better naming scheme possible?)
 fn asU8(v: u8) = v;
-fn{Rs} asU8(v: i8) = {"u8::from_le_bytes" :: Own{Buffer{u8, 1}} -> u8}({"i8::to_le_bytes" :: Own{i8} -> Buffer{u8, 1}}(v));
+fn{Rs} asU8(v: i8) =
+  {"u8::from_le_bytes" :: Own{Buffer{u8, 1}} -> u8}({"i8::to_le_bytes" :: Own{i8} -> Buffer{u8, 1}}(v));
 fn{Js} asU8 "alan_std.i8AsU8" <- RootBacking :: i8 -> u8;
 fn asU16(v: u16) = v;
-fn{Rs} asU16(v: i16) = {"u16::from_le_bytes" :: Own{Buffer{u8, 2}} -> u16}({"i16::to_le_bytes" :: Own{i16} -> Buffer{u8, 2}}(v));
+fn{Rs} asU16(v: i16) =
+  {"u16::from_le_bytes" :: Own{Buffer{u8, 2}} -> u16}({
+    "i16::to_le_bytes"
+    :: Own{i16} -> Buffer{u8, 2}
+  }(v));
 fn{Js} asU16 "alan_std.i16AsU16" <- RootBacking :: i16 -> u16;
 fn asU32(v: u32) = v;
-fn{Rs} asU32(v: i32) = {"u32::from_le_bytes" :: Own{Buffer{u8, 4}} -> u32}({"i32::to_le_bytes" :: Own{i32} -> Buffer{u8, 4}}(v));
+fn{Rs} asU32(v: i32) =
+  {"u32::from_le_bytes" :: Own{Buffer{u8, 4}} -> u32}({
+    "i32::to_le_bytes"
+    :: Own{i32} -> Buffer{u8, 4}
+  }(v));
 fn{Js} asU32 "alan_std.i32AsU32" <- RootBacking :: i32 -> u32;
-fn{Rs} asU32(v: f32) = {"u32::from_le_bytes" :: Own{Buffer{u8, 4}} -> u32}({"f32::to_le_bytes" :: Own{f32} -> Buffer{u8, 4}}(v));
+fn{Rs} asU32(v: f32) =
+  {"u32::from_le_bytes" :: Own{Buffer{u8, 4}} -> u32}({
+    "f32::to_le_bytes"
+    :: Own{f32} -> Buffer{u8, 4}
+  }(v));
 fn{Js} asU32 "alan_std.f32AsU32" <- RootBacking :: f32 -> u32;
 fn asU64(v: u64) = v;
-fn{Rs} asU64(v: i64) = {"u64::from_le_bytes" :: Own{Buffer{u8, 8}} -> u64}({"i64::to_le_bytes" :: Own{i64} -> Buffer{u8, 8}}(v));
+fn{Rs} asU64(v: i64) =
+  {"u64::from_le_bytes" :: Own{Buffer{u8, 8}} -> u64}({
+    "i64::to_le_bytes"
+    :: Own{i64} -> Buffer{u8, 8}
+  }(v));
 fn{Js} asU64 "alan_std.i64AsU64" <- RootBacking :: i64 -> u64;
-fn{Rs} asU64(v: f64) = {"u64::from_le_bytes" :: Own{Buffer{u8, 8}} -> f64}({"f64::to_le_bytes" :: Own{f64} -> Buffer{u8, 8}}(v));
+fn{Rs} asU64(v: f64) =
+  {"u64::from_le_bytes" :: Own{Buffer{u8, 8}} -> f64}({
+    "f64::to_le_bytes"
+    :: Own{f64} -> Buffer{u8, 8}
+  }(v));
 fn{Js} asU64 "alan_std.f64AsU64" <- RootBacking :: f64 -> u64;
 
-fn{Rs} asI8(v: u8) = {"i8::from_le_bytes" :: Own{Buffer{u8, 1}} -> i8}({"u8::to_le_bytes" :: Own{u8} -> Buffer{u8, 1}}(v));
+fn{Rs} asI8(v: u8) =
+  {"i8::from_le_bytes" :: Own{Buffer{u8, 1}} -> i8}({"u8::to_le_bytes" :: Own{u8} -> Buffer{u8, 1}}(v));
 fn{Js} asI8 "alan_std.u8AsI8" <- RootBacking :: u8 -> i8;
 fn asI8(v: i8) = v;
-fn{Rs} asI16(v: u16) = {"i16::from_le_bytes" :: Own{Buffer{u8, 2}} -> i16}({"u16::to_le_bytes" :: Own{u16} -> Buffer{u8, 2}}(v));
+fn{Rs} asI16(v: u16) =
+  {"i16::from_le_bytes" :: Own{Buffer{u8, 2}} -> i16}({
+    "u16::to_le_bytes"
+    :: Own{u16} -> Buffer{u8, 2}
+  }(v));
 fn{Js} asI16 "alan_std.u16AsI16" <- RootBacking :: u16 -> i16;
 fn asI16(v: i16) = v;
-fn{Rs} asI32(v: u32) = {"i32::from_le_bytes" :: Own{Buffer{u8, 4}} -> i32}({"u32::to_le_bytes" :: Own{u32} -> Buffer{u8, 4}}(v));
+fn{Rs} asI32(v: u32) =
+  {"i32::from_le_bytes" :: Own{Buffer{u8, 4}} -> i32}({
+    "u32::to_le_bytes"
+    :: Own{u32} -> Buffer{u8, 4}
+  }(v));
 fn{Js} asI32 "alan_std.u32AsI32" <- RootBacking :: u32 -> i32;
 fn asI32(v: i32) = v;
-fn{Rs} asI32(v: f32) = {"i32::from_le_bytes" :: Own{Buffer{u8, 4}} -> i32}({"f32::to_le_bytes" :: Own{f32} -> Buffer{u8, 4}}(v));
+fn{Rs} asI32(v: f32) =
+  {"i32::from_le_bytes" :: Own{Buffer{u8, 4}} -> i32}({
+    "f32::to_le_bytes"
+    :: Own{f32} -> Buffer{u8, 4}
+  }(v));
 fn{Js} asI32 "alan_std.f32AsI32" <- RootBacking :: f32 -> i32;
-fn{Rs} asI64(v: u64) = {"i64::from_le_bytes" :: Own{Buffer{u8, 8}} -> i64}({"u64::to_le_bytes" :: Own{u64} -> Buffer{u8, 8}}(v));
+fn{Rs} asI64(v: u64) =
+  {"i64::from_le_bytes" :: Own{Buffer{u8, 8}} -> i64}({
+    "u64::to_le_bytes"
+    :: Own{u64} -> Buffer{u8, 8}
+  }(v));
 fn{Js} asI64 "alan_std.u64AsI64" <- RootBacking :: u64 -> i64;
 fn asI64(v: i64) = v;
-fn{Rs} asI64(v: f64) = {"i64::from_le_bytes" :: Own{Buffer{u8, 8}} -> i64}({"f64::to_le_bytes" :: Own{f64} -> Buffer{u8, 8}}(v));
+fn{Rs} asI64(v: f64) =
+  {"i64::from_le_bytes" :: Own{Buffer{u8, 8}} -> i64}({
+    "f64::to_le_bytes"
+    :: Own{f64} -> Buffer{u8, 8}
+  }(v));
 fn{Js} asI64 "alan_std.f64AsI64" <- RootBacking :: f64 -> i64;
 
-fn{Rs} asF32(v: u32) = {"f32::from_le_bytes" :: Own{Buffer{u8, 4}} -> f32}({"u32::to_le_bytes" :: Own{u32} -> Buffer{u8, 4}}(v));
+fn{Rs} asF32(v: u32) =
+  {"f32::from_le_bytes" :: Own{Buffer{u8, 4}} -> f32}({
+    "u32::to_le_bytes"
+    :: Own{u32} -> Buffer{u8, 4}
+  }(v));
 fn{Js} asF32 "alan_std.u32AsF32" <- RootBacking :: u32 -> f32;
-fn{Rs} asF32(v: i32) = {"f32::from_le_bytes" :: Own{Buffer{u8, 4}} -> f32}({"i32::to_le_bytes" :: Own{i32} -> Buffer{u8, 4}}(v));
+fn{Rs} asF32(v: i32) =
+  {"f32::from_le_bytes" :: Own{Buffer{u8, 4}} -> f32}({
+    "i32::to_le_bytes"
+    :: Own{i32} -> Buffer{u8, 4}
+  }(v));
 fn{Js} asF32 "alan_std.i32AsF32" <- RootBacking :: i32 -> f32;
 fn asF32(v: f32) = v;
-fn{Rs} asF64(v: u64) = {"f64::from_le_bytes" :: Own{Buffer{u8, 8}} -> f64}({"u64::to_le_bytes" :: Own{u64} -> Buffer{u8, 8}}(v));
+fn{Rs} asF64(v: u64) =
+  {"f64::from_le_bytes" :: Own{Buffer{u8, 8}} -> f64}({
+    "u64::to_le_bytes"
+    :: Own{u64} -> Buffer{u8, 8}
+  }(v));
 fn{Js} asF64 "alan_std.u64AsF64" <- RootBacking :: u64 -> f64;
-fn{Rs} asF64(v: i64) = {"f64::from_le_bytes" :: Own{Buffer{u8, 8}} -> f64}({"i64::to_le_bytes" :: Own{i64} -> Buffer{u8, 8}}(v));
+fn{Rs} asF64(v: i64) =
+  {"f64::from_le_bytes" :: Own{Buffer{u8, 8}} -> f64}({
+    "i64::to_le_bytes"
+    :: Own{i64} -> Buffer{u8, 8}
+  }(v));
 fn{Js} asF64 "alan_std.i64AsF64" <- RootBacking :: i64 -> f64;
 fn asF64(v: f64) = v;
-
 /// Boolean-related functions
 fn{Rs} and Infix{"&&"} :: (Deref{bool}, Deref{bool}) -> bool;
 fn{Js} and "((a, b) => new alan_std.Bool(a.val && b.val))" <- RootBacking :: (bool, bool) -> bool;
@@ -583,17 +814,18 @@ fn{Rs} eq Infix{"=="} :: (bool, bool) -> bool;
 fn{Js} eq "((a, b) => new alan_std.Bool(a.val == b.val))" :: (bool, bool) -> bool;
 fn{Rs} neq Infix{"!="} :: (bool, bool) -> bool;
 fn{Js} neq "((a, b) => new alan_std.Bool(a.val != b.val))" :: (bool, bool) -> bool;
-fn if{T}(c: bool, t: T) = if(c, fn () = Maybe{T}(t), fn () = Maybe{T}());
-fn if{T}(c: bool, t: T, f: T) = if(c, fn () = t, fn () = f);
-fn if{T}(c: bool, t: () -> T) = if(c, fn () = Maybe{T}(t()), fn () = Maybe{T}());
+fn if{T}(c: bool, t: T) = if(c, fn() = Maybe{T}(t), fn() = Maybe{T}());
+fn if{T}(c: bool, t: T, f: T) = if(c, fn() = t, fn() = f);
+fn if{T}(c: bool, t: () -> T) = if(c, fn() = Maybe{T}(t()), fn() = Maybe{T}());
 fn{Rs} if{T} "alan_std::ifbool" <- RootBacking :: (bool, () -> T, () -> T) -> T;
 fn{Js} if{T} "alan_std.ifbool" <- RootBacking :: (bool, () -> T, () -> T) -> T;
 fn{Js} if(c: bool, t: () -> ()) {
-  if(c, t, fn { 0; });
+  if(c, t, fn {
+    0;
+  });
 }
 fn{Rs} if "ifstatementhack" :: (bool, () -> ()) -> ();
 fn{Rs} if "ifelsestatementhack" :: (bool, () -> (), () -> ()) -> ();
-
 /// Float-related functions
 fn{Rs} add Infix{"+"} :: (f32, f32) -> f32;
 fn{Js} add "((a, b) => new alan_std.F32(a.val + b.val))" <- RootBacking :: (f32, f32) -> f32;
@@ -644,7 +876,10 @@ fn{Js} atan "((a) => new alan_std.F32(Math.atan(a.val)))" <- RootBacking :: f32 
 fn{Rs} atanh Method{"atanh"} :: f32 -> f32;
 fn{Js} atanh "((a) => new alan_std.F32(Math.atanh(a.val)))" <- RootBacking :: f32 -> f32;
 fn{Rs} atan2 Method{"atan2"} :: (f32, Deref{f32}) -> f32;
-fn{Js} atan2 "((a, b) => new alan_std.F32(Math.atan2(a.val, b.val)))" <- RootBacking :: (f32, f32) -> f32;
+fn{Js} atan2
+  "((a, b) => new alan_std.F32(Math.atan2(a.val, b.val)))"
+  <- RootBacking
+  :: (f32, f32) -> f32;
 fn{Rs} cos Method{"cos"} :: f32 -> f32;
 fn{Js} cos "((a) => new alan_std.F32(Math.cos(a.val)))" <- RootBacking :: f32 -> f32;
 fn{Rs} cosh Method{"cosh"} :: f32 -> f32;
@@ -683,7 +918,10 @@ fn magnitude f32 = arg0.abs;
 fn{Rs} inverseSqrt (v: f32) = {Method{"recip"} :: f32 -> f32}(sqrt(v));
 fn{Js} inverseSqrt (v: f32) = 1.0.f32 / sqrt(v);
 fn{Rs} fma Method{"mul_add"} :: (f32, Deref{f32}, Deref{f32}) -> f32;
-fn{Js} fma "((a, b, c) => new alan_std.F32(a.val * b.val + c.val))" <- RootBacking :: (f32, f32, f32) -> f32;
+fn{Js} fma
+  "((a, b, c) => new alan_std.F32(a.val * b.val + c.val))"
+  <- RootBacking
+  :: (f32, f32, f32) -> f32;
 fn{Rs} fract Method{"fract"} :: f32 -> f32;
 fn{Js} fract "((a) => new alan_std.F32(a.val % 1))" <- RootBacking :: f32 -> f32;
 
@@ -736,7 +974,10 @@ fn{Js} atan "((a) => new alan_std.F64(Math.atan(a.val)))" <- RootBacking :: f64 
 fn{Rs} atanh Method{"atanh"} :: f64 -> f64;
 fn{Js} atanh "((a) => new alan_std.F64(Math.atanh(a.val)))" <- RootBacking :: f64 -> f64;
 fn{Rs} atan2 Method{"atan2"} :: (f64, Deref{f64}) -> f64;
-fn{Js} atan2 "((a, b) => new alan_std.F64(Math.atan2(a.val, b.val)))" <- RootBacking :: (f64, f64) -> f64;
+fn{Js} atan2
+  "((a, b) => new alan_std.F64(Math.atan2(a.val, b.val)))"
+  <- RootBacking
+  :: (f64, f64) -> f64;
 fn{Rs} cos Method{"cos"} :: f64 -> f64;
 fn{Js} cos "((a) => new alan_std.F64(Math.cos(a.val)))" <- RootBacking :: f64 -> f64;
 fn{Rs} cosh Method{"cosh"} :: f64 -> f64;
@@ -775,10 +1016,12 @@ fn magnitude f64 = arg0.abs;
 fn{Rs} inverseSqrt (v: f64) = {Method{"recip"} :: f64 -> f64}(sqrt(v));
 fn{Js} inverseSqrt (v: f64) = 1.0 / sqrt(v);
 fn{Rs} fma Method{"mul_add"} :: (f64, Deref{f64}, Deref{f64}) -> f64;
-fn{Js} fma "((a, b, c) => new alan_std.F32(a.val * b.val + c.val))" <- RootBacking :: (f64, f64, f64) -> f64;
+fn{Js} fma
+  "((a, b, c) => new alan_std.F32(a.val * b.val + c.val))"
+  <- RootBacking
+  :: (f64, f64, f64) -> f64;
 fn{Rs} fract Method{"fract"} :: f64 -> f64;
 fn{Js} fract "((a) => new alan_std.F64(a.val % 1))" <- RootBacking :: f64 -> f64;
-
 /// Unsigned Integer-related functions
 fn{Rs} add Method{"wrapping_add"} :: (u8, Deref{u8}) -> u8;
 fn{Js} add Method{"wrappingAdd"} :: (u8, u8) -> u8;
@@ -835,8 +1078,9 @@ fn{Js} ctz Method{"ctz"} :: u8 -> u8;
 fn{Rs} reverseBits Method{"reverse_bits"} :: Deref{u8} -> u8;
 fn{Js} reverseBits Method{"reverseBits"} :: u8 -> u8;
 fn extractBits(v: u8, offset: u8, count: u8) = (v >> offset) & (2.u8 ** count - 1.u8);
-fn insertBits(v: u8, newbits: u8, offset: u8, count: u8) =
-  ((newbits & (2.u8 ** count - 1.u8)) << offset) + (v & !((2.u8 ** count - 1.u8) << offset));
+fn insertBits(v: u8, newbits: u8, offset: u8, count: u8) {
+  return ((newbits & (2.u8 ** count - 1.u8)) << offset) + (v & !((2.u8 ** count - 1.u8) << offset));
+}
 fn flb (a: u8) {
   let val = a.clz;
   return if(val == 8.u8, 128.u8, 7.u8 - val);
@@ -1043,7 +1287,6 @@ fn ftb (a: u64) {
   let val = a.ctz;
   return if(val == 64.u64, (-9_223_372_036_854_775_808).asU64, val);
 }
-
 /// Signed Integer-related functions
 fn{Rs} add Method{"wrapping_add"} :: (i8, Deref{i8}) -> i8;
 fn{Js} add Method{"wrappingAdd"} :: (i8, i8) -> i8;
@@ -1103,8 +1346,9 @@ fn{Rs} ctz (a: i8) = {Method{"trailing_zeros"} :: i8 -> u32}(a).i8;
 fn{Js} ctz Method{"ctz"} :: i8 -> i8;
 fn{Rs} reverseBits Method{"reverse_bits"} :: Deref{i8} -> i8;
 fn{Js} reverseBits Method{"reverseBits"} :: i8 -> i8;
-fn insertBits(v: i8, newbits: i8, offset: i8, count: i8) =
-  ((newbits & (2.i8 ** count - 1.i8)) << offset) + (v & !((2.i8 ** count - 1.i8) << offset));
+fn insertBits(v: i8, newbits: i8, offset: i8, count: i8) {
+  return ((newbits & (2.i8 ** count - 1.i8)) << offset) + (v & !((2.i8 ** count - 1.i8) << offset));
+}
 fn flb (a: i8) = 7.i8 - a.clz;
 fn ftb (a: i8) {
   let val = a.ctz;
@@ -1301,14 +1545,14 @@ fn{Rs} ctz (a: i64) = {Method{"trailing_zeros"} :: i64 -> u32}(a).i64;
 fn{Js} ctz Method{"ctz"} :: i64 -> i64;
 fn{Rs} reverseBits Method{"reverse_bits"} :: Deref{i64} -> i64;
 fn{Js} reverseBits Method{"reverseBits"} :: i64 -> i64;
-fn insertBits(v: i64, newbits: i64, offset: i64, count: i64) =
-  ((newbits & (2 ** count - 1)) << offset) + (v & !((2 ** count - 1) << offset));
+fn insertBits(v: i64, newbits: i64, offset: i64, count: i64) {
+  return ((newbits & (2 ** count - 1)) << offset) + (v & !((2 ** count - 1) << offset));
+}
 fn flb (a: i64) = 63.i64 - a.clz;
 fn ftb (a: i64) {
   let val = a.ctz;
   return if(val == 64.i64, (-1).i64, val);
 }
-
 /// String-related functions
 fn{Rs} string "format!" :: ("{}", f32) -> string;
 fn{Js} string "new alan_std.Str" <- RootBacking :: f32 -> string;
@@ -1331,134 +1575,254 @@ fn{Js} string "new alan_std.Str" <- RootBacking :: i32 -> string;
 fn{Rs} string "format!" :: ("{}", i64) -> string;
 fn{Js} string "new alan_std.Str" <- RootBacking :: i64 -> string;
 // TODO: Until better printing is ready? Or perhaps this is a better fit for Alan
-fn{Rs} string (f: f32, p: i64) = {"format!" :: ("{0:.1$}", f32, Deref{Binds{"usize"}}) -> string}(
-  f,
-  {Cast{"usize"} :: Deref{i64} -> Binds{"usize"}}(p));
-fn{Js} string "((v, p) => new alan_std.Str(v.valueOf().toFixed(Number(p))))" <- RootBacking :: (f32, i64) -> string;
-fn{Rs} string (f: f64, p: i64) = {"format!" :: ("{0:.1$}", f64, Deref{Binds{"usize"}}) -> string}(
-  f,
-  {Cast{"usize"} :: Deref{i64} -> Binds{"usize"}}(p));
-fn{Js} string "((v, p) => new alan_std.Str(v.valueOf().toFixed(Number(p))))" <- RootBacking :: (f64, i64) -> string;
+fn{Rs} string (f: f32, p: i64) =
+  {"format!" :: ("{0:.1$}", f32, Deref{Binds{"usize"}}) -> string}(f, {
+    Cast{"usize"}
+    :: Deref{i64} -> Binds{"usize"}
+  }(p));
+fn{Js} string
+  "((v, p) => new alan_std.Str(v.valueOf().toFixed(Number(p))))"
+  <- RootBacking
+  :: (f32, i64) -> string;
+fn{Rs} string (f: f64, p: i64) =
+  {"format!" :: ("{0:.1$}", f64, Deref{Binds{"usize"}}) -> string}(f, {
+    Cast{"usize"}
+    :: Deref{i64} -> Binds{"usize"}
+  }(p));
+fn{Js} string
+  "((v, p) => new alan_std.Str(v.valueOf().toFixed(Number(p))))"
+  <- RootBacking
+  :: (f64, i64) -> string;
 fn string(b: bool) = if(b, "true", "false");
 fn string(s: string) = s;
 fn{Rs} concat "format!" :: ("{}{}", string, string) -> string;
-fn{Js} concat "((a, b) => new alan_std.Str(a.val + b.val))" <- RootBacking :: (string, string) -> string;
-fn{Rs} repeat (a: string, n: i64) = {Method{"repeat"} :: (string, Deref{Binds{"usize"}}) -> string}(
-  a,
-  {Cast{"usize"} :: Deref{i64} -> Binds{"usize"}}(n));
-fn{Js} repeat "((s, n) => new alan_std.Str(s.val.repeat(Number(n.val))))" <- RootBacking :: (string, i64) -> string;
+fn{Js} concat
+  "((a, b) => new alan_std.Str(a.val + b.val))"
+  <- RootBacking
+  :: (string, string) -> string;
+fn{Rs} repeat (a: string, n: i64) =
+  {Method{"repeat"} :: (string, Deref{Binds{"usize"}}) -> string}(a, {
+    Cast{"usize"}
+    :: Deref{i64} -> Binds{"usize"}
+  }(n));
+fn{Js} repeat
+  "((s, n) => new alan_std.Str(s.val.repeat(Number(n.val))))"
+  <- RootBacking
+  :: (string, i64) -> string;
 fn{Rs} replace Method{"replace"} :: (string, string, string) -> string;
-fn{Js} replace "((s, o, n) => new alan_std.Str(s.valueOf().replaceAll(o.valueOf(), n.valueOf())))" :: (string, string, string) -> string;
+fn{Js} replace
+  "((s, o, n) => new alan_std.Str(s.valueOf().replaceAll(o.valueOf(), n.valueOf())))"
+  :: (string, string, string) -> string;
 fn{Rs} split "alan_std::splitstring" <- RootBacking :: (string, string) -> string[];
-fn{Js} split "((a, b) => a.val.split(b.val).map(v => new alan_std.Str(v)))" <- RootBacking :: (string, string) -> string[];
-fn{Rs} len (s: string) = {Cast{"i64"} :: Deref{Binds{"usize"}} -> i64}(
-  {Method{"len"} :: Array{Binds{"char"}} -> Binds{"usize"}}(
-    {Method{"collect::<Vec<char>>"} :: Own{Binds{"std::str::Chars"}} -> Array{Binds{"char"}}}(
-      {Method{"chars"} :: string -> Binds{"std::str::Chars"}}(s))));
+fn{Js} split
+  "((a, b) => a.val.split(b.val).map(v => new alan_std.Str(v)))"
+  <- RootBacking
+  :: (string, string) -> string[];
+fn{Rs} len (s: string) =
+  {Cast{"i64"} :: Deref{Binds{"usize"}} -> i64}({
+    Method{"len"}
+    :: Array{Binds{"char"}} -> Binds{"usize"}
+  }({Method{"collect::<Vec<char>>"} :: Own{Binds{"std::str::Chars"}} -> Array{Binds{"char"}}}({
+    Method{"chars"}
+    :: string -> Binds{"std::str::Chars"}
+  }(s))));
 fn{Js} len "((s) => new alan_std.I64(s.val.length))" :: string -> i64;
 fn{Rs} get "alan_std::getstring" <- RootBacking :: (string, i64) -> string!;
-fn{Js} get "((s, i) => { let idx = Number(i.val); if (idx >= 0 && idx < s.val.length) { return new alan_std.Str(s.val[idx]); } else { return new alan_std.AlanError(new alan_std.Str(`Index ${idx} is out-of-bounds for a string length of ${s.val.length}`)); } })" :: (string, i64) -> string!;
+fn{Js} get
+  "((s, i) => { let idx = Number(i.val); if (idx >= 0 && idx < s.val.length) { return new alan_std.Str(s.val[idx]); } else { return new alan_std.AlanError(new alan_std.Str(`Index ${idx} is out-of-bounds for a string length of ${s.val.length}`)); } })"
+  :: (string, i64) -> string!;
 fn{Rs} trim Method{"trim"} :: string -> string;
 fn{Js} trim "((s) => new alan_std.Str(s.val.trim()))" <- RootBacking :: string -> string;
 fn{Rs} index "alan_std::indexstring" <- RootBacking :: (string, string) -> i64!;
-fn{Js} index "((a, b) => { let idx = a.val.indexOf(b.val); if (idx < 0) { return new alan_std.AlanError(new alan_std.Str(`Could not find ${b.val} in ${a.val}`)); } else { return new alan_std.I64(idx); } })" <- RootBacking :: (string, string) -> i64!;
-fn{Rs} eq (a: string, b: string) = {Infix{"=="} :: (string, string) -> bool}({Method{"as_str"} :: string -> string}(a), {Method{"as_str"} :: string -> string}(b));
+fn{Js} index
+  "((a, b) => { let idx = a.val.indexOf(b.val); if (idx < 0) { return new alan_std.AlanError(new alan_std.Str(`Could not find ${b.val} in ${a.val}`)); } else { return new alan_std.I64(idx); } })"
+  <- RootBacking
+  :: (string, string) -> i64!;
+fn{Rs} eq (a: string, b: string) =
+  {Infix{"=="} :: (string, string) -> bool}({Method{"as_str"} :: string -> string}(a), {
+    Method{"as_str"}
+    :: string -> string
+  }(b));
 fn{Js} eq "((a, b) => new alan_std.Bool(a.val == b.val))" <- RootBacking :: (string, string) -> bool;
 fn{Rs} neq Infix{"!="} :: (Own{string}, Own{string}) -> bool;
-fn{Js} neq "((a, b) => new alan_std.Bool(a.val != b.val))" <- RootBacking :: (string, string) -> bool;
+fn{Js} neq
+  "((a, b) => new alan_std.Bool(a.val != b.val))"
+  <- RootBacking
+  :: (string, string) -> bool;
 fn{Rs} lt Infix{"<"} :: (Own{string}, Own{string}) -> bool;
 fn{Js} lt "((a, b) => new alan_std.Bool(a.val < b.val))" <- RootBacking :: (string, string) -> bool;
 fn{Rs} lte Infix{"<="} :: (Own{string}, Own{string}) -> bool;
-fn{Js} lte "((a, b) => new alan_std.Bool(a.val <= b.val))" <- RootBacking :: (string, string) -> bool;
+fn{Js} lte
+  "((a, b) => new alan_std.Bool(a.val <= b.val))"
+  <- RootBacking
+  :: (string, string) -> bool;
 fn{Rs} gt Infix{">"} :: (Own{string}, Own{string}) -> bool;
 fn{Js} gt "((a, b) => new alan_std.Bool(a.val > b.val))" <- RootBacking :: (string, string) -> bool;
 fn{Rs} gte Infix{">="} :: (Own{string}, Own{string}) -> bool;
-fn{Js} gte "((a, b) => new alan_std.Bool(a.val >= b.val))" <- RootBacking :: (string, string) -> bool;
-fn min (a: string, b: string) = if(a <= b, fn () = a.clone(), fn () = b.clone());
-fn max (a: string, b: string) = if(a >= b, fn () = a.clone(), fn () = b.clone());
+fn{Js} gte
+  "((a, b) => new alan_std.Bool(a.val >= b.val))"
+  <- RootBacking
+  :: (string, string) -> bool;
+fn min (a: string, b: string) = if(a <= b, fn() = a.clone(), fn() = b.clone());
+fn max (a: string, b: string) = if(a >= b, fn() = a.clone(), fn() = b.clone());
 fn{Rs} join Method{"join"} :: (string[], string) -> string;
-fn{Js} join "((a, b) => new alan_std.Str([...a.map(v => v.val)].join(b.val)))" <- RootBacking :: (string[], string) -> string;
+fn{Js} join
+  "((a, b) => new alan_std.Str([...a.map(v => v.val)].join(b.val)))"
+  <- RootBacking
+  :: (string[], string) -> string;
 fn{Rs} join{S}(a: string[S], s: string) = {Method{"join"} :: (string[S], string) -> string}(a, s);
-fn{Js} join{S}(a: string[S], s: string) = {"((a, s) => new alan_std.Str(a.map(v => v.val).join(s.val)))" <- RootBacking :: (string[S], string) -> string}(a, s);
-
+fn{Js} join{S}(a: string[S], s: string) =
+  {
+    "((a, s) => new alan_std.Str(a.map(v => v.val).join(s.val)))"
+    <- RootBacking
+    :: (string[S], string) -> string
+  }(a, s);
 /// Array-related functions
-fn{Rs} len{T} (a: T[]) = {Cast{"i64"} :: Deref{Binds{"usize"}} -> i64}(
-  {Method{"len"} :: T[] -> Binds{"usize"}}(a));
+fn{Rs} len{T} (a: T[]) {
+  return {Cast{"i64"} :: Deref{Binds{"usize"}} -> i64}({Method{"len"} :: T[] -> Binds{"usize"}}(a));
+}
 fn{Js} len{T} (a: T[]) = {Property{"length"} :: T[] -> i32}(a).i64;
 fn{Rs} get{T} "alan_std::getarray" <- RootBacking :: (T[], i64) -> T?;
-fn{Js} get{T} (a: T[], i: i64) = if((i >= 0) & (i < a.len),
-  fn = clone({Method{"at"} :: (T[], i32) -> T}(a, i.i32)));
+fn{Js} get{T} (a: T[], i: i64) {
+  return if((i >= 0) & (i < a.len), fn = clone({Method{"at"} :: (T[], i32) -> T}(a, i.i32)));
+}
 fn get{T} (a: Maybe{T[]}, i: i64) = if(a.exists, fn = (a!!).get(i), fn = {T?}());
 fn push{T} (a: Mut{T[]}, v: T) = {Method{"push"} :: (Mut{T[]}, Own{T})}(a, v);
 fn{Rs} pop{T} (a: Mut{T[]}) -> T? = {Method{"pop"} :: Mut{T[]} -> T?}(a);
-fn{Js} pop{T} (a: Mut{T[]}) -> T? = {"((a) => a || null)" :: T? -> T?}({Method{"pop"} :: Mut{T[]} -> T?}(a));
+fn{Js} pop{T} (a: Mut{T[]}) -> T? {
+  return {"((a) => a || null)" :: T? -> T?}({Method{"pop"} :: Mut{T[]} -> T?}(a));
+}
 fn{Rs} map{T, U} "alan_std::map_onearg" <- RootBacking :: (T[], T -> U) -> U[];
-fn{Js} map{T, U} "(async (a, f) => { let out = []; for (let v of a) { out.push(await f(v)); } return out; })" :: (T[], f: T -> U) -> U[];
+fn{Js} map{T, U}
+  "(async (a, f) => { let out = []; for (let v of a) { out.push(await f(v)); } return out; })"
+  :: (T[], f: T -> U) -> U[];
 fn{Rs} map{T, U} "alan_std::map_twoarg" <- RootBacking :: (T[], (T, i64) -> U) -> U[];
-fn{Js} map{T, U} "(async (a, f) => { let out = []; for (let i = 0; i < a.length; i++) { out.push(await f(a[i], new alan_std.I64(i))); } return out; })" <- RootBacking :: (T[], f: (T, i64) -> U) -> U[];
+fn{Js} map{T, U}
+  "(async (a, f) => { let out = []; for (let i = 0; i < a.length; i++) { out.push(await f(a[i], new alan_std.I64(i))); } return out; })"
+  <- RootBacking
+  :: (T[], f: (T, i64) -> U) -> U[];
 fn{Rs} parmap{T, U} "alan_std::parmap_onearg" <- RootBacking :: (T[], T -> U) -> U[];
 fn{Rs} filter{T} "alan_std::filter_onearg" <- RootBacking :: (T[], T -> bool) -> T[];
-fn{Js} filter{T} (a: T[], f: T -> bool) = {"(async (a, f) => { let out = []; for (let v of a) { if ((await f(v)).val) { out.push(v); } } return out; })" :: (T[], T -> bool) -> T[]}(a, f);
+fn{Js} filter{T} (a: T[], f: T -> bool) =
+  {
+    "(async (a, f) => { let out = []; for (let v of a) { if ((await f(v)).val) { out.push(v); } } return out; })"
+    :: (T[], T -> bool) -> T[]
+  }(a, f);
 fn{Rs} filter{T} "alan_std::filter_twoarg" <- RootBacking :: (T[], (T, i64) -> bool) -> T[];
-fn{Js} filter{T} (a: T[], f: (T, i64) -> bool) = {"(async (a, f) => { let out = []; for (let i = 0; i < a.length; i++) { if ((await f(a[i], new alan_std.I64(i))).val) { out.push(a[i]); } } return out; })" <- RootBacking :: (T[], (T, i64) -> bool) -> T[]}(a, f);
+fn{Js} filter{T} (a: T[], f: (T, i64) -> bool) =
+  {
+    "(async (a, f) => { let out = []; for (let i = 0; i < a.length; i++) { if ((await f(a[i], new alan_std.I64(i))).val) { out.push(a[i]); } } return out; })"
+    <- RootBacking
+    :: (T[], (T, i64) -> bool) -> T[]
+  }(a, f);
 fn{Rs} reduce{T} "alan_std::reduce_sametype" <- RootBacking :: (T[], (T, T) -> T) -> T?;
-fn{Js} reduce{T} "(async (a, f) => { if (a.length === 0) { return null; } let out = a[0]; for (let i = 1; i < a.length; i++) { out = await f(out, a[i]); } return out; })" :: (T[], (T, T) -> T) -> T?;
+fn{Js} reduce{T}
+  "(async (a, f) => { if (a.length === 0) { return null; } let out = a[0]; for (let i = 1; i < a.length; i++) { out = await f(out, a[i]); } return out; })"
+  :: (T[], (T, T) -> T) -> T?;
 fn{Rs} reduce{T} "alan_std::reduce_sametype_idx" <- RootBacking :: (T[], (T, T, i64) -> T) -> T?;
-fn{Js} reduce{T} "(async (a, f) => { if (a.length === 0) { return null; } let out = a[0]; for (let i = 1; i < a.length; i++) { out = await f(out, a[i], new alan_std.I64(i)); } return out; })" <- RootBacking :: (T[], (T, T, i64) -> T) -> T?;
+fn{Js} reduce{T}
+  "(async (a, f) => { if (a.length === 0) { return null; } let out = a[0]; for (let i = 1; i < a.length; i++) { out = await f(out, a[i], new alan_std.I64(i)); } return out; })"
+  <- RootBacking
+  :: (T[], (T, T, i64) -> T) -> T?;
 fn{Rs} reduce{T, U} "alan_std::reduce_difftype" <- RootBacking :: (T[], U, (U, T) -> U) -> U;
-fn{Js} reduce{T, U} "(async (a, i, f) => { let out = i; for (let i = 0; i < a.length; i++) { out = await f(out, a[i]); } return out; })" :: (T[], U, (U, T) -> U) -> U;
-fn{Rs} reduce{T, U} "alan_std::reduce_difftype_idx" <- RootBacking :: (T[], U, (U, T, i64) -> U) -> U;
-fn{Js} reduce{T, U} "(async (a, i, f) => { let out = i; for (let i = 0; i < a.length; i++) { out = await f(out, a[i], new alan_std.I64(i)); } return out; })" <- RootBacking :: (T[], U, (U, T, i64) -> U) -> U;
+fn{Js} reduce{T, U}
+  "(async (a, i, f) => { let out = i; for (let i = 0; i < a.length; i++) { out = await f(out, a[i]); } return out; })"
+  :: (T[], U, (U, T) -> U) -> U;
+fn{Rs} reduce{T, U}
+  "alan_std::reduce_difftype_idx"
+  <- RootBacking
+  :: (T[], U, (U, T, i64) -> U) -> U;
+fn{Js} reduce{T, U}
+  "(async (a, i, f) => { let out = i; for (let i = 0; i < a.length; i++) { out = await f(out, a[i], new alan_std.I64(i)); } return out; })"
+  <- RootBacking
+  :: (T[], U, (U, T, i64) -> U) -> U;
 fn{Rs} concat{T} "alan_std::concat" <- RootBacking :: (T[], T[]) -> T[];
 fn{Js} concat{T} (a: T[], b: T[]) -> T[] = {Method{"concat"} :: (T[], T[]) -> T[]}(a, b);
 fn{Rs} append{T} "alan_std::append" <- RootBacking :: (Mut{T[]}, T[]);
 fn{Js} append{T} "((a, b) => { for (let v of b) { a.push(v); } })" :: (Mut{T[]}, T[]);
 fn{Rs} filled{T} "alan_std::filled" <- RootBacking :: (T, i64) -> T[];
-fn{Js} filled{T} "((v, c) => { let out = []; for (let i = 0n; i < c; i++) { out.push(v); } return out; })" :: (T, i64) -> T[];
+fn{Js} filled{T}
+  "((v, c) => { let out = []; for (let i = 0n; i < c; i++) { out.push(v); } return out; })"
+  :: (T, i64) -> T[];
 fn{Rs} has{T} (a: T[], v: T) = {Method{"contains"} :: (T[], T) -> bool}(a, v);
-fn{Js} has{T} (a: T[], v: T) = a.reduce(false, fn (out: bool, t: T) = if(out, true, t == v));
+fn{Js} has{T} (a: T[], v: T) = a.reduce(false, fn(out: bool, t: T) = if(out, true, t == v));
 fn{Rs} has{T} "alan_std::hasfnarray" <- RootBacking :: (T[], T -> bool) -> bool;
-fn{Js} has{T} (a: T[], f: T -> bool) = {"(async (a, f) => { for (let v of a) { if ((await f(v)).val) { return new alan_std.Bool(true); } } return new alan_std.Bool(false); })" <- RootBacking :: (T[], T -> bool) -> bool}(a, f);
+fn{Js} has{T} (a: T[], f: T -> bool) =
+  {
+    "(async (a, f) => { for (let v of a) { if ((await f(v)).val) { return new alan_std.Bool(true); } } return new alan_std.Bool(false); })"
+    <- RootBacking
+    :: (T[], T -> bool) -> bool
+  }(a, f);
 fn{Rs} find{T} "alan_std::findarray" <- RootBacking :: (T[], T -> bool) -> T?;
-fn{Js} find{T} (a: T[], f: T -> bool) -> T? = {"(async (a, f) => { for (let v of a) { if ((await f(v)).val) { return v; } } return null; })" :: (T[], T -> bool) -> T?}(a, f);
+fn{Js} find{T} (a: T[], f: T -> bool) -> T? =
+  {
+    "(async (a, f) => { for (let v of a) { if ((await f(v)).val) { return v; } } return null; })"
+    :: (T[], T -> bool) -> T?
+  }(a, f);
 // TODO: The `if` syntactic sugar will make these `if` calls much nicer
-fn index{T}(a: Array{T}, v: T) = a.reduce(
-  Maybe{i64}(),
-  fn (out: Maybe{i64}, val: T, idx: i64) = if(out.exists, out, if(val == v, Maybe(idx), out)));
-fn index{T}(a: Array{T}, f: T -> bool) = a.reduce(
-  Maybe{i64}(),
-  fn (out: Maybe{i64}, val: T, idx: i64) = if(out.exists, out, if(f(val), idx)));
-fn index{T}(a: Array{T}, f: (T, i64) -> bool) = a.reduce(
-  Maybe{i64}(),
-  fn (out: Maybe{i64}, val: T, idx: i64) = if(out.exists, out, if(f(val, idx), idx)));
+fn index{T}(a: Array{T}, v: T) =
+  a.reduce(Maybe{i64}(), fn(out: Maybe{i64}, val: T, idx: i64) {
+    return if(out.exists, out, if(val == v, Maybe(idx), out));
+  });
+fn index{T}(a: Array{T}, f: T -> bool) =
+  a.reduce(Maybe{i64}(), fn(out: Maybe{i64}, val: T, idx: i64) {
+    return if(out.exists, out, if(f(val), idx));
+  });
+fn index{T}(a: Array{T}, f: (T, i64) -> bool) =
+  a.reduce(Maybe{i64}(), fn(out: Maybe{i64}, val: T, idx: i64) {
+    return if(out.exists, out, if(f(val, idx), idx));
+  });
 fn{Rs} every{T} "alan_std::everyarray" <- RootBacking :: (T[], T -> bool) -> bool;
-fn{Js} every{T} (a: T[], f: T -> bool) = {"(async (a, f) => { for (let v of a) { if (!(await f(v)).val) { return new alan_std.Bool(false); } } return new alan_std.Bool(true); })" <- RootBacking :: (T[], T -> bool) -> bool}(a, f);
+fn{Js} every{T} (a: T[], f: T -> bool) =
+  {
+    "(async (a, f) => { for (let v of a) { if (!(await f(v)).val) { return new alan_std.Bool(false); } } return new alan_std.Bool(true); })"
+    <- RootBacking
+    :: (T[], T -> bool) -> bool
+  }(a, f);
 fn{Rs} some{T} "alan_std::somearray" <- RootBacking :: (T[], T -> bool) -> bool;
-fn{Js} some{T} (a: T[], f: T -> bool) = {"(async (a, f) => { for (let v of a) { if ((await f(v)).val) { return new alan_std.Bool(true); } } return new alan_std.Bool(false); })" <- RootBacking :: (T[], T -> bool) -> bool}(a, f);
+fn{Js} some{T} (a: T[], f: T -> bool) =
+  {
+    "(async (a, f) => { for (let v of a) { if ((await f(v)).val) { return new alan_std.Bool(true); } } return new alan_std.Bool(false); })"
+    <- RootBacking
+    :: (T[], T -> bool) -> bool
+  }(a, f);
 fn{Rs} repeat{T} "alan_std::repeatarray" <- RootBacking :: (T[], i64) -> T[];
-fn{Js} repeat{T} (a: T[], c: i64) = {"((a, c) => { let out = []; for (let i = 0n; i < c; i++) { out.push(...a); } return out; })" :: (T[], i64) -> T[]}(a, c);
+fn{Js} repeat{T} (a: T[], c: i64) =
+  {
+    "((a, c) => { let out = []; for (let i = 0n; i < c; i++) { out.push(...a); } return out; })"
+    :: (T[], i64) -> T[]
+  }(a, c);
 fn{Rs} store{T} "alan_std::storearray" <- RootBacking :: (Mut{T[]}, i64, T) -> void!;
-fn{Js} store{T} (a: T[], i: i64, v: T) = {"((a, i, v) => { let idx = Number(i); if (idx < 0 || idx > a.length) { return new alan_std.AlanError(new alan_std.Str(`Provided array index ${i.toString()} is greater than the length of the array`)); } else if (idx < a.length) { a.splice(idx, 0, v); } else { a.push(v); } })" :: (T[], i64, T) -> void!}(a, i, v);
+fn{Js} store{T} (a: T[], i: i64, v: T) =
+  {
+    "((a, i, v) => { let idx = Number(i); if (idx < 0 || idx > a.length) { return new alan_std.AlanError(new alan_std.Str(`Provided array index ${i.toString()} is greater than the length of the array`)); } else if (idx < a.length) { a.splice(idx, 0, v); } else { a.push(v); } })"
+    :: (T[], i64, T) -> void!
+  }(a, i, v);
 fn{Rs} delete{T} "alan_std::deletearray" <- RootBacking :: (Mut{T[]}, i64) -> T!;
-fn{Js} delete{T} (a: T[], i: i64) = {"((a, i) => { if (i < 0n || i >= BigInt(a.length)) { return new alan_std.AlanError(new alan_std.Str(`Provided array index ${i.toString()} is beyond the bounds of the array`)); } else { return a.splice(Number(i), 1)[0]; } })" :: (T[], i64) -> T!}(a, i);
+fn{Js} delete{T} (a: T[], i: i64) =
+  {
+    "((a, i) => { if (i < 0n || i >= BigInt(a.length)) { return new alan_std.AlanError(new alan_std.Str(`Provided array index ${i.toString()} is beyond the bounds of the array`)); } else { return a.splice(Number(i), 1)[0]; } })"
+    :: (T[], i64) -> T!
+  }(a, i);
 fn{Rs} last{T} (v: T[]) = {Method{"cloned"} :: T? -> T?}({Method{"last"} :: T[] -> T?}(v));
 fn{Js} last{T} (v: T[]) = {Method{"at"} :: (T[], -1) -> T?}(v);
 fn{Rs} swap{T} "alan_std::swaparray" <- RootBacking :: (Mut{T[]}, i64, i64) -> void!;
 fn{Js} swap{T} "alan_std.swap" <- RootBacking :: (T[], i64, i64) -> void!;
 fn{Rs} sort{T} "alan_std::sortarray" <- RootBacking :: (Mut{T[]}, (T, T) -> i8) -> void;
 fn{Js} sort{T} "alan_std.sort" <- RootBacking :: (Mut{T[]}, (T, T) -> i8) -> void;
-fn sort{T} (arr: Mut{T[]}) = sort(arr, fn (a: T, b: T) = if(a == b, 0.i8, if(a < b, -1.i8, 1.i8)));
-fn magnitude (arr: f32[]) = (arr.map(fn (v: f32) = v ** 2.0.f32).reduce(add) ?? 0.0.f32).sqrt;
-fn magnitude (arr: f64[]) = (arr.map(fn (v: f64) = v ** 2.0).reduce(add) ?? 0.0).sqrt;
+fn sort{T} (arr: Mut{T[]}) =
+  sort(arr, fn(a: T, b: T) = if(a == b, 0.i8, if(a < b, -1.i8, 1.i8)));
+fn magnitude (arr: f32[]) = (arr.map(fn(v: f32) = v ** 2.0.f32).reduce(add) ?? 0.0.f32).sqrt;
+fn magnitude (arr: f64[]) = (arr.map(fn(v: f64) = v ** 2.0).reduce(add) ?? 0.0).sqrt;
 fn normalize (arr: f32[]) {
   let mag = magnitude(arr);
   let arr1 = arr.clone; // TODO: Needed for Rust codegen, but should not
-  return if(mag == 0.0.f32, fn = arr1.clone, fn = arr.map(fn (v: f32) = v / mag));
+  return if(mag == 0.0.f32, fn = arr1.clone, fn = arr.map(fn(v: f32) = v / mag));
 }
 fn normalize (arr: f64[]) {
   let mag = magnitude(arr);
   let arr1 = arr.clone; // TODO: Needed for Rust codegen, but should not
-  return if(mag == 0.0, fn = arr1.clone, fn = arr.map(fn (v: f64) = v / mag));
+  return if(mag == 0.0, fn = arr1.clone, fn = arr.map(fn(v: f64) = v / mag));
 }
 fn inverseSqrt(arr: f32[]) = arr.map(inverseSqrt);
 fn inverseSqrt(arr: f64[]) = arr.map(inverseSqrt);
@@ -1466,43 +1830,82 @@ fn fma(a: f32[], b: f32[], c: f32[]) -> Fallible{f32[]} {
   return if(a.len == b.len && b.len == c.len, fn {
     // TODO: Figure out why I need to explicitly wrap this in `Fallible{f32[]}(...)` instead of just
     // using the `!` postfix operator
-    return Fallible{f32[]}(a.map(fn (v: f32, i: i64) = v.fma(b[i]!!, c[i]!!)));
+    return Fallible{f32[]}(a.map(fn(v: f32, i: i64) = v.fma(b[i]!!, c[i]!!)));
   }, fn {
     return Error{f32[]}("Fused multiply-add on arrays requires equal-length arrays");
   });
 }
 fn fma(a: f64[], b: f64[], c: f64[]) -> Fallible{f64[]} {
   return if(a.len == b.len && b.len == c.len, fn {
-    return Fallible{f64[]}(a.map(fn (v: f64, i: i64) = v.fma(b[i]!!, c[i]!!)));
+    return Fallible{f64[]}(a.map(fn(v: f64, i: i64) = v.fma(b[i]!!, c[i]!!)));
   }, fn {
     return Error{f64[]}("Fused multiply-add on arrays requires equal-length arrays");
   });
 }
 fn fract(a: f32[]) = a.map(fract);
 fn fract(a: f64[]) = a.map(fract);
-
 /// Buffer-related functions
 fn{Rs} get{T, S} "alan_std::getbuffer" <- RootBacking :: (T[S], i64) -> T?;
 fn len{T, S}(T[S]) = {S}();
-fn{Js} get{T, S} "((b, i) => { let idx = Number(i.val); if (idx >= 0 && idx < b.length) { return b[idx]; } else { return null; } })" :: (T[S], i64) -> T?;
+fn{Js} get{T, S}
+  "((b, i) => { let idx = Number(i.val); if (idx >= 0 && idx < b.length) { return b[idx]; } else { return null; } })"
+  :: (T[S], i64) -> T?;
 fn{Rs} map{T, S, U} "alan_std::mapbuffer_onearg" <- RootBacking :: (T[S], T -> U) -> (U[S]);
-fn{Js} map{T, S, U} (a: T[S], f: T -> U) = {"Promise.all" :: Buffer{U, S} -> Buffer{U, S}}({Method{"map"} :: (Buffer{T, S}, T -> U) -> Buffer{U, S}}(a, f));
-fn{Rs} map{T, S, U} "alan_std::mapbuffer_twoarg" <- RootBacking :: (Buffer{T, S}, (T, i64) -> U) -> Buffer{U, S};
-fn{Js} map{T, S, U} (a: T[S], f: (T, i64) -> U) = {"Promise.all" :: Buffer{U, S} -> Buffer{U, S}}({Method{"map"} :: (Buffer{T, S}, (T, i32) -> U) -> Buffer{U, S}}(a, fn (v: T, i: i32) = f(v, i.i64)));
+fn{Js} map{T, S, U} (a: T[S], f: T -> U) =
+  {"Promise.all" :: Buffer{U, S} -> Buffer{U, S}}({
+    Method{"map"}
+    :: (Buffer{T, S}, T -> U) -> Buffer{U, S}
+  }(a, f));
+fn{Rs} map{T, S, U}
+  "alan_std::mapbuffer_twoarg"
+  <- RootBacking
+  :: (Buffer{T, S}, (T, i64) -> U) -> Buffer{U, S};
+fn{Js} map{T, S, U} (a: T[S], f: (T, i64) -> U) =
+  {"Promise.all" :: Buffer{U, S} -> Buffer{U, S}}({
+    Method{"map"}
+    :: (Buffer{T, S}, (T, i32) -> U) -> Buffer{U, S}
+  }(a, fn(v: T, i: i32) = f(v, i.i64)));
 fn{Rs} reduce{T, S} "alan_std::reducebuffer_sametype" <- RootBacking :: (T[S], (T, T) -> T) -> T?;
-fn{Js} reduce{T, S} (a: T[S], f: (T, T) -> T) = {"(async (a, f) => { if (a.length === 0) { return null; } let out = a[0]; for (let i = 1; i < a.length; i++) { out = await f(out, a[i]); } return out; })" :: (T[S], (T, T) -> T) -> T?}(a, f);
-fn{Rs} reduce{T, S, U} "alan_std::reducebuffer_difftype" <- RootBacking :: (T[S], U, (U, T) -> U) -> U;
-fn{Js} reduce{T, S, U} (a: T[S], i: U, f: (U, T) -> U) = {"(async (a, i, f) => { let out = i; for (let i = 0; i < a.length; i++) { out = await f(out, a[i]); } return out; })" :: (T[S], U, (U, T) -> U) -> U}(a, i, f);
+fn{Js} reduce{T, S} (a: T[S], f: (T, T) -> T) =
+  {
+    "(async (a, f) => { if (a.length === 0) { return null; } let out = a[0]; for (let i = 1; i < a.length; i++) { out = await f(out, a[i]); } return out; })"
+    :: (T[S], (T, T) -> T) -> T?
+  }(a, f);
+fn{Rs} reduce{T, S, U}
+  "alan_std::reducebuffer_difftype"
+  <- RootBacking
+  :: (T[S], U, (U, T) -> U) -> U;
+fn{Js} reduce{T, S, U} (a: T[S], i: U, f: (U, T) -> U) =
+  {
+    "(async (a, i, f) => { let out = i; for (let i = 0; i < a.length; i++) { out = await f(out, a[i]); } return out; })"
+    :: (T[S], U, (U, T) -> U) -> U
+  }(a, i, f);
 fn{Rs} has{T, S} "alan_std::hasbuffer" <- RootBacking :: (T[S], T) -> bool;
-fn{Js} has{T, S} (a: T[S], v: T) = a.reduce(false, fn (out: bool, t: T) = if(out, true, t == v));
+fn{Js} has{T, S} (a: T[S], v: T) = a.reduce(false, fn(out: bool, t: T) = if(out, true, t == v));
 fn{Rs} has{T, S} "alan_std::hasfnbuffer" <- RootBacking :: (T[S], T -> bool) -> bool;
-fn{Js} has{T, S} (a: T[S], f: T -> bool) = {"(async (a, f) => { for (let v of a) { if ((await f(v)).val) { return new alan_std.Bool(true); } } return new alan_std.Bool(false); })" <- RootBacking :: (T[S], T -> bool) -> bool}(a, f);
+fn{Js} has{T, S} (a: T[S], f: T -> bool) =
+  {
+    "(async (a, f) => { for (let v of a) { if ((await f(v)).val) { return new alan_std.Bool(true); } } return new alan_std.Bool(false); })"
+    <- RootBacking
+    :: (T[S], T -> bool) -> bool
+  }(a, f);
 fn{Rs} find{T, S} "alan_std::findbuffer" <- RootBacking :: (T[S], T -> bool) -> T?;
-fn{Js} find{T, S} (a: T[S], f: T -> bool) -> T? = {"(async (a, f) => { for (let v of a) { if ((await f(v)).val) { return v; } } return null; })" :: (T[S], T -> bool) -> T?}(a, f);
+fn{Js} find{T, S} (a: T[S], f: T -> bool) -> T? =
+  {
+    "(async (a, f) => { for (let v of a) { if ((await f(v)).val) { return v; } } return null; })"
+    :: (T[S], T -> bool) -> T?
+  }(a, f);
 fn{Rs} every{T, S} "alan_std::everybuffer" <- RootBacking :: (T[S], T -> bool) -> bool;
-fn{Js} every{T, S} (a: T[S], f: T -> bool) = {"(async (a, f) => { for (let v of a) { if (!(await f(v)).val) { return new alan_std.Bool(false); } } return new alan_std.Bool(true); })" <- RootBacking :: (T[S], T -> bool) -> bool}(a, f);
+fn{Js} every{T, S} (a: T[S], f: T -> bool) =
+  {
+    "(async (a, f) => { for (let v of a) { if (!(await f(v)).val) { return new alan_std.Bool(false); } } return new alan_std.Bool(true); })"
+    <- RootBacking
+    :: (T[S], T -> bool) -> bool
+  }(a, f);
 fn{Rs} concatInner{T, S, N} "alan_std::concatbuffer" <- RootBacking :: (Mut{T[S + N]}, T[S], T[N]);
-fn{Js} concatInner{T, S, N} "((o, a, b) => { for (let i = 0; i < a.length; i++) { o[i] = a[i]; } for (let i = 0; i < b.length; i++) { o[i+a.length] = b[i]; } })" :: (Mut{T[S + N]}, T[S], T[N]);
+fn{Js} concatInner{T, S, N}
+  "((o, a, b) => { for (let i = 0; i < a.length; i++) { o[i] = a[i]; } for (let i = 0; i < b.length; i++) { o[i+a.length] = b[i]; } })"
+  :: (Mut{T[S + N]}, T[S], T[N]);
 fn concat{T, S, N}(a: T[S], b: T[N]) {
   // I can't bind directly into Rust because Rust can't add const integer type parameters together.
   // It's *theoretically* possible to generate a new Rust function in each case with the required
@@ -1513,11 +1916,25 @@ fn concat{T, S, N}(a: T[S], b: T[N]) {
   return o;
 }
 fn{Rs} repeat{T, S} "alan_std::repeatbuffertoarray" <- RootBacking :: (T[S], i64) -> T[];
-fn{Js} repeat{T, S} (a: T[S], c: i64) = {"((a, c) => { let out = []; for (let i = 0n; i < c; i++) { out.push(...a); } return out; })" :: (T[S], i64) -> T[]}(a, c);
+fn{Js} repeat{T, S} (a: T[S], c: i64) =
+  {
+    "((a, c) => { let out = []; for (let i = 0n; i < c; i++) { out.push(...a); } return out; })"
+    :: (T[S], i64) -> T[]
+  }(a, c);
 fn{Rs} store{T, S} "alan_std::storebuffer" <- RootBacking :: (Mut{T[S]}, i64, T) -> T!;
-fn{Js} store{T, S} (a: T[S], i: i64, v: T) = {"((a, i, v) => { if (i < 0n || i > BigInt(a.length)) { return new alan_std.AlanError(new alan_std.Str(`Provided array index ${i.toString()} is greater than the length of the array`)); } else { let out = a[Number(i)]; a[Number(i)] = v; return out; } })" :: (T[S], i64, T) -> T!}(a, i, v);
-fn{Rs} cross "alan_std::cross_f32" <- RootBacking :: (Buffer{f32, 3}, Buffer{f32, 3}) -> Buffer{f32, 3};
-fn{Rs} cross "alan_std::cross_f64" <- RootBacking :: (Buffer{f64, 3}, Buffer{f64, 3}) -> Buffer{f64, 3};
+fn{Js} store{T, S} (a: T[S], i: i64, v: T) =
+  {
+    "((a, i, v) => { if (i < 0n || i > BigInt(a.length)) { return new alan_std.AlanError(new alan_std.Str(`Provided array index ${i.toString()} is greater than the length of the array`)); } else { let out = a[Number(i)]; a[Number(i)] = v; return out; } })"
+    :: (T[S], i64, T) -> T!
+  }(a, i, v);
+fn{Rs} cross
+  "alan_std::cross_f32"
+  <- RootBacking
+  :: (Buffer{f32, 3}, Buffer{f32, 3}) -> Buffer{f32, 3};
+fn{Rs} cross
+  "alan_std::cross_f64"
+  <- RootBacking
+  :: (Buffer{f64, 3}, Buffer{f64, 3}) -> Buffer{f64, 3};
 fn{Js} cross{T} "alan_std.cross" <- RootBacking :: (Buffer{T, 3}, Buffer{T, 3}) -> Buffer{T, 3};
 fn{Js} cross(a: Buffer{f32, 3}, b: Buffer{f32, 3}) = cross{f32}(a, b);
 fn{Js} cross(a: Buffer{f64, 3}, b: Buffer{f64, 3}) = cross{f64}(a, b);
@@ -1528,23 +1945,28 @@ fn{Rs} swap{T, S} "alan_std::swapbuffer" <- RootBacking :: (Mut{Buffer{T, S}}, i
 fn{Js} swap{T, S} "alan_std.swap" <- RootBacking :: (Buffer{T, S}, i64, i64) -> void!;
 fn{Rs} sort{T, S} "alan_std::sortbuffer" <- RootBacking :: (Mut{Buffer{T, S}}, (T, T) -> i8) -> void;
 fn{Js} sort{T, S} "alan_std.sort" <- RootBacking :: (Mut{Buffer{T, S}}, (T, T) -> i8) -> void;
-fn sort{T, S} (arr: Mut{Buffer{T, S}}) = sort(arr, fn (a: T, b: T) = if(a == b, 0.i8, if(a < b, -1.i8, 1.i8)));
-fn magnitude{S} (buf: f32[S]) = (buf.map(fn (v: f32) = v ** 2.0.f32).reduce(add) ?? 0.0.f32).sqrt;
-fn magnitude{S} (buf: f64[S]) = (buf.map(fn (v: f64) = v ** 2.0).reduce(add) ?? 0.0).sqrt;
+fn sort{T, S} (arr: Mut{Buffer{T, S}}) =
+  sort(arr, fn(a: T, b: T) = if(a == b, 0.i8, if(a < b, -1.i8, 1.i8)));
+fn magnitude{S} (buf: f32[S]) = (buf.map(fn(v: f32) = v ** 2.0.f32).reduce(add) ?? 0.0.f32).sqrt;
+fn magnitude{S} (buf: f64[S]) = (buf.map(fn(v: f64) = v ** 2.0).reduce(add) ?? 0.0).sqrt;
 fn normalize{S} (arr: f32[S]) {
   let mag = magnitude(arr);
   let arr1 = arr.clone; // TODO: Needed for Rust codegen, but should not
-  return if(mag == 0.0.f32, fn = arr1.clone, fn = arr.map(fn (v: f32) = v / mag));
+  return if(mag == 0.0.f32, fn = arr1.clone, fn = arr.map(fn(v: f32) = v / mag));
 }
 fn normalize{S} (arr: f64[S]) {
   let mag = magnitude(arr);
   let arr1 = arr.clone; // TODO: Needed for Rust codegen, but should not
-  return if(mag == 0.0, fn = arr1.clone, fn = arr.map(fn (v: f64) = v / mag));
+  return if(mag == 0.0, fn = arr1.clone, fn = arr.map(fn(v: f64) = v / mag));
 }
 fn inverseSqrt{S}(buf: f32[S]) = buf.map(inverseSqrt);
 fn inverseSqrt{S}(buf: f64[S]) = buf.map(inverseSqrt);
-fn fma{S}(a: Buffer{f32, S}, b: Buffer{f32, S}, c: Buffer{f32, S}) = a.map(fn (v: f32, i: i64) = v.fma(b[i]!!, c[i]!!));
-fn fma{S}(a: Buffer{f64, S}, b: Buffer{f64, S}, c: Buffer{f64, S}) = a.map(fn (v: f64, i: i64) = v.fma(b[i]!!, c[i]!!));
+fn fma{S}(a: Buffer{f32, S}, b: Buffer{f32, S}, c: Buffer{f32, S}) {
+  return a.map(fn(v: f32, i: i64) = v.fma(b[i]!!, c[i]!!));
+}
+fn fma{S}(a: Buffer{f64, S}, b: Buffer{f64, S}, c: Buffer{f64, S}) {
+  return a.map(fn(v: f64, i: i64) = v.fma(b[i]!!, c[i]!!));
+}
 fn fract{S}(a: Buffer{f32, S}) = a.map(fract);
 fn fract{S}(a: Buffer{f64, S}) = a.map(fract);
 fn determinant{T}(m: Buffer{T, 4}) = m.0 * m.3 - m.2 * m.1;
@@ -1564,7 +1986,6 @@ fn determinant{T}(m: Buffer{T, 16}) =
   m.8 * m.5 * m.2 * m.15 -
   m.4 * m.1 * m.14 * m.11 -
   m.0 * m.13 * m.10 * m.7;
-
 /// Dictionary-related functions
 fn{Rs} Dict{K, V} "alan_std::OrderedHashMap::new" <- RootBacking :: () -> Dict{K, V};
 fn{Js} Dict{K, V} "new Map" :: () -> Dict{K, V};
@@ -1573,14 +1994,21 @@ fn Dict{K, V}(k: K, v: V) {
   out.store(k, v);
   return out;
 }
-fn Dict{K, V}(a: Array{(K, V)}) = a.reduce(Dict{K, V}(), fn (d: Dict{K, V}, v: (K, V)) {
-  d.store(v.0, v.1);
-  return d;
-});
+fn Dict{K, V}(a: Array{(K, V)}) =
+  a.reduce(Dict{K, V}(), fn(d: Dict{K, V}, v: (K, V)) {
+    d.store(v.0, v.1);
+    return d;
+  });
 fn{Rs} has{K, V} (d: Dict{K, V}, k: K) = {Method{"contains_key"} :: (Dict{K, V}, K) -> bool}(d, k);
-fn{Js} has{K, V} (d: Dict{K, V}, k: K) = {"((d, k) => new alan_std.Bool(d.has(k?.val ?? k)))" <- RootBacking :: (Dict{K, V}, K) -> bool}(d, k);
+fn{Js} has{K, V} (d: Dict{K, V}, k: K) =
+  {"((d, k) => new alan_std.Bool(d.has(k?.val ?? k)))" <- RootBacking :: (Dict{K, V}, K) -> bool}(
+    d,
+    k
+  );
 fn{Rs} get{K, V} "alan_std::getdict" <- RootBacking :: (Dict{K, V}, K) -> V?;
-fn{Js} get{K, V} (d: Dict{K, V}, k: K) = {"((d, k) => d.get(k?.val ?? k) || null)" :: (Dict{K, V}, K) -> V?}(d, k);
+fn{Js} get{K, V} (d: Dict{K, V}, k: K) {
+  return {"((d, k) => d.get(k?.val ?? k) || null)" :: (Dict{K, V}, K) -> V?}(d, k);
+}
 fn{Rs} store{K, V} (d: Mut{Dict{K, V}}, k: K, v: V) {
   {Method{"insert"} :: (Mut{Dict{K, V}}, Own{K}, Own{V}) -> V?}(d, k, v);
 }
@@ -1589,55 +2017,132 @@ fn{Js} store{K, V} (d: Mut{Dict{K, V}}, k: K, v: V) {
   {"((s, k, v) => s.set(k?.val ?? k, v))" :: (Dict{K, V}, K, V) -> void}(d, k, v);
   return out;
 }
-fn{Rs} len{K, V} (d: Dict{K, V}) = {Cast{"i64"} :: Deref{Binds{"usize"}} -> i64}(
-  {Method{"len"} :: Dict{K, V} -> Binds{"usize"}}(d));
+fn{Rs} len{K, V} (d: Dict{K, V}) =
+  {Cast{"i64"} :: Deref{Binds{"usize"}} -> i64}({Method{"len"} :: Dict{K, V} -> Binds{"usize"}}(d));
 fn{Js} len{K, V} (d: Dict{K, V}) = {Property{"size"} :: Dict{K, V} -> i32}(d).i64;
 fn{Rs} keys{K, V} "alan_std::keysdict" <- RootBacking :: Dict{K, V} -> K[];
-fn{Js} keys{K, V} (d: Dict{K, V}) = {"Array.from" :: K[] -> K[]}({Method{"keys"} :: Dict{K, V} -> K[]}(d));
+fn{Js} keys{K, V} (d: Dict{K, V}) {
+  return {"Array.from" :: K[] -> K[]}({Method{"keys"} :: Dict{K, V} -> K[]}(d));
+}
 // TODO: Figure out how to eliminate this weirdness
-fn{Js} keys{V} (d: Dict{i8, V}) = {"((d) => [...d.keys()].map((k) => new alan_std.I8(k)))" :: Dict{i8, V} -> i8[]}(d);
-fn{Js} keys{V} (d: Dict{i16, V}) = {"((d) => [...d.keys()].map((k) => new alan_std.I16(k)))" :: Dict{i16, V} -> i16[]}(d);
-fn{Js} keys{V} (d: Dict{i32, V}) = {"((d) => [...d.keys()].map((k) => new alan_std.I32(k)))" :: Dict{i32, V} -> i32[]}(d);
-fn{Js} keys{V} (d: Dict{i64, V}) = {"((d) => [...d.keys()].map((k) => new alan_std.I64(k)))" :: Dict{i64, V} -> i64[]}(d);
-fn{Js} keys{V} (d: Dict{u8, V}) = {"((d) => [...d.keys()].map((k) => new alan_std.U8(k)))" :: Dict{u8, V} -> u8[]}(d);
-fn{Js} keys{V} (d: Dict{u16, V}) = {"((d) => [...d.keys()].map((k) => new alan_std.U16(k)))" :: Dict{u16, V} -> u16[]}(d);
-fn{Js} keys{V} (d: Dict{u32, V}) = {"((d) => [...d.keys()].map((k) => new alan_std.U32(k)))" :: Dict{u32, V} -> u32[]}(d);
-fn{Js} keys{V} (d: Dict{u64, V}) = {"((d) => [...d.keys()].map((k) => new alan_std.U64(k)))" :: Dict{u64, V} -> u64[]}(d);
-fn{Js} keys{V} (d: Dict{f32, V}) = {"((d) => [...d.keys()].map((k) => new alan_std.F32(k)))" :: Dict{f32, V} -> f32[]}(d);
-fn{Js} keys{V} (d: Dict{f64, V}) = {"((d) => [...d.keys()].map((k) => new alan_std.F64(k)))" :: Dict{f64, V} -> f64[]}(d);
-fn{Js} keys{V} (d: Dict{bool, V}) = {"((d) => [...d.keys()].map((k) => new alan_std.Bool(k)))" :: Dict{bool, V} -> bool[]}(d);
-fn{Js} keys{V} (d: Dict{string, V}) = {"((d) => [...d.keys()].map((k) => new alan_std.Str(k)))" :: Dict{string, V} -> string[]}(d);
+fn{Js} keys{V} (d: Dict{i8, V}) {
+  return {"((d) => [...d.keys()].map((k) => new alan_std.I8(k)))" :: Dict{i8, V} -> i8[]}(d);
+}
+fn{Js} keys{V} (d: Dict{i16, V}) {
+  return {"((d) => [...d.keys()].map((k) => new alan_std.I16(k)))" :: Dict{i16, V} -> i16[]}(d);
+}
+fn{Js} keys{V} (d: Dict{i32, V}) {
+  return {"((d) => [...d.keys()].map((k) => new alan_std.I32(k)))" :: Dict{i32, V} -> i32[]}(d);
+}
+fn{Js} keys{V} (d: Dict{i64, V}) {
+  return {"((d) => [...d.keys()].map((k) => new alan_std.I64(k)))" :: Dict{i64, V} -> i64[]}(d);
+}
+fn{Js} keys{V} (d: Dict{u8, V}) {
+  return {"((d) => [...d.keys()].map((k) => new alan_std.U8(k)))" :: Dict{u8, V} -> u8[]}(d);
+}
+fn{Js} keys{V} (d: Dict{u16, V}) {
+  return {"((d) => [...d.keys()].map((k) => new alan_std.U16(k)))" :: Dict{u16, V} -> u16[]}(d);
+}
+fn{Js} keys{V} (d: Dict{u32, V}) {
+  return {"((d) => [...d.keys()].map((k) => new alan_std.U32(k)))" :: Dict{u32, V} -> u32[]}(d);
+}
+fn{Js} keys{V} (d: Dict{u64, V}) {
+  return {"((d) => [...d.keys()].map((k) => new alan_std.U64(k)))" :: Dict{u64, V} -> u64[]}(d);
+}
+fn{Js} keys{V} (d: Dict{f32, V}) {
+  return {"((d) => [...d.keys()].map((k) => new alan_std.F32(k)))" :: Dict{f32, V} -> f32[]}(d);
+}
+fn{Js} keys{V} (d: Dict{f64, V}) {
+  return {"((d) => [...d.keys()].map((k) => new alan_std.F64(k)))" :: Dict{f64, V} -> f64[]}(d);
+}
+fn{Js} keys{V} (d: Dict{bool, V}) {
+  return {"((d) => [...d.keys()].map((k) => new alan_std.Bool(k)))" :: Dict{bool, V} -> bool[]}(d);
+}
+fn{Js} keys{V} (d: Dict{string, V}) =
+  {"((d) => [...d.keys()].map((k) => new alan_std.Str(k)))" :: Dict{string, V} -> string[]}(d);
 fn{Rs} vals{K, V} "alan_std::valsdict" <- RootBacking :: Dict{K, V} -> V[];
-fn{Js} vals{K, V} (d: Dict{K, V}) = {"Array.from" :: V[] -> V[]}({Method{"values"} :: Dict{K, V} -> V[]}(d));
+fn{Js} vals{K, V} (d: Dict{K, V}) {
+  return {"Array.from" :: V[] -> V[]}({Method{"values"} :: Dict{K, V} -> V[]}(d));
+}
 fn{Rs} Array{K, V} "alan_std::arraydict" <- RootBacking :: Dict{K, V} -> (K, V)[];
 // export fn{Js} Array{K, V} "Array.from" :: Dict{K, V} -> (K, V)[];
 // TODO: Figure out how to avoid this map
-fn{Js} Array{K, V} "((d) => Array.from(d).map(kv => ({ arg0: kv[0], arg1: kv[1] })))" :: Dict{K, V} -> (K, V)[];
-fn{Js} Array{V} (d: Dict{i8, V}) = {"((d) => Array.from(d).map(kv => ({ arg0: new alan_std.I8(kv[0]), arg1: kv[1] })))" :: Dict{i8, V} -> (i8, V)[]}(d);
-fn{Js} Array{V} (d: Dict{i16, V}) = {"((d) => Array.from(d).map(kv => ({ arg0: new alan_std.I16(kv[0]), arg1: kv[1] })))" :: Dict{i16, V} -> (i16, V)[]}(d);
-fn{Js} Array{V} (d: Dict{i32, V}) = {"((d) => Array.from(d).map(kv => ({ arg0: new alan_std.I32(kv[0]), arg1: kv[1] })))" :: Dict{i32, V} -> (i32, V)[]}(d);
-fn{Js} Array{V} (d: Dict{i64, V}) = {"((d) => Array.from(d).map(kv => ({ arg0: new alan_std.I64(kv[0]), arg1: kv[1] })))" :: Dict{i64, V} -> (i64, V)[]}(d);
-fn{Js} Array{V} (d: Dict{u8, V}) = {"((d) => Array.from(d).map(kv => ({ arg0: new alan_std.U8(kv[0]), arg1: kv[1] })))" :: Dict{u8, V} -> (u8, V)[]}(d);
-fn{Js} Array{V} (d: Dict{u16, V}) = {"((d) => Array.from(d).map(kv => ({ arg0: new alan_std.U16(kv[0]), arg1: kv[1] })))" :: Dict{u16, V} -> (u16, V)[]}(d);
-fn{Js} Array{V} (d: Dict{u32, V}) = {"((d) => Array.from(d).map(kv => ({ arg0: new alan_std.U32(kv[0]), arg1: kv[1] })))" :: Dict{u32, V} -> (u32, V)[]}(d);
-fn{Js} Array{V} (d: Dict{u64, V}) = {"((d) => Array.from(d).map(kv => ({ arg0: new alan_std.U64(kv[0]), arg1: kv[1] })))" :: Dict{u64, V} -> (u64, V)[]}(d);
-fn{Js} Array{V} (d: Dict{f32, V}) = {"((d) => Array.from(d).map(kv => ({ arg0: new alan_std.F32(kv[0]), arg1: kv[1] })))" :: Dict{f32, V} -> (f32, V)[]}(d);
-fn{Js} Array{V} (d: Dict{f64, V}) = {"((d) => Array.from(d).map(kv => ({ arg0: new alan_std.F64(kv[0]), arg1: kv[1] })))" :: Dict{f64, V} -> (f64, V)[]}(d);
-fn{Js} Array{V} (d: Dict{bool, V}) = {"((d) => Array.from(d).map(kv => ({ arg0: new alan_std.Bool(kv[0]), arg1: kv[1] })))" :: Dict{bool, V} -> (bool, V)[]}(d);
-fn{Js} Array{V} (d: Dict{string, V}) = {"((d) => Array.from(d).map(kv => ({ arg0: new alan_std.Str(kv[0]), arg1: kv[1] })))" :: Dict{string, V} -> (string, V)[]}(d);
+fn{Js} Array{K, V}
+  "((d) => Array.from(d).map(kv => ({ arg0: kv[0], arg1: kv[1] })))"
+  :: Dict{K, V} -> (K, V)[];
+fn{Js} Array{V} (d: Dict{i8, V}) =
+  {
+    "((d) => Array.from(d).map(kv => ({ arg0: new alan_std.I8(kv[0]), arg1: kv[1] })))"
+    :: Dict{i8, V} -> (i8, V)[]
+  }(d);
+fn{Js} Array{V} (d: Dict{i16, V}) =
+  {
+    "((d) => Array.from(d).map(kv => ({ arg0: new alan_std.I16(kv[0]), arg1: kv[1] })))"
+    :: Dict{i16, V} -> (i16, V)[]
+  }(d);
+fn{Js} Array{V} (d: Dict{i32, V}) =
+  {
+    "((d) => Array.from(d).map(kv => ({ arg0: new alan_std.I32(kv[0]), arg1: kv[1] })))"
+    :: Dict{i32, V} -> (i32, V)[]
+  }(d);
+fn{Js} Array{V} (d: Dict{i64, V}) =
+  {
+    "((d) => Array.from(d).map(kv => ({ arg0: new alan_std.I64(kv[0]), arg1: kv[1] })))"
+    :: Dict{i64, V} -> (i64, V)[]
+  }(d);
+fn{Js} Array{V} (d: Dict{u8, V}) =
+  {
+    "((d) => Array.from(d).map(kv => ({ arg0: new alan_std.U8(kv[0]), arg1: kv[1] })))"
+    :: Dict{u8, V} -> (u8, V)[]
+  }(d);
+fn{Js} Array{V} (d: Dict{u16, V}) =
+  {
+    "((d) => Array.from(d).map(kv => ({ arg0: new alan_std.U16(kv[0]), arg1: kv[1] })))"
+    :: Dict{u16, V} -> (u16, V)[]
+  }(d);
+fn{Js} Array{V} (d: Dict{u32, V}) =
+  {
+    "((d) => Array.from(d).map(kv => ({ arg0: new alan_std.U32(kv[0]), arg1: kv[1] })))"
+    :: Dict{u32, V} -> (u32, V)[]
+  }(d);
+fn{Js} Array{V} (d: Dict{u64, V}) =
+  {
+    "((d) => Array.from(d).map(kv => ({ arg0: new alan_std.U64(kv[0]), arg1: kv[1] })))"
+    :: Dict{u64, V} -> (u64, V)[]
+  }(d);
+fn{Js} Array{V} (d: Dict{f32, V}) =
+  {
+    "((d) => Array.from(d).map(kv => ({ arg0: new alan_std.F32(kv[0]), arg1: kv[1] })))"
+    :: Dict{f32, V} -> (f32, V)[]
+  }(d);
+fn{Js} Array{V} (d: Dict{f64, V}) =
+  {
+    "((d) => Array.from(d).map(kv => ({ arg0: new alan_std.F64(kv[0]), arg1: kv[1] })))"
+    :: Dict{f64, V} -> (f64, V)[]
+  }(d);
+fn{Js} Array{V} (d: Dict{bool, V}) =
+  {
+    "((d) => Array.from(d).map(kv => ({ arg0: new alan_std.Bool(kv[0]), arg1: kv[1] })))"
+    :: Dict{bool, V} -> (bool, V)[]
+  }(d);
+fn{Js} Array{V} (d: Dict{string, V}) =
+  {
+    "((d) => Array.from(d).map(kv => ({ arg0: new alan_std.Str(kv[0]), arg1: kv[1] })))"
+    :: Dict{string, V} -> (string, V)[]
+  }(d);
 fn{Rs} concat{K, V} "alan_std::concatdict" <- RootBacking :: (Dict{K, V}, Dict{K, V}) -> Dict{K, V};
 fn{Js} concat{K, V} "((a, b) => new Map([...a, ...b]))" :: (Dict{K, V}, Dict{K, V}) -> Dict{K, V};
-
 /// Set-related functions
 fn Set{V}(v: V) {
   let out = Set{V}();
   out.store(v);
   return out;
 }
-fn Set{V}(a: Array{V}) = a.reduce(Set{V}(), fn (s: Set{V}, v: V) {
-  s.store(v);
-  return s;
-});
+fn Set{V}(a: Array{V}) =
+  a.reduce(Set{V}(), fn(s: Set{V}, v: V) {
+    s.store(v);
+    return s;
+  });
 fn{Rs} Set{V} "std::collections::HashSet::new" :: () -> Set{V};
 fn{Js} Set{V} "new alan_std.FuzzySet" <- RootBacking :: () -> Set{V};
 fn{Rs} store{V} (s: Mut{Set{V}}, v: V) {
@@ -1648,8 +2153,8 @@ fn{Js} store{V} (s: Set{V}, v: V) {
 }
 fn{Rs} has{V} (s: Set{V}, v: V) = {Method{"contains"} :: (Set{V}, V) -> bool}(s, v);
 fn{Js} has{V} (s: Set{V}, v: V) = {Method{"has"} :: (Set{V}, V) -> bool}(s, v);
-fn{Rs} len{V} (s: Set{V}) = {Cast{"i64"} :: Deref{Binds{"usize"}} -> i64}(
-  {Method{"len"} :: Set{V} -> Binds{"usize"}}(s));
+fn{Rs} len{V} (s: Set{V}) =
+  {Cast{"i64"} :: Deref{Binds{"usize"}} -> i64}({Method{"len"} :: Set{V} -> Binds{"usize"}}(s));
 fn{Js} len{V} (s: Set{V}) = {Method{"len"} :: Set{V} -> i64}(s);
 fn{Rs} Array{V} "alan_std::arrayset" <- RootBacking :: Set{V} -> V[];
 fn{Js} Array{V} (s: Set{V}) = {Method{"array"} :: Set{V} -> V[]}(s)
@@ -1657,20 +2162,29 @@ fn{Rs} union{V} "alan_std::unionset" <- RootBacking :: (Set{V}, Set{V}) -> Set{V
 fn{Js} union{V} (a: Set{V}, b: Set{V}) = {Method{"union"} :: (Set{V}, Set{V}) -> Set{V}}(a, b);
 fn or{V}(a: Set{V}, b: Set{V}) = union(a, b);
 fn{Rs} intersect{V} "alan_std::intersectset" <- RootBacking :: (Set{V}, Set{V}) -> Set{V};
-fn{Js} intersect{V} (a: Set{V}, b: Set{V}) = {Method{"intersect"} :: (Set{V}, Set{V}) -> Set{V}}(a, b);
+fn{Js} intersect{V} (a: Set{V}, b: Set{V}) {
+  return {Method{"intersect"} :: (Set{V}, Set{V}) -> Set{V}}(a, b);
+}
 fn and{V}(a: Set{V}, b: Set{V}) = intersect(a, b);
 fn{Rs} difference{V} "alan_std::differenceset" <- RootBacking :: (Set{V}, Set{V}) -> Set{V};
-fn{Js} difference{V} (a: Set{V}, b: Set{V}) = {Method{"difference"} :: (Set{V}, Set{V}) -> Set{V}}(a, b);
+fn{Js} difference{V} (a: Set{V}, b: Set{V}) {
+  return {Method{"difference"} :: (Set{V}, Set{V}) -> Set{V}}(a, b);
+}
 fn div{V}(a: Set{V}, b: Set{V}) = difference(a, b);
-fn{Rs} symmetricDifference{V} "alan_std::symmetric_differenceset" <- RootBacking :: (Set{V}, Set{V}) -> Set{V};
-fn{Js} symmetricDifference{V} (a: Set{V}, b: Set{V}) = {Method{"symmetricDifference"} :: (Set{V}, Set{V}) -> Set{V}}(a, b);
+fn{Rs} symmetricDifference{V}
+  "alan_std::symmetric_differenceset"
+  <- RootBacking
+  :: (Set{V}, Set{V}) -> Set{V};
+fn{Js} symmetricDifference{V} (a: Set{V}, b: Set{V}) {
+  return {Method{"symmetricDifference"} :: (Set{V}, Set{V}) -> Set{V}}(a, b);
+}
 fn xor{V}(a: Set{V}, b: Set{V}) = symmetricDifference(a, b);
 fn{Rs} product{V} "alan_std::productset" <- RootBacking :: (Set{V}, Set{V}) -> Set{(V, V)};
-fn{Js} product{V} (a: Set{V}, b: Set{V}) = {Method{"product"} :: (Set{V}, Set{V}) -> Set{(V, V)}}(a, b);
+fn{Js} product{V} (a: Set{V}, b: Set{V}) {
+  return {Method{"product"} :: (Set{V}, Set{V}) -> Set{(V, V)}}(a, b);
+}
 fn mul{V}(a: Set{V}, b: Set{V}) = product(a, b);
-
 /// Tree implementation
-
 // The TreeInner type houses all of the values attached to a tree in an array and two secondary
 // arrays to hold the metadata on which value is the parent and which are children, if any. The
 // parent value `void` if it has no parent and a positive integer otherwise.
@@ -1680,7 +2194,6 @@ type TreeInner{T} =
   childrenIdxs: Array{Array{i64}};
 
 type Tree{T} = Shared{TreeInner{T}};
-
 // The Node type simply holds the index to look into the tree for a particular value-parent-children
 // triplet, where that index is reffered to as a node ID. This allows node-based code to be written
 // while not actually having a recursive data structure that a traditional Node type would defined.
@@ -1688,45 +2201,41 @@ type Node{T} =
   id: i64,
   tree: Tree{T};
 
-fn Tree{T}(rootVal: T) = {Shared{TreeInner{T}}}(TreeInner{T}(
-  Array{T}(rootVal),
-  Array{Maybe{i64}}(Maybe{i64}()),
-  Array{Array{i64}}(Array{i64}())));
+fn Tree{T}(rootVal: T) =
+  {Shared{TreeInner{T}}}(TreeInner{T}(
+    Array{T}(rootVal),
+    Array{Maybe{i64}}(Maybe{i64}()),
+    Array{Array{i64}}(Array{i64}())
+  ));
 fn Tree{T}(n: Node{T}) = n.tree;
-
 // TODO: This is a more correct solution, but any Tree constructed by us will always have the root
 // node be the first element of the array, so we're just doing that so we don't have a `Maybe` here
-/*export fn rootNode{T}(t: Tree{T}) -> Maybe{Node{T}} {
-  let rootIdx = t.parentIdxs.index(Maybe{i64}());
-  return if(
-    rootIdx.exists,
-    fn () -> Node{T} = Node{T}(rootIdx.getOrExit, t)
-  );
-}*/
+/*
+ * export fn rootNode{T}(t: Tree{T}) -> Maybe{Node{T}} { let rootIdx =
+ * t.parentIdxs.index(Maybe{i64}()); return if( rootIdx.exists, fn () -> Node{T} =
+ * Node{T}(rootIdx.getOrExit, t) ); }
+ */
 fn rootNode{T}(t: Tree{T}) = Node{T}(0, t);
 
 fn len{T}(t: Tree{T}) = t.vals.len;
 
-fn Node{T}(t: Tree{T}, i: i64) = if(t.len > i, fn () = Node{T}(i, t));
+fn Node{T}(t: Tree{T}, i: i64) = if(t.len > i, fn() = Node{T}(i, t));
 
 fn parent{T}(n: Node{T}) {
   let parentId = n.tree.parentIdxs[n.id];
-  return if(parentId.exists,
-    if(exists(parentId!!),
-      fn () = Node{T}(parentId.getOrExit.getOrExit, n.tree)),
-      Maybe{Node{T}}());
+  return if(parentId.exists, if(exists(parentId!!), fn() {
+    return Node{T}(parentId.getOrExit.getOrExit, n.tree);
+  }), Maybe{Node{T}}());
 }
 
-fn children{T}(n: Node{T}) = if(
-  n.tree.len > n.id,
-  fn {
+fn children{T}(n: Node{T}) =
+  if(n.tree.len > n.id, fn {
     let tree = n.tree;
     let childIds = tree.childrenIdxs[n.id] ?? Array{i64}();
     return childIds
-      .filter(fn (id: i64) = tree.parentIdxs[id]!! ?? -1 == n.id)
-      .map(fn (id: i64) = Node{T}(id, n.tree));
-  },
-  fn = Array{Node{T}}());
+      .filter(fn(id: i64) = tree.parentIdxs[id]!! ?? -1 == n.id)
+      .map(fn(id: i64) = Node{T}(id, n.tree));
+  }, fn = Array{Node{T}}());
 
 fn children{T}(t: Tree{T}) = t.rootNode.children;
 
@@ -1747,13 +2256,12 @@ fn addChild{T}(n: Node{T}, t: Tree{T}) {
   let idx = idxOffset.clone(); // TODO: Lower stage of compiler should be doing this
   let parentIdx = n.id;
   n.tree.vals.append(t.vals);
-  n.tree.parentIdxs.append(t.parentIdxs.map(fn (pId: Maybe{i64}) = if(pId.exists,
-    fn () = Maybe{i64}(pId!! + idxOffset),
-    fn () = Maybe{i64}(idx))));
-  n.tree.childrenIdxs.append(
-    t.childrenIdxs.map(
-      fn (ids: Array{i64}) = ids.map(
-        fn (id: i64) = id + idxOffset)));
+  n.tree.parentIdxs.append(t.parentIdxs.map(fn(pId: Maybe{i64}) {
+    return if(pId.exists, fn() = Maybe{i64}(pId!! + idxOffset), fn() = Maybe{i64}(idx));
+  }));
+  n.tree.childrenIdxs.append(t.childrenIdxs.map(fn(ids: Array{i64}) {
+    return ids.map(fn(id: i64) = id + idxOffset);
+  }));
   let parentChildren = n.tree.childrenIdxs[parentIdx].getOrExit;
   parentChildren.push(idx);
   n.tree.childrenIdxs.store(parentIdx, parentChildren);
@@ -1765,9 +2273,9 @@ fn delete{T}(n: Node{T}) {
   // TODO: Actually drop the node value after the tree has too many dead values.
   let nodeId = n.id;
   let parentId = n.tree.parentIdxs[n.id].getOrExit;
-  let childrenIds = n.children.map(fn (childNode: Node{T}) = childNode.id);
+  let childrenIds = n.children.map(fn(childNode: Node{T}) = childNode.id);
   // First, update the children to point at their grandparent
-  childrenIds.map(fn (childId: i64) {
+  childrenIds.map(fn(childId: i64) {
     n.tree.parentIdxs.store(childId, parentId.clone);
   });
   // Next, update the current node's parent to no longer count the node as a child, assuming there
@@ -1776,7 +2284,7 @@ fn delete{T}(n: Node{T}) {
     let parentsChildren = n.tree
       .childrenIdxs[parentId.getOrExit]
       .getOrExit
-      .filter(fn (childId: i64) = childId != nodeId);
+      .filter(fn(childId: i64) = childId != nodeId);
     parentsChildren.append(childrenIds);
     n.tree.childrenIdxs.store(parentId.getOrExit, parentsChildren);
   });
@@ -1793,31 +2301,25 @@ fn prune{T}(n: Node{T}) {
     let parentsChildren = tree
       .childrenIdxs[parentId.getOrExit]
       .getOrExit
-      .filter(fn (childId: i64) = childId != nodeId);
+      .filter(fn(childId: i64) = childId != nodeId);
     tree.childrenIdxs.store(parentId.getOrExit, parentsChildren);
   });
 }
-
 // TODO: Implement `addChild` when the child is itself a `Node{T}`
-
 // TODO: Implement `subtree` to create a new tree consisting of the specified node as its root and
 // only its own children as the children of the tree.
-
 fn getOr{T}(n: Node{T}, t: T) = n.tree.vals[n.id] ?? t;
 
 fn getOrExit{T}(n: Node{T}) = n.tree.vals[n.id].getOrExit;
 
-fn Array{T}(t: Tree{T}) = t.vals.map(
-  fn (_: T, i: i64) = Node{T}(t, i)!!);
+fn Array{T}(t: Tree{T}) = t.vals.map(fn(_: T, i: i64) = Node{T}(t, i)!!);
 
-fn map{T, U}(t: Tree{T}, mapper: (Node{T}) -> Node{U}) = Tree{U}(
-  t.Array.map(mapper),
-  t.parentIdxs.clone(),
-  t.childrenIdxs.clone());
-fn map{T, U}(t: Tree{T}, mapper: (Node{T}, i64) -> Node{U}) = Tree{U}(
-  t.Array.map(mapper),
-  t.parentIdxs,
-  t.childrenIdxs);
+fn map{T, U}(t: Tree{T}, mapper: (Node{T}) -> Node{U}) {
+  return Tree{U}(t.Array.map(mapper), t.parentIdxs.clone(), t.childrenIdxs.clone());
+}
+fn map{T, U}(t: Tree{T}, mapper: (Node{T}, i64) -> Node{U}) {
+  return Tree{U}(t.Array.map(mapper), t.parentIdxs, t.childrenIdxs);
+}
 
 fn every{T}(t: Tree{T}, f: (Node{T}) -> bool) = t.Array.every(f);
 
@@ -1829,28 +2331,27 @@ fn reduce{T, U}(t: Tree{T}, i: U, f: (U, Node{T}) -> U) = t.Array.reduce(i, f);
 fn reduce{T, U}(t: Tree{T}, i: U, f: (U, Node{T}, i64) -> U) = t.Array.reduce(i, f);
 
 fn find{T}(t: Tree{T}, f: (Node{T}) -> bool) = t.Array.find(f);
-
 /// Thread-related functions
-fn{Rs} wait (t: i64) = {"std::thread::sleep" :: Own{Duration}}(
-  {"std::time::Duration::from_millis" :: Own{u64} -> Duration}(t.u64)
-);
-fn{Js} wait "((t) => new Promise((r) => setTimeout(() => { r(performance.now()) }, Number(t))))" :: i64 -> f64;
-
+fn{Rs} wait (t: i64) =
+  {"std::thread::sleep" :: Own{Duration}}({
+    "std::time::Duration::from_millis"
+    :: Own{u64} -> Duration
+  }(t.u64));
+fn{Js} wait
+  "((t) => new Promise((r) => setTimeout(() => { r(performance.now()) }, Number(t))))"
+  :: i64 -> f64;
 /// Time-related functions
 fn{Rs} now "std::time::Instant::now" :: () -> Instant;
 fn{Js} now "performance.now" :: () -> Performance;
 fn{Rs} elapsed Method{"elapsed"} :: Instant -> Duration;
 fn{Js} elapsed "((p) => (performance.now() - p) / 1000.0)" :: Performance -> f64;
 fn{Rs} f64 Method{"as_secs_f64"} :: Duration -> f64;
-
 /// Uuid-related functions
 fn{Rs} uuid "alan_std::Uuid::new_v4" <- RootBacking :: () -> uuid;
 fn{Js} uuid "alan_std.uuidv4" <- RootBacking :: () -> uuid;
 fn{Rs} string "format!" :: ("{}", uuid) -> string;
 fn{Js} string "new alan_std.Str" :: uuid -> string;
-
 /// GPU-related functions
-
 // The base types and functionsto create buffers of memory on the GPU, construct a plan for a
 // compute shader, execute it, and read the buffer back to the CPU
 type{Rs} BufferUsages = Binds{"alan_std::BufferUsages" <- RootBacking};
@@ -1869,41 +2370,74 @@ fn{Js} mapWriteBuffer "alan_std.mapWriteBufferType" <- RootBacking :: () -> Buff
 fn{Rs} storageBuffer "alan_std::storage_buffer_type" <- RootBacking :: () -> BufferUsages;
 fn{Js} storageBuffer "alan_std.storageBufferType" <- RootBacking :: () -> BufferUsages;
 fn{Rs} GBuffer{T}(bu: BufferUsages, arr: T[]) {
-  let fallibleRawBuffer = {"alan_std::create_buffer_init" <- RootBacking :: (BufferUsages, T[], i8) -> Fallible{GBufferRaw}}(bu, arr, {Size{T}}().i8);
-  return if(fallibleRawBuffer.exists,
-    fn = Fallible{GBuffer{T}}(GBuffer{T}(fallibleRawBuffer.getOrExit)),
-    fn = Error{GBuffer{T}}(fallibleRawBuffer.Error.getOrExit.string));
+  let fallibleRawBuffer = {
+    "alan_std::create_buffer_init"
+    <- RootBacking
+    :: (BufferUsages, T[], i8) -> Fallible{GBufferRaw}
+  }(bu, arr, {Size{T}}().i8);
+  return if(fallibleRawBuffer.exists, fn {
+    return Fallible{GBuffer{T}}(GBuffer{T}(fallibleRawBuffer.getOrExit));
+  }, fn = Error{GBuffer{T}}(fallibleRawBuffer.Error.getOrExit.string));
 }
 fn{Js} GBuffer{T}(bu: BufferUsages, arr: T[]) {
-  let fallibleRawBuffer = {"alan_std.createBufferInit" <- RootBacking :: (BufferUsages, T[]) -> Fallible{GBufferRaw}}(bu, arr);
-  return if(fallibleRawBuffer.exists,
-    fn = Fallible{GBuffer{T}}(GBuffer{T}(fallibleRawBuffer.getOrExit)),
-    fn = Error{GBuffer{T}}(fallibleRawBuffer.Error.getOrExit.string));
+  let fallibleRawBuffer = {
+    "alan_std.createBufferInit"
+    <- RootBacking
+    :: (BufferUsages, T[]) -> Fallible{GBufferRaw}
+  }(bu, arr);
+  return if(fallibleRawBuffer.exists, fn {
+    return Fallible{GBuffer{T}}(GBuffer{T}(fallibleRawBuffer.getOrExit));
+  }, fn = Error{GBuffer{T}}(fallibleRawBuffer.Error.getOrExit.string));
 }
 fn{Rs} GBuffer{T}(bu: BufferUsages, size: i64) {
-  let fallibleRawBuffer = {"alan_std::create_empty_buffer" <- RootBacking :: (BufferUsages, i64, i8) -> GBufferRaw!}(bu, size, {Size{T}}().i8);
-  return if(fallibleRawBuffer.exists,
-    fn = Fallible{GBuffer{T}}(GBuffer{T}(fallibleRawBuffer.getOrExit)),
-    fn = Error{GBuffer{T}}(fallibleRawBuffer.Error.getOrExit.string));
+  let fallibleRawBuffer = {
+    "alan_std::create_empty_buffer"
+    <- RootBacking
+    :: (BufferUsages, i64, i8) -> GBufferRaw!
+  }(bu, size, {Size{T}}().i8);
+  return if(fallibleRawBuffer.exists, fn {
+    return Fallible{GBuffer{T}}(GBuffer{T}(fallibleRawBuffer.getOrExit));
+  }, fn = Error{GBuffer{T}}(fallibleRawBuffer.Error.getOrExit.string));
 }
 fn{Js} GBuffer{T}(bu: BufferUsages, size: i64) {
-  let fallibleRawBuffer = {"alan_std.createEmptyBuffer" <- RootBacking :: (BufferUsages, i32) -> GBufferRaw!}(bu, size.i32);
-  return if(fallibleRawBuffer.exists,
-    fn = Fallible{GBuffer{T}}(GBuffer{T}(fallibleRawBuffer.getOrExit)),
-    fn = Error{GBuffer{T}}(fallibleRawBuffer.Error.getOrExit.string));
+  let fallibleRawBuffer = {
+    "alan_std.createEmptyBuffer"
+    <- RootBacking
+    :: (BufferUsages, i32) -> GBufferRaw!
+  }(bu, size.i32);
+  return if(fallibleRawBuffer.exists, fn {
+    return Fallible{GBuffer{T}}(GBuffer{T}(fallibleRawBuffer.getOrExit));
+  }, fn = Error{GBuffer{T}}(fallibleRawBuffer.Error.getOrExit.string));
 }
 fn GBuffer{T}(vals: T[]) = GBuffer{T}(storageBuffer(), vals);
 fn GBuffer{T}(size: i64) = GBuffer{T}(storageBuffer(), size);
-fn{Rs} cpulen{T}(b: GBuffer{T}) = {"alan_std::bufferlen" <- RootBacking :: GBufferRaw -> i64}(b.rawBuffer);
-fn{Js} cpulen{T}(b: GBuffer{T}) = {"alan_std.bufferlen" <- RootBacking :: GBufferRaw -> i64}(b.rawBuffer);
+fn{Rs} cpulen{T}(b: GBuffer{T}) {
+  return {"alan_std::bufferlen" <- RootBacking :: GBufferRaw -> i64}(b.rawBuffer);
+}
+fn{Js} cpulen{T}(b: GBuffer{T}) {
+  return {"alan_std.bufferlen" <- RootBacking :: GBufferRaw -> i64}(b.rawBuffer);
+}
 fn{Rs} id(b: GBufferRaw) = {"alan_std::buffer_id" <- RootBacking :: GBufferRaw -> string}(b);
 fn{Js} id(b: GBufferRaw) = {"alan_std.bufferid" <- RootBacking :: GBufferRaw -> string}(b);
 fn id{T}(b: GBuffer{T}) = b.rawBuffer.id;
 fn id(b: GBufferTagged) = b.rawBuffer.id;
-fn{Rs} optimalLocalGroup(global: Buffer{i64, 3}) = {"alan_std::optimal_local_group" <- RootBacking :: Deref{Buffer{i64, 3}} -> Buffer{i64, 3}}(global);
-fn{Js} optimalLocalGroup(global: Buffer{i64, 3}) = {"alan_std.optimalLocalGroup" <- RootBacking :: Buffer{i64, 3} -> Buffer{i64, 3}}(global);
-fn{Rs} GPGPU "alan_std::GPGPU::new" <- RootBacking :: (Own{string}, Own{Array{Array{GBufferRaw}}}, Deref{Buffer{i64, 3}}, Deref{Buffer{i64, 3}}) -> GPGPU;
-fn{Js} GPGPU (src: string, gbuffers: Array{Array{GBufferRaw}}, idx: Buffer{i64, 3}, local: Buffer{i64, 3}) = {"new alan_std.GPGPU" <- RootBacking :: (string, Array{Array{GBufferRaw}}, Buffer{i32, 3}, Buffer{i32, 3}) -> GPGPU}(src, gbuffers, idx.map(i32), local.map(i32));
+fn{Rs} optimalLocalGroup(global: Buffer{i64, 3}) =
+  {"alan_std::optimal_local_group" <- RootBacking :: Deref{Buffer{i64, 3}} -> Buffer{i64, 3}}(global);
+fn{Js} optimalLocalGroup(global: Buffer{i64, 3}) {
+  return {"alan_std.optimalLocalGroup" <- RootBacking :: Buffer{i64, 3} -> Buffer{i64, 3}}(global);
+}
+fn{Rs} GPGPU
+  "alan_std::GPGPU::new"
+  <- RootBacking
+  :: (Own{string}, Own{Array{Array{GBufferRaw}}}, Deref{Buffer{i64, 3}}, Deref{Buffer{i64, 3}})
+  -> GPGPU;
+fn{Js} GPGPU
+  (src: string, gbuffers: Array{Array{GBufferRaw}}, idx: Buffer{i64, 3}, local: Buffer{i64, 3}) =
+  {
+    "new alan_std.GPGPU"
+    <- RootBacking
+    :: (string, Array{Array{GBufferRaw}}, Buffer{i32, 3}, Buffer{i32, 3}) -> GPGPU
+  }(src, gbuffers, idx.map(i32), local.map(i32));
 fn GPGPU{T}(src: string, buf: GBuffer{T}, local: Buffer{i64, 3}) -> GPGPU {
   let l = buf.cpulen;
   let zDiv = l / 4_294_836_225;
@@ -1921,15 +2455,25 @@ fn{Rs} run "alan_std::gpu_run_list" <- RootBacking :: Mut{GPGPU[]};
 fn{Js} run "alan_std.gpuRunList" <- RootBacking :: GPGPU[];
 fn{Rs} shader Property{"source.clone()"} :: GPGPU -> string;
 fn{Js} shader Property{"source"} :: GPGPU -> string;
-// TODO: Modify the `readBuffer` binding to pass the relevant type to it and remove the magic guess logic
-fn{Rs} read{T}(gb: GBuffer{T}) = {"alan_std::read_buffer" <- RootBacking :: GBufferRaw -> T[]}(gb.rawBuffer);
-fn{Js} read{T}(gb: GBuffer{T}) = {"alan_std.readBuffer" <- RootBacking :: (GBufferRaw, string) -> T[]}(gb.rawBuffer, String{T}());
+/*
+ * TODO: Modify the `readBuffer` binding to pass the relevant type to it and remove the magic guess
+ * logic
+ */
+fn{Rs} read{T}(gb: GBuffer{T}) {
+  return {"alan_std::read_buffer" <- RootBacking :: GBufferRaw -> T[]}(gb.rawBuffer);
+}
+fn{Js} read{T}(gb: GBuffer{T}) =
+  {"alan_std.readBuffer" <- RootBacking :: (GBufferRaw, string) -> T[]}(
+    gb.rawBuffer,
+    String{T}()
+  );
 // TODO: Same here
-fn{Rs} replace{T}(gb: GBuffer{T}, vals: T[]) = {"alan_std::replace_buffer" <- RootBacking :: (GBufferRaw, T[]) -> ()!}(gb.rawBuffer, vals);
-fn{Js} replace{T}(gb: GBuffer{T}, vals: T[]) = {"alan_std.replaceBuffer" <- RootBacking :: (GBufferRaw, T[]) -> ()!}(gb.rawBuffer, vals);
-
+fn{Rs} replace{T}(gb: GBuffer{T}, vals: T[]) =
+  {"alan_std::replace_buffer" <- RootBacking :: (GBufferRaw, T[]) -> ()!}(gb.rawBuffer, vals);
+fn{Js} replace{T}(gb: GBuffer{T}, vals: T[]) {
+  return {"alan_std.replaceBuffer" <- RootBacking :: (GBufferRaw, T[]) -> ()!}(gb.rawBuffer, vals);
+}
 /// Ergonomic GPGPU-related types and functions
-
 // The WgpuType provides a mechanism to build up the logic for a compute shader with normal-looking
 // Alan code, not requiring to think in two different languages at the same time. All of the GPU
 // types hereafter are derivative of this type
@@ -1938,7 +2482,6 @@ type WgpuType{N} =
   varName: string, // Key to the next field
   statements: Dict{string, string},
   buffers: Set{GBufferTagged};
-
 // TODO: Better constraining on the input types allowed. It will still fail to compile, but the
 // error message isn't great at the moment.
 fn build{N}(ret: N) {
@@ -1950,7 +2493,7 @@ fn build{N}(ret: N) {
     .statements['@builtin(global_invocation_id) id: vec3u']
     .getOr('0,0,0')
     .split(',')
-    .map(fn (s: string) = s.i64 ?? 0);
+    .map(fn(s: string) = s.i64 ?? 0);
   let maxGlobalId = {i64[3]}(
     maxGlobalIdArray[0] ?? 0,
     maxGlobalIdArray[1] ?? 0,
@@ -1962,7 +2505,7 @@ fn build{N}(ret: N) {
   let localX = max(min(localGroup.0, maxGlobalId.0), 1);
   let localY = max(min(localGroup.1, maxGlobalId.1), 1);
   let localZ = max(min(localGroup.2, maxGlobalId.2), 1);
-  let wgslHeader = bufferArray.map(fn (gb: GBufferTagged, i: i64) {
+  let wgslHeader = bufferArray.map(fn(gb: GBufferTagged, i: i64) {
     return "@group(0)\n@binding("
       .concat(i.string)
       .concat(")\nvar<storage, read_write> ")
@@ -1978,15 +2521,15 @@ fn build{N}(ret: N) {
     .concat(", ")
     .concat(localZ.string)
     .concat(")\nfn main(@builtin(global_invocation_id) id: vec3u) {\n");
-  let wgslFunctionBody = ret.statements.Array.map(fn (kv: (string, string)) {
-    return if(kv.0.eq("@builtin(global_invocation_id) id: vec3u"), fn () = "", fn () {
+  let wgslFunctionBody = ret.statements.Array.map(fn(kv: (string, string)) {
+    return if(kv.0.eq("@builtin(global_invocation_id) id: vec3u"), fn() = "", fn() {
       return "  ".concat(kv.1).concat(";\n");
     });
   }).join("");
   let wgsl = wgslHeader.concat(wgslFunctionHeader).concat(wgslFunctionBody).concat("}");
   let localGroupClamped = {i64[3]}(localX, localY, localZ);
   let buffers = Array{Array{GBufferRaw}}();
-  buffers.push(bufferArray.map(fn (gb: GBufferTagged) = gb.rawBuffer));
+  buffers.push(bufferArray.map(fn(gb: GBufferTagged) = gb.rawBuffer));
   return GPGPU(wgsl, buffers, maxGlobalId, localGroupClamped);
 }
 fn build{N}(ret: N[]) {
@@ -1994,25 +2537,25 @@ fn build{N}(ret: N[]) {
   // We do this by simply merging all of the statements and buffers into a single instance of `N`
   // and then pass that up into the normal build function
   let statements = ret
-    .reduce(Dict{string, string}(), fn (o: Dict{string, string}, r: N) = o.concat(r.statements));
-  let buffers = ret.reduce(Set{GBufferTagged}(), fn (o: Set{GBufferTagged}, r: N) = o.union(r.buffers));
+    .reduce(Dict{string, string}(), fn(o: Dict{string, string}, r: N) = o.concat(r.statements));
+  let buffers = ret.reduce(Set{GBufferTagged}(), fn(o: Set{GBufferTagged}, r: N) {
+    return o.union(r.buffers);
+  });
   return build({N}("", statements, buffers));
 }
-
 /// GPGPU primitive type functions
-
 // Scalar types and constructors
 type gu32 = WgpuType{"u32"};
 type gi32 = WgpuType{"i32"};
 type gf32 = WgpuType{"f32"};
 type gbool = WgpuType{"bool"};
-
 // Now that we have some GPGPU types, let's create the initial version of a "type map" that lets us
 // look up the GPGPU type for its relevant CPU type. We'll update this along the way as needed
 type WgpuTypeMap = String{u32}: gu32, String{i32}: gi32, String{f32}: gf32, String{bool}: gbool;
 
-fn GBufferTagged{T}(b: GBuffer{T}) = GBufferTagged(b.rawBuffer, {Prop{WgpuTypeMap, String{T}}.typeName}());
-
+fn GBufferTagged{T}(b: GBuffer{T}) {
+  return GBufferTagged(b.rawBuffer, {Prop{WgpuTypeMap, String{T}}.typeName}());
+}
 // Utility functions for defining the various wgsl functions, operators, and properties
 fn gProp{A, O}(propName: string, a: A) {
   let typename = {O.typeName}();
@@ -2075,7 +2618,8 @@ fn gInfix{A, B}(op: string, opName: string, a: A, b: B) = gInfix{A, B, A}(op, op
 fn gInfix{A, B}(op: string, opName: string, a: A, b: B) = gInfix{A, B, A}(op, opName, a, b);
 fn gInfixRev{A, B}(op: string, opName: string, a: A, b: B) = gInfix{A, B, B}(op, opName, a, b);
 
-fn gFn0{O}(funcName: string) { // TODO: Fix parser issue with variables beginning with `fn`
+fn gFn0{O}(funcName: string) {
+  // TODO: Fix parser issue with variables beginning with `fn`
   let typename = {O.typeName}();
   let varName = funcName
     .concat('_')
@@ -2193,7 +2737,6 @@ fn gFn4{A, B, C, D, O}(funcName: string, a: A, b: B, c: C, d: D) {
 }
 fn gFn4{A, O}(funcName: string, a: A, b: A, c: A, d: A) = gFn4{A, A, A, A, O}(funcName, a, b, c, d);
 fn gFn4{A}(funcName: string, a: A, b: A, c: A, d: A) = gFn4{A, A, A, A}(funcName, a, b, c, d);
-
 // Matrix constructors are crazy. The following are only included because of how crazy they are, and
 // skipping any sizes that aren't used anywhere else
 fn gFn6{A, B, C, D, E, F, O}(funcName: string, a: A, b: B, c: C, d: D, e: E, f: F) {
@@ -2235,11 +2778,12 @@ fn gFn6{A, B, C, D, E, F, O}(funcName: string, a: A, b: B, c: C, d: D, e: E, f: 
     .union(f.buffers);
   return {O}(varName, statements, buffers);
 }
-fn gFn6{A, O}(funcName: string, a: A, b: A, c: A, d: A, e: A, f: A) = 
-  gFn6{A, A, A, A, A, A, O}(funcName, a, b, c, d, e, f);
+fn gFn6{A, O}(funcName: string, a: A, b: A, c: A, d: A, e: A, f: A) {
+  return gFn6{A, A, A, A, A, A, O}(funcName, a, b, c, d, e, f);
+}
 
-fn gFn8{A, B, C, D, E, F, G, H, O}(
-  funcName: string,
+fn gFn8{A, B, C, D, E, F, G, H, O}
+  (funcName: string,
   a: A,
   b: B,
   c: C,
@@ -2247,8 +2791,7 @@ fn gFn8{A, B, C, D, E, F, G, H, O}(
   e: E,
   f: F,
   g: G,
-  h: H
-) {
+  h: H) {
   let typename = {O.typeName}();
   let varName = funcName
     .concat('_')
@@ -2295,11 +2838,12 @@ fn gFn8{A, B, C, D, E, F, G, H, O}(
     .union(h.buffers);
   return {O}(varName, statements, buffers);
 }
-fn gFn8{A, O}(funcName: string, a: A, b: A, c: A, d: A, e: A, f: A, g: A, h: A) = 
-  gFn8{A, A, A, A, A, A, A, A, O}(funcName, a, b, c, d, e, f, g, h);
+fn gFn8{A, O}(funcName: string, a: A, b: A, c: A, d: A, e: A, f: A, g: A, h: A) {
+  return gFn8{A, A, A, A, A, A, A, A, O}(funcName, a, b, c, d, e, f, g, h);
+}
 
-fn gFn9{A, B, C, D, E, F, G, H, I, O}(
-  funcName: string,
+fn gFn9{A, B, C, D, E, F, G, H, I, O}
+  (funcName: string,
   a: A,
   b: B,
   c: C,
@@ -2308,8 +2852,7 @@ fn gFn9{A, B, C, D, E, F, G, H, I, O}(
   f: F,
   g: G,
   h: H,
-  i: I
-) {
+  i: I) {
   let typename = {O.typeName}();
   let varName = funcName
     .concat('_')
@@ -2360,11 +2903,12 @@ fn gFn9{A, B, C, D, E, F, G, H, I, O}(
     .union(i.buffers);
   return {O}(varName, statements, buffers);
 }
-fn gFn9{A, O}(funcName: string, a: A, b: A, c: A, d: A, e: A, f: A, g: A, h: A, i: A) = 
-  gFn9{A, A, A, A, A, A, A, A, A, O}(funcName, a, b, c, d, e, f, g, h, i);
+fn gFn9{A, O}(funcName: string, a: A, b: A, c: A, d: A, e: A, f: A, g: A, h: A, i: A) {
+  return gFn9{A, A, A, A, A, A, A, A, A, O}(funcName, a, b, c, d, e, f, g, h, i);
+}
 
-fn gFn12{A, B, C, D, E, F, G, H, I, J, K, L, O}(
-  funcName: string,
+fn gFn12{A, B, C, D, E, F, G, H, I, J, K, L, O}
+  (funcName: string,
   a: A,
   b: B,
   c: C,
@@ -2376,8 +2920,7 @@ fn gFn12{A, B, C, D, E, F, G, H, I, J, K, L, O}(
   i: I,
   j: J,
   k: K,
-  l: L
-) {
+  l: L) {
   let typename = {O.typeName}();
   let varName = funcName
     .concat('_')
@@ -2440,8 +2983,8 @@ fn gFn12{A, B, C, D, E, F, G, H, I, J, K, L, O}(
     .union(l.buffers);
   return {O}(varName, statements, buffers);
 }
-fn gFn12{A, O}(
-  funcName: string,
+fn gFn12{A, O}
+  (funcName: string,
   a: A,
   b: A,
   c: A,
@@ -2453,11 +2996,12 @@ fn gFn12{A, O}(
   i: A,
   j: A,
   k: A,
-  l: A
-) = gFn12{A, A, A, A, A, A, A, A, A, A, A, A, O}(funcName, a, b, c, d, e, f, g, h, i, j, k, l);
+  l: A) {
+  return gFn12{A, A, A, A, A, A, A, A, A, A, A, A, O}(funcName, a, b, c, d, e, f, g, h, i, j, k, l);
+}
 
-fn gFn16{A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Z}(
-  funcName: string,
+fn gFn16{A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Z}
+  (funcName: string,
   a: A,
   b: B,
   c: C,
@@ -2473,8 +3017,7 @@ fn gFn16{A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Z}(
   m: M,
   n: N,
   o: O,
-  p: P
-) {
+  p: P) {
   let typename = {Z.typeName}();
   let varName = funcName
     .concat('_')
@@ -2553,8 +3096,8 @@ fn gFn16{A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Z}(
     .union(p.buffers);
   return {Z}(varName, statements, buffers);
 }
-fn gFn16{A, O}(
-  funcName: string,
+fn gFn16{A, O}
+  (funcName: string,
   a: A,
   b: A,
   c: A,
@@ -2570,26 +3113,26 @@ fn gFn16{A, O}(
   m: A,
   n: A,
   o: A,
-  p: A
-) = gFn16{A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, O}(
-  funcName,
-  a,
-  b,
-  c,
-  d,
-  e,
-  f,
-  g,
-  h,
-  i,
-  j,
-  k,
-  l,
-  m,
-  n,
-  o,
-  p
-);
+  p: A) =
+  gFn16{A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, O}(
+    funcName,
+    a,
+    b,
+    c,
+    d,
+    e,
+    f,
+    g,
+    h,
+    i,
+    j,
+    k,
+    l,
+    m,
+    n,
+    o,
+    p
+  );
 
 fn gPrimitiveConvert{A, O}(a: A) = gFn1{A, O}({O.typeName}(), a);
 
@@ -2608,7 +3151,12 @@ fn gi32(gf: gf32) = gPrimitiveConvert{gf32, gi32}(gf);
 fn gi32(gb: gbool) = gPrimitiveConvert{gbool, gi32}(gb);
 
 fn gf32{T}(f: T) = gf32(f.f32);
-fn gf32(f: f32) = gf32(if(f.string.eq(f.i32.string), f.string(1), f.string), Dict{string, string}(), Set{GBufferTagged}());
+fn gf32(f: f32) =
+  gf32(
+    if(f.string.eq(f.i32.string), f.string(1), f.string),
+    Dict{string, string}(),
+    Set{GBufferTagged}()
+  );
 fn gf32(gu: gu32) = gPrimitiveConvert{gu32, gf32}(gu);
 fn gf32(gi: gi32) = gPrimitiveConvert{gi32, gf32}(gi);
 fn gf32(gf: gf32) = gf;
@@ -2621,12 +3169,12 @@ fn gbool(gi: gi32) = gPrimitiveConvert{gi32, gbool}(gi);
 fn gbool(gf: gf32) = gPrimitiveConvert{gf32, gbool}(gf);
 fn gbool(gb: gbool) = gb;
 
-fn len{T}(gb: GBuffer{T}) = gu32(
-  'arrayLength(&'.concat(gb.id).concat(')'),
-  Dict{string, string}(),
-  Set(GBufferTagged(gb))
-);
-
+fn len{T}(gb: GBuffer{T}) =
+  gu32(
+    'arrayLength(&'.concat(gb.id).concat(')'),
+    Dict{string, string}(),
+    Set(GBufferTagged(gb))
+  );
 /// GPGPU Vector types functions
 type gvec2u = WgpuType{"vec2u"};
 type gvec2i = WgpuType{"vec2i"};
@@ -2640,9 +3188,8 @@ type gvec4u = WgpuType{"vec4u"};
 type gvec4i = WgpuType{"vec4i"};
 type gvec4f = WgpuType{"vec4f"};
 type gvec4b = WgpuType{"vec4<bool>"};
-
 // We're unwrapping the prior definition and appending new values to this lookup type
-type WgpuTypeMap = 
+type WgpuTypeMap =
   Unwrap{WgpuTypeMap},
   String{Buffer{u32, 2}}: gvec2u,
   String{Buffer{i32, 2}}: gvec2i,
@@ -2724,12 +3271,14 @@ fn gvec4b() = gFn0{gvec4b}({gvec4b.typeName}());
 fn gvec4b(a: gbool, b: gbool, c: gbool, d: gbool) = gvec4Primitive{gbool, gvec4b}(a, b, c, d);
 fn gvec4b{T}(a: T, b: T, c: T, d: T) = gvec4b(a.gbool, b.gbool, c.gbool, d.gbool);
 fn gvec4b{T}(a: T) = gvec4b(a, a, a, a);
-
 // The global_invocation_id; the entry value to a compute shader, and it's constructor, a
 // specialized version of gvec3u that initializes a bit differently.
 fn gFor(x: u32, y: u32, z: u32) {
   let initialStatement = "@builtin(global_invocation_id) id: vec3u";
-  let statements = Dict(initialStatement, x.string.concat(',').concat(y.string).concat(',').concat(z.string));
+  let statements = Dict(
+    initialStatement,
+    x.string.concat(',').concat(y.string).concat(',').concat(z.string)
+  );
   return gvec3u('id', statements, Set{GBufferTagged}());
 }
 fn gFor{T}(x: T, y: T, z: T) = gFor(x.u32, y.u32, z.u32);
@@ -2739,10 +3288,12 @@ fn gFor{T}(x: T) = gFor(x.u32, 1.u32, 1.u32).x;
 fn gFor(x: u32, y: u32) = gFor(x, y, 1.u32);
 fn gFor(x: i64, y: i64) {
   let initialStatement = "@builtin(global_invocation_id) id: vec3u";
-  let statements = Dict(initialStatement, x.string.concat(',').concat(y.string).concat(',1'));
+  let statements = Dict(
+    initialStatement,
+    x.string.concat(',').concat(y.string).concat(',1')
+  );
   return gvec3u('id', statements, Set{GBufferTagged}());
 }
-
 /// GPGPU Matrix types and functions
 type gmat2x2f = WgpuType{"mat2x2f"};
 type gmat2x3f = WgpuType{"mat2x3f"};
@@ -2753,7 +3304,6 @@ type gmat3x4f = WgpuType{"mat3x4f"};
 type gmat4x2f = WgpuType{"mat4x2f"};
 type gmat4x3f = WgpuType{"mat4x3f"};
 type gmat4x4f = WgpuType{"mat4x4f"};
-
 // And the last of the type mapping we're going to define, matrices. Wgpu uses column-order for the
 // definition, so 2x3 is a buffer of 3 sets of buffers of 2 floats, btw.
 type WgpuTypeMap =
@@ -2771,50 +3321,71 @@ type WgpuTypeMap =
 fn gmat2x2f() = gFn0{gmat2x2f}({gmat2x2f.typeName}());
 fn gmat2x2f(a: gvec2f, b: gvec2f) = gFn2{gvec2f, gmat2x2f}({gmat2x2f.typeName}(), a, b);
 fn gmat2x2f{I}(a: I, b: I, c: I, d: I) = gmat2x2f(a.gf32, b.gf32, c.gf32, d.gf32);
-fn gmat2x2f(a: gf32, b: gf32, c: gf32, d: gf32) = gFn4{gf32, gmat2x2f}({gmat2x2f.typeName}(), a, b, c, d);
+fn gmat2x2f(a: gf32, b: gf32, c: gf32, d: gf32) {
+  return gFn4{gf32, gmat2x2f}({gmat2x2f.typeName}(), a, b, c, d);
+}
 
 fn gmat2x3f() = gFn0{gmat2x3f}({gmat2x2f.typeName}());
 fn gmat2x3f(a: gvec3f, b: gvec3f) = gFn2{gvec3f, gmat2x3f}({gmat2x3f.typeName}(), a, b);
-fn gmat2x3f{I}(a: I, b: I, c: I, d: I, e: I, f: I) = gmat2x3f(
-  a.gf32, b.gf32, c.gf32, d.gf32, e.gf32, f.gf32
-);
-fn gmat2x3f(a: gf32, b: gf32, c: gf32, d: gf32, e: gf32, f: gf32) =
-  gFn6{gf32, gmat2x3f}({gmat2x3f.typeName}(), a, b, c, d, e, f);
+fn gmat2x3f{I}(a: I, b: I, c: I, d: I, e: I, f: I) {
+  return gmat2x3f(a.gf32, b.gf32, c.gf32, d.gf32, e.gf32, f.gf32);
+}
+fn gmat2x3f(a: gf32, b: gf32, c: gf32, d: gf32, e: gf32, f: gf32) {
+  return gFn6{gf32, gmat2x3f}({gmat2x3f.typeName}(), a, b, c, d, e, f);
+}
 
 fn gmat2x4f() = gFn0{gmat2x4f}({gmat2x4f.typeName}());
 fn gmat2x4f(a: gvec4f, b: gvec4f) = gFn2{gvec4f, gmat2x4f}({gmat2x4f.typeName}(), a, b);
-fn gmat2x4f{I}(a: I, b: I, c: I, d: I, e: I, f: I, g: gf32, h: gf32) = gmat2x4f(
-  a.gf32, b.gf32, c.gf32, d.gf32, e.gf32, f.gf32, g.gf32, h.gf32
-);
-fn gmat2x4f(a: gf32, b: gf32, c: gf32, d: gf32, e: gf32, f: gf32, g: gf32, h: gf32) =
-  gFn8{gf32, gmat2x4f}({gmat2x4f.typeName}(), a, b, c, d, e, f, g, h);
+fn gmat2x4f{I}(a: I, b: I, c: I, d: I, e: I, f: I, g: gf32, h: gf32) {
+  return gmat2x4f(a.gf32, b.gf32, c.gf32, d.gf32, e.gf32, f.gf32, g.gf32, h.gf32);
+}
+fn gmat2x4f(a: gf32, b: gf32, c: gf32, d: gf32, e: gf32, f: gf32, g: gf32, h: gf32) {
+  return gFn8{gf32, gmat2x4f}({gmat2x4f.typeName}(), a, b, c, d, e, f, g, h);
+}
 
 fn gmat3x3f() = gFn0{gmat3x2f}({gmat3x3f.typeName}());
-fn gmat3x2f(a: gvec2f, b: gvec2f, c: gvec2f) =
-  gFn3{gvec2f, gmat3x2f}({gmat3x2f.typeName}(), a, b, c);
-fn gmat3x2f{I}(a: I, b: I, c: I, d: I, e: I, f: I) = gmat3x2f(
-  a.gf32, b.gf32, c.gf32, d.gf32, e.gf32, f.gf32
-);
-fn gmat3x2f(a: gf32, b: gf32, c: gf32, d: gf32, e: gf32, f: gf32) =
-  gFn6{gf32, gmat3x2f}({gmat3x2f.typeName}(), a, b, c, d, e, f);
+fn gmat3x2f(a: gvec2f, b: gvec2f, c: gvec2f) {
+  return gFn3{gvec2f, gmat3x2f}({gmat3x2f.typeName}(), a, b, c);
+}
+fn gmat3x2f{I}(a: I, b: I, c: I, d: I, e: I, f: I) {
+  return gmat3x2f(a.gf32, b.gf32, c.gf32, d.gf32, e.gf32, f.gf32);
+}
+fn gmat3x2f(a: gf32, b: gf32, c: gf32, d: gf32, e: gf32, f: gf32) {
+  return gFn6{gf32, gmat3x2f}({gmat3x2f.typeName}(), a, b, c, d, e, f);
+}
 
 fn gmat3x3f() = gFn0{gmat3x3f}({gmat3x3f.typeName}());
-fn gmat3x3f(a: gvec3f, b: gvec3f, c: gvec3f) =
-  gFn3{gvec3f, gmat3x3f}({gmat3x3f.typeName}(), a, b, c);
-fn gmat3x3f{I}(a: I, b: I, c: I, d: I, e: I, f: I, g: I, h: I, i: I) = gmat3x3f(
-  a.gf32, b.gf32, c.gf32, d.gf32, e.gf32, f.gf32, g.gf32, h.gf32, i.gf32
-);
-fn gmat3x3f(a: gf32, b: gf32, c: gf32, d: gf32, e: gf32, f: gf32, g: gf32, h: gf32, i: gf32) =
-  gFn9{gf32, gmat3x3f}({gmat3x3f.typeName}(), a, b, c, d, e, f, g, h, i);
+fn gmat3x3f(a: gvec3f, b: gvec3f, c: gvec3f) {
+  return gFn3{gvec3f, gmat3x3f}({gmat3x3f.typeName}(), a, b, c);
+}
+fn gmat3x3f{I}(a: I, b: I, c: I, d: I, e: I, f: I, g: I, h: I, i: I) {
+  return gmat3x3f(a.gf32, b.gf32, c.gf32, d.gf32, e.gf32, f.gf32, g.gf32, h.gf32, i.gf32);
+}
+fn gmat3x3f(a: gf32, b: gf32, c: gf32, d: gf32, e: gf32, f: gf32, g: gf32, h: gf32, i: gf32) {
+  return gFn9{gf32, gmat3x3f}({gmat3x3f.typeName}(), a, b, c, d, e, f, g, h, i);
+}
 
 fn gmat3x4f() = gFn0{gmat3x4f}({gmat3x4f.typeName}());
-fn gmat3x4f(a: gvec4f, b: gvec4f, c: gvec4f) =
-  gFn3{gvec4f, gmat3x4f}({gmat3x4f.typeName}(), a, b, c);
-fn gmat3x4f{I}(a: I, b: I, c: I, d: I, e: I, f: I, g: I, h: I, i: I, j: I, k: I, l: I) = gmat3x4f(
-  a.gf32, b.gf32, c.gf32, d.gf32, e.gf32, f.gf32, g.gf32, h.gf32, i.gf32, j.gf32, k.gf32, l.gf32
-);
-fn gmat3x4f(
-  a: gf32,
+fn gmat3x4f(a: gvec4f, b: gvec4f, c: gvec4f) {
+  return gFn3{gvec4f, gmat3x4f}({gmat3x4f.typeName}(), a, b, c);
+}
+fn gmat3x4f{I}(a: I, b: I, c: I, d: I, e: I, f: I, g: I, h: I, i: I, j: I, k: I, l: I) =
+  gmat3x4f(
+    a.gf32,
+    b.gf32,
+    c.gf32,
+    d.gf32,
+    e.gf32,
+    f.gf32,
+    g.gf32,
+    h.gf32,
+    i.gf32,
+    j.gf32,
+    k.gf32,
+    l.gf32
+  );
+fn gmat3x4f
+  (a: gf32,
   b: gf32,
   c: gf32,
   d: gf32,
@@ -2825,26 +3396,40 @@ fn gmat3x4f(
   i: gf32,
   j: gf32,
   k: gf32,
-  l: gf32
-) = gFn12{gf32, gmat3x4f}({gmat3x4f.typeName}(), a, b, c, d, e, f, g, h, i, j, k, l);
+  l: gf32) = gFn12{gf32, gmat3x4f}({gmat3x4f.typeName}(), a, b, c, d, e, f, g, h, i, j, k, l);
 
 fn gmat4x2f() = gFn0{gmat4x2f}({gmat4x2f.typeName}());
-fn gmat4x2f(a: gvec2f, b: gvec2f, c: gvec2f, d: gvec2f) =
-  gFn4{gvec2f, gmat4x2f}({gmat4x2f.typeName}(), a, b, c, d);
-fn gmat4x2f{I}(a: I, b: I, c: I, d: I, e: I, f: I, g: I, h: I) = gmat4x2f(
-  a.gf32, b.gf32, c.gf32, d.gf32, e.gf32, f.gf32, g.gf32, h.gf32
-);
-fn gmat4x2f(a: gf32, b: gf32, c: gf32, d: gf32, e: gf32, f: gf32, g: gf32, h: gf32) =
-  gFn8{gf32, gmat4x2f}({gmat4x2f.typeName}(), a, b, c, d, e, f, g, h);
+fn gmat4x2f(a: gvec2f, b: gvec2f, c: gvec2f, d: gvec2f) {
+  return gFn4{gvec2f, gmat4x2f}({gmat4x2f.typeName}(), a, b, c, d);
+}
+fn gmat4x2f{I}(a: I, b: I, c: I, d: I, e: I, f: I, g: I, h: I) {
+  return gmat4x2f(a.gf32, b.gf32, c.gf32, d.gf32, e.gf32, f.gf32, g.gf32, h.gf32);
+}
+fn gmat4x2f(a: gf32, b: gf32, c: gf32, d: gf32, e: gf32, f: gf32, g: gf32, h: gf32) {
+  return gFn8{gf32, gmat4x2f}({gmat4x2f.typeName}(), a, b, c, d, e, f, g, h);
+}
 
 fn gmat4x3f() = gFn0{gmat4x3f}({gmat4x3f.typeName}());
-fn gmat4x3f(a: gvec3f, b: gvec3f, c: gvec3f, d: gvec3f) =
-  gFn4{gvec3f, gmat4x3f}({gmat4x2f.typeName}(), a, b, c, d);
-fn gmat4x3f{I}(a: I, b: I, c: I, d: I, e: I, f: I, g: I, h: I, i: I, j: I, k: I, l: I) = gmat4x3f(
-  a.gf32, b.gf32, c.gf32, d.gf32, e.gf32, f.gf32, g.gf32, h.gf32, i.gf32, j.gf32, k.gf32, l.gf32
-);
-fn gmat4x3f(
-  a: gf32,
+fn gmat4x3f(a: gvec3f, b: gvec3f, c: gvec3f, d: gvec3f) {
+  return gFn4{gvec3f, gmat4x3f}({gmat4x2f.typeName}(), a, b, c, d);
+}
+fn gmat4x3f{I}(a: I, b: I, c: I, d: I, e: I, f: I, g: I, h: I, i: I, j: I, k: I, l: I) =
+  gmat4x3f(
+    a.gf32,
+    b.gf32,
+    c.gf32,
+    d.gf32,
+    e.gf32,
+    f.gf32,
+    g.gf32,
+    h.gf32,
+    i.gf32,
+    j.gf32,
+    k.gf32,
+    l.gf32
+  );
+fn gmat4x3f
+  (a: gf32,
   b: gf32,
   c: gf32,
   d: gf32,
@@ -2855,14 +3440,14 @@ fn gmat4x3f(
   i: gf32,
   j: gf32,
   k: gf32,
-  l: gf32
-) = gFn12{gf32, gmat4x3f}({gmat4x3f.typeName}(), a, b, c, d, e, f, g, h, i, j, k, l);
+  l: gf32) = gFn12{gf32, gmat4x3f}({gmat4x3f.typeName}(), a, b, c, d, e, f, g, h, i, j, k, l);
 
 fn gmat4x4f() = gFn0{gmat4x4f}({gmat4x4f.typeName}());
-fn gmat4x4f(a: gvec4f, b: gvec4f, c: gvec4f, d: gvec4f) =
-  gFn4{gvec4f, gmat4x4f}({gmat4x4f.typeName}(), a, b, c, d);
-fn gmat4x4f{I}(
-  a: I,
+fn gmat4x4f(a: gvec4f, b: gvec4f, c: gvec4f, d: gvec4f) {
+  return gFn4{gvec4f, gmat4x4f}({gmat4x4f.typeName}(), a, b, c, d);
+}
+fn gmat4x4f{I}
+  (a: I,
   b: I,
   c: I,
   d: I,
@@ -2877,27 +3462,27 @@ fn gmat4x4f{I}(
   m: I,
   n: I,
   o: I,
-  p: I
-) = gmat4x4f(
-  a.gf32,
-  b.gf32,
-  c.gf32,
-  d.gf32,
-  e.gf32,
-  f.gf32,
-  g.gf32,
-  h.gf32,
-  i.gf32,
-  j.gf32,
-  k.gf32,
-  l.gf32,
-  m.gf32,
-  n.gf32,
-  o.gf32,
-  p.gf32
-);
-fn gmat4x4f(
-  a: gf32,
+  p: I) =
+  gmat4x4f(
+    a.gf32,
+    b.gf32,
+    c.gf32,
+    d.gf32,
+    e.gf32,
+    f.gf32,
+    g.gf32,
+    h.gf32,
+    i.gf32,
+    j.gf32,
+    k.gf32,
+    l.gf32,
+    m.gf32,
+    n.gf32,
+    o.gf32,
+    p.gf32
+  );
+fn gmat4x4f
+  (a: gf32,
   b: gf32,
   c: gf32,
   d: gf32,
@@ -2912,15 +3497,11 @@ fn gmat4x4f(
   m: gf32,
   n: gf32,
   o: gf32,
-  p: gf32
-) = gFn16{gf32, gmat4x4f}({gmat4x4f.typeName}(), a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p);
-
+  p: gf32) =
+  gFn16{gf32, gmat4x4f}({gmat4x4f.typeName}(), a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p);
 // TODO: Fixed-length buffers within wgsl
-
 // TODO: How to handle structs?
-
 /// GPGPU Accessor functions
-
 fn x(v: gvec2u) = gProp{gvec2u, gu32}('x', v);
 fn y(v: gvec2u) = gProp{gvec2u, gu32}('y', v);
 fn i(v: gvec2u) = v.x;
@@ -3218,7 +3799,6 @@ fn ga(v: gvec4u) = v.yw;
 fn ag(v: gvec4u) = v.wy;
 fn ba(v: gvec4u) = v.zw;
 fn ab(v: gvec4u) = v.wz;
-
 // 1 = x, i, r; 2 = y, j, g; 3 = z, k, b; 4 = w, l, a
 fn xyz(v: gvec4u) = gProp{gvec4u, gvec3u}('xyz', v); // 123
 fn xyw(v: gvec4u) = gProp{gvec4u, gvec3u}('xyw', v); // 124
@@ -3959,9 +4539,7 @@ fn store{N}(a: WgpuType{N}, b: WgpuType{N}) {
   let buffers = a.buffers.union(b.buffers);
   return WgpuType{N}(statement, statements, buffers);
 }
-
 /// GPGPU Math functions
-
 fn neg(v: gi32) = gPrefix("-", "neg", v);
 fn neg(v: gf32) = gPrefix("-", "neg", v);
 fn neg(v: gvec2i) = gPrefix("-", "neg", v);
@@ -4016,19 +4594,25 @@ fn reverseBits(v: gvec3u) = gFn1("reverseBits", v);
 fn reverseBits(v: gvec4i) = gFn1("reverseBits", v);
 fn reverseBits(v: gvec4u) = gFn1("reverseBits", v);
 
-fn extractBits{A, B}(v: gu32, offset: A, count: B) =
-  gFn3{gu32, gu32}("extractBits", v, offset.gu32, count.gu32);
-fn extractBits{A, B}(v: gvec2u, offset: A, count: B) =
-  gFn3{gvec2u, gu32, gu32, gvec2u}("extractBits", v, offset.gu32, count.gu32);
-fn extractBits{A, B}(v: gvec3u, offset: A, count: B) =
-  gFn3{gvec3u, gu32, gu32, gvec3u}("extractBits", v, offset.gu32, count.gu32);
-fn extractBits{A, B}(v: gvec4u, offset: A, count: B) =
-  gFn3{gvec4u, gu32, gu32, gvec4u}("extractBits", v, offset.gu32, count.gu32);
+fn extractBits{A, B}(v: gu32, offset: A, count: B) {
+  return gFn3{gu32, gu32}("extractBits", v, offset.gu32, count.gu32);
+}
+fn extractBits{A, B}(v: gvec2u, offset: A, count: B) {
+  return gFn3{gvec2u, gu32, gu32, gvec2u}("extractBits", v, offset.gu32, count.gu32);
+}
+fn extractBits{A, B}(v: gvec3u, offset: A, count: B) {
+  return gFn3{gvec3u, gu32, gu32, gvec3u}("extractBits", v, offset.gu32, count.gu32);
+}
+fn extractBits{A, B}(v: gvec4u, offset: A, count: B) {
+  return gFn3{gvec4u, gu32, gu32, gvec4u}("extractBits", v, offset.gu32, count.gu32);
+}
 
-fn insertBits{A, B, C}(v: gu32, newbits: A, offset: B, count: C) =
-  gFn4{gu32, gu32}("insertBits", v, newbits.gu32, offset.gu32, count.gu32);
-fn insertBits{A, B, C}(v: gi32, newbits: A, offset: B, count: C) =
-  gFn4{gi32, gi32, gu32, gu32, gi32}("insertBits", v, newbits.gi32, offset.gu32, count.gu32);
+fn insertBits{A, B, C}(v: gu32, newbits: A, offset: B, count: C) {
+  return gFn4{gu32, gu32}("insertBits", v, newbits.gu32, offset.gu32, count.gu32);
+}
+fn insertBits{A, B, C}(v: gi32, newbits: A, offset: B, count: C) {
+  return gFn4{gi32, gi32, gu32, gu32, gi32}("insertBits", v, newbits.gi32, offset.gu32, count.gu32);
+}
 fn insertBits{A, B, C}(v: gvec2u, newbits: A, offset: B, count: C) =
   gFn4{gvec2u, gvec2u, gu32, gu32, gvec2u}("insertBits", v, newbits.gvec2u, offset.gu32, count.gu32);
 fn insertBits{A, B, C}(v: gvec2i, newbits: A, offset: B, count: C) =
@@ -4262,7 +4846,6 @@ fn mul(a: gi32, b: gvec4i) = gInfix('*', 'mul', b, a);
 fn mul(a: gvec4f, b: gvec4f) = gInfix('*', 'mul', a, b);
 fn mul(a: gvec4f, b: gf32) = gInfix('*', 'mul', a, b);
 fn mul(a: gf32, b: gvec4f) = gInfix('*', 'mul', b, a);
-
 // Matrix multiplication, though, needs some special consideration, most of the time
 fn mul(a: gmat2x2f, b: gf32) = gInfix('*', 'mul', a, b);
 fn mul(a: gf32, b: gmat2x2f) = gInfix('*', 'mul', b, a);
@@ -4634,7 +5217,9 @@ fn acsc(v: gvec4f) = asin(gvec4f(1.0).div(v));
 fn acot(v: gf32) = pi.div(2.0).sub(atan(v));
 fn acot(v: gvec2f) = gvec2f(pi.div(2.0), pi.div(2.0)).sub(atan(v));
 fn acot(v: gvec3f) = gvec3f(pi.div(2.0), pi.div(2.0), pi.div(2.0)).sub(atan(v));
-fn acot(v: gvec4f) = gvec4f(pi.div(2.0), pi.div(2.0), pi.div(2.0), pi.div(2.0)).sub(atan(v));
+fn acot(v: gvec4f) {
+  return gvec4f(pi.div(2.0), pi.div(2.0), pi.div(2.0), pi.div(2.0)).sub(atan(v));
+}
 
 fn sech(v: gf32) = 1.0.div(cosh(v));
 fn sech(v: gvec2f) = gvec2f(1.0).div(cosh(v));
@@ -4657,17 +5242,21 @@ fn asech(v: gvec3f) = ln(gvec3f(1.0).add(sqrt(gvec3f(1.0).sub(v.pow(gvec3f(2.0))
 fn asech(v: gvec4f) = ln(gvec4f(1.0).add(sqrt(gvec4f(1.0).sub(v.pow(gvec4f(2.0))))).div(v));
 
 fn acsch(x: gf32) = ln(1.0.div(x).add(sqrt(1.0.div(x.pow(2.0)).add(1.0))));
-fn acsch(x: gvec2f) = ln(gvec2f(1.0).div(x).add(sqrt(gvec2f(1.0).div(x.pow(gvec2f(2.0))).add(gvec2f(1.0)))));
-fn acsch(x: gvec3f) = ln(gvec3f(1.0).div(x).add(sqrt(gvec3f(1.0).div(x.pow(gvec3f(2.0))).add(gvec3f(1.0)))));
-fn acsch(x: gvec4f) = ln(gvec4f(1.0).div(x).add(sqrt(gvec4f(1.0).div(x.pow(gvec4f(2.0))).add(gvec4f(1.0)))));
+fn acsch(x: gvec2f) {
+  return ln(gvec2f(1.0).div(x).add(sqrt(gvec2f(1.0).div(x.pow(gvec2f(2.0))).add(gvec2f(1.0)))));
+}
+fn acsch(x: gvec3f) {
+  return ln(gvec3f(1.0).div(x).add(sqrt(gvec3f(1.0).div(x.pow(gvec3f(2.0))).add(gvec3f(1.0)))));
+}
+fn acsch(x: gvec4f) {
+  return ln(gvec4f(1.0).div(x).add(sqrt(gvec4f(1.0).div(x.pow(gvec4f(2.0))).add(gvec4f(1.0)))));
+}
 
 fn acoth(x: gf32) = ln(x.add(1.0).div(x.sub(1.0))).div(2.0);
 fn acoth(x: gvec2f) = ln(x.add(gvec2f(1.0)).div(x.sub(gvec2f(1.0)))).div(gvec2f(2.0));
 fn acoth(x: gvec3f) = ln(x.add(gvec3f(1.0)).div(x.sub(gvec3f(1.0)))).div(gvec3f(2.0));
 fn acoth(x: gvec4f) = ln(x.add(gvec4f(1.0)).div(x.sub(gvec4f(1.0)))).div(gvec4f(2.0));
-
 /// GPGPU Comparison functions
-
 fn eq(a: gu32, b: gu32) = gInfix{gu32, gu32, gbool}('==', 'eq', a, b);
 fn eq{T}(a: gu32, b: T) = gInfix{gu32, gu32, gbool}('==', 'eq', a, b.gu32);
 fn eq{T}(a: T, b: gu32) = gInfix{gu32, gu32, gbool}('==', 'eq', a.gu32, b);
@@ -4793,9 +5382,7 @@ fn gte(a: gvec3f, b: gvec3f) = gInfix{gvec3f, gvec3f, gvec3b}('>=', 'gte', a, b)
 fn gte(a: gvec4u, b: gvec4u) = gInfix{gvec4u, gvec4u, gvec4b}('>=', 'gte', a, b);
 fn gte(a: gvec4i, b: gvec4i) = gInfix{gvec4i, gvec4i, gvec4b}('>=', 'gte', a, b);
 fn gte(a: gvec4f, b: gvec4f) = gInfix{gvec4f, gvec4f, gvec4b}('>=', 'gte', a, b);
-
 /// GPGPU Conditional functions
-
 fn if{T}(c: gbool, t: () -> T, f: () -> T) = if(c, t(), f());
 fn if{T}(c: gbool, t: T, f: T) {
   let varName = "select("
@@ -4809,9 +5396,7 @@ fn if{T}(c: gbool, t: T, f: T) {
   let buffers = f.buffers.union(t.buffers).union(c.buffers);
   return {T}(varName, statements, buffers);
 }
-
 /// GPU Boolean and Bitwise methods
-
 fn not(a: gu32) = gPrefix('!', 'not', a);
 fn not(a: gi32) = gPrefix('!', 'not', a);
 fn not(a: gbool) = gPrefix('!', 'not', a);
@@ -4907,9 +5492,7 @@ fn shr(a: gvec3u, b: gvec3u) = gInfix('>>', 'shr', a, b);
 fn shr(a: gvec3i, b: gvec3i) = gInfix('>>', 'shr', a, b);
 fn shr(a: gvec4u, b: gvec4u) = gInfix('>>', 'shr', a, b);
 fn shr(a: gvec4i, b: gvec4i) = gInfix('>>', 'shr', a, b);
-
 /// GPGPU Bitcasting functions
-
 fn gbitcast{I, O}(v: I) {
   let typename = {O.typeName}();
   let varName = 'bitcast_'.concat(typename).concat('_').concat(uuid().string.replace('-', '_'));
@@ -4961,9 +5544,7 @@ fn asVec4i(v: gvec4f) = gbitcast{gvec4f, gvec4i}(v);
 fn asVec4f(v: gvec4u) = gbitcast{gvec4u, gvec4f}(v);
 fn asVec4f(v: gvec4i) = gbitcast{gvec4i, gvec4f}(v);
 fn asVec4f(v: gvec4f) = v;
-
 /// CPU and GPGPU miscellaneous Vector functions
-
 fn every(v: gvec2b) = gFn1('all', v);
 fn every(v: gvec3b) = gFn1('all', v);
 fn every(v: gvec4b) = gFn1('all', v);
@@ -5019,7 +5600,6 @@ fn pack2x16unorm(v: f32[2]) {
 
 fn pack2x16float(v: gvec2f) = gFn1{gvec2f, gu32}('pack2x16float', v);
 // No CPU-side equivalent as `f16` is only available in Rust nightly and not at all in JS-land.
-
 fn unpack4x8snorm(v: gu32) = gFn1{gu32, gvec4f}('unpack4x8snorm', v);
 fn unpack4x8snorm(v: u32) {
   let d = max(-1.f32, (v & 255.u32).f32 / 127.f32);
@@ -5044,7 +5624,6 @@ fn unpack4x8unorm(v: u32) {
   return {f32[4]}(a, b, c, d);
 }
 
-
 fn unpack2x16snorm(v: gu32) = gFn1{gu32, gvec2f}('unpack2x16snorm', v);
 fn unpack2x16snorm(v: u32) {
   let b = max(-1.f32, (v & 65535.u32).f32 / 32767.f32);
@@ -5063,7 +5642,6 @@ fn unpack2x16unorm(v: u32) {
 
 fn unpack2x16float(v: gu32) = gFn1{gu32, gvec2f}('unpack2x16float', v);
 // Also not doing this on the CPU side
-
 // storageBarrier is a synchronization mechanism on writes to storage buffers up to that point, to
 // make sure further reads/writes can expect all prior logical reads/writes to have completed. This
 // can be useful for operations where you need multiple prior outputs as the new input, like doing
@@ -5073,12 +5651,9 @@ fn unpack2x16float(v: gu32) = gFn1{gu32, gvec2f}('unpack2x16float', v);
 // machinery of another shader compilation and work scheduling, or you could do it in a loop which
 // would be infeasible otherwise. It's a pure side-effect function, though, so using it "properly"
 // in the GPGPU binding in Alan is trickier. (Really only possible with the array-based `run`.
-fn storageBarrier() = WgpuType{"storageBarrier"}(
-  "storageBarrier()", Dict("storageBarrier()", "storageBarrier()"), Set{GBufferTagged}()
-);
-
+fn storageBarrier() =
+  WgpuType{"storageBarrier"}("storageBarrier()", Dict("storageBarrier()", "storageBarrier()"), Set{GBufferTagged}());
 /// GBuffer-specific functions
-
 fn map{G, G2}(gb: GBuffer{G}, f: Prop{WgpuTypeMap, String{G}} -> Prop{WgpuTypeMap, String{G2}}) {
   let idx = gFor(gb.cpulen);
   let val = gb[idx];
@@ -5087,7 +5662,8 @@ fn map{G, G2}(gb: GBuffer{G}, f: Prop{WgpuTypeMap, String{G}} -> Prop{WgpuTypeMa
   compute.build.run;
   return out;
 }
-fn map{G, G2}(gb: GBuffer{G}, f: (Prop{WgpuTypeMap, String{G}}, gu32) -> Prop{WgpuTypeMap, String{G2}}) {
+fn map{G, G2}
+  (gb: GBuffer{G}, f: (Prop{WgpuTypeMap, String{G}}, gu32) -> Prop{WgpuTypeMap, String{G2}}) {
   let idx = gFor(gb.cpulen);
   let val = gb[idx];
   let out = GBuffer{G2}(gb.cpulen)!!;
@@ -5095,15 +5671,20 @@ fn map{G, G2}(gb: GBuffer{G}, f: (Prop{WgpuTypeMap, String{G}}, gu32) -> Prop{Wg
   compute.build.run;
   return out;
 }
-
 /// GPU Rendering-related functions
 type{Rs} Window = Binds{"alan_std::AlanWindowContext" <- RootBacking};
 type{Js} Window = Binds{"AlanWindowContext"};
 type{Rs} Frame = Binds{"alan_std::AlanWindowFrame" <- RootBacking};
 type{Js} Frame = Binds{"AlanWindowFrame"};
 
-fn{Rs} window "alan_std::run_window" <- RootBacking :: (Mut{(Mut{Window}) -> ()}, Mut{(Mut{Window}) -> u32[]}, (Frame) -> GPGPU[]) -> ()!;
-fn{Js} window "alan_std.runWindow" <- RootBacking :: (Window -> (), Window -> u32[], Frame -> GPGPU[]) -> ()!;
+fn{Rs} window
+  "alan_std::run_window"
+  <- RootBacking
+  :: (Mut{(Mut{Window}) -> ()}, Mut{(Mut{Window}) -> u32[]}, (Frame) -> GPGPU[]) -> ()!;
+fn{Js} window
+  "alan_std.runWindow"
+  <- RootBacking
+  :: (Window -> (), Window -> u32[], Frame -> GPGPU[]) -> ()!;
 fn{Rs} width Method{"width"} :: Window -> u32;
 fn{Js} width "alan_std.contextWidth" <- RootBacking :: Window -> u32;
 fn{Rs} height Method{"height"} :: Window -> u32;
@@ -5127,15 +5708,20 @@ fn{Js} runtime "alan_std.contextRuntime" <- RootBacking :: Window -> u32;
 fn{Js} canvas "alan_std.contextCanvas" <- RootBacking :: (Window, string) -> ();
 // TODO: Be less opinionated on the context and framebuffer types, maybe?
 fn{Rs} context(f: Frame) = GBuffer{u32}({Property{"context.clone()"} :: Frame -> GBufferRaw}(f));
-fn{Js} context(f: Frame) = GBuffer{u32}({"alan_std.frameContext" <- RootBacking :: Frame -> GBufferRaw}(f));
-fn{Rs} framebuffer(f: Frame) = GBuffer{u32}({Property{"framebuffer.clone()"} :: Frame -> GBufferRaw}(f));
-fn{Js} framebuffer(f: Frame) = GBuffer{u32}({"alan_std.frameFramebuffer" <- RootBacking :: Frame -> GBufferRaw}(f));
+fn{Js} context(f: Frame) {
+  return GBuffer{u32}({"alan_std.frameContext" <- RootBacking :: Frame -> GBufferRaw}(f));
+}
+fn{Rs} framebuffer(f: Frame) {
+  return GBuffer{u32}({Property{"framebuffer.clone()"} :: Frame -> GBufferRaw}(f));
+}
+fn{Js} framebuffer(f: Frame) {
+  return GBuffer{u32}({"alan_std.frameFramebuffer" <- RootBacking :: Frame -> GBufferRaw}(f));
+}
 fn{Rs} width(f: Frame) = {Property{"width"} :: Frame -> u32}(f);
 fn{Js} width(f: Frame) = {"alan_std.frameWidth" <- RootBacking :: Frame -> u32}(f);
 fn{Rs} height(f: Frame) = {Property{"height"} :: Frame -> u32}(f);
 fn{Js} height(f: Frame) = {"alan_std.frameHeight" <- RootBacking :: Frame -> u32}(f);
 fn pixel(f: Frame) = gFor(f.width, f.height);
-
 /// Process exit-related functions
 fn{Rs} ExitCode "std::process::ExitCode::from" :: Own{u8} -> ExitCode;
 fn{Js} ExitCode "Number" :: u8 -> ExitCode;
@@ -5146,13 +5732,14 @@ fn ExitCode(e: i8) = ExitCode(e.u8);
 fn ExitCode(e: i16) = ExitCode(e.u8);
 fn ExitCode(e: i32) = ExitCode(e.u8);
 fn ExitCode(e: i64) = ExitCode(e.u8);
-
 /// Stdout/stderr-related functions
 // TODO: Rework this to just print anything that can be converted to `string` via interfaces
 fn{Rs} print{T}(v: T) = {"println!" :: ("{}", string)}(v.string);
 fn{Js} print{T}(v: T) = {"console.log" :: T}(v);
 fn{Js} print{T}(v: T[]) = {"((vs) => console.log(vs.map((v) => v.valueOf())))" :: T[]}(v);
-fn print{A, B}(v: Either{A, B}) = if({A}(v).exists, fn = {A}(v).getOrExit.print, fn = {B}(v).getOrExit.print);
+fn print{A, B}(v: Either{A, B}) {
+  return if({A}(v).exists, fn = {A}(v).getOrExit.print, fn = {B}(v).getOrExit.print);
+}
 fn{Js} print "((s) => console.log(s.val))" :: string;
 fn{Js} print (b: bool) = b.string.print;
 fn{Js} print (i: i8) = i.string.print;
@@ -5170,23 +5757,19 @@ fn{Js} print (u: u64[]) = "[".concat(u.map(string).join(", ")).concat("]").print
 fn{Js} print{S} (i: Buffer{i64, S}) = "[".concat(i.map(string).join(", ")).concat("]").print;
 fn{Js} print{S} (u: Buffer{u64, S}) = "[".concat(u.map(string).join(", ")).concat("]").print;
 fn{Js} print (e: Error) = "Error: ".concat(e.string).print;
-fn{Rs} print (d: Duration) = {"println!" :: ("{}.{:0>9}", u64, u32)}(
-  {Method{"as_secs"} :: Duration -> u64}(d),
-  {Method{"subsec_nanos"} :: Duration -> u32}(d));
+fn{Rs} print (d: Duration) =
+  {"println!" :: ("{}.{:0>9}", u64, u32)}({Method{"as_secs"} :: Duration -> u64}(d), {
+    Method{"subsec_nanos"}
+    :: Duration -> u32
+  }(d));
 fn{Rs} print(v: void) = {"println!" :: "void"}();
 fn{Js} print(v: void) = {"console.log" :: "void"}();
 fn{Rs} print(s: string) = {"println!" :: ("{}", string)}(s);
-fn{Rs} print{T, N}(a: T[N]) = "[".concat(a.map(fn (v: T) = string(v)).join(", ")).concat("]").print;
-fn{Rs} print{T}(a: T[]) = "[".concat(a.map(fn (v: T) = string(v)).join(", ")).concat("]").print;
-fn print{T}(v: T?) = if(v.exists,
-  fn = print(v!!),
-  fn = print("void"));
-fn print{T}(v: T!) = if({T}(v).exists,
-  fn = print(v!!),
-  fn = print(v.Error!!));
-fn{Js} print{T}(v: void!) = if({T}(v).exists,
-  fn = "void".print,
-  fn = print(v.Error!!));
+fn{Rs} print{T, N}(a: T[N]) = "[".concat(a.map(fn(v: T) = string(v)).join(", ")).concat("]").print;
+fn{Rs} print{T}(a: T[]) = "[".concat(a.map(fn(v: T) = string(v)).join(", ")).concat("]").print;
+fn print{T}(v: T?) = if(v.exists, fn = print(v!!), fn = print("void"));
+fn print{T}(v: T!) = if({T}(v).exists, fn = print(v!!), fn = print(v.Error!!));
+fn{Js} print{T}(v: void!) = if({T}(v).exists, fn = "void".print, fn = print(v.Error!!));
 fn{Rs} eprint{T}(v: T) = {"eprintln!" :: ("{}", string)}(v.string);
 fn{Js} eprint{T}(v: T) = {"console.error" :: string}(v.string);
 fn{Rs} eprint(v: void) = {"eprintln!" :: "void"}();
@@ -5207,12 +5790,8 @@ fn{Js} eprint (f: f64) = f.string.print;
 fn{Js} eprint (i: i64[]) = "[".concat(i.map(string).join(", ")).concat("]").print;
 fn{Js} eprint (u: u64[]) = "[".concat(u.map(string).join(", ")).concat("]").print;
 fn{Rs} eprint{T}(a: T[]) = "[".concat(a.map(string).join(", ")).concat("]").eprint;
-fn{Rs} eprint{T}(v: T?) = if(v.exists,
-  fn = eprint(v!!),
-  fn = eprint("void"));
-fn{Rs} eprint{T}(v: T!) = if({T}(v).exists,
-  fn = eprint(v!!),
-  fn = eprint(v.Error!!));
+fn{Rs} eprint{T}(v: T?) = if(v.exists, fn = eprint(v!!), fn = eprint("void"));
+fn{Rs} eprint{T}(v: T!) = if({T}(v).exists, fn = eprint(v!!), fn = eprint(v.Error!!));
 
 fn{Rs} stdout (s: string) {
   {"print!" :: ("{}", string)}(s);
@@ -5224,7 +5803,6 @@ fn{Rs} stderr (s: string) {
   {"std::io::stderr().flush" :: () -> ()}();
 }
 fn{Js} stderr "((s) => process.stderr.write(s.val))" :: string;
-
 /// Testing types and functions
 /***
  * This is what I *want*, but the Rust codegen is trying to clone the array of closure functions,
@@ -5292,7 +5870,6 @@ fn{Test} report(testing: Testing) {
 }
 
  */
-
 type{Test} Testing = Array{string}; // To prevent porting issues when the desired test runner works
 fn{Test} Testing = Testing("Start");
 
@@ -5339,17 +5916,20 @@ fn{Test} assert{T}(groupname: string[], comparator: (T, T) -> bool, actual: T, e
   line.stdout;
   "\u{1b}[0m".stdout;
   let res = comparator(actual, expected);
-  if(res,
-    fn { "\u{0d}\u{1b}[32;1m✅".stdout; },
-    fn { "\u{0d}\u{1b}[31;1m❎".stdout; });
+  if(res, fn {
+    "\u{0d}\u{1b}[32;1m✅".stdout;
+  }, fn {
+    "\u{0d}\u{1b}[31;1m❎".stdout;
+  });
   line.stdout;
   "\u{1b}[0m".print;
+  // TODO: Better way to force an exit */
   if(!res, fn {
     "\u{1b}[31;1mTest Failure\u{1b}[0m".eprint;
     Maybe{i64}()!!;
   }, fn {
     "".stdout;
-  }); // TODO: Better way to force an exit */
+  });
   return groupname;
 }
 

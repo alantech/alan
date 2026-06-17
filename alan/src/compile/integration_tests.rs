@@ -467,17 +467,17 @@ macro_rules! status {
 }
 
 // The gold standard test. If you can't do this, are you even a language at all? :P
-test!(hello_world => r#"
-    export fn main() -> () {
-        print('Hello, World!');
-    }"#;
+test!(hello_world => r#"export fn main() -> () {
+  print('Hello, World!');
+}
+"#;
     stdout "Hello, World!\n";
     status 0;
 );
-test!(multi_line_hello_world => r#"
-export fn main = print(
-"Hello,
-World!");"#;
+test!(multi_line_hello_world => r#"export fn main =
+  print("Hello,
+World!");
+"#;
     stdout r#"Hello,
 World!
 "#;
@@ -486,105 +486,105 @@ World!
 
 // Exit Tests
 
-test!(normal_exit_code => r#"
-    export fn main() -> ExitCode {
-        return ExitCode(0);
-    }"#;
+test!(normal_exit_code => r#"export fn main() -> ExitCode {
+  return ExitCode(0);
+}
+"#;
     status 0;
 );
-test!(error_exit_code => r#"
-    export fn main() = ExitCode(1);"#;
+test!(error_exit_code => r#"export fn main() = ExitCode(1);
+"#;
     status 1;
 );
-test!(non_global_memory_exit_code => r#"
-    export fn main() {
-      let x: i64 = 0;
-      return x.ExitCode;
-    }"#;
+test!(non_global_memory_exit_code => r#"export fn main() {
+  let x: i64 = 0;
+  return x.ExitCode;
+}
+"#;
     status 0;
 );
 
 // TODO: There's no way to check equality of the `void` type, only printing allows this right now
-test!(void_values => r#"
-    export fn main {
-        5.print;
-        5.void.print;
-        void().print; // TODO: `void.print` should work, too. Figure out why it isn't
-    }"#;
+test!(void_values => r#"export fn main {
+  5.print;
+  5.void.print;
+  void().print; // TODO: `void.print` should work, too. Figure out why it isn't
+}
+"#;
     stdout "5\nvoid\nvoid\n";
 );
 
 // Printing Tests
 
-test!(print_function => r#"
-    export fn main() {
-      print('Hello, World');
-      return ExitCode(0);
-    }"#;
+test!(print_function => r#"export fn main() {
+  print('Hello, World');
+  return ExitCode(0);
+}
+"#;
     stdout "Hello, World\n";
     status 0;
 );
-test!(duration_print => r#"
-    export fn main() -> void {
-        const i = now();
-        wait(110); // Increased from 10ms to 110ms because the node.js event loop seems less
-                   // capable of guaranteeing staying below 20ms in the delay here. Adding an extra
-                   // 10ms in case it accidentally waits 90-something ms instead.
-        const d = i.elapsed;
-        print(d);
-    }"#;
+test!(duration_print => r#"export fn main() -> void {
+  const i = now();
+  wait(110); // Increased from 10ms to 110ms because the node.js event loop seems less
+  // capable of guaranteeing staying below 20ms in the delay here. Adding an extra
+  // 10ms in case it accidentally waits 90-something ms instead.
+  const d = i.elapsed;
+  print(d);
+}
+"#;
     stdout_contains "0.1";
 );
-test!(print_compile_time_string => r#"
-    type FooBar = Concat{"Foo", "Bar"};
-    export fn main {
-      {FooBar}().print;
-    }"#;
+test!(print_compile_time_string => r#"type FooBar = Concat{"Foo", "Bar"};
+export fn main {
+  {FooBar}().print;
+}
+"#;
     stdout "FooBar\n";
 );
-test!(stdout_and_stderr => r#"
-    export fn main {
-      let hello = 'Hello';
-      let goodbye = 'Goodbye';
-      let comma = ', ';
-      let world = 'World';
-      let end = '!\n';
+test!(stdout_and_stderr => r#"export fn main {
+  let hello = 'Hello';
+  let goodbye = 'Goodbye';
+  let comma = ', ';
+  let world = 'World';
+  let end = '!\n';
 
-      stdout(hello);
-      stdout(comma);
-      stdout(world);
-      stdout(end);
-      goodbye.stderr;
-      comma.stderr;
-      world.stderr;
-      end.stderr;
-    }"#;
+  stdout(hello);
+  stdout(comma);
+  stdout(world);
+  stdout(end);
+  goodbye.stderr;
+  comma.stderr;
+  world.stderr;
+  end.stderr;
+}
+"#;
     stdout "Hello, World!\n";
     stderr "Goodbye, World!\n";
 );
 
 // TODO: Unify the string output for these two so it can be tested more reliably
-test!(string_parse => r#"
-    export fn main {
-      "8".i8.print;
-      "foo".i8.print;
-      "16".i16.print;
-      "foo".i16.print;
-      "32".i32.print;
-      "foo".i32.print;
-      "64".i64.print;
-      "foo".i64.print;
-    }"#;
+test!(string_parse => r#"export fn main {
+  "8".i8.print;
+  "foo".i8.print;
+  "16".i16.print;
+  "foo".i16.print;
+  "32".i32.print;
+  "foo".i32.print;
+  "64".i64.print;
+  "foo".i64.print;
+}
+"#;
     stdout_rs "8\nError: invalid digit found in string\n16\nError: invalid digit found in string\n32\nError: invalid digit found in string\n64\nError: invalid digit found in string\n";
     stdout_js "8\nError: Not a Number\n16\nError: Not a Number\n32\nError: Not a Number\n64\nError: Cannot convert foo to a BigInt\n";
 );
 
 // GPGPU
 
-test_gpgpu!(hello_gpu => r#"
-    export fn main {
-      let b = GBuffer(filled(2.i32, 4))!!;
-      let plan = GPGPU("
+test_gpgpu!(hello_gpu => r#"export fn main {
+  let b = GBuffer(filled(2.i32, 4))!!;
+  let plan = GPGPU(
+    "
         @group(0)
         @binding(0)
         var<storage, read_write> vals: array<i32>;
@@ -594,357 +594,347 @@ test_gpgpu!(hello_gpu => r#"
         fn main(@builtin(global_invocation_id) id: vec3<u32>) {
           vals[id.x] = vals[id.x] * i32(id.x);
         }
-      ", b, {i64[3]}(1, 1, 1));
-       plan.run;
-      b.read.print;
-    }"#;
+      ",
+    b,
+    {i64[3]}(1, 1, 1)
+  );
+  plan.run;
+  b.read.print;
+}
+"#;
     stdout "[0, 2, 4, 6]\n";
 );
-test_gpgpu!(hello_gpu_new => r#"
-    export fn main {
-      let b = GBuffer(filled(2.i32, 4))!!;
-      let idx = gFor(4);
-      let compute = b[idx].store(b[idx] * idx.gi32);
-      compute.build.run;
-      b.read.print;
-    }"#;
+test_gpgpu!(hello_gpu_new => r#"export fn main {
+  let b = GBuffer(filled(2.i32, 4))!!;
+  let idx = gFor(4);
+  let compute = b[idx].store(b[idx] * idx.gi32);
+  compute.build.run;
+  b.read.print;
+}
+"#;
     stdout "[0, 2, 4, 6]\n";
 );
-test_gpgpu!(list_of_gpu_tasks => r#"
-    export fn main {
-      let b1 = GBuffer(filled(2.i32, 8))!!;
-      let b2 = GBuffer(filled(5.i32, 4))!!;
-      let i1 = gFor(8);
-      let i2 = gFor(4);
-      let c1 = b1[i1].store(b1[i1] * i1.gi32);
-      let c2 = b2[i2].store(b1[i2] + i2.gi32);
-      [c1.build, c2.build].run; // Execution order determined here
-      b1.read.print;
-      b2.read.print;
-    }"#;
+test_gpgpu!(list_of_gpu_tasks => r#"export fn main {
+  let b1 = GBuffer(filled(2.i32, 8))!!;
+  let b2 = GBuffer(filled(5.i32, 4))!!;
+  let i1 = gFor(8);
+  let i2 = gFor(4);
+  let c1 = b1[i1].store(b1[i1] * i1.gi32);
+  let c2 = b2[i2].store(b1[i2] + i2.gi32);
+  [c1.build, c2.build].run; // Execution order determined here
+  b1.read.print;
+  b2.read.print;
+}
+"#;
     stdout "[0, 2, 4, 6, 8, 10, 12, 14]\n[0, 3, 6, 9]\n";
 );
 
-test_gpgpu!(hello_gpu_odd => r#"
-    export fn main {
-      let b = GBuffer(filled(2.i32, 4))!!;
-      let idx = gFor(4, 1);
-      let compute = b[idx.i].store(b[idx.i] * idx.i.gi32 + 1);
-      compute.build.run;
-      b.read.print;
-    }"#;
+test_gpgpu!(hello_gpu_odd => r#"export fn main {
+  let b = GBuffer(filled(2.i32, 4))!!;
+  let idx = gFor(4, 1);
+  let compute = b[idx.i].store(b[idx.i] * idx.i.gi32 + 1);
+  compute.build.run;
+  b.read.print;
+}
+"#;
     stdout "[1, 3, 5, 7]\n";
 );
 
-test_gpgpu!(gpu_map => r#"
-    export fn main {
-        let b = GBuffer([1.i32, 2.i32, 3.i32, 4.i32])!!;
-        let out = b.map(fn (val: gi32) = val + 2);
-        out.read.print;
-    }"#;
+test_gpgpu!(gpu_map => r#"export fn main {
+  let b = GBuffer([1.i32, 2.i32, 3.i32, 4.i32])!!;
+  let out = b.map(fn(val: gi32) = val + 2);
+  out.read.print;
+}
+"#;
     stdout "[3, 4, 5, 6]\n";
 );
 
-test_gpgpu!(gpu_if => r#"
-    export fn main {
-        let b = GBuffer([1.i32, 2.i32, 3.i32, 4.i32])!!;
-        let out = b.map(fn (val: gi32, i: gu32) = if(
-            i % 2 == 0,
-            val * i.gi32,
-            val - i.gi32));
-        out.read.print;
-    }"#;
+test_gpgpu!(gpu_if => r#"export fn main {
+  let b = GBuffer([1.i32, 2.i32, 3.i32, 4.i32])!!;
+  let out = b.map(fn(val: gi32, i: gu32) = if(i % 2 == 0, val * i.gi32, val - i.gi32));
+  out.read.print;
+}
+"#;
     stdout "[0, 1, 6, 1]\n";
 );
 
-test_gpgpu!(gpu_replace => r#"
-    export fn main {
-        let b = GBuffer([1.i32, 2.i32, 3.i32, 4.i32])!!;
-        b.map(fn (val: gi32) = val + 2).read.print;
-        b.replace([2.i32, 4.i32, 6.i32, 8.i32]);
-        b.map(fn (val: gi32) = val / 2).read.print;
-    }"#;
+test_gpgpu!(gpu_replace => r#"export fn main {
+  let b = GBuffer([1.i32, 2.i32, 3.i32, 4.i32])!!;
+  b.map(fn(val: gi32) = val + 2).read.print;
+  b.replace([2.i32, 4.i32, 6.i32, 8.i32]);
+  b.map(fn(val: gi32) = val / 2).read.print;
+}
+"#;
     stdout "[3, 4, 5, 6]\n[1, 2, 3, 4]\n";
 );
 
-test_gpgpu!(gpu_abs => r#"
-    export fn main {
-        let b = GBuffer([1.i32, -2.i32, -3.i32, 4.i32])!!;
-        b.map(fn (val: gi32) = val.abs).read.print;
-    }"#;
+test_gpgpu!(gpu_abs => r#"export fn main {
+  let b = GBuffer([1.i32, -2.i32, -3.i32, 4.i32])!!;
+  b.map(fn(val: gi32) = val.abs).read.print;
+}
+"#;
     stdout "[1, 2, 3, 4]\n";
 );
 
-test_gpgpu!(gpu_clz => r#"
-    export fn main {
-        let b = GBuffer([1.i32, -2.i32, -3.i32, 4.i32])!!;
-        // Don't need the generic on the `read` call, but leaving it to show it still works
-        b.map(fn (val: gi32) = val.clz).read{i32}.print;
-    }"#;
+test_gpgpu!(gpu_clz => r#"export fn main {
+  let b = GBuffer([1.i32, -2.i32, -3.i32, 4.i32])!!;
+  // Don't need the generic on the `read` call, but leaving it to show it still works
+  b.map(fn(val: gi32) = val.clz).read{i32}.print;
+}
+"#;
     stdout "[31, 0, 0, 29]\n";
 );
 
-test_gpgpu!(gpu_ones => r#"
-    export fn main {
-        let b = GBuffer([1.i32, 2.i32, 3.i32, -1.i32])!!;
-        b.map(fn (val: gi32) = val.ones).read.print;
-    }"#;
+test_gpgpu!(gpu_ones => r#"export fn main {
+  let b = GBuffer([1.i32, 2.i32, 3.i32, -1.i32])!!;
+  b.map(fn(val: gi32) = val.ones).read.print;
+}
+"#;
     stdout "[1, 1, 2, 32]\n";
 );
 
-test_gpgpu!(gpu_ctz => r#"
-    export fn main {
-        let b = GBuffer([0.i32, 1.i32, 2.i32, -2_147_483_648.i32])!!;
-        b.map(fn (val: gi32) = val.ctz).read.print;
-    }"#;
+test_gpgpu!(gpu_ctz => r#"export fn main {
+  let b = GBuffer([0.i32, 1.i32, 2.i32, -2_147_483_648.i32])!!;
+  b.map(fn(val: gi32) = val.ctz).read.print;
+}
+"#;
     stdout "[32, 0, 1, 31]\n";
 );
 
-test_gpgpu!(gpu_cross => r#"
-    // TODO: A nicer test involving `map`
-
-    export fn main {
-      let b = GBuffer(filled(0.f32, 2))!!;
-      let idx = gFor(2);
-      let compute = b[idx].store(if(
-        idx == 0,
-        gvec3f(1.0, 0.0, 0.0) >< gvec3f(0.0, 1.0, 0.0),
-        gvec3f(0.0, 1.0, 0.0) >< gvec3f(1.0, 0.0, 0.0)
-      ).z);
-      compute.build.run;
-      b.read.print;
-    }"#;
+test_gpgpu!(gpu_cross => r#"// TODO: A nicer test involving `map`
+export fn main {
+  let b = GBuffer(filled(0.f32, 2))!!;
+  let idx = gFor(2);
+  let compute = b[idx].store(if(
+    idx == 0,
+    gvec3f(1.0, 0.0, 0.0) >< gvec3f(0.0, 1.0, 0.0),
+    gvec3f(0.0, 1.0, 0.0) >< gvec3f(1.0, 0.0, 0.0)
+  ).z);
+  compute.build.run;
+  b.read.print;
+}
+"#;
     stdout "[1, -1]\n";
 );
 
-test_gpgpu!(gpu_transpose => r#"
-    export fn main {
-      let b = GBuffer([1.i32, 2.i32, 3.i32, 4.i32])!!;
-      let m = gmat2x2f(b[0], b[1], b[2], b[3]).transpose;
-      let idx = gFor(1);
-      [
-        idx,
-        b[0].store((m * gmat2x2f(1.0, 0.0, 0.0, 0.0) * gvec2f(1.0, 0.0)).x.gi32),
-        b[1].store((m * gmat2x2f(1.0, 0.0, 0.0, 0.0) * gvec2f(1.0, 0.0)).y.gi32),
-        b[2].store((m * gmat2x2f(0.0, 1.0, 0.0, 0.0) * gvec2f(1.0, 0.0)).x.gi32),
-        b[3].store((m * gmat2x2f(0.0, 1.0, 0.0, 0.0) * gvec2f(1.0, 0.0)).y.gi32)
-      ].build.run;
-      b.read.print;
-    }"#;
+test_gpgpu!(gpu_transpose => r#"export fn main {
+  let b = GBuffer([1.i32, 2.i32, 3.i32, 4.i32])!!;
+  let m = gmat2x2f(b[0], b[1], b[2], b[3]).transpose;
+  let idx = gFor(1);
+  [idx, b[0].store((m * gmat2x2f(1.0, 0.0, 0.0, 0.0) * gvec2f(1.0, 0.0)).x.gi32), b[1].store((m * gmat2x2f(
+    1.0,
+    0.0,
+    0.0,
+    0.0
+  ) * gvec2f(1.0, 0.0)).y.gi32), b[2].store((m * gmat2x2f(0.0, 1.0, 0.0, 0.0) * gvec2f(1.0, 0.0)).x.gi32), b[3].store((m * gmat2x2f(
+    0.0,
+    1.0,
+    0.0,
+    0.0
+  ) * gvec2f(1.0, 0.0)).y.gi32)].build.run;
+  b.read.print;
+}
+"#;
     stdout "[1, 3, 2, 4]\n";
 );
 
-test_gpgpu!(gpu_reversebits => r#"
-    export fn main {
-        let b = GBuffer([0.i32, 1.i32, 2.i32, (-2_147_483_648).i32])!!;
-        b.map(fn (val: gi32) = val.reverseBits).read.print;
-    }"#;
+test_gpgpu!(gpu_reversebits => r#"export fn main {
+  let b = GBuffer([0.i32, 1.i32, 2.i32, (-2_147_483_648).i32])!!;
+  b.map(fn(val: gi32) = val.reverseBits).read.print;
+}
+"#;
     stdout "[0, -2147483648, 1073741824, 1]\n";
 );
 
-test_gpgpu!(gpu_extractbits => r#"
-    export fn main {
-        let b = GBuffer([0.u32, 1.u32, 2.u32, 5.u32])!!;
-        b.map(fn (val: gu32) = val.extractBits(1, 2)).read.print;
-    }"#;
+test_gpgpu!(gpu_extractbits => r#"export fn main {
+  let b = GBuffer([0.u32, 1.u32, 2.u32, 5.u32])!!;
+  b.map(fn(val: gu32) = val.extractBits(1, 2)).read.print;
+}
+"#;
     stdout "[0, 0, 1, 2]\n";
 );
 
-test_gpgpu!(gpu_insertbits => r#"
-    export fn main {
-        let b = GBuffer([0.u32, 31.u32])!!;
-        b.map(fn (val: gu32) = val.insertBits(1, 2, 3)).read.print;
-    }"#;
+test_gpgpu!(gpu_insertbits => r#"export fn main {
+  let b = GBuffer([0.u32, 31.u32])!!;
+  b.map(fn(val: gu32) = val.insertBits(1, 2, 3)).read.print;
+}
+"#;
     stdout "[4, 7]\n";
 );
 
-test_gpgpu!(gpu_round => r#"
-    export fn main {
-      let b = GBuffer(
-        [1.5.f32, 1.75.f32, 2.5.f32, 2.75.f32, (-1.5).f32, (-1.75).f32, (-2.5).f32, (-2.75).f32]
-      )!!;
-      b.map(fn (val: gf32) = val.round).read.print;
-    }"#;
+test_gpgpu!(gpu_round => r#"export fn main {
+  let b = GBuffer([1.5.f32, 1.75.f32, 2.5.f32, 2.75.f32, (-1.5).f32, (-1.75).f32, (-2.5).f32, (-2.75).f32])!!;
+  b.map(fn(val: gf32) = val.round).read.print;
+}
+"#;
     stdout "[2, 2, 2, 3, -2, -2, -2, -3]\n";
 );
 
-test_gpgpu!(gpu_magnitude => r#"
-    export fn main {
-      let b = GBuffer([2.5.f32, -2.5.f32, 2.5.f32, -2.5.f32])!!;
-      b.map(fn (val: gf32) = val.magnitude).read.print;
-      let id = gFor(1);
-      let out = GBuffer{f32}(1)!!;
-      let compute = out[id].store(gvec4f(b[0], b[1], b[2], b[3]).magnitude);
-      compute.build.run;
-      out.read.print;
-    }"#;
+test_gpgpu!(gpu_magnitude => r#"export fn main {
+  let b = GBuffer([2.5.f32, -2.5.f32, 2.5.f32, -2.5.f32])!!;
+  b.map(fn(val: gf32) = val.magnitude).read.print;
+  let id = gFor(1);
+  let out = GBuffer{f32}(1)!!;
+  let compute = out[id].store(gvec4f(b[0], b[1], b[2], b[3]).magnitude);
+  compute.build.run;
+  out.read.print;
+}
+"#;
     stdout "[2.5, 2.5, 2.5, 2.5]\n[5]\n";
 );
 
-test_gpgpu!(gpu_normalize => r#"
-    export fn main {
-      let b = GBuffer([3.0.f32, 4.0.f32])!!;
-      let id = gFor(1);
-      let out = GBuffer{f32}(2)!!;
-      let normal = gvec2f(b[0], b[1]).normalize;
-      [out[id].store(normal.x), out[id + 1].store(normal.y)].build.run;
-      out.read.map(fn (v: f32) = v.string(1)).join(', ').print;
-    }"#;
+test_gpgpu!(gpu_normalize => r#"export fn main {
+  let b = GBuffer([3.0.f32, 4.0.f32])!!;
+  let id = gFor(1);
+  let out = GBuffer{f32}(2)!!;
+  let normal = gvec2f(b[0], b[1]).normalize;
+  [out[id].store(normal.x), out[id + 1].store(normal.y)].build.run;
+  out.read.map(fn(v: f32) = v.string(1)).join(', ').print;
+}
+"#;
     stdout "0.6, 0.8\n";
 );
 
-test_gpgpu!(gpu_saturate => r#"
-    export fn main {
-        let b = GBuffer([(-0.5).f32, 0.0.f32, 0.5.f32, 1.0.f32, 1.5.f32])!!;
-        b.map(fn (val: gf32) = val.saturate).read.print;
-    }"#;
+test_gpgpu!(gpu_saturate => r#"export fn main {
+  let b = GBuffer([(-0.5).f32, 0.0.f32, 0.5.f32, 1.0.f32, 1.5.f32])!!;
+  b.map(fn(val: gf32) = val.saturate).read.print;
+}
+"#;
     stdout "[0, 0, 0.5, 1, 1]\n";
 );
 
-test_gpgpu!(gpu_dot => r#"
-    export fn main {
-      let b = GBuffer([3.0.f32, 4.0.f32])!!;
-      let id = gFor(1);
-      let out = GBuffer{f32}(1)!!;
-      let vec = gvec2f(b[0], b[1]);
-      out[id].store(vec *. vec).build.run;
-      out.read.map(fn (v: f32) = v.string(1)).join(', ').print;
-    }"#;
+test_gpgpu!(gpu_dot => r#"export fn main {
+  let b = GBuffer([3.0.f32, 4.0.f32])!!;
+  let id = gFor(1);
+  let out = GBuffer{f32}(1)!!;
+  let vec = gvec2f(b[0], b[1]);
+  out[id].store(vec *. vec).build.run;
+  out.read.map(fn(v: f32) = v.string(1)).join(', ').print;
+}
+"#;
     stdout "25.0\n";
 );
 
-test_gpgpu!(gpu_inverse_sqrt => r#"
-    export fn main {
-      let b = GBuffer([4.0.f32, 25.0.f32])!!;
-      b.map(fn (val: gf32) = val.inverseSqrt).read.map(fn (v: f32) = v.string(1)).print;
-    }"#;
+test_gpgpu!(gpu_inverse_sqrt => r#"export fn main {
+  let b = GBuffer([4.0.f32, 25.0.f32])!!;
+  b.map(fn(val: gf32) = val.inverseSqrt).read.map(fn(v: f32) = v.string(1)).print;
+}
+"#;
     stdout "[0.5, 0.2]\n";
 );
 
-test_gpgpu!(gpu_fma => r#"
-    export fn main {
-      let b = GBuffer([2.0.f32, 3.0.f32, 4.0.f32])!!;
-      let id = gFor(1);
-      let out = GBuffer{f32}(1)!!;
-      out[id].store(fma(b[0], b[1], b[2])).build.run;
-      (out.read[0]!!).string(1).print;
-    }"#;
+test_gpgpu!(gpu_fma => r#"export fn main {
+  let b = GBuffer([2.0.f32, 3.0.f32, 4.0.f32])!!;
+  let id = gFor(1);
+  let out = GBuffer{f32}(1)!!;
+  out[id].store(fma(b[0], b[1], b[2])).build.run;
+  (out.read[0]!!).string(1).print;
+}
+"#;
     stdout "10.0\n";
 );
 
-test_gpgpu!(gpu_fract => r#"
-    export fn main {
-      let b = GBuffer([1.0.f32, 3.14.f32])!!;
-      b.map(fn (val: gf32) = val.fract).read.map(fn (v: f32) = v.string(2)).join(", ").print;
-    }"#;
+test_gpgpu!(gpu_fract => r#"export fn main {
+  let b = GBuffer([1.0.f32, 3.14.f32])!!;
+  b.map(fn(val: gf32) = val.fract).read.map(fn(v: f32) = v.string(2)).join(", ").print;
+}
+"#;
     stdout "0.00, 0.14\n";
 );
 
-test_gpgpu!(gpu_determinant => r#"
-    export fn main {
-      let b = GBuffer([1.0.f32, 2.0.f32, 3.0.f32, 4.0.f32])!!;
-      let id = gFor(1);
-      let out = GBuffer{f32}(1)!!;
-      out[id].store(gmat2x2f(b[0], b[1], b[2], b[3]).determinant).build.run;
-      (out.read[0]!!).string(1).print;
-    }"#;
+test_gpgpu!(gpu_determinant => r#"export fn main {
+  let b = GBuffer([1.0.f32, 2.0.f32, 3.0.f32, 4.0.f32])!!;
+  let id = gFor(1);
+  let out = GBuffer{f32}(1)!!;
+  out[id].store(gmat2x2f(b[0], b[1], b[2], b[3]).determinant).build.run;
+  (out.read[0]!!).string(1).print;
+}
+"#;
     stdout "-2.0\n";
 );
 
-test_gpgpu!(gpu_storage_barrier => r#"
-    export fn{Lin || Win} main {
-      // On Linux and Windows, you can use `storageBarrier` to act as a synchronization point
-      // across multiple threads running the same shader, which can let you do some work, then wait
-      // to do more work that each thread may depend on the prior output of multiple threads to do
-      let id = gFor(3, 3);
-      let temp = GBuffer{f32}(9)!!;
-      let out = GBuffer{f32}(9)!!;
-      let compute = [
-        // Something that generates a buffer independently
-        temp[id.x + 3 * id.y] = (id.x.gf32 + id.y.gf32),
-        // Storage Barrier
-        storageBarrier(),
-        // Something that creates a new buffer based on the prior buffer
-        out[id.x + 3 * id.y] =
-            ((if(id.x > 0, temp[id.x - 1 + 3 * id.y], 0.0.gf32) +
-            temp[id.x + 3 * id.y] +
-            if(id.x < 2, temp[id.x + 1 + 3 * id.y], 0.0.gf32)) / 3.0)
-      ].build.run;
-      out.read.map(fn (v: f32) = v.string(2)).join(", ").print;
-    }
-    export fn{Mac || Js} main {
-      // It's never safe to use `storageBarrier` on a Mac because the new ARM Macs break it. This
-      // version "simulates" the barrier by instead breaking the single shader into two separate
-      // shaders that are run sequentially. This theoretically has a higher synchronization cost so
-      // it's not ideal, but I haven't done any benchmarking to see how much of an impact it has.
-      // Because it's not safe to use `storageBarrier` on a Mac it is also never safe to do so when
-      // in a browser context because you don't know what platform will be underneath. I'd argue
-      // that this means `storageBarrier` should never have been included in the WebGPU spec, but
-      // here we are.
-      let id = gFor(3, 3);
-      let temp = GBuffer{f32}(9)!!;
-      let out = GBuffer{f32}(9)!!;
-      let compute = [
-        // Something that generates a buffer independently
-        build(temp[id.x + 3 * id.y] = (id.x.gf32 + id.y.gf32)),
-        // Something that creates a new buffer based on the prior buffer
-        build(out[id.x + 3 * id.y] = 
-            ((if(id.x > 0, temp[id.x - 1 + 3 * id.y], 0.0.gf32) +
-            temp[id.x + 3 * id.y] +
-            if(id.x < 2, temp[id.x + 1 + 3 * id.y], 0.0.gf32)) / 3.0))
-      ];
-      compute.run;
-      out.read.map(fn (v: f32) = v.string(2)).join(", ").print;
-    }"#;
+test_gpgpu!(gpu_storage_barrier => r#"export fn{Lin || Win} main {
+  // On Linux and Windows, you can use `storageBarrier` to act as a synchronization point
+  // across multiple threads running the same shader, which can let you do some work, then wait
+  // to do more work that each thread may depend on the prior output of multiple threads to do
+  let id = gFor(3, 3);
+  let temp = GBuffer{f32}(9)!!;
+  let out = GBuffer{f32}(9)!!;
+  let compute = [temp[id.x + 3 * id.y] = (id.x.gf32 + id.y.gf32), storageBarrier(), out[id.x + 3 * id.y] =
+  ((if(id.x > 0, temp[id.x - 1 + 3 * id.y], 0.0.gf32) +
+  temp[id.x + 3 * id.y] +
+  if(id.x < 2, temp[id.x + 1 + 3 * id.y], 0.0.gf32)) / 3.0)].build.run;
+  out.read.map(fn(v: f32) = v.string(2)).join(", ").print;
+}
+export fn{Mac || Js} main {
+  // It's never safe to use `storageBarrier` on a Mac because the new ARM Macs break it. This
+  // version "simulates" the barrier by instead breaking the single shader into two separate
+  // shaders that are run sequentially. This theoretically has a higher synchronization cost so
+  // it's not ideal, but I haven't done any benchmarking to see how much of an impact it has.
+  // Because it's not safe to use `storageBarrier` on a Mac it is also never safe to do so when
+  // in a browser context because you don't know what platform will be underneath. I'd argue
+  // that this means `storageBarrier` should never have been included in the WebGPU spec, but
+  // here we are.
+  let id = gFor(3, 3);
+  let temp = GBuffer{f32}(9)!!;
+  let out = GBuffer{f32}(9)!!;
+  let compute = [build(temp[id.x + 3 * id.y] = (id.x.gf32 + id.y.gf32)), build(out[id.x + 3 * id.y] =
+  ((if(id.x > 0, temp[id.x - 1 + 3 * id.y], 0.0.gf32) +
+  temp[id.x + 3 * id.y] +
+  if(id.x < 2, temp[id.x + 1 + 3 * id.y], 0.0.gf32)) / 3.0))];
+  compute.run;
+  out.read.map(fn(v: f32) = v.string(2)).join(", ").print;
+}
+"#;
     stdout "0.33, 1.00, 1.00, 1.00, 2.00, 1.67, 1.67, 3.00, 2.33\n";
 );
 
 // Functions and Custom Operators
 
-test!(basic_function_usage => r#"
-    fn foo() = print('foo');
+test!(basic_function_usage => r#"fn foo() = print('foo');
 
-    fn bar(s: string) = s.concat("bar");
+fn bar(s: string) = s.concat("bar");
 
-    export fn main {
-      foo();
-      'foo'.bar.print;
-    }"#;
+export fn main {
+  foo();
+  'foo'.bar.print;
+}
+"#;
     stdout r#"foo
 foobar
 "#;
 );
 
-test!(functions_and_custom_operators => r#"
-    fn foo() {
-      print('foo');
-    }
+test!(functions_and_custom_operators => r#"fn foo() {
+  print('foo');
+}
 
-    fn bar(str: string, a: i64, b: i64) {
-      return str.repeat(a).concat(b.string);
-    }
+fn bar(str: string, a: i64, b: i64) {
+  return str.repeat(a).concat(b.string);
+}
 
-    fn baz(pre: string, body: string) -> void {
-      print(pre.concat(bar(body, 1, 2)));
-    }
+fn baz(pre: string, body: string) -> void {
+  print(pre.concat(bar(body, 1, 2)));
+}
 
-    fn double(a: i64) = a * 2;
+fn double(a: i64) = a * 2;
 
-    prefix double as ## precedence 10
+prefix double as ## precedence 10
 
-    fn doublesum(a: i64, b: i64) = ##a + ##b
+fn doublesum(a: i64, b: i64) = ##a + ##b
 
-    infix doublesum as #+# precedence 11
+infix doublesum as #+# precedence 11
 
-    export fn main {
-      foo();
-      'to bar'.bar(2, 3).print;
-      '>> '.baz('text here');
-      4.double.print;
-      print(##3);
-      4.doublesum(1).print;
-      print(2 #+# 3);
-    }"#;
+export fn main {
+  foo();
+  'to bar'.bar(2, 3).print;
+  '>> '.baz('text here');
+  4.double.print;
+  print(##3);
+  4.doublesum(1).print;
+  print(2 #+# 3);
+}
+"#;
     stdout r#"foo
 to barto bar3
 >> text here2
@@ -955,36 +945,36 @@ to barto bar3
 "#;
 );
 
-test!(mutable_functions => r#"
-    fn addeq (a: Mut{i64}, b: i64) {
-        a = a.clone() + b;
-    }
+test!(mutable_functions => r#"fn addeq (a: Mut{i64}, b: i64) {
+  a = a.clone() + b;
+}
 
-    infix addeq as += precedence 0;
+infix addeq as += precedence 0;
 
-    export fn main {
-        let five = 3;
-        five.print;
-        five += 2;
-        five.print;
-    }"#;
+export fn main {
+  let five = 3;
+  five.print;
+  five += 2;
+  five.print;
+}
+"#;
     stdout "3\n5\n";
 );
 
-test!(complex_cloning => r#"
-    type struct = b: bool, d: Dict{string, Set{i64}};
+test!(complex_cloning => r#"type struct = b: bool, d: Dict{string, Set{i64}};
 
-    export fn main {
-      let s = Set([1, 2, 3]);
-      s.len.print;
-      s.clone.len.print;
-      let d = Dict('foo', s);
-      d.len.print;
-      d.clone.len.print;
-      let b = struct(true, d);
-      b.d.len.print;
-      b.clone.d.len.print;
-    }"#;
+export fn main {
+  let s = Set([1, 2, 3]);
+  s.len.print;
+  s.clone.len.print;
+  let d = Dict('foo', s);
+  d.len.print;
+  d.clone.len.print;
+  let b = struct(true, d);
+  b.d.len.print;
+  b.clone.d.len.print;
+}
+"#;
     stdout "3\n3\n1\n1\n1\n1\n";
 );
 
@@ -1087,70 +1077,69 @@ test_ignore!(conditional_let_assignment => r#"
     stdout "1\n";
 );
 
-test!(conditional_compilation => r#"
-    type{true} foo = string;
-    type{false} foo = i64;
+test!(conditional_compilation => r#"type{true} foo = string;
+type{false} foo = i64;
 
-    const{true} var = "Hello, World!";
-    const{false} var = 32;
+const {true}var = "Hello, World!";
+const {false}var = 32;
 
-    infix{true} add as + precedence 7;
-    infix{false} add as + precedence 0;
+infix{true} add as + precedence 7;
+infix{false} add as + precedence 0;
 
-    type infix{true} Add as + precedence 7;
-    type infix{false} Add as + precedence 0;
+type infix{true} Add as + precedence 7;
+type infix{false} Add as + precedence 0;
 
-    fn{true} bar = print(true);
-    fn{false} bar = print(false);
+fn{true} bar = print(true);
+fn{false} bar = print(false);
+// type TestBuffer = Buffer{i64, 1 + 2 * 3};
+type TestBuffer = i64[1 + 2 * 3];
 
-    // type TestBuffer = Buffer{i64, 1 + 2 * 3};
-    type TestBuffer = i64[1 + 2 * 3];
-
-    export fn main {
-      print(var.foo); // Should print "Hello, World!"
-      print(1 + 2 * 3); // Should print 9 because + now has a higher precedence
-      print(TestBuffer(0).len); // Should print 9 because the type operator + now has higher precedence
-      bar(); // Should print "true"
-    }"#;
+export fn main {
+  print(var.foo); // Should print "Hello, World!"
+  print(1 + 2 * 3); // Should print 9 because + now has a higher precedence
+  print(TestBuffer(0).len); // Should print 9 because the type operator + now has higher precedence
+  bar(); // Should print "true"
+}
+"#;
     stdout "Hello, World!\n9\n9\ntrue\n";
 );
-test!(library_testing => r#"
-    export fn add1(a: i64) -> i64 = a + 1;
-    export postfix add1 as ++ precedence 5;
+test!(library_testing => r#"export fn add1(a: i64) -> i64 = a + 1;
+export postfix add1 as ++ precedence 5;
 
-    export fn{Test} main {
-      let a = 1;
-      print(a++);
-    }"#;
+export fn{Test} main {
+  let a = 1;
+  print(a++);
+}
+"#;
     stdout "2\n";
 );
 
-test!(compile_time_buffer_size => r#"
-    // BUFSIZE is set by the `.cargo/config.toml` file
-    export fn main {
-      {Buffer{i64, Int{Env{"BUFSIZE"}}}}(0).print;
-    }"#;
+test!(compile_time_buffer_size => r#"// BUFSIZE is set by the `.cargo/config.toml` file
+export fn main {
+  {Buffer{i64, Int{Env{"BUFSIZE"}}}}(0).print;
+}
+"#;
     stdout_contains "0,";
 );
 
-test!(extend_type => r#"
-    type Foo = bar: "bar";
-    type Foo = Unwrap{Foo}, baz: "baz";
+test!(extend_type => r#"type Foo = bar: "bar";
+type Foo = Unwrap{Foo}, baz: "baz";
 
-    export fn main {
-      {String{Foo}}().print;
-    }"#;
+export fn main {
+  {String{Foo}}().print;
+}
+"#;
     stdout "Tuple{Field{bar, \"bar\"}, Field{baz, \"baz\"}}\n";
 );
 
-test!(what_type => r#"
-    fn whatType{T} = {String{T}}().print;
+test!(what_type => r#"fn whatType{T} = {String{T}}().print;
 
-    export fn main {
-      whatType{1}();
-      whatType{ExitCode}();
-      whatType{Tuple{ExitCode, "ExitCode"}}();
-    }"#;
+export fn main {
+  whatType{1}();
+  whatType{ExitCode}();
+  whatType{Tuple{ExitCode, "ExitCode"}}();
+}
+"#;
     stdout_rs "1\nBinds{\"std::process::ExitCode\"}\nTuple{Binds{\"std::process::ExitCode\"}, \"ExitCode\"}\n";
     stdout_js "1\nBinds{\"Number\"}\nTuple{Binds{\"Number\"}, \"ExitCode\"}\n";
 );
@@ -1167,79 +1156,76 @@ test_compile_error!(object_constructor_compiler_checks => r#"
     }"#;
     error "Could not find a function with a call signature of Foo(f64)";
 );
-test!(object_literals => r#"
-    type MyType =
-      foo: string,
-      bar: bool;
+test!(object_literals => r#"type MyType =
+  foo: string,
+  bar: bool;
 
-    export fn main {
-      const test = MyType('foo!', true);
-      print(test.foo);
-      print(test.bar);
-    }"#;
+export fn main {
+  const test = MyType('foo!', true);
+  print(test.foo);
+  print(test.bar);
+}
+"#;
     stdout "foo!\ntrue\n";
 );
-test!(object_and_array_reassignment => r#"
-    type Foo =
-      bar: bool;
+test!(object_and_array_reassignment => r#"type Foo =
+  bar: bool;
 
-    export fn main {
-      let test = [ 1, 2, 3 ];
-      print(test[0]);
-      test.store(0, 0);
-      print(test[0]);
-      test[0] = 2;
-      print(test[0]);
+export fn main {
+  let test = [1, 2, 3];
+  print(test[0]);
+  test.store(0, 0);
+  print(test[0]);
+  test[0] = 2;
+  print(test[0]);
 
-      let test2 = [Foo(true), Foo(false)];
-      let test3 = test2[0].getOr(Foo(false));
-      print(test3.bar);
-      test3.bar = false;
-      test2[0] = test3; // TODO: is the a better way to do nested updates?
-      const test4 = test2[0].getOr(Foo(true));
-      print(test4.bar);
-    }"#;
+  let test2 = [Foo(true), Foo(false)];
+  let test3 = test2[0].getOr(Foo(false));
+  print(test3.bar);
+  test3.bar = false;
+  test2[0] = test3; // TODO: is the a better way to do nested updates?
+  const test4 = test2[0].getOr(Foo(true));
+  print(test4.bar);
+}
+"#;
     stdout "1\n0\n2\ntrue\nfalse\n";
 );
 
-test!(array_custom_types => r#"
-    type Foo =
-      foo: string,
-      bar: bool;
+test!(array_custom_types => r#"type Foo =
+  foo: string,
+  bar: bool;
 
-    export fn main {
-      const five = [1, 2, 3, 4, 5];
-      five.map(fn (n: i64) {
-        return Foo(n.string, n % 2 == 0);
-      }).filter(fn (f: Foo) = f.bar).map(fn (f: Foo) = f.foo).join(', ').print;
-    }"#;
+export fn main {
+  const five = [1, 2, 3, 4, 5];
+  five.map(fn(n: i64) {
+    return Foo(n.string, n % 2 == 0);
+  }).filter(fn(f: Foo) = f.bar).map(fn(f: Foo) = f.foo).join(', ').print;
+}
+"#;
     stdout "2, 4\n";
 );
 
 // Generics
 
-test!(generics => r#"
-    type box{V} =
-      val: V,
-      set: bool;
+test!(generics => r#"type box{V} =
+  val: V,
+  set: bool;
 
-    export fn main {
-      let i8Box = box{i8}(8.i8, true);
-      print(i8Box.val);
-      print(i8Box.set);
+export fn main {
+  let i8Box = box{i8}(8.i8, true);
+  print(i8Box.val);
+  print(i8Box.set);
 
-      let stringBox = box{string}('hello, generics!', true);
-      print(stringBox.val);
-      print(stringBox.set);
+  let stringBox = box{string}('hello, generics!', true);
+  print(stringBox.val);
+  print(stringBox.set);
 
-      const stringBoxBox = box{box{string}}(
-        box{string}('hello, nested generics!', true),
-        true
-      );
-      stringBoxBox.set.print;
-      stringBoxBox.val.set.print;
-      print(stringBoxBox.val.val);
-    }"#;
+  const stringBoxBox = box{box{string}}(box{string}('hello, nested generics!', true), true);
+  stringBoxBox.set.print;
+  stringBoxBox.val.set.print;
+  print(stringBoxBox.val.val);
+}
+"#;
     stdout r#"8
 true
 hello, generics!
@@ -1249,45 +1235,43 @@ true
 hello, nested generics!
 "#;
 );
-test!(generic_functions => r#"
-    fn empty{T}() = Array{T}(); // Pointless, but just for testing
-
-    export fn main {
-      let foo = empty{i64}();
-      print(foo);
-    }
+test!(generic_functions => r#"fn empty{T}() = Array{T}(); // Pointless, but just for testing
+export fn main {
+  let foo = empty{i64}();
+  print(foo);
+}
 "#;
     stdout "[]\n";
 );
-test!(generic_in_a_generic => r#"
-    fn condition{T}(a: T, b: T) -> bool {
-      return a == b;
-    }
+test!(generic_in_a_generic => r#"fn condition{T}(a: T, b: T) -> bool {
+  return a == b;
+}
 
-    fn batchCompare{T}(a: Array{T}, b: Array{T}, cond: (T, T) -> bool) {
-      return a.map(fn (aVal: T) = b.some(fn (bVal: T) = cond(aVal, bVal)));
-    }
+fn batchCompare{T}(a: Array{T}, b: Array{T}, cond: (T, T) -> bool) {
+  return a.map(fn(aVal: T) = b.some(fn(bVal: T) = cond(aVal, bVal)));
+}
 
-    export fn main {
-      let vals1 = [1, 9, 1];
-      let vals2 = [1, 2, 3, 5, 7];
+export fn main {
+  let vals1 = [1, 9, 1];
+  let vals2 = [1, 2, 3, 5, 7];
 
-      batchCompare(vals1, vals2, condition).print;
-    }"#;
+  batchCompare(vals1, vals2, condition).print;
+}
+"#;
     stdout_js "[ true, false, true ]\n";
     stdout_rs "[true, false, true]\n"; // TODO: Make these match
 );
-test!(first_arg_generic_fn => r#"
-    fn batchCompare{T}(cond: (T, T) -> bool, a: Array{T}, b: Array{T}) {
-      return a.map(fn (aVal: T) = b.some(fn (bVal: T) = cond(aVal, bVal)));
-    }
+test!(first_arg_generic_fn => r#"fn batchCompare{T}(cond: (T, T) -> bool, a: Array{T}, b: Array{T}) {
+  return a.map(fn(aVal: T) = b.some(fn(bVal: T) = cond(aVal, bVal)));
+}
 
-    export fn main {
-      let vals1 = [1, 9, 25];
-      let vals2 = [1, 3, 5, 7, 9];
+export fn main {
+  let vals1 = [1, 9, 25];
+  let vals2 = [1, 3, 5, 7, 9];
 
-      batchCompare(eq, vals1, vals2).print;
-    }"#;
+  batchCompare(eq, vals1, vals2).print;
+}
+"#;
     stdout_js "[ true, true, false ]\n";
     stdout_rs "[true, true, false]\n";
 );
@@ -1326,97 +1310,100 @@ test_ignore!(basic_interfaces => r#"
 // PWD without using the thread-unsafe std::env for it. For now, these two tests that create
 // multiple test files with manual naming just have to have different filenames.
 test!(basic_type_import "type_foo" =>
-    "type_bar.ln" => r#"
-        export type Bar = "Bar";
-    "#,
-    "type_foo.ln" => r#"
-        type Bar <-- "./type_bar.ln";
+    "type_bar.ln" => r#"export type Bar = "Bar";
+"#,
+    "type_foo.ln" => r#"type Bar <-- "./type_bar.ln";
 
-        export fn main {
-            {Bar}().print;
-        }
-    "#;
+export fn main {
+  {Bar}().print;
+}
+"#;
     stdout "Bar\n";
 );
 
 test!(basic_fn_import "fn_foo" =>
-    "fn_bar.ln" => r#"
-        export fn bar = "Bar";
-    "#,
-    "fn_foo.ln" => r#"
-        fn bar <-- "./fn_bar.ln";
+    "fn_bar.ln" => r#"export fn bar = "Bar";
+"#,
+    "fn_foo.ln" => r#"fn bar <-- "./fn_bar.ln";
 
-        export fn main {
-            bar().print;
-        }
-    "#;
+export fn main {
+  bar().print;
+}
+"#;
     stdout "Bar\n";
 );
 
 test!(file_reading "file_reading" =>
     "test_file.txt" => "Hello, World!",
-    "file_reading.ln" => r#"
-        type File <-- '@std/fs';
-        fn string <-- '@std/fs'; // TODO: Should this be auto-imported?
-
-        export fn main {
-            File('./test_file.txt').string.print;
-        }
-    "#;
+    "file_reading.ln" => r#"type File <-- '@std/fs';
+fn string <-- '@std/fs'; // TODO: Should this be auto-imported?
+export fn main {
+  File('./test_file.txt').string.print;
+}
+"#;
     stdout "Hello, World!\n";
 );
 
 // Maybe, Result, and Either
 
-test!(maybe => r#"
-    // TODO: Rewrite these conditionals with conditional syntax once implemented
-    fn fiver(val: f64) = if(val.i64 == 5, fn = {i64?}(5), fn = {i64?}());
+test!(maybe => r#"// TODO: Rewrite these conditionals with conditional syntax once implemented
+fn fiver(val: f64) = if(val.i64 == 5, fn = {i64?}(5), fn = {i64?}());
 
-    export fn main {
-      const maybe5 = fiver(5.5);
-      if(maybe5.exists,
-        fn { maybe5.getOr(0).print; },
-        fn { 'what?'.print; });
+export fn main {
+  const maybe5 = fiver(5.5);
+  if(maybe5.exists, fn {
+    maybe5.getOr(0).print;
+  }, fn {
+    'what?'.print;
+  });
 
-      const maybeNot5 = fiver(4.4);
-      if(!maybeNot5.exists,
-        fn { 'Correctly received nothing!'.print; },
-        fn { 'uhhh'.print; });
+  const maybeNot5 = fiver(4.4);
+  if(!maybeNot5.exists, fn {
+    'Correctly received nothing!'.print;
+  }, fn {
+    'uhhh'.print;
+  });
 
-      maybe5.print;
-      maybeNot5.print;
-    }"#;
+  maybe5.print;
+  maybeNot5.print;
+}
+"#;
     stdout r#"5
 Correctly received nothing!
 5
 void
 "#;
 );
-test!(fallible => r#"
-    // TODO: Rewrite these conditionals with conditional syntax once implemented
-    fn reciprocal(val: f64) = if(val == 0.0, fn {
-      return Error{f64}('Divide by zero error!');
-    }, fn {
-      return Fallible{f64}(1.0 / val);
-    });
+test!(fallible => r#"// TODO: Rewrite these conditionals with conditional syntax once implemented
+fn reciprocal(val: f64) =
+  if(val == 0.0, fn {
+    return Error{f64}('Divide by zero error!');
+  }, fn {
+    return Fallible{f64}(1.0 / val);
+  });
 
-    export fn main {
-      const oneFifth = reciprocal(5.0);
-      if(oneFifth.f64.exists,
-        fn { print(oneFifth.getOr(0.0)); },
-        fn { print('what?'); });
+export fn main {
+  const oneFifth = reciprocal(5.0);
+  if(oneFifth.f64.exists, fn {
+    print(oneFifth.getOr(0.0));
+  }, fn {
+    print('what?');
+  });
 
-      const oneZeroth = reciprocal(0.0);
-      if(oneZeroth.Error.exists,
-        fn { print(oneZeroth.Error.getOr(Error('No error'))); },
-        fn { print('uhhh'); });
+  const oneZeroth = reciprocal(0.0);
+  if(oneZeroth.Error.exists, fn {
+    print(oneZeroth.Error.getOr(Error('No error')));
+  }, fn {
+    print('uhhh');
+  });
 
-      oneFifth.print;
-      oneZeroth.print;
+  oneFifth.print;
+  oneZeroth.print;
 
-      const res = Fallible{string}('foo');
-      print(res.Error.getOr(Error('there is no error')));
-    }"#;
+  const res = Fallible{string}('foo');
+  print(res.Error.getOr(Error('there is no error')));
+}
+"#;
     stdout r#"0.2
 Error: Divide by zero error!
 0.2
@@ -1427,34 +1414,34 @@ Error: there is no error
 
 // Types
 
-test!(user_types_and_generics => r#"
-    type foo{A, B} =
-      bar: A,
-      baz: B;
+test!(user_types_and_generics => r#"type foo{A, B} =
+  bar: A,
+  baz: B;
 
-    type foo2 = foo{i64, f64};
+type foo2 = foo{i64, f64};
 
-    type tagged{A, B} =
-      tag: A,
-      value: B;
+type tagged{A, B} =
+  tag: A,
+  value: B;
 
-    type taggedInt = tagged{"integer", i64};
+type taggedInt = tagged{"integer", i64};
 
-    export fn main {
-      let a = foo{string, i64}('bar', 0);
-      let b = foo{i64, bool}(0, true);
-      let c = foo2(0, 1.23);
-      let d = foo{i64, f64}(1, 3.14);
-      let e = {i64?}(2);
-      let f = taggedInt(5);
-      print(a.bar);
-      print(b.bar);
-      print(c.bar);
-      print(d.bar);
-      print(e.i64);
-      print(f.tag);
-      print(f.value);
-    }"#;
+export fn main {
+  let a = foo{string, i64}('bar', 0);
+  let b = foo{i64, bool}(0, true);
+  let c = foo2(0, 1.23);
+  let d = foo{i64, f64}(1, 3.14);
+  let e = {i64?}(2);
+  let f = taggedInt(5);
+  print(a.bar);
+  print(b.bar);
+  print(c.bar);
+  print(d.bar);
+  print(e.i64);
+  print(f.tag);
+  print(f.value);
+}
+"#;
     stdout "bar\n0\n0\n1\n2\ninteger\n5\n";
 );
 
@@ -1542,12 +1529,12 @@ test_ignore!(totally_broken_statement => r#"
 
 // Module-level constants
 
-test!(module_level_constant => r#"
-    const helloWorld = 'Hello, World!';
+test!(module_level_constant => r#"const helloWorld = 'Hello, World!';
 
-    export fn main {
-      print(helloWorld);
-    }"#;
+export fn main {
+  print(helloWorld);
+}
+"#;
     stdout "Hello, World!\n";
 );
 test_ignore!(module_level_constant_from_function_call => r#"
@@ -1566,48 +1553,48 @@ test_ignore!(module_level_constant_from_function_call => r#"
 
 // Trigonometry
 
-test_gpgpu!(gpu_trig => r#"
-    export fn main {
-      'Logarithms and e^x'.print;
-      // Contrived way to get the GPU to do this work, don't follow this pattern for real GPU usage
-      GBuffer([e.f32]).getOrExit.map(fn (v: gf32) = exp(v)).read[0].getOrExit.string(2).print;
-      GBuffer([e.f32]).getOrExit.map(fn (v: gf32) = ln(v)).read[0].getOrExit.string(2).print;
-      GBuffer([e.f32]).getOrExit.map(fn (v: gf32) = log10(v)).read[0].getOrExit.string(2).print;
-      GBuffer([e.f32]).getOrExit.map(fn (v: gf32) = log2(v)).read[0].getOrExit.string(2).print;
+test_gpgpu!(gpu_trig => r#"export fn main {
+  'Logarithms and e^x'.print;
+  // Contrived way to get the GPU to do this work, don't follow this pattern for real GPU usage
+  GBuffer([e.f32]).getOrExit.map(fn(v: gf32) = exp(v)).read[0].getOrExit.string(2).print;
+  GBuffer([e.f32]).getOrExit.map(fn(v: gf32) = ln(v)).read[0].getOrExit.string(2).print;
+  GBuffer([e.f32]).getOrExit.map(fn(v: gf32) = log10(v)).read[0].getOrExit.string(2).print;
+  GBuffer([e.f32]).getOrExit.map(fn(v: gf32) = log2(v)).read[0].getOrExit.string(2).print;
 
-      'Basic Trig functions'.print;
-      GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = sin(v)).read[0].getOrExit.string(2).print;
-      GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = cos(v)).read[0].getOrExit.string(2).print;
-      GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = tan(v)).read[0].getOrExit.string(2).print;
-      GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = sec(v)).read[0].getOrExit.string(2).print;
-      GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = csc(v)).read[0].getOrExit.string(2).print;
-      GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = cot(v)).read[0].getOrExit.string(2).print;
+  'Basic Trig functions'.print;
+  GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn(v: gf32) = sin(v)).read[0].getOrExit.string(2).print;
+  GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn(v: gf32) = cos(v)).read[0].getOrExit.string(2).print;
+  GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn(v: gf32) = tan(v)).read[0].getOrExit.string(2).print;
+  GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn(v: gf32) = sec(v)).read[0].getOrExit.string(2).print;
+  GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn(v: gf32) = csc(v)).read[0].getOrExit.string(2).print;
+  GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn(v: gf32) = cot(v)).read[0].getOrExit.string(2).print;
 
-      'Inverse Trig functions'.print;
-      GBuffer([0.0.f32]).getOrExit.map(fn (v: gf32) = asin(v)).read[0].getOrExit.string(2).print;
-      GBuffer([1.0.f32]).getOrExit.map(fn (v: gf32) = acos(v)).read[0].getOrExit.string(2).print;
-      GBuffer([0.0.f32]).getOrExit.map(fn (v: gf32) = atan(v)).read[0].getOrExit.string(2).print;
-      GBuffer([1.0.f32]).getOrExit.map(fn (v: gf32) = atan2(v, 2.0)).read[0].getOrExit.string(2).print;
-      GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = asec(v)).read[0].getOrExit.string(2).print;
-      GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = acsc(v)).read[0].getOrExit.string(2).print;
-      GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = acot(v)).read[0].getOrExit.string(2).print;
+  'Inverse Trig functions'.print;
+  GBuffer([0.0.f32]).getOrExit.map(fn(v: gf32) = asin(v)).read[0].getOrExit.string(2).print;
+  GBuffer([1.0.f32]).getOrExit.map(fn(v: gf32) = acos(v)).read[0].getOrExit.string(2).print;
+  GBuffer([0.0.f32]).getOrExit.map(fn(v: gf32) = atan(v)).read[0].getOrExit.string(2).print;
+  GBuffer([1.0.f32]).getOrExit.map(fn(v: gf32) = atan2(v, 2.0)).read[0].getOrExit.string(2).print;
+  GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn(v: gf32) = asec(v)).read[0].getOrExit.string(2).print;
+  GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn(v: gf32) = acsc(v)).read[0].getOrExit.string(2).print;
+  GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn(v: gf32) = acot(v)).read[0].getOrExit.string(2).print;
 
-      'Hyperbolic Trig functions'.print;
-      GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = sinh(v)).read[0].getOrExit.string(2).print;
-      GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = cosh(v)).read[0].getOrExit.string(2).print;
-      GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = tanh(v)).read[0].getOrExit.string(2).print;
-      GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = sech(v)).read[0].getOrExit.string(2).print;
-      GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = csch(v)).read[0].getOrExit.string(2).print;
-      GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = coth(v)).read[0].getOrExit.string(2).print;
+  'Hyperbolic Trig functions'.print;
+  GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn(v: gf32) = sinh(v)).read[0].getOrExit.string(2).print;
+  GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn(v: gf32) = cosh(v)).read[0].getOrExit.string(2).print;
+  GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn(v: gf32) = tanh(v)).read[0].getOrExit.string(2).print;
+  GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn(v: gf32) = sech(v)).read[0].getOrExit.string(2).print;
+  GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn(v: gf32) = csch(v)).read[0].getOrExit.string(2).print;
+  GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn(v: gf32) = coth(v)).read[0].getOrExit.string(2).print;
 
-      'Inverse Hyperbolic Trig functions'.print;
-      GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = asinh(v)).read[0].getOrExit.string(2).print;
-      GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = acosh(v)).read[0].getOrExit.string(2).print;
-      GBuffer([pi.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = atanh(v)).read[0].getOrExit.string(2).print;
-      GBuffer([0.5.f32]).getOrExit.map(fn (v: gf32) = asech(v)).read[0].getOrExit.string(2).print;
-      GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = acsch(v)).read[0].getOrExit.string(2).print;
-      GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn (v: gf32) = acoth(v)).read[0].getOrExit.string(2).print;
-    }"#;
+  'Inverse Hyperbolic Trig functions'.print;
+  GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn(v: gf32) = asinh(v)).read[0].getOrExit.string(2).print;
+  GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn(v: gf32) = acosh(v)).read[0].getOrExit.string(2).print;
+  GBuffer([pi.f32 / 6.0.f32]).getOrExit.map(fn(v: gf32) = atanh(v)).read[0].getOrExit.string(2).print;
+  GBuffer([0.5.f32]).getOrExit.map(fn(v: gf32) = asech(v)).read[0].getOrExit.string(2).print;
+  GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn(v: gf32) = acsch(v)).read[0].getOrExit.string(2).print;
+  GBuffer([tau.f32 / 6.0.f32]).getOrExit.map(fn(v: gf32) = acoth(v)).read[0].getOrExit.string(2).print;
+}
+"#;
     stdout r#"Logarithms and e^x
 15.15
 1.00
@@ -1647,16 +1634,16 @@ Inverse Hyperbolic Trig functions
 
 // Runtime Error
 
-test!(get_or_exit => r#"
-    export fn main {
-      const xs = [0, 1, 2, 5];
-      const x1 = xs[1].getOrExit;
-      print(x1);
-      const x2 = xs[2].getOrExit;
-      print(x2);
-      const x5 = xs[5].getOrExit;
-      print(x5);
-    }"#;
+test!(get_or_exit => r#"export fn main {
+  const xs = [0, 1, 2, 5];
+  const x1 = xs[1].getOrExit;
+  print(x1);
+  const x2 = xs[2].getOrExit;
+  print(x2);
+  const x5 = xs[5].getOrExit;
+  print(x5);
+}
+"#;
     status 101;
 );
 
@@ -1682,35 +1669,35 @@ test_ignore!(seq_each => r#"
     }"#;
     stdout "0\n1\n2\n";
 );
-test!(seq_while => r#"
-    fn while <-- '@std/seq';
+test!(seq_while => r#"fn while <-- '@std/seq';
 
-    export fn main {
-      let sum = 0;
-      while(fn = sum < 10, fn {
-        // sum = sum + 1;
-        let s2 = sum.clone; // Need to fix Rust codegen to do this right
-        sum = s2 + 1;
-      });
-      print(sum);
-    }"#;
+export fn main {
+  let sum = 0;
+  while(fn = sum < 10, fn {
+    // sum = sum + 1;
+    let s2 = sum.clone; // Need to fix Rust codegen to do this right
+    sum = s2 + 1;
+  });
+  print(sum);
+}
+"#;
     stdout "10\n";
 );
-test!(seq_iter => r#"
-    fn iter <-- '@std/seq';
+test!(seq_iter => r#"fn iter <-- '@std/seq';
 
-    export fn main {
-      let sum = 0;
-      fn (i: i64) {
-        let s2 = sum.clone; // TODO: Fix rust codegen
-        sum = s2 + i * i;
-      }.iter(10);
-      print(sum);
-      let arr = fn (i: i64) {
-        return i * i;
-      }.iter(10);
-      arr.map(string).join(', ').print;
-    }"#;
+export fn main {
+  let sum = 0;
+  fn(i: i64) {
+    let s2 = sum.clone; // TODO: Fix rust codegen
+    sum = s2 + i * i;
+  }.iter(10);
+  print(sum);
+  let arr = fn(i: i64) {
+    return i * i;
+  }.iter(10);
+  arr.map(string).join(', ').print;
+}
+"#;
     stdout "285\n0, 1, 4, 9, 16, 25, 36, 49, 64, 81\n";
 );
 test_ignore!(seq_do_while => r#"
@@ -1870,10 +1857,10 @@ test_ignore!(subtree_and_nested_tree_construction => r#"
 
 // Error printing
 
-test!(eprint => r#"
-    export fn main {
-      eprint('This is an error');
-    }"#;
+test!(eprint => r#"export fn main {
+  eprint('This is an error');
+}
+"#;
     stderr "This is an error\n";
 );
 
@@ -1937,495 +1924,543 @@ test_ignore!(json_complex_construction => r#"
 
 // Either deduplication
 
-test!(either_dedup_explicit => r#"
-    type DupEither = i64 | string | i64;
-    type NormalEither = i64 | string;
-    fn takeEither(x: NormalEither) = x.print;
-    export fn main {
-      takeEither(42.DupEither);
- }"#;
+test!(either_dedup_explicit => r#"type DupEither = i64 | string | i64;
+type NormalEither = i64 | string;
+fn takeEither(x: NormalEither) = x.print;
+export fn main {
+  takeEither(42.DupEither);
+}
+"#;
   stdout "42\n";
 );
 
 // Rest{T} wrapper type tests for parent constructors
 
-test!(rest_tuple_parent_constructor => r#"
-  type MyTuple = a: i64, b: string, c: bool;
-  type MyFiltered = Rest{MyTuple};
-  export fn main {
-    let v: MyTuple = MyTuple(42, "hello", true);
-    let res: MyFiltered = MyFiltered(v);
-    res.b.print;
-    res.c.print;
-  }"#;
+test!(rest_tuple_parent_constructor => r#"type MyTuple = a: i64, b: string, c: bool;
+type MyFiltered = Rest{MyTuple};
+export fn main {
+  let v: MyTuple = MyTuple(42, "hello", true);
+  let res: MyFiltered = MyFiltered(v);
+  res.b.print;
+  res.c.print;
+}
+"#;
   stdout "hello\ntrue\n";
 );
 
-test!(rest_tuple_parent_constructor_recursive => r#"
-  type Grandparent = a: i64, b: string, c: bool, d: f64;
-  type Parent = Rest{Grandparent};
-  type Child = Rest{Parent};
-  export fn main {
-    let gp: Grandparent = Grandparent(42, "hello", true, 3.14);
-    let p: Parent = Parent(gp);
-    let c: Child = Child(p);
-    c.c.print;
-    c.d.print;
-  }"#;
+test!(rest_tuple_parent_constructor_recursive => r#"type Grandparent = a: i64, b: string, c: bool, d: f64;
+type Parent = Rest{Grandparent};
+type Child = Rest{Parent};
+export fn main {
+  let gp: Grandparent = Grandparent(42, "hello", true, 3.14);
+  let p: Parent = Parent(gp);
+  let c: Child = Child(p);
+  c.c.print;
+  c.d.print;
+}
+"#;
   stdout "true\n3.14\n";
 );
 
-test!(rest_either_parent_constructor => r#"
-  type MyEither = i64 | string | bool;
-  type MyFiltered = Rest{MyEither};
-  export fn main {
-    let v: MyEither = "hello".MyEither;
-    let res: Maybe{MyFiltered} = MyFiltered(v);
-    if(res.exists,
-      fn { res.getOrExit.print; },
-      fn { 'void'.print; });
-  }"#;
+test!(rest_either_parent_constructor => r#"type MyEither = i64 | string | bool;
+type MyFiltered = Rest{MyEither};
+export fn main {
+  let v: MyEither = "hello".MyEither;
+  let res: Maybe{MyFiltered} = MyFiltered(v);
+  if(res.exists, fn {
+    res.getOrExit.print;
+  }, fn {
+    'void'.print;
+  });
+}
+"#;
   stdout "hello\n";
 );
 
-test!(rest_either_parent_constructor_none => r#"
-  type MyEither = i64 | string | bool;
-  type MyFiltered = Rest{MyEither};
-  export fn main {
-    let v: MyEither = 42.MyEither;
-    let res: Maybe{MyFiltered} = MyFiltered(v);
-    if(res.exists,
-      fn { res.getOrExit.print; },
-      fn { 'void'.print; });
-  }"#;
+test!(rest_either_parent_constructor_none => r#"type MyEither = i64 | string | bool;
+type MyFiltered = Rest{MyEither};
+export fn main {
+  let v: MyEither = 42.MyEither;
+  let res: Maybe{MyFiltered} = MyFiltered(v);
+  if(res.exists, fn {
+    res.getOrExit.print;
+  }, fn {
+    'void'.print;
+  });
+}
+"#;
   stdout "void\n";
 );
 
-test!(rest_either_parent_constructor_recursive => r#"
-  type Grandparent = i64 | string | bool | f64;
-  type Parent = Rest{Grandparent};
-  type Child = Rest{Parent};
-  export fn main {
-    let gp: Grandparent = true.Grandparent;
-    let p: Maybe{Parent} = Parent(gp);
-    if(p.exists,
-      fn {
-        let c: Maybe{Child} = Child(p.getOrExit);
-        if(c.exists,
-          fn { c.getOrExit.print; },
-          fn { 'void'.print; });
-      },
-      fn { 'void'.print; });
-  }"#;
+test!(rest_either_parent_constructor_recursive => r#"type Grandparent = i64 | string | bool | f64;
+type Parent = Rest{Grandparent};
+type Child = Rest{Parent};
+export fn main {
+  let gp: Grandparent = true.Grandparent;
+  let p: Maybe{Parent} = Parent(gp);
+  if(p.exists, fn {
+    let c: Maybe{Child} = Child(p.getOrExit);
+    if(c.exists, fn {
+      c.getOrExit.print;
+    }, fn {
+      'void'.print;
+    });
+  }, fn {
+    'void'.print;
+  });
+}
+"#;
   stdout "true\n";
 );
 
-test!(rest_either_parent_constructor_recursive_none => r#"
-  type Grandparent = i64 | string | bool | f64;
-  type Parent = Rest{Grandparent};
-  type Child = Rest{Parent};
-  export fn main {
-    let gp: Grandparent = "hello".Grandparent;
-    let p: Maybe{Parent} = Parent(gp);
-    if(p.exists,
-      fn {
-        let c: Maybe{Child} = Child(p.getOrExit);
-        if(c.exists,
-          fn { c.getOrExit.print; },
-          fn { 'void'.print; });
-      },
-      fn { 'void'.print; });
-  }"#;
+test!(rest_either_parent_constructor_recursive_none => r#"type Grandparent = i64 | string | bool | f64;
+type Parent = Rest{Grandparent};
+type Child = Rest{Parent};
+export fn main {
+  let gp: Grandparent = "hello".Grandparent;
+  let p: Maybe{Parent} = Parent(gp);
+  if(p.exists, fn {
+    let c: Maybe{Child} = Child(p.getOrExit);
+    if(c.exists, fn {
+      c.getOrExit.print;
+    }, fn {
+      'void'.print;
+    });
+  }, fn {
+    'void'.print;
+  });
+}
+"#;
   stdout "void\n";
 );
 
-test!(either_dedup_single_unwrap => r#"
-    type DupeI64 = i64 | i64;
-    export fn main {
-      let a: i64 = 3;
-      let b: DupeI64 = 5;
-      print(a.add(b));
-    }"#;
+test!(either_dedup_single_unwrap => r#"type DupeI64 = i64 | i64;
+export fn main {
+  let a: i64 = 3;
+  let b: DupeI64 = 5;
+  print(a.add(b));
+}
+"#;
     stdout "8\n";
 );
 
 // Exclude constructor tests
 
-test!(exclude_tuple_by_index => r#"
-  type MyTuple = a: i64, b: string, c: bool;
-  type MyFiltered = Exclude{MyTuple, 1};
-  export fn main {
-    let v: MyTuple = MyTuple(42, "hello", true);
-    let res: MyFiltered = MyFiltered(v.a, v.c);
-    res.a.print;
-    res.c.print;
-  }"#;
+test!(exclude_tuple_by_index => r#"type MyTuple = a: i64, b: string, c: bool;
+type MyFiltered = Exclude{MyTuple, 1};
+export fn main {
+  let v: MyTuple = MyTuple(42, "hello", true);
+  let res: MyFiltered = MyFiltered(v.a, v.c);
+  res.a.print;
+  res.c.print;
+}
+"#;
   stdout "42\ntrue\n";
 );
 
-test!(exclude_tuple_by_index_first => r#"
-  type MyTuple2 = a: i64, b: string, c: bool;
-  type MyFiltered = Exclude{MyTuple2, 0};
-  export fn main {
-    let v: MyTuple2 = MyTuple2(42, "hello", true);
-    let res: MyFiltered = MyFiltered(v.b, v.c);
-    res.b.print;
-    res.c.print;
-  }"#;
+test!(exclude_tuple_by_index_first => r#"type MyTuple2 = a: i64, b: string, c: bool;
+type MyFiltered = Exclude{MyTuple2, 0};
+export fn main {
+  let v: MyTuple2 = MyTuple2(42, "hello", true);
+  let res: MyFiltered = MyFiltered(v.b, v.c);
+  res.b.print;
+  res.c.print;
+}
+"#;
   stdout "hello\ntrue\n";
 );
 
-test!(exclude_tuple_parent_constructor => r#"
-  type MyTuple = a: i64, b: string, c: bool;
-  type MyFiltered = Exclude{MyTuple, 1};
-  export fn main {
-    let v: MyTuple = MyTuple(42, "hello", true);
-    let res: MyFiltered = MyFiltered(v);
-    res.a.print;
-    res.c.print;
-  }"#;
+test!(exclude_tuple_parent_constructor => r#"type MyTuple = a: i64, b: string, c: bool;
+type MyFiltered = Exclude{MyTuple, 1};
+export fn main {
+  let v: MyTuple = MyTuple(42, "hello", true);
+  let res: MyFiltered = MyFiltered(v);
+  res.a.print;
+  res.c.print;
+}
+"#;
   stdout "42\ntrue\n";
 );
 
-test!(exclude_tuple_parent_constructor_recursive => r#"
-  type Grandparent = a: i64, b: string, c: bool, d: f64;
-  type Parent = Exclude{Grandparent, 3};
-  type Child = Exclude{Parent, 1};
-  export fn main {
-    let gp: Grandparent = Grandparent(42, "hello", true, 3.14);
-    let p: Parent = Parent(gp);
-    let c: Child = Child(p);
-    c.a.print;
-    c.c.print;
-  }"#;
+test!(exclude_tuple_parent_constructor_recursive => r#"type Grandparent = a: i64, b: string, c: bool, d: f64;
+type Parent = Exclude{Grandparent, 3};
+type Child = Exclude{Parent, 1};
+export fn main {
+  let gp: Grandparent = Grandparent(42, "hello", true, 3.14);
+  let p: Parent = Parent(gp);
+  let c: Child = Child(p);
+  c.a.print;
+  c.c.print;
+}
+"#;
   stdout "42\ntrue\n";
 );
 
 // Exclude Either tests
 
-test!(exclude_either_by_index => r#"
-  type MyEither = i64 | string | bool;
-  type MyFiltered = Exclude{MyEither, 1};
-  export fn main {
-    let v: MyEither = 42.MyEither;
-    let res: MyFiltered = 42.MyFiltered;
-    res.print;
-  }"#;
+test!(exclude_either_by_index => r#"type MyEither = i64 | string | bool;
+type MyFiltered = Exclude{MyEither, 1};
+export fn main {
+  let v: MyEither = 42.MyEither;
+  let res: MyFiltered = 42.MyFiltered;
+  res.print;
+}
+"#;
   stdout "42\n";
 );
 
-test!(exclude_either_by_index_first => r#"
-  type MyEither2 = i64 | string | bool;
-  type MyFiltered2 = Exclude{MyEither2, 0};
-  export fn main {
-    let v: MyEither2 = true.MyEither2;
-    let res: MyFiltered2 = true.MyFiltered2;
-    res.print;
-  }"#;
+test!(exclude_either_by_index_first => r#"type MyEither2 = i64 | string | bool;
+type MyFiltered2 = Exclude{MyEither2, 0};
+export fn main {
+  let v: MyEither2 = true.MyEither2;
+  let res: MyFiltered2 = true.MyFiltered2;
+  res.print;
+}
+"#;
   stdout "true\n";
 );
 
-test!(exclude_either_parent_constructor => r#"
-  type MyEither = i64 | string | bool;
-  type MyFiltered = Exclude{MyEither, 1};
-  export fn main {
-    let v: MyEither = 42.MyEither;
-    let res: Maybe{MyFiltered} = MyFiltered(v);
-    if(res.exists,
-      fn { res.getOrExit.print; },
-      fn { 'void'.print; });
-  }"#;
+test!(exclude_either_parent_constructor => r#"type MyEither = i64 | string | bool;
+type MyFiltered = Exclude{MyEither, 1};
+export fn main {
+  let v: MyEither = 42.MyEither;
+  let res: Maybe{MyFiltered} = MyFiltered(v);
+  if(res.exists, fn {
+    res.getOrExit.print;
+  }, fn {
+    'void'.print;
+  });
+}
+"#;
   stdout "42\n";
 );
 
-test!(exclude_either_parent_constructor_none => r#"
-  type MyEither = i64 | string | bool;
-  type MyFiltered = Exclude{MyEither, 1};
-  export fn main {
-    let v: MyEither = "hello".MyEither;
-    let res: Maybe{MyFiltered} = MyFiltered(v);
-    if(res.exists,
-      fn { res.getOrExit.print; },
-      fn { 'void'.print; });
-  }"#;
+test!(exclude_either_parent_constructor_none => r#"type MyEither = i64 | string | bool;
+type MyFiltered = Exclude{MyEither, 1};
+export fn main {
+  let v: MyEither = "hello".MyEither;
+  let res: Maybe{MyFiltered} = MyFiltered(v);
+  if(res.exists, fn {
+    res.getOrExit.print;
+  }, fn {
+    'void'.print;
+  });
+}
+"#;
   stdout "void\n";
 );
 
-test!(exclude_either_parent_constructor_recursive => r#"
-  type Grandparent = i64 | string | bool | f64;
-  type Parent = Exclude{Grandparent, 3};
-  type Child = Exclude{Parent, 1};
-  export fn main {
-    let gp: Grandparent = 42.Grandparent;
-    let p: Maybe{Parent} = Parent(gp);
-    if(p.exists,
-      fn {
-        let c: Maybe{Child} = Child(p.getOrExit);
-        if(c.exists,
-          fn { c.getOrExit.print; },
-          fn { 'void'.print; });
-      },
-      fn { 'void'.print; });
-  }"#;
+test!(exclude_either_parent_constructor_recursive => r#"type Grandparent = i64 | string | bool | f64;
+type Parent = Exclude{Grandparent, 3};
+type Child = Exclude{Parent, 1};
+export fn main {
+  let gp: Grandparent = 42.Grandparent;
+  let p: Maybe{Parent} = Parent(gp);
+  if(p.exists, fn {
+    let c: Maybe{Child} = Child(p.getOrExit);
+    if(c.exists, fn {
+      c.getOrExit.print;
+    }, fn {
+      'void'.print;
+    });
+  }, fn {
+    'void'.print;
+  });
+}
+"#;
   stdout "42\n";
 );
 
 // Transitive parent constructor tests: constructing Child directly from Grandparent
 
-test!(exclude_either_parent_constructor_direct_from_grandparent => r#"
-  type Grandparent = i64 | string | bool | f64;
-  type Parent = Exclude{Grandparent, 3};
-  type Child = Exclude{Parent, 1};
-  export fn main {
-    let gp: Grandparent = 42.Grandparent;
-    let c: Maybe{Child} = Child(gp);
-    if(c.exists,
-      fn { c.getOrExit.print; },
-      fn { 'void'.print; });
-  }"#;
+test!(exclude_either_parent_constructor_direct_from_grandparent => r#"type Grandparent = i64 | string | bool | f64;
+type Parent = Exclude{Grandparent, 3};
+type Child = Exclude{Parent, 1};
+export fn main {
+  let gp: Grandparent = 42.Grandparent;
+  let c: Maybe{Child} = Child(gp);
+  if(c.exists, fn {
+    c.getOrExit.print;
+  }, fn {
+    'void'.print;
+  });
+}
+"#;
   stdout "42\n";
 );
 
-test!(exclude_either_parent_constructor_direct_none => r#"
-  type Grandparent = i64 | string | bool | f64;
-  type Parent = Exclude{Grandparent, 3};
-  type Child = Exclude{Parent, 1};
-  export fn main {
-    let gp: Grandparent = "hello".Grandparent;
-    let c: Maybe{Child} = Child(gp);
-    if(c.exists,
-      fn { c.getOrExit.print; },
-      fn { 'void'.print; });
-  }"#;
+test!(exclude_either_parent_constructor_direct_none => r#"type Grandparent = i64 | string | bool | f64;
+type Parent = Exclude{Grandparent, 3};
+type Child = Exclude{Parent, 1};
+export fn main {
+  let gp: Grandparent = "hello".Grandparent;
+  let c: Maybe{Child} = Child(gp);
+  if(c.exists, fn {
+    c.getOrExit.print;
+  }, fn {
+    'void'.print;
+  });
+}
+"#;
   stdout "void\n";
 );
 
-test!(exclude_tuple_parent_constructor_direct_from_grandparent => r#"
-  type Grandparent = a: i64, b: string, c: bool, d: f64;
-  type Parent = Exclude{Grandparent, 3};
-  type Child = Exclude{Parent, 1};
-  export fn main {
-    let gp: Grandparent = Grandparent(42, "hello", true, 3.14);
-    let c: Child = Child(gp);
-    c.a.print;
-    c.c.print;
-  }"#;
+test!(exclude_tuple_parent_constructor_direct_from_grandparent => r#"type Grandparent = a: i64, b: string, c: bool, d: f64;
+type Parent = Exclude{Grandparent, 3};
+type Child = Exclude{Parent, 1};
+export fn main {
+  let gp: Grandparent = Grandparent(42, "hello", true, 3.14);
+  let c: Child = Child(gp);
+  c.a.print;
+  c.c.print;
+}
+"#;
   stdout "42\ntrue\n";
 );
 
 // Single-element and void reduction tests
 
-test!(exclude_tuple_single_element_remains_tuple => r#"
-  type MyTuple = a: i64, b: string;
-  type MySingle = Exclude{MyTuple, 1};
-  export fn main {
-    let v: MyTuple = MyTuple(42, "hello");
-    let res: MySingle = MySingle(v);
-    res.a.print;
-  }"#;
+test!(exclude_tuple_single_element_remains_tuple => r#"type MyTuple = a: i64, b: string;
+type MySingle = Exclude{MyTuple, 1};
+export fn main {
+  let v: MyTuple = MyTuple(42, "hello");
+  let res: MySingle = MySingle(v);
+  res.a.print;
+}
+"#;
   stdout "42\n";
 );
 
-test!(exclude_either_single_element_remains_either => r#"
-  type MyEither = i64 | string | bool;
-  type MySingle = Exclude{MyEither, 1};
-  export fn main {
-    let v: MyEither = 42.MyEither;
-    let res: Maybe{MySingle} = MySingle(v);
-    if(res.exists,
-      fn { res.getOrExit.i64.print; },
-      fn { 'void'.print; });
-  }"#;
+test!(exclude_either_single_element_remains_either => r#"type MyEither = i64 | string | bool;
+type MySingle = Exclude{MyEither, 1};
+export fn main {
+  let v: MyEither = 42.MyEither;
+  let res: Maybe{MySingle} = MySingle(v);
+  if(res.exists, fn {
+    res.getOrExit.i64.print;
+  }, fn {
+    'void'.print;
+  });
+}
+"#;
   stdout "42\n";
 );
 
-test!(exclude_tuple_to_void => r#"
-  type MyTuple = a: i64, b: string;
-  type MyPartial = Exclude{MyTuple, 1};
-  type MyVoid = Exclude{MyPartial, 0};
-  export fn main {
-    let v: MyTuple = MyTuple(42, "hello");
-    let p: MyPartial = MyPartial(v);
-    let res: MyVoid = MyVoid(p);
-    res.print;
-  }"#;
+test!(exclude_tuple_to_void => r#"type MyTuple = a: i64, b: string;
+type MyPartial = Exclude{MyTuple, 1};
+type MyVoid = Exclude{MyPartial, 0};
+export fn main {
+  let v: MyTuple = MyTuple(42, "hello");
+  let p: MyPartial = MyPartial(v);
+  let res: MyVoid = MyVoid(p);
+  res.print;
+}
+"#;
   stdout "void\n";
 );
 
-test!(exclude_either_to_void => r#"
-  type MyEither = i64 | string;
-  type MySingle = Exclude{MyEither, 1};
-  type MyVoid = Exclude{MySingle, 0};
-  export fn main {
-    let v: MyEither = 42.MyEither;
-    let s: Maybe{MySingle} = MySingle(v);
-    let res: MyVoid = MyVoid(s.getOrExit);
-    res.print;
-  }"#;
+test!(exclude_either_to_void => r#"type MyEither = i64 | string;
+type MySingle = Exclude{MyEither, 1};
+type MyVoid = Exclude{MySingle, 0};
+export fn main {
+  let v: MyEither = 42.MyEither;
+  let s: Maybe{MySingle} = MySingle(v);
+  let res: MyVoid = MyVoid(s.getOrExit);
+  res.print;
+}
+"#;
   stdout "void\n";
 );
 
 // -.(dash-dot) "subtract property" Exclude operator syntax tests
 
-test!(exclude_tuple_dashdot_chained => r#"
-  type MyTuple = a: i64, b: string, c: bool;
-  type MySingle = MyTuple-.a-.c;
-  export fn main {
-    let v: MyTuple = MyTuple(42, "hello", true);
-    let res: MySingle = MySingle(v);
-    res.b.print;
-  }"#;
+test!(exclude_tuple_dashdot_chained => r#"type MyTuple = a: i64, b: string, c: bool;
+type MySingle = MyTuple-.a-.c;
+export fn main {
+  let v: MyTuple = MyTuple(42, "hello", true);
+  let res: MySingle = MySingle(v);
+  res.b.print;
+}
+"#;
   stdout "hello\n";
 );
 
 // Len{Void} returns 0 tests (Void created by excluding all fields from a tuple)
 
-test!(len_void_returns_zero => r#"
-  type SingleField = a: i64;
-  export fn main {
-    if({Len{Exclude{SingleField, 0}}}() == 0,
-      fn { 'zero'.print; },
-      fn { 'not zero'.print; });
-  }"#;
+test!(len_void_returns_zero => r#"type SingleField = a: i64;
+export fn main {
+  if({Len{Exclude{SingleField, 0}}}() == 0, fn {
+    'zero'.print;
+  }, fn {
+    'not zero'.print;
+  });
+}
+"#;
   stdout "zero\n";
 );
 
-test!(len_void_numeric_output => r#"
-  type SingleField = a: i64;
-  export fn main {
-    print({Len{Exclude{SingleField, 0}}}());
-  }"#;
+test!(len_void_numeric_output => r#"type SingleField = a: i64;
+export fn main {
+  print({Len{Exclude{SingleField, 0}}}());
+}
+"#;
   stdout "0\n";
 );
 
-test!(len_void_vs_types => r#"
-  type SingleField = a: i64;
-  export fn main {
-    print({Len{Exclude{SingleField, 0}}}());
-    print({Len{i64}}());
-  }"#;
+test!(len_void_vs_types => r#"type SingleField = a: i64;
+export fn main {
+  print({Len{Exclude{SingleField, 0}}}());
+  print({Len{i64}}());
+}
+"#;
   stdout "0\n1\n";
 );
 
 // Eq and Neq type comparison tests
 
-test!(eq_same_types_returns_true => r#"
-  export fn main {
-    if({Eq{i64, i64}}(),
-      fn { 'true'.print; },
-      fn { 'false'.print; });
-  }"#;
+test!(eq_same_types_returns_true => r#"export fn main {
+  if({Eq{i64, i64}}(), fn {
+    'true'.print;
+  }, fn {
+    'false'.print;
+  });
+}
+"#;
   stdout "true\n";
 );
 
-test!(eq_different_types_returns_false => r#"
-  export fn main {
-    if({Eq{i64, string}}(),
-      fn { 'true'.print; },
-      fn { 'false'.print; });
-  }"#;
+test!(eq_different_types_returns_false => r#"export fn main {
+  if({Eq{i64, string}}(), fn {
+    'true'.print;
+  }, fn {
+    'false'.print;
+  });
+}
+"#;
   stdout "false\n";
 );
 
-test!(neq_different_types_returns_true => r#"
-  export fn main {
-    if({Neq{i64, string}}(),
-      fn { 'true'.print; },
-      fn { 'false'.print; });
-  }"#;
+test!(neq_different_types_returns_true => r#"export fn main {
+  if({Neq{i64, string}}(), fn {
+    'true'.print;
+  }, fn {
+    'false'.print;
+  });
+}
+"#;
   stdout "true\n";
 );
 
-test!(neq_same_types_returns_false => r#"
-  export fn main {
-    if({Neq{string, string}}(),
-      fn { 'true'.print; },
-      fn { 'false'.print; });
-  }"#;
+test!(neq_same_types_returns_false => r#"export fn main {
+  if({Neq{string, string}}(), fn {
+    'true'.print;
+  }, fn {
+    'false'.print;
+  });
+}
+"#;
   stdout "false\n";
 );
 
-test!(eq_generic_type_check => r#"
-  export fn main {
-    if({Eq{i64, i64}}(),
-      fn { 'is i64'.print; },
-      fn { 'not i64'.print; });
-    if({Eq{string, i64}}(),
-      fn { 'is i64'.print; },
-      fn { 'not i64'.print; });
-    if({Eq{bool, i64}}(),
-      fn { 'is i64'.print; },
-      fn { 'not i64'.print; });
-  }"#;
+test!(eq_generic_type_check => r#"export fn main {
+  if({Eq{i64, i64}}(), fn {
+    'is i64'.print;
+  }, fn {
+    'not i64'.print;
+  });
+  if({Eq{string, i64}}(), fn {
+    'is i64'.print;
+  }, fn {
+    'not i64'.print;
+  });
+  if({Eq{bool, i64}}(), fn {
+    'is i64'.print;
+  }, fn {
+    'not i64'.print;
+  });
+}
+"#;
   stdout "is i64\nnot i64\nnot i64\n";
 );
 
-test!(neq_generic_type_guard => r#"
-  type SingleField = a: i64;
-  type MyVoid = Exclude{SingleField, 0};
-  fn isNotVoid{T}() -> bool = {Neq{T, Exclude{SingleField, 0}}}();
+test!(neq_generic_type_guard => r#"type SingleField = a: i64;
+type MyVoid = Exclude{SingleField, 0};
+fn isNotVoid{T}() -> bool = {Neq{T, Exclude{SingleField, 0}}}();
 
-  export fn main {
-    if(isNotVoid{i64}(),
-      fn { 'i64 is not void'.print; },
-      fn { 'unexpected'.print; });
-    if(isNotVoid{MyVoid}(),
-      fn { 'unexpected'.print; },
-      fn { 'void is void'.print; });
-  }"#;
+export fn main {
+  if(isNotVoid{i64}(), fn {
+    'i64 is not void'.print;
+  }, fn {
+    'unexpected'.print;
+  });
+  if(isNotVoid{MyVoid}(), fn {
+    'unexpected'.print;
+  }, fn {
+    'void is void'.print;
+  });
+}
+"#;
   stdout "i64 is not void\nvoid is void\n";
 );
 
-test!(eq_tuple_types => r#"
-  type MyTuple = i64, string;
-  type SameTuple = i64, string;
-  type DiffTuple = string, i64;
-  export fn main {
-    if({Eq{MyTuple, SameTuple}}(),
-      fn { 'same'.print; },
-      fn { 'different'.print; });
-    if({Eq{MyTuple, DiffTuple}}(),
-      fn { 'same'.print; },
-      fn { 'different'.print; });
-  }"#;
+test!(eq_tuple_types => r#"type MyTuple = i64, string;
+type SameTuple = i64, string;
+type DiffTuple = string, i64;
+export fn main {
+  if({Eq{MyTuple, SameTuple}}(), fn {
+    'same'.print;
+  }, fn {
+    'different'.print;
+  });
+  if({Eq{MyTuple, DiffTuple}}(), fn {
+    'same'.print;
+  }, fn {
+    'different'.print;
+  });
+}
+"#;
   stdout "same\ndifferent\n";
 );
 
-test!(len_and_eq_combined => r#"
-  type SingleField = a: i64;
-  fn emptyType{T}() -> bool = {Len{T}}() == 0;
+test!(len_and_eq_combined => r#"type SingleField = a: i64;
+fn emptyType{T}() -> bool = {Len{T}}() == 0;
 
-  export fn main {
-    if(emptyType{Exclude{SingleField, 0}}(),
-      fn { 'Void is empty'.print; },
-      fn { 'Void not empty'.print; });
-    if(emptyType{i64}(),
-      fn { 'i64 is empty'.print; },
-      fn { 'i64 not empty'.print; });
-  }"#;
+export fn main {
+  if(emptyType{Exclude{SingleField, 0}}(), fn {
+    'Void is empty'.print;
+  }, fn {
+    'Void not empty'.print;
+  });
+  if(emptyType{i64}(), fn {
+    'i64 is empty'.print;
+  }, fn {
+    'i64 not empty'.print;
+  });
+}
+"#;
   stdout "Void is empty\ni64 not empty\n";
 );
 
-test!(shared_basic => r#"
-  export fn main {
-    let shared = {Shared{i64}}(42);
+test!(shared_basic => r#"export fn main {
+  let shared = {Shared{i64}}(42);
 
-    let a = shared;
-    let b = shared;
+  let a = shared;
+  let b = shared;
 
-    a.store(100);
-    b.print;
-  }"#;
+  a.store(100);
+  b.print;
+}
+"#;
   stdout "100\n";
 );
 
-test!(shared_clone => r#"
-  export fn main {
-    let original = {Shared{i64}}(42);
-    let copy = original.clone;
+test!(shared_clone => r#"export fn main {
+  let original = {Shared{i64}}(42);
+  let copy = original.clone;
 
-    original.store(100);
-    copy.print;
-  }"#;
+  original.store(100);
+  copy.print;
+}
+"#;
   stdout "42\n";
 );

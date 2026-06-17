@@ -2,26 +2,25 @@ fn aNumber(num: i64) {
   return 'I got a number! '.concat(num.string);
 }
 
-
 export fn{Test} main {
   let test = Testing();
 
   test.describe("Unorganized Tests") // TODO: Find a better grouping for these
     .it("passing ints to functions")
-      .assert(eq, aNumber(5), 'I got a number! 5')
+    .assert(eq, aNumber(5), 'I got a number! 5')
     .it("underscores in numbers")
-      .assert(eq, 1_000_000 * 2, 2000000)
+    .assert(eq, 1_000_000 * 2, 2000000)
     .it("other integer syntaxes")
-      .assert(eq, 0b10, 2)
-      .assert(eq, 0o10, 8)
-      .assert(eq, 0x10, 16)
-      .assert(eq, 0xF, 15)
+    .assert(eq, 0b10, 2)
+    .assert(eq, 0o10, 8)
+    .assert(eq, 0x10, 16)
+    .assert(eq, 0xF, 15)
     .it("scientific notation")
-      .assert(eq, 15.0, 1.5e1)
-      .assert(eq, -5.0, -5e0)
-      .assert(eq, 1e3, 1000.0)
-      .assert(eq, 1e-3, 0.001)
-    .it('clone', fn (test: Mut{Testing}) {
+    .assert(eq, 15.0, 1.5e1)
+    .assert(eq, -5.0, -5e0)
+    .assert(eq, 1e3, 1000.0)
+    .assert(eq, 1e-3, 0.001)
+    .it('clone', fn(test: Mut{Testing}) {
       let a = 3;
       let b = a.clone;
       a = 4;
@@ -38,634 +37,811 @@ export fn{Test} main {
 
   test.describe("Basic math tests i8")
     .it("add")
-      .assert(eq, add(i8(1), i8(2)), i8(3))
+    .assert(eq, add(i8(1), i8(2)), i8(3))
     .it("sub")
-      .assert(eq, sub(i8(2), i8(1)), i8(1))
+    .assert(eq, sub(i8(2), i8(1)), i8(1))
     .it("mul")
-      .assert(eq, mul(i8(2), i8(1)), i8(2))
+    .assert(eq, mul(i8(2), i8(1)), i8(2))
     .it("div")
-      .assert(eq, div(i8(6), i8(2)), i8(3))
+    .assert(eq, div(i8(6), i8(2)), i8(3))
     .it("mod")
-      .assert(eq, mod(i8(6), i8(4)), i8(2))
+    .assert(eq, mod(i8(6), i8(4)), i8(2))
     .it("pow")
-      .assert(eq, pow(i8(6), i8(2)), i8(36))
+    .assert(eq, pow(i8(6), i8(2)), i8(36))
     .it("min")
-      .assert(eq, min(i8(3), i8(5)), i8(3))
+    .assert(eq, min(i8(3), i8(5)), i8(3))
     .it("max")
-      .assert(eq, max(i8(3), i8(5)), i8(5))
+    .assert(eq, max(i8(3), i8(5)), i8(5))
     .it("neg")
-      .assert(eq, neg(i8(3)), i8(-3))
+    .assert(eq, neg(i8(3)), i8(-3))
     .it("abs")
-      .assert(eq, abs(i8(-3)), i8(3))
-    .it("clz", fn (test: Mut{Testing}) = test
-      .assert(eq, 0.i8.clz, 8.i8)
-      .assert(eq, 1.i8.clz, 7.i8)
-      .assert(eq, 2.i8.clz, 6.i8)
-      .assert(eq, (-128).i8.clz, 0.i8))
-    .it("ones", fn (test: Mut{Testing}) = test
-      .assert(eq, 1.i8.ones, 1.i8)
-      .assert(eq, 2.i8.ones, 1.i8)
-      .assert(eq, 3.i8.ones, 2.i8)
-      .assert(eq, (-1).i8.ones, 8.i8))
-    .it("ctz", fn (test: Mut{Testing}) = test
-      .assert(eq, 0.i8.ctz, 8.i8)
-      .assert(eq, 1.i8.ctz, 0.i8)
-      .assert(eq, 2.i8.ctz, 1.i8)
-      .assert(eq, (-128).i8.ctz, 7.i8))
-    .it('reverseBits', fn (test: Mut{Testing}) = test
-      .assert(eq, 0.i8.reverseBits, 0.i8)
-      .assert(eq, 1.i8.reverseBits, (-128).i8)
-      .assert(eq, 2.i8.reverseBits, 64.i8)
-      .assert(eq, (-128).i8.reverseBits, 1.i8))
-    .it('insertBits', fn (test: Mut{Testing}) = test
-      .assert(eq, 0.i8.insertBits(1.i8, 2.i8, 3.i8), 4.i8)
-      .assert(eq, 31.i8.insertBits(1.i8, 2.i8, 3.i8), 7.i8))
-    .it('dot').assert(eq, {i8[2]}(3.i8, 4.i8) *. {i8[2]}(3.i8, 4.i8), 25.i8)
-    .it("flb", fn (test: Mut{Testing}) = test
-      .assert(eq, 0.i8.flb, (-1).i8)
-      .assert(eq, 1.i8.flb, 0.i8)
-      .assert(eq, 2.i8.flb, 1.i8)
-      .assert(eq, (-128).i8.flb, 7.i8))
-    .it("ftb", fn (test: Mut{Testing}) = test
-      .assert(eq, 0.i8.ftb, (-1).i8)
-      .assert(eq, 1.i8.ftb, 0.i8)
-      .assert(eq, 2.i8.ftb, 1.i8)
-      .assert(eq, 3.i8.ftb, 0.i8)
-      .assert(eq, (-128).i8.ftb, 7.i8));
+    .assert(eq, abs(i8(-3)), i8(3))
+    .it("clz", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.i8.clz, 8.i8)
+        .assert(eq, 1.i8.clz, 7.i8)
+        .assert(eq, 2.i8.clz, 6.i8)
+        .assert(eq, (-128).i8.clz, 0.i8))
+    .it("ones", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 1.i8.ones, 1.i8)
+        .assert(eq, 2.i8.ones, 1.i8)
+        .assert(eq, 3.i8.ones, 2.i8)
+        .assert(eq, (-1).i8.ones, 8.i8))
+    .it("ctz", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.i8.ctz, 8.i8)
+        .assert(eq, 1.i8.ctz, 0.i8)
+        .assert(eq, 2.i8.ctz, 1.i8)
+        .assert(eq, (-128).i8.ctz, 7.i8))
+    .it('reverseBits', fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.i8.reverseBits, 0.i8)
+        .assert(eq, 1.i8.reverseBits, (-128).i8)
+        .assert(eq, 2.i8.reverseBits, 64.i8)
+        .assert(eq, (-128).i8.reverseBits, 1.i8))
+    .it('insertBits', fn(test: Mut{Testing}) =
+      test
+        .assert(
+          eq,
+          0.i8.insertBits(1.i8, 2.i8, 3.i8),
+          4.i8
+        )
+        .assert(
+          eq,
+          31.i8.insertBits(1.i8, 2.i8, 3.i8),
+          7.i8
+        ))
+    .it('dot')
+    .assert(
+      eq,
+      {i8[2]}(3.i8, 4.i8) *. {i8[2]}(3.i8, 4.i8),
+      25.i8
+    )
+    .it("flb", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.i8.flb, (-1).i8)
+        .assert(eq, 1.i8.flb, 0.i8)
+        .assert(eq, 2.i8.flb, 1.i8)
+        .assert(eq, (-128).i8.flb, 7.i8))
+    .it("ftb", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.i8.ftb, (-1).i8)
+        .assert(eq, 1.i8.ftb, 0.i8)
+        .assert(eq, 2.i8.ftb, 1.i8)
+        .assert(eq, 3.i8.ftb, 0.i8)
+        .assert(eq, (-128).i8.ftb, 7.i8));
 
   test.describe("Basic math tests i16")
     .it("add")
-      .assert(eq, add(i16(1), i16(2)), i16(3))
+    .assert(eq, add(i16(1), i16(2)), i16(3))
     .it("sub")
-      .assert(eq, sub(i16(2), i16(1)), i16(1))
+    .assert(eq, sub(i16(2), i16(1)), i16(1))
     .it("mul")
-      .assert(eq, mul(i16(2), i16(1)), i16(2))
+    .assert(eq, mul(i16(2), i16(1)), i16(2))
     .it("div")
-      .assert(eq, div(i16(6), i16(2)), i16(3))
+    .assert(eq, div(i16(6), i16(2)), i16(3))
     .it("mod")
-      .assert(eq, mod(i16(6), i16(4)), i16(2))
+    .assert(eq, mod(i16(6), i16(4)), i16(2))
     .it("pow")
-      .assert(eq, pow(i16(6), i16(2)), i16(36))
+    .assert(eq, pow(i16(6), i16(2)), i16(36))
     .it("min")
-      .assert(eq, min(i16(3), i16(5)), i16(3))
+    .assert(eq, min(i16(3), i16(5)), i16(3))
     .it("max")
-      .assert(eq, max(i16(3), i16(5)), i16(5))
+    .assert(eq, max(i16(3), i16(5)), i16(5))
     .it("neg")
-      .assert(eq, neg(i16(3)), i16(-3))
+    .assert(eq, neg(i16(3)), i16(-3))
     .it("abs")
-      .assert(eq, abs(i16(-3)), i16(3))
-    .it("clz", fn (test: Mut{Testing}) = test
-      .assert(eq, 0.i16.clz, 16.i16)
-      .assert(eq, 1.i16.clz, 15.i16)
-      .assert(eq, 2.i16.clz, 14.i16)
-      .assert(eq, (-32768).i16.clz, 0.i16))
-    .it("ones", fn (test: Mut{Testing}) = test
-      .assert(eq, 1.i16.ones, 1.i16)
-      .assert(eq, 2.i16.ones, 1.i16)
-      .assert(eq, 3.i16.ones, 2.i16)
-      .assert(eq, (-1).i16.ones, 16.i16))
-    .it("ctz", fn (test: Mut{Testing}) = test
-      .assert(eq, 0.i16.ctz, 16.i16)
-      .assert(eq, 1.i16.ctz, 0.i16)
-      .assert(eq, 2.i16.ctz, 1.i16)
-      .assert(eq, (-32768).i16.ctz, 15.i16))
-    .it('reverseBits', fn (test: Mut{Testing}) = test
-      .assert(eq, 0.i16.reverseBits, 0.i16)
-      .assert(eq, 1.i16.reverseBits, (-32768).i16)
-      .assert(eq, 2.i16.reverseBits, 16384.i16)
-      .assert(eq, (-32768).i16.reverseBits, 1.i16))
-    .it('insertBits', fn (test: Mut{Testing}) = test
-      .assert(eq, 0.i16.insertBits(1.i16, 2.i16, 3.i16), 4.i16)
-      .assert(eq, 31.i16.insertBits(1.i16, 2.i16, 3.i16), 7.i16))
-    .it('dot').assert(eq, {i16[2]}(3.i16, 4.i16) *. {i16[2]}(3.i16, 4.i16), 25.i16)
-    .it("flb", fn (test: Mut{Testing}) = test
-      .assert(eq, 0.i16.flb, (-1).i16)
-      .assert(eq, 1.i16.flb, 0.i16)
-      .assert(eq, 2.i16.flb, 1.i16)
-      .assert(eq, (-32_768).i16.flb, 15.i16))
-    .it("ftb", fn (test: Mut{Testing}) = test
-      .assert(eq, 0.i16.ftb, (-1).i16)
-      .assert(eq, 1.i16.ftb, 0.i16)
-      .assert(eq, 2.i16.ftb, 1.i16)
-      .assert(eq, 3.i16.ftb, 0.i16)
-      .assert(eq, (-32_768).i16.ftb, 15.i16));
+    .assert(eq, abs(i16(-3)), i16(3))
+    .it("clz", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.i16.clz, 16.i16)
+        .assert(eq, 1.i16.clz, 15.i16)
+        .assert(eq, 2.i16.clz, 14.i16)
+        .assert(eq, (-32768).i16.clz, 0.i16))
+    .it("ones", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 1.i16.ones, 1.i16)
+        .assert(eq, 2.i16.ones, 1.i16)
+        .assert(eq, 3.i16.ones, 2.i16)
+        .assert(eq, (-1).i16.ones, 16.i16))
+    .it("ctz", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.i16.ctz, 16.i16)
+        .assert(eq, 1.i16.ctz, 0.i16)
+        .assert(eq, 2.i16.ctz, 1.i16)
+        .assert(eq, (-32768).i16.ctz, 15.i16))
+    .it('reverseBits', fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.i16.reverseBits, 0.i16)
+        .assert(eq, 1.i16.reverseBits, (-32768).i16)
+        .assert(eq, 2.i16.reverseBits, 16384.i16)
+        .assert(eq, (-32768).i16.reverseBits, 1.i16))
+    .it('insertBits', fn(test: Mut{Testing}) =
+      test
+        .assert(
+          eq,
+          0.i16.insertBits(1.i16, 2.i16, 3.i16),
+          4.i16
+        )
+        .assert(
+          eq,
+          31.i16.insertBits(1.i16, 2.i16, 3.i16),
+          7.i16
+        ))
+    .it('dot')
+    .assert(
+      eq,
+      {i16[2]}(3.i16, 4.i16) *. {i16[2]}(3.i16, 4.i16),
+      25.i16
+    )
+    .it("flb", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.i16.flb, (-1).i16)
+        .assert(eq, 1.i16.flb, 0.i16)
+        .assert(eq, 2.i16.flb, 1.i16)
+        .assert(eq, (-32_768).i16.flb, 15.i16))
+    .it("ftb", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.i16.ftb, (-1).i16)
+        .assert(eq, 1.i16.ftb, 0.i16)
+        .assert(eq, 2.i16.ftb, 1.i16)
+        .assert(eq, 3.i16.ftb, 0.i16)
+        .assert(eq, (-32_768).i16.ftb, 15.i16));
 
   test.describe("Basic math tests i32")
     .it("add")
-      .assert(eq, 1.i32 + 2.i32, 3.i32)
+    .assert(eq, 1.i32 + 2.i32, 3.i32)
     .it("sub")
-      .assert(eq, 2.i32 - i32(1), 1.i32())
+    .assert(eq, 2.i32 - i32(1), 1.i32())
     .it("mul")
-      .assert(eq, 2.i32 * 1.i32, 2.i32)
+    .assert(eq, 2.i32 * 1.i32, 2.i32)
     .it("div")
-      .assert(eq, 6.i32 / 2.i32, 3.i32)
+    .assert(eq, 6.i32 / 2.i32, 3.i32)
     .it("mod")
-      .assert(eq, mod(6.i32, 4.i32), 2.i32)
+    .assert(eq, mod(6.i32, 4.i32), 2.i32)
     .it("pow")
-      .assert(eq, pow(6.i32, 2.i32), 36.i32)
+    .assert(eq, pow(6.i32, 2.i32), 36.i32)
     .it("min")
-      .assert(eq, min(3.i32, 5.i32), 3.i32)
+    .assert(eq, min(3.i32, 5.i32), 3.i32)
     .it("max")
-      .assert(eq, max(3.i32, 5.i32), 5.i32)
+    .assert(eq, max(3.i32, 5.i32), 5.i32)
     .it("neg")
-      .assert(eq, neg(3.i32), i32(-3))
+    .assert(eq, neg(3.i32), i32(-3))
     .it("abs")
-      .assert(eq, abs(-3.i32), 3.i32)
-    .it("clz", fn (test: Mut{Testing}) = test
-      .assert(eq, 0.i32.clz, 32.i32)
-      .assert(eq, 1.i32.clz, 31.i32)
-      .assert(eq, 2.i32.clz, 30.i32)
-      .assert(eq, (-2_147_483_648).i32.clz, 0.i32))
-    .it("ones", fn (test: Mut{Testing}) = test
-      .assert(eq, 1.i32.ones, 1.i32)
-      .assert(eq, 2.i32.ones, 1.i32)
-      .assert(eq, 3.i32.ones, 2.i32)
-      .assert(eq, (-1).i32.ones, 32.i32))
-    .it("ctz", fn (test: Mut{Testing}) = test
-      .assert(eq, 0.i32.ctz, 32.i32)
-      .assert(eq, 1.i32.ctz, 0.i32)
-      .assert(eq, 2.i32.ctz, 1.i32)
-      .assert(eq, (-2_147_483_648).i32.ctz, 31.i32))
-    .it('reverseBits', fn (test: Mut{Testing}) = test
-      .assert(eq, 0.i32.reverseBits, 0.i32)
-      .assert(eq, 1.i32.reverseBits, (-2_147_483_648).i32)
-      .assert(eq, 2.i32.reverseBits, 1_073_741_824.i32)
-      .assert(eq, (-2_147_483_648).i32.reverseBits, 1.i32))
-    .it('insertBits', fn (test: Mut{Testing}) = test
-      .assert(eq, 0.i32.insertBits(1.i32, 2.i32, 3.i32), 4.i32)
-      .assert(eq, 31.i32.insertBits(1.i32, 2.i32, 3.i32), 7.i32))
-    .it('dot').assert(eq, {i32[2]}(3.i32, 4.i32) *. {i32[2]}(3.i32, 4.i32), 25.i32)
-    .it("flb", fn (test: Mut{Testing}) = test
-      .assert(eq, 0.i32.flb, (-1).i32)
-      .assert(eq, 1.i32.flb, 0.i32)
-      .assert(eq, 2.i32.flb, 1.i32)
-      .assert(eq, (-2_147_483_648).i32.flb, 31.i32))
-    .it("ftb", fn (test: Mut{Testing}) = test
-      .assert(eq, 0.i32.ftb, (-1).i32)
-      .assert(eq, 1.i32.ftb, 0.i32)
-      .assert(eq, 2.i32.ftb, 1.i32)
-      .assert(eq, 3.i32.ftb, 0.i32)
-      .assert(eq, (-2_147_483_648).i32.ftb, 31.i32));
+    .assert(eq, abs(-3.i32), 3.i32)
+    .it("clz", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.i32.clz, 32.i32)
+        .assert(eq, 1.i32.clz, 31.i32)
+        .assert(eq, 2.i32.clz, 30.i32)
+        .assert(eq, (-2_147_483_648).i32.clz, 0.i32))
+    .it("ones", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 1.i32.ones, 1.i32)
+        .assert(eq, 2.i32.ones, 1.i32)
+        .assert(eq, 3.i32.ones, 2.i32)
+        .assert(eq, (-1).i32.ones, 32.i32))
+    .it("ctz", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.i32.ctz, 32.i32)
+        .assert(eq, 1.i32.ctz, 0.i32)
+        .assert(eq, 2.i32.ctz, 1.i32)
+        .assert(eq, (-2_147_483_648).i32.ctz, 31.i32))
+    .it('reverseBits', fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.i32.reverseBits, 0.i32)
+        .assert(eq, 1.i32.reverseBits, (-2_147_483_648).i32)
+        .assert(eq, 2.i32.reverseBits, 1_073_741_824.i32)
+        .assert(eq, (-2_147_483_648).i32.reverseBits, 1.i32))
+    .it('insertBits', fn(test: Mut{Testing}) =
+      test
+        .assert(
+          eq,
+          0.i32.insertBits(1.i32, 2.i32, 3.i32),
+          4.i32
+        )
+        .assert(
+          eq,
+          31.i32.insertBits(1.i32, 2.i32, 3.i32),
+          7.i32
+        ))
+    .it('dot')
+    .assert(
+      eq,
+      {i32[2]}(3.i32, 4.i32) *. {i32[2]}(3.i32, 4.i32),
+      25.i32
+    )
+    .it("flb", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.i32.flb, (-1).i32)
+        .assert(eq, 1.i32.flb, 0.i32)
+        .assert(eq, 2.i32.flb, 1.i32)
+        .assert(eq, (-2_147_483_648).i32.flb, 31.i32))
+    .it("ftb", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.i32.ftb, (-1).i32)
+        .assert(eq, 1.i32.ftb, 0.i32)
+        .assert(eq, 2.i32.ftb, 1.i32)
+        .assert(eq, 3.i32.ftb, 0.i32)
+        .assert(eq, (-2_147_483_648).i32.ftb, 31.i32));
 
   test.describe("Basic math tests i64")
     .it("add")
-      .assert(eq, 1 + 2, 3)
+    .assert(eq, 1 + 2, 3)
     .it("sub")
-      .assert(eq, 2 - 1, 1)
+    .assert(eq, 2 - 1, 1)
     .it("mul")
-      .assert(eq, 2 * 1, 2)
+    .assert(eq, 2 * 1, 2)
     .it("div")
-      .assert(eq, 6 / 2, 3)
+    .assert(eq, 6 / 2, 3)
     .it("mod")
-      .assert(eq, 6 % 4, 2)
+    .assert(eq, 6 % 4, 2)
     .it("pow")
-      .assert(eq, 6 ** 2, 36)
+    .assert(eq, 6 ** 2, 36)
     .it("min")
-      .assert(eq, min(3, 5), 3)
+    .assert(eq, min(3, 5), 3)
     .it("max")
-      .assert(eq, max(3, 5), 5)
+    .assert(eq, max(3, 5), 5)
     .it("neg")
-      .assert(eq, neg(3), -3)
+    .assert(eq, neg(3), -3)
     .it("abs")
-      .assert(eq, abs(-3), 3)
-    .it("clz", fn (test: Mut{Testing}) = test
-      .assert(eq, 0.clz, 64.i64)
-      .assert(eq, 1.clz, 63.i64)
-      .assert(eq, 2.i64.clz, 62.i64)
-      .assert(eq, -9_223_372_036_854_775_808.clz, 0))
-    .it("ones", fn (test: Mut{Testing}) = test
-      .assert(eq, 1.ones, 1)
-      .assert(eq, 2.ones, 1)
-      .assert(eq, 3.ones, 2)
-      .assert(eq, -1.ones, 64))
-    .it("ctz", fn (test: Mut{Testing}) = test
-      .assert(eq, 0.ctz, 64)
-      .assert(eq, 1.ctz, 0)
-      .assert(eq, 2.ctz, 1)
-      .assert(eq, (-9_223_372_036_854_775_808).ctz, 63))
-    .it('reverseBits', fn (test: Mut{Testing}) = test
-      .assert(eq, 0.reverseBits, 0)
-      .assert(eq, 1.reverseBits, -9_223_372_036_854_775_808)
-      .assert(eq, 2.reverseBits, 4_611_686_018_427_387_904)
-      .assert(eq, -9_223_372_036_854_775_808.reverseBits, 1))
-    .it('insertBits', fn (test: Mut{Testing}) = test
-      .assert(eq, 0.insertBits(1, 2, 3), 4)
-      .assert(eq, 31.insertBits(1, 2, 3), 7))
-    .it('dot').assert(eq, {i64[2]}(3, 4) *. {i64[2]}(3, 4), 25)
-    .it("flb", fn (test: Mut{Testing}) = test
-      .assert(eq, 0.flb, -1)
-      .assert(eq, 1.flb, 0)
-      .assert(eq, 2.flb, 1)
-      .assert(eq, -9_223_372_036_854_775_808.flb, 63))
-    .it("ftb", fn (test: Mut{Testing}) = test
-      .assert(eq, 0.ftb, -1)
-      .assert(eq, 1.ftb, 0)
-      .assert(eq, 2.ftb, 1)
-      .assert(eq, 3.ftb, 0)
-      .assert(eq, -9_223_372_036_854_775_808.ftb, 63));
+    .assert(eq, abs(-3), 3)
+    .it("clz", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.clz, 64.i64)
+        .assert(eq, 1.clz, 63.i64)
+        .assert(eq, 2.i64.clz, 62.i64)
+        .assert(eq, -9_223_372_036_854_775_808.clz, 0))
+    .it("ones", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 1.ones, 1)
+        .assert(eq, 2.ones, 1)
+        .assert(eq, 3.ones, 2)
+        .assert(eq, -1.ones, 64))
+    .it("ctz", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.ctz, 64)
+        .assert(eq, 1.ctz, 0)
+        .assert(eq, 2.ctz, 1)
+        .assert(eq, (-9_223_372_036_854_775_808).ctz, 63))
+    .it('reverseBits', fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.reverseBits, 0)
+        .assert(eq, 1.reverseBits, -9_223_372_036_854_775_808)
+        .assert(eq, 2.reverseBits, 4_611_686_018_427_387_904)
+        .assert(eq, -9_223_372_036_854_775_808.reverseBits, 1))
+    .it('insertBits', fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.insertBits(1, 2, 3), 4)
+        .assert(eq, 31.insertBits(1, 2, 3), 7))
+    .it('dot')
+    .assert(eq, {i64[2]}(3, 4) *. {i64[2]}(3, 4), 25)
+    .it("flb", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.flb, -1)
+        .assert(eq, 1.flb, 0)
+        .assert(eq, 2.flb, 1)
+        .assert(eq, -9_223_372_036_854_775_808.flb, 63))
+    .it("ftb", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.ftb, -1)
+        .assert(eq, 1.ftb, 0)
+        .assert(eq, 2.ftb, 1)
+        .assert(eq, 3.ftb, 0)
+        .assert(eq, -9_223_372_036_854_775_808.ftb, 63));
 
   test.describe("Basic math tests u8")
     .it("add")
-      .assert(eq, add(u8(1), u8(2)), u8(3))
+    .assert(eq, add(u8(1), u8(2)), u8(3))
     .it("sub")
-      .assert(eq, sub(u8(2), u8(1)), u8(1))
+    .assert(eq, sub(u8(2), u8(1)), u8(1))
     .it("mul")
-      .assert(eq, mul(u8(2), u8(1)), u8(2))
+    .assert(eq, mul(u8(2), u8(1)), u8(2))
     .it("div")
-      .assert(eq, div(u8(6), u8(2)), u8(3))
+    .assert(eq, div(u8(6), u8(2)), u8(3))
     .it("mod")
-      .assert(eq, mod(u8(6), u8(4)), u8(2))
+    .assert(eq, mod(u8(6), u8(4)), u8(2))
     .it("pow")
-      .assert(eq, pow(u8(6), u8(2)), u8(36))
+    .assert(eq, pow(u8(6), u8(2)), u8(36))
     .it("min")
-      .assert(eq, min(u8(3), u8(5)), u8(3))
+    .assert(eq, min(u8(3), u8(5)), u8(3))
     .it("max")
-      .assert(eq, max(u8(3), u8(5)), u8(5))
-    .it("clz", fn (test: Mut{Testing}) = test
-      .assert(eq, 0.u8.clz, 8.u8)
-      .assert(eq, 1.u8.clz, 7.u8)
-      .assert(eq, 2.u8.clz, 6.u8)
-      .assert(eq, 255.u8.clz, 0.u8))
-    .it("ones", fn (test: Mut{Testing}) = test
-      .assert(eq, 1.u8.ones, 1.u8)
-      .assert(eq, 2.u8.ones, 1.u8)
-      .assert(eq, 3.u8.ones, 2.u8)
-      .assert(eq, 255.u8.ones, 8.u8))
-    .it("ctz", fn (test: Mut{Testing}) = test
-      .assert(eq, 0.u8.ctz, 8.u8)
-      .assert(eq, 1.u8.ctz, 0.u8)
-      .assert(eq, 2.u8.ctz, 1.u8)
-      .assert(eq, 128.u8.ctz, 7.u8))
-    .it('reverseBits', fn (test: Mut{Testing}) = test
-      .assert(eq, 0.u8.reverseBits, 0.u8)
-      .assert(eq, 1.u8.reverseBits, 128.u8)
-      .assert(eq, 2.u8.reverseBits, 64.u8)
-      .assert(eq, 128.u8.reverseBits, 1.u8))
-    .it('extractBits', fn (test: Mut{Testing}) = test
-      .assert(eq, 0.u8.extractBits(1.u8, 2.u8), 0.u8)
-      .assert(eq, 1.u8.extractBits(1.u8, 2.u8), 0.u8)
-      .assert(eq, 2.u8.extractBits(1.u8, 2.u8), 1.u8)
-      .assert(eq, 5.u8.extractBits(1.u8, 2.u8), 2.u8))
-    .it('insertBits', fn (test: Mut{Testing}) = test
-      .assert(eq, 0.u8.insertBits(1.u8, 2.u8, 3.u8), 4.u8)
-      .assert(eq, 31.u8.insertBits(1.u8, 2.u8, 3.u8), 7.u8))
-    .it('dot').assert(eq, {u8[2]}(3.u8, 4.u8) *. {u8[2]}(3.u8, 4.u8), 25.u8)
-    .it("flb", fn (test: Mut{Testing}) = test
-      .assert(eq, 0.u8.flb, 128.u8)
-      .assert(eq, 1.u8.flb, 0.u8)
-      .assert(eq, 2.u8.flb, 1.u8)
-      .assert(eq, 128.u8.flb, 7.u8))
-    .it("ftb", fn (test: Mut{Testing}) = test
-      .assert(eq, 0.u8.ftb, 128.u8)
-      .assert(eq, 1.u8.ftb, 0.u8)
-      .assert(eq, 2.u8.ftb, 1.u8)
-      .assert(eq, 3.u8.ftb, 0.u8)
-      .assert(eq, 128.u8.ftb, 7.u8));
+    .assert(eq, max(u8(3), u8(5)), u8(5))
+    .it("clz", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.u8.clz, 8.u8)
+        .assert(eq, 1.u8.clz, 7.u8)
+        .assert(eq, 2.u8.clz, 6.u8)
+        .assert(eq, 255.u8.clz, 0.u8))
+    .it("ones", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 1.u8.ones, 1.u8)
+        .assert(eq, 2.u8.ones, 1.u8)
+        .assert(eq, 3.u8.ones, 2.u8)
+        .assert(eq, 255.u8.ones, 8.u8))
+    .it("ctz", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.u8.ctz, 8.u8)
+        .assert(eq, 1.u8.ctz, 0.u8)
+        .assert(eq, 2.u8.ctz, 1.u8)
+        .assert(eq, 128.u8.ctz, 7.u8))
+    .it('reverseBits', fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.u8.reverseBits, 0.u8)
+        .assert(eq, 1.u8.reverseBits, 128.u8)
+        .assert(eq, 2.u8.reverseBits, 64.u8)
+        .assert(eq, 128.u8.reverseBits, 1.u8))
+    .it('extractBits', fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.u8.extractBits(1.u8, 2.u8), 0.u8)
+        .assert(eq, 1.u8.extractBits(1.u8, 2.u8), 0.u8)
+        .assert(eq, 2.u8.extractBits(1.u8, 2.u8), 1.u8)
+        .assert(eq, 5.u8.extractBits(1.u8, 2.u8), 2.u8))
+    .it('insertBits', fn(test: Mut{Testing}) =
+      test
+        .assert(
+          eq,
+          0.u8.insertBits(1.u8, 2.u8, 3.u8),
+          4.u8
+        )
+        .assert(
+          eq,
+          31.u8.insertBits(1.u8, 2.u8, 3.u8),
+          7.u8
+        ))
+    .it('dot')
+    .assert(
+      eq,
+      {u8[2]}(3.u8, 4.u8) *. {u8[2]}(3.u8, 4.u8),
+      25.u8
+    )
+    .it("flb", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.u8.flb, 128.u8)
+        .assert(eq, 1.u8.flb, 0.u8)
+        .assert(eq, 2.u8.flb, 1.u8)
+        .assert(eq, 128.u8.flb, 7.u8))
+    .it("ftb", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.u8.ftb, 128.u8)
+        .assert(eq, 1.u8.ftb, 0.u8)
+        .assert(eq, 2.u8.ftb, 1.u8)
+        .assert(eq, 3.u8.ftb, 0.u8)
+        .assert(eq, 128.u8.ftb, 7.u8));
 
   test.describe("Basic math tests u16")
     .it("add")
-      .assert(eq, add(u16(1), u16(2)), u16(3))
+    .assert(eq, add(u16(1), u16(2)), u16(3))
     .it("sub")
-      .assert(eq, sub(u16(2), u16(1)), u16(1))
+    .assert(eq, sub(u16(2), u16(1)), u16(1))
     .it("mul")
-      .assert(eq, mul(u16(2), u16(1)), u16(2))
+    .assert(eq, mul(u16(2), u16(1)), u16(2))
     .it("div")
-      .assert(eq, div(u16(6), u16(2)), u16(3))
+    .assert(eq, div(u16(6), u16(2)), u16(3))
     .it("mod")
-      .assert(eq, mod(u16(6), u16(4)), u16(2))
+    .assert(eq, mod(u16(6), u16(4)), u16(2))
     .it("pow")
-      .assert(eq, pow(u16(6), u16(2)), u16(36))
+    .assert(eq, pow(u16(6), u16(2)), u16(36))
     .it("min")
-      .assert(eq, min(u16(3), u16(5)), u16(3))
+    .assert(eq, min(u16(3), u16(5)), u16(3))
     .it("max")
-      .assert(eq, max(u16(3), u16(5)), u16(5))
-    .it("clz", fn (test: Mut{Testing}) = test
-      .assert(eq, 0.u16.clz, 16.u16)
-      .assert(eq, 1.u16.clz, 15.u16)
-      .assert(eq, 2.u16.clz, 14.u16)
-      .assert(eq, 65535.u16.clz, 0.u16))
-    .it("ones", fn (test: Mut{Testing}) = test
-      .assert(eq, 1.u16.ones, 1.u16)
-      .assert(eq, 2.u16.ones, 1.u16)
-      .assert(eq, 3.u16.ones, 2.u16)
-      .assert(eq, 65535.u16.ones, 16.u16))
-    .it("ctz", fn (test: Mut{Testing}) = test
-      .assert(eq, 0.u16.ctz, 16.u16)
-      .assert(eq, 1.u16.ctz, 0.u16)
-      .assert(eq, 2.u16.ctz, 1.u16)
-      .assert(eq, 32768.u16.ctz, 15.u16))
-    .it('reverseBits', fn (test: Mut{Testing}) = test
-      .assert(eq, 0.u16.reverseBits, 0.u16)
-      .assert(eq, 1.u16.reverseBits, 32768.u16)
-      .assert(eq, 2.u16.reverseBits, 16384.u16)
-      .assert(eq, 32768.u16.reverseBits, 1.u16))
-    .it('extractBits', fn (test: Mut{Testing}) = test
-      .assert(eq, 0.u16.extractBits(1.u16, 2.u16), 0.u16)
-      .assert(eq, 1.u16.extractBits(1.u16, 2.u16), 0.u16)
-      .assert(eq, 2.u16.extractBits(1.u16, 2.u16), 1.u16)
-      .assert(eq, 5.u16.extractBits(1.u16, 2.u16), 2.u16))
-    .it('insertBits', fn (test: Mut{Testing}) = test
-      .assert(eq, 0.u16.insertBits(1.u16, 2.u16, 3.u16), 4.u16)
-      .assert(eq, 31.u16.insertBits(1.u16, 2.u16, 3.u16), 7.u16))
-    .it('dot').assert(eq, {u16[2]}(3.u16, 4.u16) *. {u16[2]}(3.u16, 4.u16), 25.u16)
-    .it("flb", fn (test: Mut{Testing}) = test
-      .assert(eq, 0.u16.flb, 32_768.u16)
-      .assert(eq, 1.u16.flb, 0.u16)
-      .assert(eq, 2.u16.flb, 1.u16)
-      .assert(eq, 32_768.u16.flb, 15.u16))
-    .it("ftb", fn (test: Mut{Testing}) = test
-      .assert(eq, 0.u16.ftb, 32_768.u16)
-      .assert(eq, 1.u16.ftb, 0.u16)
-      .assert(eq, 2.u16.ftb, 1.u16)
-      .assert(eq, 3.u16.ftb, 0.u16)
-      .assert(eq, 32_768.u16.ftb, 15.u16));
+    .assert(eq, max(u16(3), u16(5)), u16(5))
+    .it("clz", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.u16.clz, 16.u16)
+        .assert(eq, 1.u16.clz, 15.u16)
+        .assert(eq, 2.u16.clz, 14.u16)
+        .assert(eq, 65535.u16.clz, 0.u16))
+    .it("ones", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 1.u16.ones, 1.u16)
+        .assert(eq, 2.u16.ones, 1.u16)
+        .assert(eq, 3.u16.ones, 2.u16)
+        .assert(eq, 65535.u16.ones, 16.u16))
+    .it("ctz", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.u16.ctz, 16.u16)
+        .assert(eq, 1.u16.ctz, 0.u16)
+        .assert(eq, 2.u16.ctz, 1.u16)
+        .assert(eq, 32768.u16.ctz, 15.u16))
+    .it('reverseBits', fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.u16.reverseBits, 0.u16)
+        .assert(eq, 1.u16.reverseBits, 32768.u16)
+        .assert(eq, 2.u16.reverseBits, 16384.u16)
+        .assert(eq, 32768.u16.reverseBits, 1.u16))
+    .it('extractBits', fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.u16.extractBits(1.u16, 2.u16), 0.u16)
+        .assert(eq, 1.u16.extractBits(1.u16, 2.u16), 0.u16)
+        .assert(eq, 2.u16.extractBits(1.u16, 2.u16), 1.u16)
+        .assert(eq, 5.u16.extractBits(1.u16, 2.u16), 2.u16))
+    .it('insertBits', fn(test: Mut{Testing}) =
+      test
+        .assert(
+          eq,
+          0.u16.insertBits(1.u16, 2.u16, 3.u16),
+          4.u16
+        )
+        .assert(
+          eq,
+          31.u16.insertBits(1.u16, 2.u16, 3.u16),
+          7.u16
+        ))
+    .it('dot')
+    .assert(
+      eq,
+      {u16[2]}(3.u16, 4.u16) *. {u16[2]}(3.u16, 4.u16),
+      25.u16
+    )
+    .it("flb", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.u16.flb, 32_768.u16)
+        .assert(eq, 1.u16.flb, 0.u16)
+        .assert(eq, 2.u16.flb, 1.u16)
+        .assert(eq, 32_768.u16.flb, 15.u16))
+    .it("ftb", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.u16.ftb, 32_768.u16)
+        .assert(eq, 1.u16.ftb, 0.u16)
+        .assert(eq, 2.u16.ftb, 1.u16)
+        .assert(eq, 3.u16.ftb, 0.u16)
+        .assert(eq, 32_768.u16.ftb, 15.u16));
 
   test.describe("Basic math tests u32")
     .it("add")
-      .assert(eq, 1.u32 + 2.u32, 3.u32)
+    .assert(eq, 1.u32 + 2.u32, 3.u32)
     .it("sub")
-      .assert(eq, 2.u32 - u32(1), 1.u32())
+    .assert(eq, 2.u32 - u32(1), 1.u32())
     .it("mul")
-      .assert(eq, 2.u32 * 1.u32, 2.u32)
+    .assert(eq, 2.u32 * 1.u32, 2.u32)
     .it("div")
-      .assert(eq, 6.u32 / 2.u32, 3.u32)
+    .assert(eq, 6.u32 / 2.u32, 3.u32)
     .it("mod")
-      .assert(eq, mod(6.u32, 4.u32), 2.u32)
+    .assert(eq, mod(6.u32, 4.u32), 2.u32)
     .it("pow")
-      .assert(eq, pow(6.u32, 2.u32), 36.u32)
+    .assert(eq, pow(6.u32, 2.u32), 36.u32)
     .it("min")
-      .assert(eq, min(3.u32, 5.u32), 3.u32)
+    .assert(eq, min(3.u32, 5.u32), 3.u32)
     .it("max")
-      .assert(eq, max(3.u32, 5.u32), 5.u32)
-    .it("clz", fn (test: Mut{Testing}) = test
-      .assert(eq, 0.u32.clz, 32.u32)
-      .assert(eq, 1.u32.clz, 31.u32)
-      .assert(eq, 2.u32.clz, 30.u32)
-      .assert(eq, 2_147_483_648.u32.clz, 0.u32))
-    .it("ones", fn (test: Mut{Testing}) = test
-      .assert(eq, 1.u32.ones, 1.u32)
-      .assert(eq, 2.u32.ones, 1.u32)
-      .assert(eq, 3.u32.ones, 2.u32)
-      .assert(eq, 4_294_967_295.u32.ones, 32.u32))
-    .it("ctz", fn (test: Mut{Testing}) = test
-      .assert(eq, 0.u32.ctz, 32.u32)
-      .assert(eq, 1.u32.ctz, 0.u32)
-      .assert(eq, 2.u32.ctz, 1.u32)
-      .assert(eq, 2_147_483_648.u32.ctz, 31.u32))
-    .it('reverseBits', fn (test: Mut{Testing}) = test
-      .assert(eq, 0.u32.reverseBits, 0.u32)
-      .assert(eq, 1.u32.reverseBits, 2_147_483_648.u32)
-      .assert(eq, 2.u32.reverseBits, 1_073_741_824.u32)
-      .assert(eq, 2_147_483_648.u32.reverseBits, 1.u32))
-    .it('extractBits', fn (test: Mut{Testing}) = test
-      .assert(eq, 0.u32.extractBits(1.u32, 2.u32), 0.u32)
-      .assert(eq, 1.u32.extractBits(1.u32, 2.u32), 0.u32)
-      .assert(eq, 2.u32.extractBits(1.u32, 2.u32), 1.u32)
-      .assert(eq, 5.u32.extractBits(1.u32, 2.u32), 2.u32))
-    .it('insertBits', fn (test: Mut{Testing}) = test
-      .assert(eq, 0.u32.insertBits(1.u32, 2.u32, 3.u32), 4.u32)
-      .assert(eq, 31.u32.insertBits(1.u32, 2.u32, 3.u32), 7.u32))
-    .it('dot').assert(eq, {u32[2]}(3.u32, 4.u32) *. {u32[2]}(3.u32, 4.u32), 25.u32)
-    .it("flb", fn (test: Mut{Testing}) = test
-      .assert(eq, 0.u32.flb, 2_147_483_648.u32)
-      .assert(eq, 1.u32.flb, 0.u32)
-      .assert(eq, 2.u32.flb, 1.u32)
-      .assert(eq, 2_147_483_648.u32.flb, 31.u32))
-    .it("ftb", fn (test: Mut{Testing}) = test
-      .assert(eq, 0.u32.ftb, 2_147_483_648.u32)
-      .assert(eq, 1.u32.ftb, 0.u32)
-      .assert(eq, 2.u32.ftb, 1.u32)
-      .assert(eq, 3.u32.ftb, 0.u32)
-      .assert(eq, 2_147_483_648.u32.ftb, 31.u32));
+    .assert(eq, max(3.u32, 5.u32), 5.u32)
+    .it("clz", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.u32.clz, 32.u32)
+        .assert(eq, 1.u32.clz, 31.u32)
+        .assert(eq, 2.u32.clz, 30.u32)
+        .assert(eq, 2_147_483_648.u32.clz, 0.u32))
+    .it("ones", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 1.u32.ones, 1.u32)
+        .assert(eq, 2.u32.ones, 1.u32)
+        .assert(eq, 3.u32.ones, 2.u32)
+        .assert(eq, 4_294_967_295.u32.ones, 32.u32))
+    .it("ctz", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.u32.ctz, 32.u32)
+        .assert(eq, 1.u32.ctz, 0.u32)
+        .assert(eq, 2.u32.ctz, 1.u32)
+        .assert(eq, 2_147_483_648.u32.ctz, 31.u32))
+    .it('reverseBits', fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.u32.reverseBits, 0.u32)
+        .assert(eq, 1.u32.reverseBits, 2_147_483_648.u32)
+        .assert(eq, 2.u32.reverseBits, 1_073_741_824.u32)
+        .assert(eq, 2_147_483_648.u32.reverseBits, 1.u32))
+    .it('extractBits', fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.u32.extractBits(1.u32, 2.u32), 0.u32)
+        .assert(eq, 1.u32.extractBits(1.u32, 2.u32), 0.u32)
+        .assert(eq, 2.u32.extractBits(1.u32, 2.u32), 1.u32)
+        .assert(eq, 5.u32.extractBits(1.u32, 2.u32), 2.u32))
+    .it('insertBits', fn(test: Mut{Testing}) =
+      test
+        .assert(
+          eq,
+          0.u32.insertBits(1.u32, 2.u32, 3.u32),
+          4.u32
+        )
+        .assert(
+          eq,
+          31.u32.insertBits(1.u32, 2.u32, 3.u32),
+          7.u32
+        ))
+    .it('dot')
+    .assert(
+      eq,
+      {u32[2]}(3.u32, 4.u32) *. {u32[2]}(3.u32, 4.u32),
+      25.u32
+    )
+    .it("flb", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.u32.flb, 2_147_483_648.u32)
+        .assert(eq, 1.u32.flb, 0.u32)
+        .assert(eq, 2.u32.flb, 1.u32)
+        .assert(eq, 2_147_483_648.u32.flb, 31.u32))
+    .it("ftb", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.u32.ftb, 2_147_483_648.u32)
+        .assert(eq, 1.u32.ftb, 0.u32)
+        .assert(eq, 2.u32.ftb, 1.u32)
+        .assert(eq, 3.u32.ftb, 0.u32)
+        .assert(eq, 2_147_483_648.u32.ftb, 31.u32));
 
+  // TODO: u64 representation
   test.describe("Basic math tests u64")
     .it("add")
-      .assert(eq, 1.u64 + 2.u64, 3.u64)
+    .assert(eq, 1.u64 + 2.u64, 3.u64)
     .it("sub")
-      .assert(eq, 2.u64 - u64(1), 1.u64())
+    .assert(eq, 2.u64 - u64(1), 1.u64())
     .it("mul")
-      .assert(eq, 2.u64 * 1.u64, 2.u64)
+    .assert(eq, 2.u64 * 1.u64, 2.u64)
     .it("div")
-      .assert(eq, 6.u64 / 2.u64, 3.u64)
+    .assert(eq, 6.u64 / 2.u64, 3.u64)
     .it("mod")
-      .assert(eq, 6.u64 % 4.u64, 2.u64)
+    .assert(eq, 6.u64 % 4.u64, 2.u64)
     .it("pow")
-      .assert(eq, 6.u64 ** 2.u64, 36.u64)
+    .assert(eq, 6.u64 ** 2.u64, 36.u64)
     .it("min")
-      .assert(eq, min(3.u64, 5.u64), 3.u64)
+    .assert(eq, min(3.u64, 5.u64), 3.u64)
     .it("max")
-      .assert(eq, max(3.u64, 5.u64), 5.u64)
-    .it("clz", fn (test: Mut{Testing}) = test
-      .assert(eq, 0.u64.clz, 64.u64)
-      .assert(eq, 1.u64.clz, 63.u64)
-      .assert(eq, 2.u64.clz, 62.u64)
-      .assert(eq, -9_223_372_036_854_775_808.asU64.clz, 0.u64)) // TODO: Fix u64 representation
-    .it("ones", fn (test: Mut{Testing}) = test
-      .assert(eq, 1.u64.ones, 1.u64)
-      .assert(eq, 2.u64.ones, 1.u64)
-      .assert(eq, 3.u64.ones, 2.u64)
-      .assert(eq, -1.asU64.ones, 64.u64)) // TODO: Same u64 representation issue
-    .it("ctz", fn (test: Mut{Testing}) = test
-      .assert(eq, 0.u64.ctz, 64.u64)
-      .assert(eq, 1.u64.ctz, 0.u64)
-      .assert(eq, 2.u64.ctz, 1.u64)
-      .assert(eq, -9_223_372_036_854_775_808.asU64.ctz, 63.u64)) // TODO: Same u64 representation
-    .it('reverseBits', fn (test: Mut{Testing}) = test
-      .assert(eq, 0.u64.reverseBits, 0.u64)
-      .assert(eq, 1.u64.reverseBits, -9_223_372_036_854_775_808.asU64) // TODO: u64 representation
-      .assert(eq, 2.u64.reverseBits, 4_611_686_018_427_387_904.u64)
-      .assert(eq, -9_223_372_036_854_775_808.asU64.reverseBits, 1.u64)) // TODO: u64 representation
-    .it('extractBits', fn (test: Mut{Testing}) = test
-      .assert(eq, 0.u64.extractBits(1.u64, 2.u64), 0.u64)
-      .assert(eq, 1.u64.extractBits(1.u64, 2.u64), 0.u64)
-      .assert(eq, 2.u64.extractBits(1.u64, 2.u64), 1.u64)
-      .assert(eq, 5.u64.extractBits(1.u64, 2.u64), 2.u64))
-    .it('insertBits', fn (test: Mut{Testing}) = test
-      .assert(eq, 0.u64.insertBits(1.u64, 2.u64, 3.u64), 4.u64)
-      .assert(eq, 31.u64.insertBits(1.u64, 2.u64, 3.u64), 7.u64))
-    .it('dot').assert(eq, {u64[2]}(3.u64, 4.u64) *. {u64[2]}(3.u64, 4.u64), 25.u64)
-    .it("flb", fn (test: Mut{Testing}) = test
-      .assert(eq, 0.u64.flb, -9_223_372_036_854_775_808.asU64) // TODO: Same u64 representation
-      .assert(eq, 1.u64.flb, 0.u64)
-      .assert(eq, 2.u64.flb, 1.u64)
-      .assert(eq, -9_223_372_036_854_775_808.asU64.flb, 63.u64)) // TODO: Same u64 representation
-    .it("ftb", fn (test: Mut{Testing}) = test
-      .assert(eq, 0.u64.ftb, -9_223_372_036_854_775_808.asU64) // TODO: u64 representation
-      .assert(eq, 1.u64.ftb, 0.u64)
-      .assert(eq, 2.u64.ftb, 1.u64)
-      .assert(eq, 3.u64.ftb, 0.u64)
-      .assert(eq, -9_223_372_036_854_775_808.asU64.ftb, 63.u64)); // TODO: u64 representation
+    .assert(eq, max(3.u64, 5.u64), 5.u64)
+    .it("clz", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.u64.clz, 64.u64)
+        .assert(eq, 1.u64.clz, 63.u64)
+        .assert(eq, 2.u64.clz, 62.u64)
+        .assert(eq, -9_223_372_036_854_775_808.asU64.clz, 0.u64)) // TODO: Fix u64 representation
+    .it("ones", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 1.u64.ones, 1.u64)
+        .assert(eq, 2.u64.ones, 1.u64)
+        .assert(eq, 3.u64.ones, 2.u64)
+        .assert(eq, -1.asU64.ones, 64.u64)) // TODO: Same u64 representation issue
+    .it("ctz", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.u64.ctz, 64.u64)
+        .assert(eq, 1.u64.ctz, 0.u64)
+        .assert(eq, 2.u64.ctz, 1.u64)
+        .assert(eq, -9_223_372_036_854_775_808.asU64.ctz, 63.u64)) // TODO: Same u64 representation
+    .it('reverseBits', fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.u64.reverseBits, 0.u64)
+        .assert(eq, 1.u64.reverseBits, -9_223_372_036_854_775_808.asU64)        // TODO: u64 representation
 
+        .assert(eq, 2.u64.reverseBits, 4_611_686_018_427_387_904.u64)
+        .assert(eq, -9_223_372_036_854_775_808.asU64.reverseBits, 1.u64))    // TODO: u64 representation
+
+    .it('extractBits', fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.u64.extractBits(1.u64, 2.u64), 0.u64)
+        .assert(eq, 1.u64.extractBits(1.u64, 2.u64), 0.u64)
+        .assert(eq, 2.u64.extractBits(1.u64, 2.u64), 1.u64)
+        .assert(eq, 5.u64.extractBits(1.u64, 2.u64), 2.u64))
+    .it('insertBits', fn(test: Mut{Testing}) =
+      test
+        .assert(
+          eq,
+          0.u64.insertBits(1.u64, 2.u64, 3.u64),
+          4.u64
+        )
+        .assert(
+          eq,
+          31.u64.insertBits(1.u64, 2.u64, 3.u64),
+          7.u64
+        ))
+    .it('dot')
+    .assert(
+      eq,
+      {u64[2]}(3.u64, 4.u64) *. {u64[2]}(3.u64, 4.u64),
+      25.u64
+    )
+    .it("flb", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.u64.flb, -9_223_372_036_854_775_808.asU64) // TODO: Same u64 representation
+        .assert(eq, 1.u64.flb, 0.u64)
+        .assert(eq, 2.u64.flb, 1.u64)
+        .assert(eq, -9_223_372_036_854_775_808.asU64.flb, 63.u64)) // TODO: Same u64 representation
+    .it("ftb", fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 0.u64.ftb, -9_223_372_036_854_775_808.asU64) // TODO: u64 representation
+        .assert(eq, 1.u64.ftb, 0.u64)
+        .assert(eq, 2.u64.ftb, 1.u64)
+        .assert(eq, 3.u64.ftb, 0.u64)
+        .assert(eq, -9_223_372_036_854_775_808.asU64.ftb, 63.u64));
 
   test.describe("Basic math tests f32")
     .it("add")
-      .assert(eq, 1.f32 + 2.f32, 3.f32)
+    .assert(eq, 1.f32 + 2.f32, 3.f32)
     .it("sub")
-      .assert(eq, 2.f32 - f32(1), 1.f32())
+    .assert(eq, 2.f32 - f32(1), 1.f32())
     .it("mul")
-      .assert(eq, 2.f32 * 1.f32, 2.f32)
+    .assert(eq, 2.f32 * 1.f32, 2.f32)
     .it("div")
-      .assert(eq, 6.f32 / 2.f32, 3.f32)
+    .assert(eq, 6.f32 / 2.f32, 3.f32)
     .it("sqrt")
-      .assert(eq, sqrt(36.f32), 6.f32)
+    .assert(eq, sqrt(36.f32), 6.f32)
     .it("pow")
-      .assert(eq, pow(6.f32, 2.f32), 36.f32)
+    .assert(eq, pow(6.f32, 2.f32), 36.f32)
     .it("min")
-      .assert(eq, min(3.f32, 5.f32), 3.f32)
+    .assert(eq, min(3.f32, 5.f32), 3.f32)
     .it("max")
-      .assert(eq, max(3.f32, 5.f32), 5.f32)
+    .assert(eq, max(3.f32, 5.f32), 5.f32)
     .it("neg")
-      .assert(eq, neg(3.f32), -3.f32)
+    .assert(eq, neg(3.f32), -3.f32)
     .it("abs")
-      .assert(eq, -3.f32.abs, 3.f32)
+    .assert(eq, -3.f32.abs, 3.f32)
     .it("floor")
-      .assert(eq, 2.5.f32.floor, 2.f32)
+    .assert(eq, 2.5.f32.floor, 2.f32)
     .it("ceil")
-      .assert(eq, 2.5.f32.ceil, 3.f32)
-    .it('round', fn (test: Mut{Testing}) = test
-      .assert(eq, 1.5.f32.round, 2.f32)
-      .assert(eq, 1.75.f32.round, 2.f32)
-      .assert(eq, 2.5.f32.round, 2.f32)
-      .assert(eq, 2.75.f32.round, 3.f32)
-      .assert(eq, (-1.5).f32.round, (-2).f32)
-      .assert(eq, (-1.75).f32.round, (-2).f32)
-      .assert(eq, (-2.5).f32.round, (-2).f32)
-      .assert(eq, (-2.75).f32.round, (-3).f32))
-    .it('magnitude', fn (test: Mut{Testing}) = test
-      .assert(eq, 1.5.f32.magnitude, 1.5.f32)
-      .assert(eq, (-1.5).f32.magnitude, 1.5.f32))
-    .it('saturate', fn (test: Mut{Testing}) = test
-      .assert(eq, (-0.5.f32).saturate, 0.0.f32)
-      .assert(eq, 0.5.f32.saturate, 0.5.f32)
-      .assert(eq, 1.5.f32.saturate, 1.0.f32))
-    .it('dot').assert(eq, {f32[2]}(3.f32, 4.f32) *. {f32[2]}(3.f32, 4.f32), 25.f32)
-    .it('inverseSqrt').assert(eq, 4.f32.inverseSqrt, 0.5.f32)
-    .it('fma').assert(eq, 2.f32.fma(3.f32, 4.f32), 10.f32)
-    .it('fract').assert(eq, 3.14.f32.fract.string(2), 0.14.f32.string(2));
+    .assert(eq, 2.5.f32.ceil, 3.f32)
+    .it('round', fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 1.5.f32.round, 2.f32)
+        .assert(eq, 1.75.f32.round, 2.f32)
+        .assert(eq, 2.5.f32.round, 2.f32)
+        .assert(eq, 2.75.f32.round, 3.f32)
+        .assert(eq, (-1.5).f32.round, (-2).f32)
+        .assert(eq, (-1.75).f32.round, (-2).f32)
+        .assert(eq, (-2.5).f32.round, (-2).f32)
+        .assert(eq, (-2.75).f32.round, (-3).f32))
+    .it('magnitude', fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 1.5.f32.magnitude, 1.5.f32)
+        .assert(eq, (-1.5).f32.magnitude, 1.5.f32))
+    .it('saturate', fn(test: Mut{Testing}) =
+      test
+        .assert(eq, (-0.5.f32).saturate, 0.0.f32)
+        .assert(eq, 0.5.f32.saturate, 0.5.f32)
+        .assert(eq, 1.5.f32.saturate, 1.0.f32))
+    .it('dot')
+    .assert(
+      eq,
+      {f32[2]}(3.f32, 4.f32) *. {f32[2]}(3.f32, 4.f32),
+      25.f32
+    )
+    .it('inverseSqrt')
+    .assert(eq, 4.f32.inverseSqrt, 0.5.f32)
+    .it('fma')
+    .assert(eq, 2.f32.fma(3.f32, 4.f32), 10.f32)
+    .it('fract')
+    .assert(eq, 3.14.f32.fract.string(2), 0.14.f32.string(2));
 
   test.describe("Basic math tests f64")
     .it("add")
-      .assert(eq, 1.0 + 2.0, 3.0)
+    .assert(eq, 1.0 + 2.0, 3.0)
     .it("sub")
-      .assert(eq, 2.0 - 1.0, 1.0)
+    .assert(eq, 2.0 - 1.0, 1.0)
     .it("mul")
-      .assert(eq, 2.0 * 1.0, 2.0)
+    .assert(eq, 2.0 * 1.0, 2.0)
     .it("div")
-      .assert(eq, 6.0 / 2.0, 3.0)
+    .assert(eq, 6.0 / 2.0, 3.0)
     .it("sqrt")
-      .assert(eq, sqrt(36.0), 6.0)
+    .assert(eq, sqrt(36.0), 6.0)
     .it("pow")
-      .assert(eq, 6.0 ** 2.0, 36.0)
+    .assert(eq, 6.0 ** 2.0, 36.0)
     .it("min")
-      .assert(eq, min(3.0, 5.0), 3.0)
+    .assert(eq, min(3.0, 5.0), 3.0)
     .it("max")
-      .assert(eq, max(3.0, 5.0), 5.0)
+    .assert(eq, max(3.0, 5.0), 5.0)
     .it("neg")
-      .assert(eq, - 3.0, -3.0) // These are different, I swear!
+    .assert(eq, - 3.0, -3.0) // These are different, I swear!
     .it("abs")
-      .assert(eq, -3.0.abs, 3.0)
+    .assert(eq, -3.0.abs, 3.0)
     .it("floor")
-      .assert(eq, 2.5.floor, 2.0)
+    .assert(eq, 2.5.floor, 2.0)
     .it("ceil")
-      .assert(eq, 2.5.ceil, 3.0)
-    .it('round', fn (test: Mut{Testing}) = test
-      .assert(eq, 1.5.round, 2.0)
-      .assert(eq, 1.75.round, 2.0)
-      .assert(eq, 2.5.round, 2.0)
-      .assert(eq, 2.75.round, 3.0)
-      .assert(eq, -1.5.round, -2.0)
-      .assert(eq, -1.75.round, -2.0)
-      .assert(eq, -2.5.round, -2.0)
-      .assert(eq, -2.75.round, -3.0))
-    .it('magnitude', fn (test: Mut{Testing}) = test
-      .assert(eq, 1.5.magnitude, 1.5)
-      .assert(eq, -1.5.magnitude, 1.5))
-    .it('saturate', fn (test: Mut{Testing}) = test
-      .assert(eq, (-0.5).saturate, 0.0)
-      .assert(eq, 0.5.saturate, 0.5)
-      .assert(eq, 1.5.saturate, 1.0))
-    .it('dot').assert(eq, {f64[2]}(3.0, 4.0) *. {f64[2]}(3.0, 4.0), 25.0)
-    .it('inverseSqrt').assert(eq, 25.0.inverseSqrt, 0.2)
-    .it('fma').assert(eq, 2.0.fma(3.0, 4.0), 10.0)
-    .it('fract').assert(eq, 3.14.fract.string(2), 0.14.string(2));
+    .assert(eq, 2.5.ceil, 3.0)
+    .it('round', fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 1.5.round, 2.0)
+        .assert(eq, 1.75.round, 2.0)
+        .assert(eq, 2.5.round, 2.0)
+        .assert(eq, 2.75.round, 3.0)
+        .assert(eq, -1.5.round, -2.0)
+        .assert(eq, -1.75.round, -2.0)
+        .assert(eq, -2.5.round, -2.0)
+        .assert(eq, -2.75.round, -3.0))
+    .it('magnitude', fn(test: Mut{Testing}) =
+      test
+        .assert(eq, 1.5.magnitude, 1.5)
+        .assert(eq, -1.5.magnitude, 1.5))
+    .it('saturate', fn(test: Mut{Testing}) =
+      test
+        .assert(eq, (-0.5).saturate, 0.0)
+        .assert(eq, 0.5.saturate, 0.5)
+        .assert(eq, 1.5.saturate, 1.0))
+    .it('dot')
+    .assert(eq, {f64[2]}(3.0, 4.0) *. {f64[2]}(3.0, 4.0), 25.0)
+    .it('inverseSqrt')
+    .assert(eq, 25.0.inverseSqrt, 0.2)
+    .it('fma')
+    .assert(eq, 2.0.fma(3.0, 4.0), 10.0)
+    .it('fract')
+    .assert(eq, 3.14.fract.string(2), 0.14.string(2));
 
   test.describe("Basic math tests")
     .it("grouping")
-      .assert(eq, 2 / (3), 0)
-      .assert(eq, 3 / (1 + 2), 1)
+    .assert(eq, 2 / (3), 0)
+    .assert(eq, 3 / (1 + 2), 1)
     .it("string min")
-      .assert(eq, min(3.string, 5.string), "3")
+    .assert(eq, min(3.string, 5.string), "3")
     .it("string max")
-      .assert(eq, max(3.string, 5.string), "5");
+    .assert(eq, max(3.string, 5.string), "5");
 
+  // TODO: u64 numeric constants
   test.describe("Bitwise math test")
     .it("i8")
-      .assert(eq, 1.i8 & 2.i8, 0.i8)
-      .assert(eq, 1.i8 | 3.i8, 3.i8)
-      .assert(eq, 5.i8 ^ 3.i8, 6.i8)
-      .assert(eq, !(0.i8), -1.i8)
-      .assert(eq, 1.i8 !& 2.i8, -1.i8)
-      .assert(eq, 1.i8 !| 2.i8, -4.i8)
-      .assert(eq, 5.i8 !^ 3.i8, -7.i8)
+    .assert(eq, 1.i8 & 2.i8, 0.i8)
+    .assert(eq, 1.i8 | 3.i8, 3.i8)
+    .assert(eq, 5.i8 ^ 3.i8, 6.i8)
+    .assert(eq, !(0.i8), -1.i8)
+    .assert(eq, 1.i8 !& 2.i8, -1.i8)
+    .assert(eq, 1.i8 !| 2.i8, -4.i8)
+    .assert(eq, 5.i8 !^ 3.i8, -7.i8)
     .it("i16")
-      .assert(eq, 1.i16 & 2.i16, 0.i16)
-      .assert(eq, 1.i16 | 3.i16, 3.i16)
-      .assert(eq, 5.i16 ^ 3.i16, 6.i16)
-      .assert(eq, !(0.i16), -1.i16)
-      .assert(eq, 1.i16 !& 2.i16, -1.i16)
-      .assert(eq, 1.i16 !| 2.i16, -4.i16)
-      .assert(eq, 5.i16 !^ 3.i16, -7.i16)
+    .assert(eq, 1.i16 & 2.i16, 0.i16)
+    .assert(eq, 1.i16 | 3.i16, 3.i16)
+    .assert(eq, 5.i16 ^ 3.i16, 6.i16)
+    .assert(eq, !(0.i16), -1.i16)
+    .assert(eq, 1.i16 !& 2.i16, -1.i16)
+    .assert(eq, 1.i16 !| 2.i16, -4.i16)
+    .assert(eq, 5.i16 !^ 3.i16, -7.i16)
     .it("i32")
-      .assert(eq, 1.i32 & 2.i32, 0.i32)
-      .assert(eq, 1.i32 | 3.i32, 3.i32)
-      .assert(eq, 5.i32 ^ 3.i32, 6.i32)
-      .assert(eq, !(0.i32), -1.i32)
-      .assert(eq, 1.i32 !& 2.i32, -1.i32)
-      .assert(eq, 1.i32 !| 2.i32, -4.i32)
-      .assert(eq, 5.i32 !^ 3.i32, -7.i32)
+    .assert(eq, 1.i32 & 2.i32, 0.i32)
+    .assert(eq, 1.i32 | 3.i32, 3.i32)
+    .assert(eq, 5.i32 ^ 3.i32, 6.i32)
+    .assert(eq, !(0.i32), -1.i32)
+    .assert(eq, 1.i32 !& 2.i32, -1.i32)
+    .assert(eq, 1.i32 !| 2.i32, -4.i32)
+    .assert(eq, 5.i32 !^ 3.i32, -7.i32)
     .it("i64")
-      .assert(eq, 1 & 2, 0)
-      .assert(eq, 1 | 3, 3)
-      .assert(eq, 5 ^ 3, 6)
-      .assert(eq, !0, -1)
-      .assert(eq, 1 !& 2, -1)
-      .assert(eq, 1 !| 2, -4)
-      .assert(eq, 5 !^ 3, -7)
+    .assert(eq, 1 & 2, 0)
+    .assert(eq, 1 | 3, 3)
+    .assert(eq, 5 ^ 3, 6)
+    .assert(eq, !0, -1)
+    .assert(eq, 1 !& 2, -1)
+    .assert(eq, 1 !| 2, -4)
+    .assert(eq, 5 !^ 3, -7)
     .it("u8")
-      .assert(eq, 1.u8 & 2.u8, 0.u8)
-      .assert(eq, 1.u8 | 3.u8, 3.u8)
-      .assert(eq, 5.u8 ^ 3.u8, 6.u8)
-      .assert(eq, !(0.u8), 255.u8)
-      .assert(eq, 1.u8 !& 2.u8, 255.u8)
-      .assert(eq, 1.u8 !| 2.u8, 252.u8)
-      .assert(eq, 5.u8 !^ 3.u8, 249.u8)
+    .assert(eq, 1.u8 & 2.u8, 0.u8)
+    .assert(eq, 1.u8 | 3.u8, 3.u8)
+    .assert(eq, 5.u8 ^ 3.u8, 6.u8)
+    .assert(eq, !(0.u8), 255.u8)
+    .assert(eq, 1.u8 !& 2.u8, 255.u8)
+    .assert(eq, 1.u8 !| 2.u8, 252.u8)
+    .assert(eq, 5.u8 !^ 3.u8, 249.u8)
     .it("u16")
-      .assert(eq, 1.u16 & 2.u16, 0.u16)
-      .assert(eq, 1.u16 | 3.u16, 3.u16)
-      .assert(eq, 5.u16 ^ 3.u16, 6.u16)
-      .assert(eq, !(0.u16), 65535.u16)
-      .assert(eq, 1.u16 !& 2.u16, 65535.u16)
-      .assert(eq, 1.u16 !| 2.u16, 65532.u16)
-      .assert(eq, 5.u16 !^ 3.u16, 65529.u16)
+    .assert(eq, 1.u16 & 2.u16, 0.u16)
+    .assert(eq, 1.u16 | 3.u16, 3.u16)
+    .assert(eq, 5.u16 ^ 3.u16, 6.u16)
+    .assert(eq, !(0.u16), 65535.u16)
+    .assert(eq, 1.u16 !& 2.u16, 65535.u16)
+    .assert(eq, 1.u16 !| 2.u16, 65532.u16)
+    .assert(eq, 5.u16 !^ 3.u16, 65529.u16)
     .it("u32")
-      .assert(eq, 1.u32 & 2.u32, 0.u32)
-      .assert(eq, 1.u32 | 3.u32, 3.u32)
-      .assert(eq, 5.u32 ^ 3.u32, 6.u32)
-      .assert(eq, !(0.u32), 4_294_967_295.u32)
-      .assert(eq, 1.u32 !& 2.u32, 4_294_967_295.u32)
-      .assert(eq, 1.u32 !| 2.u32, 4_294_967_292.u32)
-      .assert(eq, 5.u32 !^ 3.u32, 4_294_967_289.u32)
+    .assert(eq, 1.u32 & 2.u32, 0.u32)
+    .assert(eq, 1.u32 | 3.u32, 3.u32)
+    .assert(eq, 5.u32 ^ 3.u32, 6.u32)
+    .assert(eq, !(0.u32), 4_294_967_295.u32)
+    .assert(eq, 1.u32 !& 2.u32, 4_294_967_295.u32)
+    .assert(eq, 1.u32 !| 2.u32, 4_294_967_292.u32)
+    .assert(eq, 5.u32 !^ 3.u32, 4_294_967_289.u32)
     .it("u64")
-      .assert(eq, 1.u64 & 2.u64, 0.u64)
-      .assert(eq, 1.u64 | 3.u64, 3.u64)
-      .assert(eq, 5.u64 ^ 3.u64, 6.u64)
-      .assert(eq, !(0.u64), -1.asU64) // TODO: Fix u64 numeric constants
-      .assert(eq, 1.u64 !& 2.u64, -1.asU64) // TODO: u64 numeric constants
-      .assert(eq, 1.u64 !| 2.u64, -4.asU64) // TODO: u64 numeric constants
-      .assert(eq, 5.u64 !^ 3.u64, -7.asU64); // TODO: u64 numeric constants
+    .assert(eq, 1.u64 & 2.u64, 0.u64)
+    .assert(eq, 1.u64 | 3.u64, 3.u64)
+    .assert(eq, 5.u64 ^ 3.u64, 6.u64)
+    .assert(eq, !(0.u64), -1.asU64) // TODO: Fix u64 numeric constants
+    .assert(eq, 1.u64 !& 2.u64, -1.asU64) // TODO: u64 numeric constants
+    .assert(eq, 1.u64 !| 2.u64, -4.asU64) // TODO: u64 numeric constants
+    .assert(eq, 5.u64 !^ 3.u64, -7.asU64);
 
   test.describe("Cross Product").it("")
-    .assert(eq, ({f64[3]}(1.0, 0.0, 0.0) >< {f64[3]}(0.0, 1.0, 0.0)).map(fn (v: f64) = string(v)).join(', '), {f64[3]}(0.0, 0.0, 1.0).map(fn (v: f64) = string(v)).join(', '));
+    .assert(
+      eq,
+      ({f64[3]}(1.0, 0.0, 0.0) >< {f64[3]}(0.0, 1.0, 0.0)).map(fn(v: f64) = string(v)).join(', '),
+      {f64[3]}(0.0, 0.0, 1.0).map(fn(v: f64) = string(v)).join(', ')
+    );
 
   test.describe("Boolean logic").it("")
     .assert(eq, true, true)
@@ -707,19 +883,19 @@ export fn{Test} main {
 
   test.describe("String Manipulation")
     .it("ops")
-      .assert(eq, concat("Hello, ", 'World!'), "Hello, World!")
-      .assert(eq, repeat('hi ', 5), 'hi hi hi hi hi ')
-      .assert(eq, index('foobar', 'ba')!!, 3)
-      .assert(eq, len('foobar'), 6)
-      .assert(eq, #'foobar', 6)
-      .assert(eq, trim('   hi   '), 'hi')
-      .assert(eq, split('Hello, World!', ', ')[0]!!, 'Hello')
-      .assert(eq, 'Hello, World!'.split(', ')[1]!!, 'World!')
-    .it("const vs computed equality", fn (test: Mut{Testing}) {
+    .assert(eq, concat("Hello, ", 'World!'), "Hello, World!")
+    .assert(eq, repeat('hi ', 5), 'hi hi hi hi hi ')
+    .assert(eq, index('foobar', 'ba')!!, 3)
+    .assert(eq, len('foobar'), 6)
+    .assert(eq, #'foobar', 6)
+    .assert(eq, trim('   hi   '), 'hi')
+    .assert(eq, split('Hello, World!', ', ')[0]!!, 'Hello')
+    .assert(eq, 'Hello, World!'.split(', ')[1]!!, 'World!')
+    .it("const vs computed equality", fn(test: Mut{Testing}) {
       const foo = 'foo';
       test.assert(eq, foo.trim, foo);
     })
-    .it("chars access", fn (test: Mut{Testing}) {
+    .it("chars access", fn(test: Mut{Testing}) {
       const foo = 'foo';
       // This shouldn't be needed. TODO: Figure out why methods are not loading in all situations
       let huh = Fallible{string}('huh');
@@ -734,147 +910,147 @@ export fn{Test} main {
 
   test.describe("Comparators")
     .it("equality")
-      .assert(eq, i8(0) == i8(0), true)
-      .assert(eq, i8(1).eq(i8(0)), false)
-      .assert(eq, i16(0) == i16(0), true)
-      .assert(eq, i16(1).eq(i16(0)), false)
-      .assert(eq, i32(0) == i32(0), true)
-      .assert(eq, i32(1).eq(i32(0)), false)
-      .assert(eq, 0 == 0, true)
-      .assert(eq, 1.eq(0), false)
-      .assert(eq, 0.u8 == 0.u8, true)
-      .assert(eq, 1.u8.eq(0.u8), false)
-      .assert(eq, 0.u16 == 0.u16, true)
-      .assert(eq, 1.u16.eq(0.u16), false)
-      .assert(eq, 0.u32 == 0.u32, true)
-      .assert(eq, 1.u32.eq(0.u32), false)
-      .assert(eq, 0.u64 == 0.u64, true)
-      .assert(eq, 1.u64.eq(0.u64), false)
-      .assert(eq, f32(0.0) == f32(0.0), true)
-      .assert(eq, f32(1.0).eq(f32(0.0)), false)
-      .assert(eq, 0.0 == 0.0, true)
-      .assert(eq, 1.2.eq(0.0), false)
-      .assert(eq, true == true, true)
-      .assert(eq, true.eq(false), false)
-      .assert(eq, 'hello' == 'hello', true)
-      .assert(eq, 'hello'.eq('world'), false)
+    .assert(eq, i8(0) == i8(0), true)
+    .assert(eq, i8(1).eq(i8(0)), false)
+    .assert(eq, i16(0) == i16(0), true)
+    .assert(eq, i16(1).eq(i16(0)), false)
+    .assert(eq, i32(0) == i32(0), true)
+    .assert(eq, i32(1).eq(i32(0)), false)
+    .assert(eq, 0 == 0, true)
+    .assert(eq, 1.eq(0), false)
+    .assert(eq, 0.u8 == 0.u8, true)
+    .assert(eq, 1.u8.eq(0.u8), false)
+    .assert(eq, 0.u16 == 0.u16, true)
+    .assert(eq, 1.u16.eq(0.u16), false)
+    .assert(eq, 0.u32 == 0.u32, true)
+    .assert(eq, 1.u32.eq(0.u32), false)
+    .assert(eq, 0.u64 == 0.u64, true)
+    .assert(eq, 1.u64.eq(0.u64), false)
+    .assert(eq, f32(0.0) == f32(0.0), true)
+    .assert(eq, f32(1.0).eq(f32(0.0)), false)
+    .assert(eq, 0.0 == 0.0, true)
+    .assert(eq, 1.2.eq(0.0), false)
+    .assert(eq, true == true, true)
+    .assert(eq, true.eq(false), false)
+    .assert(eq, 'hello' == 'hello', true)
+    .assert(eq, 'hello'.eq('world'), false)
     .it("not equal")
-      .assert(eq, i8(0) != i8(0), false)
-      .assert(eq, i8(1).neq(i8(0)), true)
-      .assert(eq, i16(0) != i16(0), false)
-      .assert(eq, i16(1).neq(i16(0)), true)
-      .assert(eq, i32(0) != i32(0), false)
-      .assert(eq, i32(1).neq(i32(0)), true)
-      .assert(eq, 0 != 0, false)
-      .assert(eq, 1.neq(0), true)
-      .assert(eq, 0.u8 != 0.u8, false)
-      .assert(eq, 1.u8.neq(0.u8), true)
-      .assert(eq, 0.u16 != 0.u16, false)
-      .assert(eq, 1.u16.neq(0.u16), true)
-      .assert(eq, 0.u32 != 0.u32, false)
-      .assert(eq, 1.u32.neq(0.u32), true)
-      .assert(eq, 0.u64 != 0.u64, false)
-      .assert(eq, 1.u64.neq(0.u64), true)
-      .assert(eq, f32(0.0) != f32(0.0), false)
-      .assert(eq, f32(1.0).neq(f32(0.0)), true)
-      .assert(eq, 0.0 != 0.0, false)
-      .assert(eq, 1.2.neq(0.0), true)
-      .assert(eq, true != true, false)
-      .assert(eq, true.neq(false), true)
-      .assert(eq, 'hello' != 'hello', false)
-      .assert(eq, 'hello'.neq('world'), true)
+    .assert(eq, i8(0) != i8(0), false)
+    .assert(eq, i8(1).neq(i8(0)), true)
+    .assert(eq, i16(0) != i16(0), false)
+    .assert(eq, i16(1).neq(i16(0)), true)
+    .assert(eq, i32(0) != i32(0), false)
+    .assert(eq, i32(1).neq(i32(0)), true)
+    .assert(eq, 0 != 0, false)
+    .assert(eq, 1.neq(0), true)
+    .assert(eq, 0.u8 != 0.u8, false)
+    .assert(eq, 1.u8.neq(0.u8), true)
+    .assert(eq, 0.u16 != 0.u16, false)
+    .assert(eq, 1.u16.neq(0.u16), true)
+    .assert(eq, 0.u32 != 0.u32, false)
+    .assert(eq, 1.u32.neq(0.u32), true)
+    .assert(eq, 0.u64 != 0.u64, false)
+    .assert(eq, 1.u64.neq(0.u64), true)
+    .assert(eq, f32(0.0) != f32(0.0), false)
+    .assert(eq, f32(1.0).neq(f32(0.0)), true)
+    .assert(eq, 0.0 != 0.0, false)
+    .assert(eq, 1.2.neq(0.0), true)
+    .assert(eq, true != true, false)
+    .assert(eq, true.neq(false), true)
+    .assert(eq, 'hello' != 'hello', false)
+    .assert(eq, 'hello'.neq('world'), true)
     .it("less than")
-      .assert(eq, i8(0) < i8(1), true)
-      .assert(eq, i8(1).lt(i8(0)), false)
-      .assert(eq, i16(0) < i16(1), true)
-      .assert(eq, i16(1).lt(i16(0)), false)
-      .assert(eq, i32(0) < i32(1), true)
-      .assert(eq, i32(1).lt(i32(0)), false)
-      .assert(eq, 0 < 1, true)
-      .assert(eq, 1.lt(0), false)
-      .assert(eq, 0.u8 < 1.u8, true)
-      .assert(eq, 1.u8.lt(0.u8), false)
-      .assert(eq, 0.u16 < 1.u16, true)
-      .assert(eq, 1.u16.lt(0.u16), false)
-      .assert(eq, 0.u32 < 1.u32, true)
-      .assert(eq, 1.u32.lt(0.u32), false)
-      .assert(eq, 0.u64 < 1.u64, true)
-      .assert(eq, 1.u64.lt(0.u64), false)
-      .assert(eq, f32(0.0) < f32(1.0), true)
-      .assert(eq, f32(1.0).lt(f32(0.0)), false)
-      .assert(eq, 0.0 < 1.0, true)
-      .assert(eq, 1.2.lt(0.0), false)
-      .assert(eq, 'hello' < 'hello', false)
-      .assert(eq, 'hello'.lt('world'), true)
+    .assert(eq, i8(0) < i8(1), true)
+    .assert(eq, i8(1).lt(i8(0)), false)
+    .assert(eq, i16(0) < i16(1), true)
+    .assert(eq, i16(1).lt(i16(0)), false)
+    .assert(eq, i32(0) < i32(1), true)
+    .assert(eq, i32(1).lt(i32(0)), false)
+    .assert(eq, 0 < 1, true)
+    .assert(eq, 1.lt(0), false)
+    .assert(eq, 0.u8 < 1.u8, true)
+    .assert(eq, 1.u8.lt(0.u8), false)
+    .assert(eq, 0.u16 < 1.u16, true)
+    .assert(eq, 1.u16.lt(0.u16), false)
+    .assert(eq, 0.u32 < 1.u32, true)
+    .assert(eq, 1.u32.lt(0.u32), false)
+    .assert(eq, 0.u64 < 1.u64, true)
+    .assert(eq, 1.u64.lt(0.u64), false)
+    .assert(eq, f32(0.0) < f32(1.0), true)
+    .assert(eq, f32(1.0).lt(f32(0.0)), false)
+    .assert(eq, 0.0 < 1.0, true)
+    .assert(eq, 1.2.lt(0.0), false)
+    .assert(eq, 'hello' < 'hello', false)
+    .assert(eq, 'hello'.lt('world'), true)
     .it("less than or equal to")
-      .assert(eq, i8(0) <= i8(1), true)
-      .assert(eq, i8(1).lte(i8(0)), false)
-      .assert(eq, i16(0) <= i16(1), true)
-      .assert(eq, i16(1).lte(i16(0)), false)
-      .assert(eq, i32(0) <= i32(1), true)
-      .assert(eq, i32(1).lte(i32(0)), false)
-      .assert(eq, 0 <= 1, true)
-      .assert(eq, 1.lte(0), false)
-      .assert(eq, 0.u8 <= 1.u8, true)
-      .assert(eq, 1.u8.lte(0.u8), false)
-      .assert(eq, 0.u16 <= 1.u16, true)
-      .assert(eq, 1.u16.lte(0.u16), false)
-      .assert(eq, 0.u32 <= 1.u32, true)
-      .assert(eq, 1.u32.lte(0.u32), false)
-      .assert(eq, 0.u64 <= 1.u64, true)
-      .assert(eq, 1.u64.lte(0.u64), false)
-      .assert(eq, f32(0.0) <= f32(1.0), true)
-      .assert(eq, f32(1.0).lte(f32(0.0)), false)
-      .assert(eq, 0.0 <= 1.0, true)
-      .assert(eq, 1.2.lte(0.0), false)
-      .assert(eq, 'hello' <= 'hello', true)
-      .assert(eq, 'hello'.lte('world'), true)
+    .assert(eq, i8(0) <= i8(1), true)
+    .assert(eq, i8(1).lte(i8(0)), false)
+    .assert(eq, i16(0) <= i16(1), true)
+    .assert(eq, i16(1).lte(i16(0)), false)
+    .assert(eq, i32(0) <= i32(1), true)
+    .assert(eq, i32(1).lte(i32(0)), false)
+    .assert(eq, 0 <= 1, true)
+    .assert(eq, 1.lte(0), false)
+    .assert(eq, 0.u8 <= 1.u8, true)
+    .assert(eq, 1.u8.lte(0.u8), false)
+    .assert(eq, 0.u16 <= 1.u16, true)
+    .assert(eq, 1.u16.lte(0.u16), false)
+    .assert(eq, 0.u32 <= 1.u32, true)
+    .assert(eq, 1.u32.lte(0.u32), false)
+    .assert(eq, 0.u64 <= 1.u64, true)
+    .assert(eq, 1.u64.lte(0.u64), false)
+    .assert(eq, f32(0.0) <= f32(1.0), true)
+    .assert(eq, f32(1.0).lte(f32(0.0)), false)
+    .assert(eq, 0.0 <= 1.0, true)
+    .assert(eq, 1.2.lte(0.0), false)
+    .assert(eq, 'hello' <= 'hello', true)
+    .assert(eq, 'hello'.lte('world'), true)
     .it("greater than")
-      .assert(eq, i8(0) > i8(1), false)
-      .assert(eq, i8(1).gt(i8(0)), true)
-      .assert(eq, i16(0) > i16(1), false)
-      .assert(eq, i16(1).gt(i16(0)), true)
-      .assert(eq, i32(0) > i32(1), false)
-      .assert(eq, i32(1).gt(i32(0)), true)
-      .assert(eq, 0 > 1, false)
-      .assert(eq, 1.gt(0), true)
-      .assert(eq, 0.u8 > 1.u8, false)
-      .assert(eq, 1.u8.gt(0.u8), true)
-      .assert(eq, 0.u16 > 1.u16, false)
-      .assert(eq, 1.u16.gt(0.u16), true)
-      .assert(eq, 0.u32 > 1.u32, false)
-      .assert(eq, 1.u32.gt(0.u32), true)
-      .assert(eq, 0.u64 > 1.u64, false)
-      .assert(eq, 1.u64.gt(0.u64), true)
-      .assert(eq, f32(0.0) > f32(1.0), false)
-      .assert(eq, f32(1.0).gt(f32(0.0)), true)
-      .assert(eq, 0.0 > 1.0, false)
-      .assert(eq, 1.2.gt(0.0), true)
-      .assert(eq, 'hello' > 'hello', false)
-      .assert(eq, 'hello'.gt('world'), false)
+    .assert(eq, i8(0) > i8(1), false)
+    .assert(eq, i8(1).gt(i8(0)), true)
+    .assert(eq, i16(0) > i16(1), false)
+    .assert(eq, i16(1).gt(i16(0)), true)
+    .assert(eq, i32(0) > i32(1), false)
+    .assert(eq, i32(1).gt(i32(0)), true)
+    .assert(eq, 0 > 1, false)
+    .assert(eq, 1.gt(0), true)
+    .assert(eq, 0.u8 > 1.u8, false)
+    .assert(eq, 1.u8.gt(0.u8), true)
+    .assert(eq, 0.u16 > 1.u16, false)
+    .assert(eq, 1.u16.gt(0.u16), true)
+    .assert(eq, 0.u32 > 1.u32, false)
+    .assert(eq, 1.u32.gt(0.u32), true)
+    .assert(eq, 0.u64 > 1.u64, false)
+    .assert(eq, 1.u64.gt(0.u64), true)
+    .assert(eq, f32(0.0) > f32(1.0), false)
+    .assert(eq, f32(1.0).gt(f32(0.0)), true)
+    .assert(eq, 0.0 > 1.0, false)
+    .assert(eq, 1.2.gt(0.0), true)
+    .assert(eq, 'hello' > 'hello', false)
+    .assert(eq, 'hello'.gt('world'), false)
     .it("greater than or equal to")
-      .assert(eq, i8(0) >= i8(1), false)
-      .assert(eq, i8(1).gte(i8(0)), true)
-      .assert(eq, i16(0) >= i16(1), false)
-      .assert(eq, i16(1).gte(i16(0)), true)
-      .assert(eq, i32(0) >= i32(1), false)
-      .assert(eq, i32(1).gte(i32(0)), true)
-      .assert(eq, 0 >= 1, false)
-      .assert(eq, 1.gte(0), true)
-      .assert(eq, 0.u8 >= 1.u8, false)
-      .assert(eq, 1.u8.gte(0.u8), true)
-      .assert(eq, 0.u16 >= 1.u16, false)
-      .assert(eq, 1.u16.gte(0.u16), true)
-      .assert(eq, 0.u32 >= 1.u32, false)
-      .assert(eq, 1.u32.gte(0.u32), true)
-      .assert(eq, 0.u64 >= 1.u64, false)
-      .assert(eq, 1.u64.gte(0.u64), true)
-      .assert(eq, f32(0.0) >= f32(1.0), false)
-      .assert(eq, f32(1.0).gte(f32(0.0)), true)
-      .assert(eq, 0.0 >= 1.0, false)
-      .assert(eq, 1.2.gte(0.0), true)
-      .assert(eq, 'hello' >= 'hello', true)
-      .assert(eq, 'hello'.gte('world'), false);
+    .assert(eq, i8(0) >= i8(1), false)
+    .assert(eq, i8(1).gte(i8(0)), true)
+    .assert(eq, i16(0) >= i16(1), false)
+    .assert(eq, i16(1).gte(i16(0)), true)
+    .assert(eq, i32(0) >= i32(1), false)
+    .assert(eq, i32(1).gte(i32(0)), true)
+    .assert(eq, 0 >= 1, false)
+    .assert(eq, 1.gte(0), true)
+    .assert(eq, 0.u8 >= 1.u8, false)
+    .assert(eq, 1.u8.gte(0.u8), true)
+    .assert(eq, 0.u16 >= 1.u16, false)
+    .assert(eq, 1.u16.gte(0.u16), true)
+    .assert(eq, 0.u32 >= 1.u32, false)
+    .assert(eq, 1.u32.gte(0.u32), true)
+    .assert(eq, 0.u64 >= 1.u64, false)
+    .assert(eq, 1.u64.gte(0.u64), true)
+    .assert(eq, f32(0.0) >= f32(1.0), false)
+    .assert(eq, f32(1.0).gte(f32(0.0)), true)
+    .assert(eq, 0.0 >= 1.0, false)
+    .assert(eq, 1.2.gte(0.0), true)
+    .assert(eq, 'hello' >= 'hello', true)
+    .assert(eq, 'hello'.gte('world'), false);
 
   test.describe("Bitshifting").it("")
     .assert(eq, 1.i8 >> 1.i8, 0.i8)
@@ -912,42 +1088,42 @@ export fn{Test} main {
 
   test.describe('Trigonometry on the cpu')
     .it('Logarithms and e**x')
-      .assert(eq, exp(e).string(4), '15.1543')
-      .assert(eq, ln(e).string(4), '1.0000')
-      .assert(eq, log10(e).string(4), '0.4343')
-      .assert(eq, log2(e).string(4), '1.4427')
+    .assert(eq, exp(e).string(4), '15.1543')
+    .assert(eq, ln(e).string(4), '1.0000')
+    .assert(eq, log10(e).string(4), '0.4343')
+    .assert(eq, log2(e).string(4), '1.4427')
     .it('Standard Trig Functions')
-      .assert(eq, sin(tau / 6.0).string(4), '0.8660')
-      .assert(eq, cos(tau / 6.0).string(4), '0.5000')
-      .assert(eq, tan(tau / 6.0).string(4), '1.7321')
-      .assert(eq, sec(tau / 6.0).string(4), '2.0000')
-      .assert(eq, csc(tau / 6.0).string(4), '1.1547')
-      .assert(eq, cot(tau / 6.0).string(4), '0.5774')
+    .assert(eq, sin(tau / 6.0).string(4), '0.8660')
+    .assert(eq, cos(tau / 6.0).string(4), '0.5000')
+    .assert(eq, tan(tau / 6.0).string(4), '1.7321')
+    .assert(eq, sec(tau / 6.0).string(4), '2.0000')
+    .assert(eq, csc(tau / 6.0).string(4), '1.1547')
+    .assert(eq, cot(tau / 6.0).string(4), '0.5774')
     .it('Inverse Trig Functions')
-      .assert(eq, asin(0.0).string(4), '0.0000')
-      .assert(eq, acos(1.0).string(4), '0.0000')
-      .assert(eq, atan(0.0).string(4), '0.0000')
-      .assert(eq, atan2(1.0, 2.0).string(4), '0.4636')
-      .assert(eq, asec(tau / 6.0).string(4), '0.3014')
-      .assert(eq, acsc(tau / 6.0).string(4), '1.2694')
-      .assert(eq, acot(tau / 6.0).string(4), '0.7623')
+    .assert(eq, asin(0.0).string(4), '0.0000')
+    .assert(eq, acos(1.0).string(4), '0.0000')
+    .assert(eq, atan(0.0).string(4), '0.0000')
+    .assert(eq, atan2(1.0, 2.0).string(4), '0.4636')
+    .assert(eq, asec(tau / 6.0).string(4), '0.3014')
+    .assert(eq, acsc(tau / 6.0).string(4), '1.2694')
+    .assert(eq, acot(tau / 6.0).string(4), '0.7623')
     .it('Hyperbolic Trig Functions')
-      .assert(eq, sinh(tau / 6.0).string(4), '1.2494')
-      .assert(eq, cosh(tau / 6.0).string(4), '1.6003')
-      .assert(eq, tanh(tau / 6.0).string(4), '0.7807')
-      .assert(eq, sech(tau / 6.0).string(4), '0.6249')
-      .assert(eq, csch(tau / 6.0).string(4), '0.8004')
-      .assert(eq, coth(tau / 6.0).string(4), '1.2809')
+    .assert(eq, sinh(tau / 6.0).string(4), '1.2494')
+    .assert(eq, cosh(tau / 6.0).string(4), '1.6003')
+    .assert(eq, tanh(tau / 6.0).string(4), '0.7807')
+    .assert(eq, sech(tau / 6.0).string(4), '0.6249')
+    .assert(eq, csch(tau / 6.0).string(4), '0.8004')
+    .assert(eq, coth(tau / 6.0).string(4), '1.2809')
     .it('Inverse Hyperbolic Trig Functions')
-      .assert(eq, asinh(tau / 6.0).string(4), '0.9144')
-      .assert(eq, acosh(tau / 6.0).string(4), '0.3060')
-      .assert(eq, atanh(pi / 6.0).string(4), '0.5813')
-      .assert(eq, asech(0.5).string(4), '1.3170')
-      .assert(eq, acsch(tau / 6.0).string(4), '0.8491')
-      .assert(eq, acoth(tau / 6.0).string(4), '1.8849');
+    .assert(eq, asinh(tau / 6.0).string(4), '0.9144')
+    .assert(eq, acosh(tau / 6.0).string(4), '0.3060')
+    .assert(eq, atanh(pi / 6.0).string(4), '0.5813')
+    .assert(eq, asech(0.5).string(4), '1.3170')
+    .assert(eq, acsch(tau / 6.0).string(4), '0.8491')
+    .assert(eq, acoth(tau / 6.0).string(4), '1.8849');
 
   test.describe("Arrays")
-    .it("accessor and length", fn (test: Mut{Testing}) {
+    .it("accessor and length", fn(test: Mut{Testing}) {
       const arr = '1,2,3'.split(',');
       test
         .assert(eq, arr.len, 3)
@@ -955,7 +1131,7 @@ export fn{Test} main {
         .assert(eq, arr[1]!!, '2')
         .assert(eq, arr[2]!!, '3');
     })
-    .it("literal syntax", fn (test: Mut{Testing}) {
+    .it("literal syntax", fn(test: Mut{Testing}) {
       const arr1 = Array{i64}(1, 2, 3);
       test
         .assert(eq, arr1[0]!!, 1)
@@ -967,7 +1143,7 @@ export fn{Test} main {
         .assert(eq, arr2[1]!!, 5)
         .assert(eq, arr2[2]!!, 6);
     })
-    .it("mutable push and pop", fn (test: Mut{Testing}) {
+    .it("mutable push and pop", fn(test: Mut{Testing}) {
       let arr = Array{i64}();
       arr.push(1);
       arr.push(2);
@@ -981,58 +1157,58 @@ export fn{Test} main {
         .assert(eq, arr.pop!!, 1)
         .assert(eq, arr.pop.exists, false);
     })
-    .it("has", fn (test: Mut{Testing}) {
+    .it("has", fn(test: Mut{Testing}) {
       const arr = [1, 1, 2, 3, 5, 8];
       test
         .assert(eq, arr.has(3), true)
         .assert(eq, arr.has(4), false)
-        .assert(eq, arr.has(fn (t: i64) = t % 2 == 0), true)
-        .assert(eq, arr.has(fn (t: i64) = t % 2 == 1), true);
+        .assert(eq, arr.has(fn(t: i64) = t % 2 == 0), true)
+        .assert(eq, arr.has(fn(t: i64) = t % 2 == 1), true);
     })
-    .it('map', fn (test: Mut{Testing}) {
-      const count =  [1, 2, 3, 4, 5]; // Ah, ah ahh!
-      const byTwos = count.map(fn (n: i64) = n * 2);
+    .it('map', fn(test: Mut{Testing}) {
+      const count = [1, 2, 3, 4, 5]; // Ah, ah ahh!
+      const byTwos = count.map(fn(n: i64) = n * 2);
       test
         .assert(eq, count.map(string).join(', '), '1, 2, 3, 4, 5')
         .assert(eq, byTwos.map(string).join(', '), '2, 4, 6, 8, 10');
     })
-    .it('repeat', fn (test: Mut{Testing}) {
+    .it('repeat', fn(test: Mut{Testing}) {
       const arr = [1, 2, 3].repeat(3);
       test.assert(eq, arr.map(string).join(', '), '1, 2, 3, 1, 2, 3, 1, 2, 3');
     })
-    .it('find', fn (test: Mut{Testing}) {
+    .it('find', fn(test: Mut{Testing}) {
       const arr = [1, 1, 2, 3, 5, 8];
-      test.assert(eq, arr.find(fn (x: i64) = x % 2 == 1) ?? 0, 1);
+      test.assert(eq, arr.find(fn(x: i64) = x % 2 == 1) ?? 0, 1);
     })
-    .it('every', fn (test: Mut{Testing}) {
+    .it('every', fn(test: Mut{Testing}) {
       const arr = [1, 1, 2, 3, 5, 8];
-      test.assert(eq, arr.every(fn (x: i64) = x % 2 == 1), false);
+      test.assert(eq, arr.every(fn(x: i64) = x % 2 == 1), false);
     })
-    .it('some', fn (test: Mut{Testing}) {
+    .it('some', fn(test: Mut{Testing}) {
       const arr = [1, 1, 2, 3, 5, 8];
-      test.assert(eq, arr.some(fn (x: i64) = x % 2 == 1), true);
+      test.assert(eq, arr.some(fn(x: i64) = x % 2 == 1), true);
     })
-    .it('index', fn (test: Mut{Testing}) {
+    .it('index', fn(test: Mut{Testing}) {
       const arr = [1, 1, 2, 3, 5, 8];
-      test.assert(eq, arr.index(fn (x: i64) = x % 2 == 1)!!, 0);
+      test.assert(eq, arr.index(fn(x: i64) = x % 2 == 1)!!, 0);
     })
-    .it('concat', fn (test: Mut{Testing}) {
+    .it('concat', fn(test: Mut{Testing}) {
       const arr1 = [1, 1, 2, 3, 5, 8];
       const arr2 = [4, 5, 6];
       test.assert(eq, arr1.concat(arr2).map(string).join(', '), '1, 1, 2, 3, 5, 8, 4, 5, 6');
     })
-    .it('reduce', fn (test: Mut{Testing}) {
+    .it('reduce', fn(test: Mut{Testing}) {
       const arr = [1, 1, 2, 3, 5, 8];
       test
         .assert(eq, arr.reduce(add)!!, 20)
         .assert(eq, arr.reduce(min)!!, 1)
         .assert(eq, arr.reduce(max)!!, 8);
     })
-    .it('filter', fn (test: Mut{Testing}) {
+    .it('filter', fn(test: Mut{Testing}) {
       const arr = [1, 1, 2, 3, 5, 8];
       test.assert(eq, arr.filter(fn odd(i: i64) = i % 2 == 1).map(string).join(', '), '1, 1, 3, 5');
     })
-    .it('store and delete', fn (test: Mut{Testing}) {
+    .it('store and delete', fn(test: Mut{Testing}) {
       let arr = [1, 2, 5];
       arr.store(2, 3);
       arr[3] = 4;
@@ -1040,19 +1216,19 @@ export fn{Test} main {
       test.assert(eq, arr.delete(4)!!, 5);
       test.assert(eq, arr.map(string).join(', '), '1, 2, 3, 4');
     })
-    .it('swap', fn (test: Mut{Testing}) {
+    .it('swap', fn(test: Mut{Testing}) {
       let arr = [1, 2, 5];
       arr.swap(0, 2);
       test.assert(eq, arr.map(string).join(', '), '5, 2, 1');
     })
-    .it('sort', fn (test: Mut{Testing}) {
+    .it('sort', fn(test: Mut{Testing}) {
       let arr = [3, 4, 5, 1, 2];
       arr.sort;
       test.assert(eq, arr.map(string).join(', '), '1, 2, 3, 4, 5');
-      arr.sort(fn (a: i64, b: i64) = i8(b - a));
+      arr.sort(fn(a: i64, b: i64) = i8(b - a));
       test.assert(eq, arr.map(string).join(', '), '5, 4, 3, 2, 1');
     })
-    .it('magnitude', fn (test: Mut{Testing}) {
+    .it('magnitude', fn(test: Mut{Testing}) {
       let sides = [3.0, 4.0];
       let hypotenuse = sides.magnitude;
       test.assert(eq, hypotenuse, 5.0);
@@ -1060,24 +1236,25 @@ export fn{Test} main {
       let gr8Scott = youGottaThinkFourthDimensionally.magnitude;
       test.assert(eq, gr8Scott, 8.0);
     })
-    .it('normalize', fn (test: Mut{Testing}) = test
-      .assert(eq, [1.0, 0.0, 0.0].normalize.map(fn (v: f64) = string(v)).join(', '), '1, 0, 0')
-      .assert(eq, [3.0, 4.0].normalize.map(fn (v: f64) = string(v)).join(', '), '0.6, 0.8'))
-    .it('inverseSqrt').assert(eq, [4.0, 25.0].inverseSqrt.map(fn (v: f64) = string(v)).join(', '), '0.5, 0.2')
+    .it('normalize', fn(test: Mut{Testing}) =
+      test
+        .assert(eq, [1.0, 0.0, 0.0].normalize.map(fn(v: f64) = string(v)).join(', '), '1, 0, 0')
+        .assert(eq, [3.0, 4.0].normalize.map(fn(v: f64) = string(v)).join(', '), '0.6, 0.8'))
+    .it('inverseSqrt')
+    .assert(eq, [4.0, 25.0].inverseSqrt.map(fn(v: f64) = string(v)).join(', '), '0.5, 0.2')
     .it('fma')
-      .assert(
-        eq,
-        (fma([2.0, 3.0, 4.0], [3.0, 4.0, 2.0], [4.0, 2.0, 3.0])!!)
-          .map(fn (v: f64) = string(v, 1)).join(', '),
-        '10.0, 14.0, 11.0')
-    .it('fract').assert(eq, [1.0, 3.14].fract.map(fn (v: f64) = v.string(2)).join(', '), '0.00, 0.14');
+    .assert(eq, (fma([2.0, 3.0, 4.0], [3.0, 4.0, 2.0], [4.0, 2.0, 3.0])!!)
+      .map(fn(v: f64) = string(v, 1))
+      .join(', '), '10.0, 14.0, 11.0')
+    .it('fract')
+    .assert(eq, [1.0, 3.14].fract.map(fn(v: f64) = v.string(2)).join(', '), '0.00, 0.14');
 
   test.describe("Buffers")
-    .it("join", fn (test: Mut{Testing}) {
+    .it("join", fn(test: Mut{Testing}) {
       const b = {string[2]}("Hello", "World!");
       test.assert(eq, b.join(", "), "Hello, World!");
     })
-    .it("map", fn (test: Mut{Testing}) {
+    .it("map", fn(test: Mut{Testing}) {
       const b = Buffer{i64, 3}(1, 2, 3);
       test
         .assert(eq, b.map(string).join(", "), '1, 2, 3')
@@ -1085,38 +1262,38 @@ export fn{Test} main {
         .assert(eq, b.map(fn double(x: i64) = x * 2).map(string).join(', '), '2, 4, 6')
         .assert(eq, b.map(add).map(string).join(', '), '1, 3, 5');
     })
-    .it("reduce", fn (test: Mut{Testing}) {
+    .it("reduce", fn(test: Mut{Testing}) {
       const b = {i64[5]}(1, 2, 3, 4, 5);
       test
         .assert(eq, b.reduce(add)!!, 15) // TODO: We can probably get rid of the Fallible here
         .assert(eq, b.map(string).reduce("0", concat), "012345");
     })
-    .it("has", fn (test: Mut{Testing}) {
+    .it("has", fn(test: Mut{Testing}) {
       const b = {i64[6]}(1, 1, 2, 3, 5, 8);
       test
         .assert(eq, b.has(3), true)
         .assert(eq, b.has(4), false)
-        .assert(eq, b.has(fn (i: i64) = i % 2 == 0), true)
-        .assert(eq, b.has(fn (i: i64) = i % 2 == 1), true);
+        .assert(eq, b.has(fn(i: i64) = i % 2 == 0), true)
+        .assert(eq, b.has(fn(i: i64) = i % 2 == 1), true);
     })
-    .it("find", fn (test: Mut{Testing}) {
+    .it("find", fn(test: Mut{Testing}) {
       const b = {i64[6]}(1, 1, 2, 3, 5, 8);
-      test.assert(eq, b.find(fn (i: i64) = i % 2 == 1) ?? 0, 1);
+      test.assert(eq, b.find(fn(i: i64) = i % 2 == 1) ?? 0, 1);
     })
-    .it("every", fn (test: Mut{Testing}) {
+    .it("every", fn(test: Mut{Testing}) {
       const b = {i64[6]}(1, 1, 2, 3, 5, 8);
-      test.assert(eq, b.every(fn (i: i64) = i % 2 == 1), false);
+      test.assert(eq, b.every(fn(i: i64) = i % 2 == 1), false);
     })
-    .it("concat", fn (test: Mut{Testing}) {
+    .it("concat", fn(test: Mut{Testing}) {
       const b = {i64[6]}(1, 1, 2, 3, 5, 8);
       const c = {i64[3]}(4, 5, 6);
       test.assert(eq, b.concat(c).map(string).join(', '), '1, 1, 2, 3, 5, 8, 4, 5, 6');
     })
-    .it("repeat", fn (test: Mut{Testing}) {
+    .it("repeat", fn(test: Mut{Testing}) {
       const b = {i64[3]}(1, 2, 3).repeat(3);
       test.assert(eq, b.map(string).join(', '), '1, 2, 3, 1, 2, 3, 1, 2, 3');
     })
-    .it('store', fn (test: Mut{Testing}) {
+    .it('store', fn(test: Mut{Testing}) {
       let b = {i64[3]}(1, 2, 5);
       test
         .assert(eq, b.map(string).join(', '), '1, 2, 5')
@@ -1125,19 +1302,19 @@ export fn{Test} main {
       b[2] = 4;
       test.assert(eq, b.map(string).join(', '), '1, 2, 4');
     })
-    .it('swap', fn (test: Mut{Testing}) {
+    .it('swap', fn(test: Mut{Testing}) {
       let b = {i64[3]}(1, 2, 5);
       b.swap(0, 2);
       test.assert(eq, b.map(string).join(', '), '5, 2, 1');
     })
-    .it('sort', fn (test: Mut{Testing}) {
+    .it('sort', fn(test: Mut{Testing}) {
       let buf = {i64[5]}(3, 4, 5, 1, 2);
       buf.sort;
       test.assert(eq, buf.map(string).join(', '), '1, 2, 3, 4, 5');
-      buf.sort(fn (a: i64, b: i64) = i8(b - a));
+      buf.sort(fn(a: i64, b: i64) = i8(b - a));
       test.assert(eq, buf.map(string).join(', '), '5, 4, 3, 2, 1');
     })
-    .it('magnitude', fn (test: Mut{Testing}) {
+    .it('magnitude', fn(test: Mut{Testing}) {
       let sides = {f64[2]}(3.0, 4.0);
       let hypotenuse = sides.magnitude;
       test.assert(eq, hypotenuse, 5.0);
@@ -1145,43 +1322,63 @@ export fn{Test} main {
       let gr8Scott = youGottaThinkFourthDimensionally.magnitude;
       test.assert(eq, gr8Scott, 8.0);
     })
-    .it('normalize', fn (test: Mut{Testing}) = test
-      .assert(eq, {f64[3]}(1.0, 0.0, 0.0).normalize.map(fn (v: f64) = string(v)).join(', '), '1, 0, 0')
-      .assert(eq, {f64[2]}(3.0, 4.0).normalize.map(fn (v: f64) = string(v)).join(', '), '0.6, 0.8'))
-    .it('inverseSqrt').assert(eq, {f64[2]}(4.0, 25.0).inverseSqrt.map(fn (v: f64) = string(v)).join(', '), '0.5, 0.2')
+    .it('normalize', fn(test: Mut{Testing}) =
+      test
+        .assert(
+          eq,
+          {f64[3]}(1.0, 0.0, 0.0).normalize.map(fn(v: f64) = string(v)).join(', '),
+          '1, 0, 0'
+        )
+        .assert(
+          eq,
+          {f64[2]}(3.0, 4.0).normalize.map(fn(v: f64) = string(v)).join(', '),
+          '0.6, 0.8'
+        ))
+    .it('inverseSqrt')
+    .assert(
+      eq,
+      {f64[2]}(4.0, 25.0).inverseSqrt.map(fn(v: f64) = string(v)).join(', '),
+      '0.5, 0.2'
+    )
     .it('fma')
-      .assert(
-        eq,
-        fma({f64[3]}(2.0, 3.0, 4.0), {f64[3]}(3.0, 4.0, 2.0), {f64[3]}(4.0, 2.0, 3.0))
-          .map(fn (v: f64) = string(v, 1)).join(', '),
-        '10.0, 14.0, 11.0')
+    .assert(
+      eq,
+      fma(
+        {f64[3]}(2.0, 3.0, 4.0),
+        {f64[3]}(3.0, 4.0, 2.0),
+        {f64[3]}(4.0, 2.0, 3.0)
+      )
+        .map(fn(v: f64) = string(v, 1))
+        .join(', '),
+      '10.0, 14.0, 11.0'
+    )
     .it('fract')
-      .assert(eq, {f64[2]}(1.0, 3.14).fract.map(fn (v: f64) = v.string(2)).join(', '), '0.00, 0.14')
+    .assert(
+      eq,
+      {f64[2]}(1.0, 3.14).fract.map(fn(v: f64) = v.string(2)).join(', '),
+      '0.00, 0.14'
+    )
     .it('determinant')
-      .assert(eq, {f64[4]}(1.0, 2.0, 3.0, 4.0).determinant, -2.0);
+    .assert(eq, {f64[4]}(1.0, 2.0, 3.0, 4.0).determinant, -2.0);
 
   test.describe("Conditionals")
     .it("if function")
-      .assert(eq, if(1 == 0, fn = "What?", fn = "Math is sane..."), "Math is sane...")
-      .assert(eq, if(1 == 2, fn = "Uhh...").exists, false)
-      .assert(eq, if(1 == 1, 'Correct!')!!, 'Correct!');
+    .assert(eq, if(1 == 0, fn = "What?", fn = "Math is sane..."), "Math is sane...")
+    .assert(eq, if(1 == 2, fn = "Uhh...").exists, false)
+    .assert(eq, if(1 == 1, 'Correct!')!!, 'Correct!');
 
   test.describe("Dictionaries")
-    .it("create, store, get, keys, vals, len, has, concat", fn (test: Mut{Testing}) {
+    .it("create, store, get, keys, vals, len, has, concat", fn(test: Mut{Testing}) {
       let d = Dict('foo', 1);
+
       // Equivalent to:
       // let d = Dict{string, i64}();
       // d.store('foo', 1);
-
       d.store('bar', 2);
       d['baz'] = 99;
 
       test
-        .assert(
-          eq,
-          d.Array.map(fn (n: (string, i64)) = n.0.concat(': ').concat(n.1.string)).join(', '),
-          'foo: 1, bar: 2, baz: 99'
-        )
+        .assert(eq, d.Array.map(fn(n: (string, i64)) = n.0.concat(': ').concat(n.1.string)).join(', '), 'foo: 1, bar: 2, baz: 99')
         .assert(eq, d.keys.join(', '), 'foo, bar, baz')
         .assert(eq, d.vals.map(string).join(', '), '1, 2, 99')
         .assert(eq, d.len, 3)
@@ -1197,28 +1394,24 @@ export fn{Test} main {
         d
           .concat(d2)
           .Array
-          .map(fn (n: (string, i64)) = n.0.concat(': ').concat(n.1.string))
+          .map(fn(n: (string, i64)) = n.0.concat(': ').concat(n.1.string))
           .join(', '),
         'foo: 3, bar: 2, baz: 99, bay: 4'
       );
     })
-    .it("keyval array to dictionary", fn (test: Mut{Testing}) {
+    .it("keyval array to dictionary", fn(test: Mut{Testing}) {
       // This is an improvement, but figure out why `{(i64, string)}` doesn't work
       const kva = [{i64, string}(1, 'foo'), {i64, string}(2, 'bar'), {i64, string}(3, 'baz')];
       // TODO: Improve this with anonymous tuples
       // const kva = [(1, 'foo'), (2, 'bar'), (3, 'baz')];
       const hm = Dict(kva);
       test
-        .assert(
-          eq,
-          hm.Array.map(fn (n: (i64, string)) = n.0.string.concat(': ').concat(n.1)).join(', '),
-          '1: foo, 2: bar, 3: baz'
-        )
+        .assert(eq, hm.Array.map(fn(n: (i64, string)) = n.0.string.concat(': ').concat(n.1)).join(', '), '1: foo, 2: bar, 3: baz')
         .assert(eq, hm[1]!!, 'foo');
     });
 
   test.describe('Sets')
-    .it('usage', fn (test: Mut{Testing}) {
+    .it('usage', fn(test: Mut{Testing}) {
       let s = Set(0);
       test
         .assert(eq, s.len, 1)
@@ -1236,7 +1429,7 @@ export fn{Test} main {
     });
 
   test.describe('Sum Types')
-    .it('exists', fn (test: Mut{Testing}) {
+    .it('exists', fn(test: Mut{Testing}) {
       const intOrStr = {i64 | string}("It's a string!");
       test
         .assert(eq, intOrStr.i64.exists, false)
@@ -1244,14 +1437,14 @@ export fn{Test} main {
     });
 
   test.describe('Maybe')
-    .it('exists', fn (test: Mut{Testing}) {
+    .it('exists', fn(test: Mut{Testing}) {
       const maybe5 = Maybe{i64}(5);
       const maybeNot = Maybe{i64}();
       test
         .assert(eq, maybe5.exists, true)
         .assert(eq, maybeNot.exists, false);
     })
-    .it('can be cloned', fn (test: Mut{Testing}) {
+    .it('can be cloned', fn(test: Mut{Testing}) {
       const maybe5 = Maybe{i64}(5);
       const maybeNot = Maybe{i64}();
       test
@@ -1260,24 +1453,27 @@ export fn{Test} main {
     });
 
   test.describe("Tree")
-    .it('construction and access', fn (test: Mut{Testing}) {
-        let myTree = Tree('foo');
-        const barNode = myTree.addChild('bar');
-        const bazNode = myTree.addChild('baz');
-        const bayNode = barNode.addChild('bay');
+    .it('construction and access', fn(test: Mut{Testing}) {
+      let myTree = Tree('foo');
+      const barNode = myTree.addChild('bar');
+      const bazNode = myTree.addChild('baz');
+      const bayNode = barNode.addChild('bay');
 
-        let secondTree = Tree('second');
-        const secondNode = secondTree.addChild('node');
+      let secondTree = Tree('second');
+      const secondNode = secondTree.addChild('node');
 
-        bayNode.addChild(secondTree);
+      bayNode.addChild(secondTree);
 
-        test.assert(eq, myTree.rootNode ?? 'wrong', 'foo');
+      test.assert(eq, myTree.rootNode ?? 'wrong', 'foo');
 
-        // TODO: Get these tests working
-        // test.assert(eq, bayNode.parent!! ?? 'wrong', 'bar');
-        // test.assert(eq, myTree.children.map(fn (c: Node{string}) = c ?? 'wrong').join(', '), 'bar, baz');
+      // TODO: Get these tests working
+      // test.assert(eq, bayNode.parent!! ?? 'wrong', 'bar');
+      /*
+       * test.assert(eq, myTree.children.map(fn (c: Node{string}) = c ?? 'wrong').join(', '), 'bar,
+       * baz');
+       */
     })
-    .it('prune', fn (test: Mut{Testing}) {
+    .it('prune', fn(test: Mut{Testing}) {
       let myTree = Tree('foo');
       const barNode = myTree.addChild('bar');
       const bazNode = barNode.addChild('baz');
@@ -1285,9 +1481,9 @@ export fn{Test} main {
 
       barNode.prune;
 
-      test.assert(eq, myTree.rootNode.children.map(fn (c: Node{string}) = c ?? 'wrong').join(', '), '');
+      test.assert(eq, myTree.rootNode.children.map(fn(c: Node{string}) = c ?? 'wrong').join(', '), '');
     })
-    .it('delete', fn (test: Mut{Testing}) {
+    .it('delete', fn(test: Mut{Testing}) {
       let myTree = Tree('foo');
       const barNode = myTree.addChild('bar');
       const bazNode = barNode.addChild('baz');
@@ -1295,37 +1491,61 @@ export fn{Test} main {
 
       barNode.delete;
 
-      test.assert(eq, myTree.children.map(fn (c: Node{string}) = c!!).join(', '), 'baz, bay');
+      test.assert(eq, myTree.children.map(fn(c: Node{string}) = c!!).join(', '), 'baz, bay');
     });
 
   test.describe('Pack and Unpack')
-    .it('f32[4] to u32 and back via Signed Normalization', fn (test: Mut{Testing}) {
+    .it('f32[4] to u32 and back via Signed Normalization', fn(test: Mut{Testing}) {
       test
         .assert(eq, 0.u32.unpack4x8snorm.pack4x8snorm, 0.u32)
-        .assert(eq, {f32[4]}(0.f32, 0.f32, 0.f32, 0.f32).pack4x8snorm, 0.u32)
-        .assert(eq, {f32[4]}(-0.0001.f32, -0.0001.f32, -0.0001.f32, -0.0001.f32).pack4x8snorm, 4_294_967_295.u32)
-        .assert(eq, 127.u32.unpack4x8snorm.map(fn (f: f32) = string(f)).join(', '), '0, 0, 0, 1');
+        .assert(
+          eq,
+          {f32[4]}(0.f32, 0.f32, 0.f32, 0.f32).pack4x8snorm,
+          0.u32
+        )
+        .assert(
+          eq,
+          {f32[4]}(-0.0001.f32, -0.0001.f32, -0.0001.f32, -0.0001.f32).pack4x8snorm,
+          4_294_967_295.u32
+        )
+        .assert(eq, 127.u32.unpack4x8snorm.map(fn(f: f32) = string(f)).join(', '), '0, 0, 0, 1');
     })
-    .it('f32[4] to u32 and back via Unsigned Normalization', fn (test: Mut{Testing}) {
+    .it('f32[4] to u32 and back via Unsigned Normalization', fn(test: Mut{Testing}) {
       test
         .assert(eq, 0.u32.unpack4x8unorm.pack4x8unorm, 0.u32)
-        .assert(eq, {f32[4]}(0.f32, 0.f32, 0.f32, 0.f32).pack4x8unorm, 0.u32)
-        .assert(eq, {f32[4]}(1.f32, 1.f32, 1.f32, 1.f32).pack4x8unorm, 4_294_967_295.u32)
-        .assert(eq, 255.u32.unpack4x8unorm.map(fn (f: f32) = string(f)).join(', '), '0, 0, 0, 1');
+        .assert(
+          eq,
+          {f32[4]}(0.f32, 0.f32, 0.f32, 0.f32).pack4x8unorm,
+          0.u32
+        )
+        .assert(
+          eq,
+          {f32[4]}(1.f32, 1.f32, 1.f32, 1.f32).pack4x8unorm,
+          4_294_967_295.u32
+        )
+        .assert(eq, 255.u32.unpack4x8unorm.map(fn(f: f32) = string(f)).join(', '), '0, 0, 0, 1');
     })
-    .it('f32[2] to u32 and back via Signed Normalization', fn (test: Mut{Testing}) {
+    .it('f32[2] to u32 and back via Signed Normalization', fn(test: Mut{Testing}) {
       test
         .assert(eq, 0.u32.unpack2x16snorm.pack2x16snorm, 0.u32)
         .assert(eq, {f32[2]}(0.f32, 0.f32).pack2x16snorm, 0.u32)
-        .assert(eq, {f32[2]}(-0.00001.f32, -0.00001.f32).pack2x16snorm, 4_294_967_295.u32)
-        .assert(eq, 32767.u32.unpack2x16snorm.map(fn (f: f32) = string(f)).join(', '), '0, 1');
+        .assert(
+          eq,
+          {f32[2]}(-0.00001.f32, -0.00001.f32).pack2x16snorm,
+          4_294_967_295.u32
+        )
+        .assert(eq, 32767.u32.unpack2x16snorm.map(fn(f: f32) = string(f)).join(', '), '0, 1');
     })
-    .it('f32[2] to u32 and back via Unsigned Normalization', fn (test: Mut{Testing}) {
+    .it('f32[2] to u32 and back via Unsigned Normalization', fn(test: Mut{Testing}) {
       test
         .assert(eq, 0.u32.unpack2x16unorm.pack2x16unorm, 0.u32)
         .assert(eq, {f32[2]}(0.f32, 0.f32).pack2x16unorm, 0.u32)
-        .assert(eq, {f32[2]}(1.f32, 1.f32).pack2x16unorm, 4_294_967_295.u32)
-        .assert(eq, 65535.u32.unpack2x16unorm.map(fn (f: f32) = string(f)).join(', '), '0, 1');
+        .assert(
+          eq,
+          {f32[2]}(1.f32, 1.f32).pack2x16unorm,
+          4_294_967_295.u32
+        )
+        .assert(eq, 65535.u32.unpack2x16unorm.map(fn(f: f32) = string(f)).join(', '), '0, 1');
     });
 
   test.report;
