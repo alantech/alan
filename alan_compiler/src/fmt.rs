@@ -1329,8 +1329,9 @@ impl Formatter {
                 let has_trailing_ws = !trailing.is_empty();
                 let has_leading_newline = leading.contains('\n') || leading.contains('\r');
                 let has_trailing_newline = trailing.contains('\n') || trailing.contains('\r');
-                let has_leading_inline = leading.split('\n').next_back().unwrap_or("").contains(' ')
-                    || leading.split('\n').next_back().unwrap_or("").contains('\t');
+                let has_leading_inline =
+                    leading.split('\n').next_back().unwrap_or("").contains(' ')
+                        || leading.split('\n').next_back().unwrap_or("").contains('\t');
                 let has_trailing_inline = trailing.split('\n').next().unwrap_or("").contains(' ')
                     || trailing.split('\n').next().unwrap_or("").contains('\t');
                 let is_infix = has_leading_ws && has_trailing_ws;

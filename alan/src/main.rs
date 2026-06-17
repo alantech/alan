@@ -236,15 +236,14 @@ fn diff_format(src: &str, formatted: &str, file_path: &str) -> String {
     for (gi, group) in groups.iter().enumerate() {
         match group {
             DiffGroup::Equal(lines) => {
-                if hunk_start.is_some()
-                    && lines.len() > 2 * CONTEXT {
-                        // End current hunk with CONTEXT trailing lines
-                        let start = hunk_start.unwrap();
-                        if start < gi {
-                            hunk_ranges.push((start, gi, 0));
-                        }
-                        hunk_start = None;
+                if hunk_start.is_some() && lines.len() > 2 * CONTEXT {
+                    // End current hunk with CONTEXT trailing lines
+                    let start = hunk_start.unwrap();
+                    if start < gi {
+                        hunk_ranges.push((start, gi, 0));
                     }
+                    hunk_start = None;
+                }
             }
             _ => {
                 if hunk_start.is_none() {
