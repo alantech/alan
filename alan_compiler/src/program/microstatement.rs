@@ -1343,12 +1343,15 @@ pub fn withoperatorslist_to_microstatements<'a>(
                     parse::BaseAssignable::FnCall(parse::FnCall {
                         openparen: "(".to_string(),
                         a: "".to_string(),
-                        assignablelist: vec![
-                            vec![parse::WithOperators::BaseAssignableList(first_arg.to_vec())],
-                            vec![parse::WithOperators::BaseAssignableList(
-                                second_arg.to_vec(),
-                            )],
-                        ],
+                        assignablelist: parse::AssignableList {
+                            elements: vec![
+                                vec![parse::WithOperators::BaseAssignableList(first_arg.to_vec())],
+                                vec![parse::WithOperators::BaseAssignableList(
+                                    second_arg.to_vec(),
+                                )],
+                            ],
+                            separators: vec![],
+                        },
                         b: "".to_string(),
                         closeparen: ")".to_string(),
                     }),
@@ -1394,9 +1397,12 @@ pub fn withoperatorslist_to_microstatements<'a>(
                     parse::BaseAssignable::FnCall(parse::FnCall {
                         openparen: "(".to_string(),
                         a: "".to_string(),
-                        assignablelist: vec![vec![parse::WithOperators::BaseAssignableList(
-                            arg.to_vec(),
-                        )]],
+                        assignablelist: parse::AssignableList {
+                            elements: vec![vec![parse::WithOperators::BaseAssignableList(
+                                arg.to_vec(),
+                            )]],
+                            separators: vec![],
+                        },
                         b: "".to_string(),
                         closeparen: ")".to_string(),
                     }),
@@ -1438,9 +1444,12 @@ pub fn withoperatorslist_to_microstatements<'a>(
                     parse::BaseAssignable::FnCall(parse::FnCall {
                         openparen: "(".to_string(),
                         a: "".to_string(),
-                        assignablelist: vec![vec![parse::WithOperators::BaseAssignableList(
-                            arg.to_vec(),
-                        )]],
+                        assignablelist: parse::AssignableList {
+                            elements: vec![vec![parse::WithOperators::BaseAssignableList(
+                                arg.to_vec(),
+                            )]],
+                            separators: vec![],
+                        },
                         b: "".to_string(),
                         closeparen: ")".to_string(),
                     }),

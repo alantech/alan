@@ -17,7 +17,8 @@ fn bench(l: i64) {
   // My laptop GPU can't handle a billion i32s in a single buffer, so that case is split in two
   if(l <= 100_000_000, fn {
     let b = GBuffer(storageBuffer(), v)!!;
-    let plan = GPGPU("
+    let plan = GPGPU(
+      "
       @group(0)
       @binding(0)
       var<storage, read_write> vals: array<i32>;
@@ -30,14 +31,18 @@ fn bench(l: i64) {
         if i > l { return; }
         vals[id.x + 65535 * id.y + 4294836225 * id.z] = vals[id.x + 65535 * id.y + 4294836225 * id.z] * 2;
       }
-    ", b, {i64[3]}(1, 1, 1));
+    ",
+      b,
+      {i64[3]}(1, 1, 1)
+    );
     plan.run;
     let v3 = b.read{i32};
     v3[0];
   }, fn {
     let v2 = filled(2.i32, 500_000_000);
     let b = GBuffer(storageBuffer(), v2)!!;
-    let plan = GPGPU("
+    let plan = GPGPU(
+      "
       @group(0)
       @binding(0)
       var<storage, read_write> vals: array<i32>;
@@ -50,11 +55,15 @@ fn bench(l: i64) {
         if i > l { return; }
         vals[id.x + 65535 * id.y + 4294836225 * id.z] = vals[id.x + 65535 * id.y + 4294836225 * id.z] * 2;
       }
-    ", b, {i64[3]}(1, 1, 1));
+    ",
+      b,
+      {i64[3]}(1, 1, 1)
+    );
     plan.run;
     b.read{i32};
     let b = GBuffer(storageBuffer(), v2)!!;
-    let plan = GPGPU("
+    let plan = GPGPU(
+      "
       @group(0)
       @binding(0)
       var<storage, read_write> vals: array<i32>;
@@ -67,7 +76,10 @@ fn bench(l: i64) {
         if i > l { return; }
         vals[id.x + 65535 * id.y + 4294836225 * id.z] = vals[id.x + 65535 * id.y + 4294836225 * id.z] * 2;
       }
-    ", b, {i64[3]}(1, 1, 1));
+    ",
+      b,
+      {i64[3]}(1, 1, 1)
+    );
     plan.run;
     let v3 = b.read{i32};
     v3[0];

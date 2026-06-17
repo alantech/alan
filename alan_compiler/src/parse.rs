@@ -867,7 +867,7 @@ test!(baseassignablelist =>
     pass "Foo()" => "", vec![super::BaseAssignable::Variable("Foo".to_string()), super::BaseAssignable::FnCall(super::FnCall{
         openparen: "(".to_string(),
         a: "".to_string(),
-        assignablelist: Vec::new(),
+        assignablelist: super::AssignableList { elements: Vec::new(), separators: Vec::new() },
         b: "".to_string(),
         closeparen: ")".to_string(),
     })];
@@ -894,7 +894,7 @@ test!(withoperators =>
     pass "Foo()" => "", super::WithOperators::BaseAssignableList(vec![super::BaseAssignable::Variable("Foo".to_string()), super::BaseAssignable::FnCall(super::FnCall{
         openparen: "(".to_string(),
         a: "".to_string(),
-        assignablelist: Vec::new(),
+        assignablelist: super::AssignableList { elements: Vec::new(), separators: Vec::new() },
         b: "".to_string(),
         closeparen: ")".to_string(),
     })]);
@@ -1064,11 +1064,76 @@ test!(statements =>
     pass "let hm = HashMap{Hashable, any}(Array{KeyVal{Hashable, any}}(), Array{Array{int64}}(Array{int64}()) * 128 // 1KB of space\n  );\n  return hm.set(firstKey, firstVal);" => "";
     pass "";
 );
-list!(opt assignablelist: Vec<WithOperators> => assignables, sep);
+#[derive(Debug, PartialEq, Clone)]
+pub struct AssignableList {
+    pub elements: Vec<Vec<WithOperators>>,
+    pub separators: Vec<String>,
+}
+
+impl std::ops::Deref for AssignableList {
+    type Target = Vec<Vec<WithOperators>>;
+    fn deref(&self) -> &Vec<Vec<WithOperators>> {
+        &self.elements
+    }
+}
+
+impl<'a> IntoIterator for &'a AssignableList {
+    type Item = &'a Vec<WithOperators>;
+    type IntoIter = std::slice::Iter<'a, Vec<WithOperators>>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.elements.iter()
+    }
+}
+
+pub fn assignablelist_with_seps(input: &str) -> IResult<&str, AssignableList> {
+    let mut i = input;
+    let mut elements: Vec<Vec<WithOperators>> = Vec::new();
+    let mut separators: Vec<String> = Vec::new();
+    match assignables(i) {
+        Ok((remaining, element)) => {
+            elements.push(element);
+            i = remaining;
+        }
+        Err(_) => {
+            return Ok((
+                i,
+                AssignableList {
+                    elements,
+                    separators,
+                },
+            ))
+        }
+    }
+    loop {
+        let save = i;
+        match sep(i) {
+            Ok((after_sep, sep_str)) => match assignables(after_sep) {
+                Ok((remaining, element)) => {
+                    separators.push(sep_str.to_string());
+                    elements.push(element);
+                    i = remaining;
+                }
+                Err(_) => {
+                    // Trailing separator (e.g., trailing comma) - backtrack
+                    i = save;
+                    break;
+                }
+            },
+            Err(_) => break,
+        }
+    }
+    Ok((
+        i,
+        AssignableList {
+            elements,
+            separators,
+        },
+    ))
+}
 named_and!(arraybase: ArrayBase =>
     openarr: String as openarr,
     a: String as optwhitespace,
-    assignablelist: Vec<Vec<WithOperators>> as assignablelist,
+    assignablelist: AssignableList as assignablelist_with_seps,
     b: String as optsep,
     c: String as optwhitespace,
     closearr: String as closearr,
@@ -1076,7 +1141,7 @@ named_and!(arraybase: ArrayBase =>
 named_and!(fncall: FnCall =>
     openparen: String as openparen,
     a: String as optwhitespace,
-    assignablelist: Vec<Vec<WithOperators>> as assignablelist,
+    assignablelist: AssignableList as assignablelist_with_seps,
     b: String as optwhitespace,
     closeparen: String as closeparen,
 );
