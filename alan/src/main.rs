@@ -10,6 +10,12 @@ use alan_compiler::parse::get_ast;
 
 pub mod compile;
 
+// Alan's compilation is heavily allocation-bound (parsing the standard library and cloning AST /
+// type structures dominate the compiler's own CPU time). mimalloc handles the many small,
+// short-lived allocations far better than the default system allocator, cutting that overhead.
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 #[derive(Parser, Debug)]
 #[command(author, version, about, propagate_version = true)]
 struct Cli {
