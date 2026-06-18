@@ -115,13 +115,50 @@ fn write_fast_linker_config(project_dir: &Path, find_cmd: &str) {
 ///
 /// Returns `None` when rustup is not in use (e.g. a distro-packaged toolchain), in which case the
 /// plain `cargo`/`rustc` on `PATH` are already the real binaries and need no special handling.
-fn rustup_bindir() -> Option<PathBuf> {
+///
+/// The resolution itself costs ~40ms (it's a full `rustup which cargo` invocation), so we cache
+/// the result in `cache_dir` keyed on the things that determine which toolchain rustup would pick:
+/// the mtime of rustup's `settings.toml` (which rustup rewrites on `rustup default`/install/
+/// uninstall) and the `RUSTUP_TOOLCHAIN` override env var. A cache hit is two cheap `stat`s instead
+/// of spawning rustup, and a toolchain swap (`rustup default ...`) invalidates the cache
+/// automatically because it bumps `settings.toml`'s mtime.
+fn rustup_bindir(project_dir: &Path, cache_dir: &Path) -> Option<PathBuf> {
     // Escape hatch: allow opting out of the bypass in case it misbehaves in an exotic toolchain
     // setup.
     if std::env::var_os("ALAN_DISABLE_RUSTUP_BYPASS").is_some() {
         return None;
     }
+    // Build the cache key from rustup's toolchain-selection inputs.
+    let settings_mtime = rustup_settings_mtime();
+    let toolchain_env = std::env::var("RUSTUP_TOOLCHAIN").unwrap_or_default();
+    let key = format!(
+        "{}\n{}",
+        settings_mtime
+            .and_then(|m| m.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_nanos())
+            .unwrap_or(0),
+        toolchain_env,
+    );
+    let cache_path = cache_dir.join(".toolchain_cache");
+    // Only trust the cache when we have a stable key (i.e. we could read settings.toml's mtime).
+    if settings_mtime.is_some() {
+        if let Ok(contents) = std::fs::read_to_string(&cache_path) {
+            if let Some((cached_key, cached_bindir)) = contents.split_once("\n::\n") {
+                if cached_key == key {
+                    let bindir = PathBuf::from(cached_bindir.trim());
+                    // Guard against a cached toolchain that has since been uninstalled.
+                    if bindir.join("cargo").exists() {
+                        return Some(bindir);
+                    }
+                }
+            }
+        }
+    }
+    // Cache miss (or no settings.toml): resolve via rustup. We run it in `project_dir` so any
+    // `rust-toolchain.toml` override resolution matches the directory where cargo will actually
+    // run.
     let output = Command::new("rustup")
+        .current_dir(project_dir)
         .arg("which")
         .arg("cargo")
         .output()
@@ -130,7 +167,26 @@ fn rustup_bindir() -> Option<PathBuf> {
         return None;
     }
     let cargo_path = PathBuf::from(String::from_utf8(output.stdout).ok()?.trim());
-    cargo_path.parent().map(|p| p.to_path_buf())
+    let bindir = cargo_path.parent()?.to_path_buf();
+    // Best-effort cache write (skipped when we lack a stable key).
+    if settings_mtime.is_some() {
+        let _ = std::fs::write(&cache_path, format!("{}\n::\n{}", key, bindir.display()));
+    }
+    Some(bindir)
+}
+
+/// Returns the modification time of rustup's `settings.toml`, which rustup rewrites whenever the
+/// active toolchain changes (`rustup default`, toolchain install/uninstall). Used as a cheap
+/// cache-invalidation signal for `rustup_bindir`.
+fn rustup_settings_mtime() -> Option<std::time::SystemTime> {
+    let rustup_home = match std::env::var_os("RUSTUP_HOME") {
+        Some(h) => PathBuf::from(h),
+        None => dirs::home_dir()?.join(".rustup"),
+    };
+    std::fs::metadata(rustup_home.join("settings.toml"))
+        .ok()?
+        .modified()
+        .ok()
 }
 
 /// Construct a `cargo` `Command` that bypasses the rustup shims when possible (see
@@ -178,9 +234,6 @@ pub fn build(source_file: String, profile: &str) -> Result<String, Box<dyn std::
             Err("cargo not found. Please make sure you have rust installed before using Alan!")
         }
     }?;
-    // Resolve the real toolchain binaries once so every `cargo`/`rustc` invocation below can skip
-    // the rustup proxy shims.
-    let bindir = rustup_bindir();
     // Because all Alan programs use the same Rust dependencies (for now), we can cut down a *lot*
     // of build time by re-using the `./target/release/build` and `./target/release/deps` directory
     // in subsequent builds. Since it takes over 30 seconds to make a release build on my laptop
@@ -242,6 +295,10 @@ codegen-units = 256
     if !alan_config.exists() {
         create_dir_all(alan_config.clone())?;
     }
+
+    // Resolve the real toolchain binaries (cached in the config dir) so every `cargo`/`rustc`
+    // invocation below can skip the rustup proxy shims.
+    let bindir = rustup_bindir(&project_dir, &alan_config);
 
     // Acquire the lock with a 3-minute timeout
     let mut lockfile = acquire_file_lock(&lockfile_path, 180)?;
