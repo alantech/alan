@@ -64,23 +64,57 @@ fn acquire_file_lock(
     }
 }
 
-fn write_fast_linker_config(project_dir: &Path, find_cmd: &str) {
-    // The linker config is static for a given machine, so once it's written we can skip the
-    // (surprisingly expensive) detection work -- `which mold`/`which lld` plus a `rustc -vV` to
-    // find the host triple -- which would otherwise be paid on every single build.
-    let config_path = project_dir.join(".cargo").join("config.toml");
-    if config_path.exists() {
-        return;
-    }
-    let linker = if Command::new(find_cmd).arg("mold").output().is_ok() {
-        "mold"
-    } else if Command::new(find_cmd).arg("lld").output().is_ok() {
-        "lld"
-    } else {
-        return;
+fn write_fast_linker_config(project_dir: &Path, find_cmd: &str, bindir: &Option<PathBuf>) {
+    let dot_cargo = project_dir.join(".cargo");
+    let config_path = dot_cargo.join("config.toml");
+    // Only treat a linker as available if `which`/`where` actually *found* it. Note that
+    // `output()` returns `Ok` as long as the lookup command itself ran -- even when it reports
+    // "not found" via a non-zero exit code -- so we must inspect the exit status, not just `is_ok`.
+    // Otherwise we'd force `-fuse-ld=mold` on machines without mold and break linking entirely.
+    let is_available = |name: &str| {
+        Command::new(find_cmd)
+            .arg(name)
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false)
     };
+    let linker = if is_available("mold") {
+        Some("mold")
+    } else if is_available("lld") {
+        Some("lld")
+    } else {
+        None
+    };
+    let linker = match linker {
+        Some(l) => l,
+        None => {
+            // No faster linker present: fall back to the default linker. Crucially, remove any
+            // config we (or an older, buggy version) may have left behind that forces a linker
+            // which isn't installed here -- otherwise every build would fail to link.
+            let _ = std::fs::remove_file(&config_path);
+            return;
+        }
+    };
+    // Fast path: if the existing config already forces the linker we found, it's correct, so we're
+    // done. This matters because it lets us skip the (relatively expensive) `rustc -vV` host-triple
+    // lookup on every build -- we only fall through to regenerating the config when it's missing or
+    // now points at a different linker (which is rare). The cheap `which` checks above are all we
+    // pay in the steady state.
+    let desired_flag = format!("-Clink-arg=-fuse-ld={linker}");
+    if let Ok(existing) = std::fs::read_to_string(&config_path) {
+        if existing.contains(&desired_flag) {
+            return;
+        }
+    }
+    // The config is missing or stale: (re)generate it. Resolve the host triple for the
+    // `[target.<triple>]` table, using the toolchain's `rustc` directly (via `bindir`) when we have
+    // it so we skip the rustup shim's overhead.
+    let rustc_path = bindir
+        .as_ref()
+        .map(|d| d.join("rustc"))
+        .unwrap_or_else(|| PathBuf::from("rustc"));
     let host = match (|| -> Option<String> {
-        let output = Command::new("rustc").arg("-vV").output().ok()?;
+        let output = Command::new(&rustc_path).arg("-vV").output().ok()?;
         let stdout = String::from_utf8(output.stdout).ok()?;
         stdout
             .lines()
@@ -91,16 +125,12 @@ fn write_fast_linker_config(project_dir: &Path, find_cmd: &str) {
         Some(h) => h,
         None => return,
     };
-    let dot_cargo = project_dir.join(".cargo");
     if std::fs::create_dir_all(&dot_cargo).is_err() {
         return;
     }
     let _ = std::fs::write(
-        dot_cargo.join("config.toml"),
-        format!(
-            "[target.{}]\nrustflags = [\"-Clink-arg=-fuse-ld={}\"]\n",
-            host, linker,
-        ),
+        &config_path,
+        format!("[target.{host}]\nrustflags = [\"{desired_flag}\"]\n"),
     );
 }
 
@@ -444,7 +474,7 @@ codegen-units = 256
             }?;
         }
     }
-    write_fast_linker_config(&project_dir, find_process);
+    write_fast_linker_config(&project_dir, find_process, &bindir);
     // We need to remove the prior binary, if it exists, to prevent a prior successful compilation
     // from accidentally being treated as the output of an unsuccessful compilation.
     if binary_path.exists() {
