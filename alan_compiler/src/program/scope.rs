@@ -180,6 +180,7 @@ impl<'a> Scope<'a> {
                         microstatements: Vec::new(),
                         kind,
                         origin_scope_path: s.path.clone(),
+                        lazy_body: None,
                     });
                     let key = if is_generic {
                         function.name.clone()
@@ -619,10 +620,27 @@ impl<'a> Scope<'a> {
         // a generic function, if possible.
         // TODO: This boolean *shouldn't* be necessary, but I can't convince the borrow checker
         // otherwise
-        let is_normal = self.resolve_normal_function(function, args).is_some();
-        if is_normal {
-            self.resolve_normal_function(function, args)
-                .map(|f| (self, f))
+        let normal = self.resolve_normal_function(function, args);
+        if let Some(f) = normal {
+            // If the matched function still has a deferred (lazy) body, resolve it now using our
+            // owned (mutable) scope, then memoize the fully-resolved version into the scope so
+            // subsequent lookups -- including codegen's by-type lookups for function values --
+            // find the resolved function instead of the lazy stand-in.
+            if f.lazy_body.is_some() {
+                return match Function::resolve_lazy(self, f) {
+                    Ok((mut s, resolved)) => {
+                        if let Some(v) = s.functions.get_mut(&resolved.name) {
+                            v.insert(0, resolved.clone());
+                        } else {
+                            s.functions
+                                .insert(resolved.name.clone(), vec![resolved.clone()]);
+                        }
+                        Some((s, resolved))
+                    }
+                    Err(_) => None,
+                };
+            }
+            Some((self, f))
         } else {
             match self.resolve_function_generic_args(function, args) {
                 Some(gs) => self.resolve_generic_function(function, &gs, args),
@@ -653,6 +671,7 @@ impl<'a> Scope<'a> {
                                         microstatements: Vec::new(),
                                         kind: FnKind::Derived,
                                         origin_scope_path: self.path.clone(),
+                                        lazy_body: None,
                                     });
                                     let temp_scope = self.child();
                                     let mut temp_scope = temp_scope;

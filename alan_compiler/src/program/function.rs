@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use super::ctype::{withtypeoperatorslist_to_ctype, CType};
@@ -10,6 +12,13 @@ use super::FnKind;
 use super::Scope;
 use crate::parse;
 
+thread_local! {
+    // Tracks the set of lazy functions (by `Arc` identity) whose bodies are currently being
+    // resolved, so `resolve_lazy` can detect and reject unsupported recursive definitions instead
+    // of looping forever.
+    static RESOLVING: RefCell<HashSet<usize>> = RefCell::new(HashSet::new());
+}
+
 #[derive(Clone, Debug)]
 pub struct Function {
     pub name: String,
@@ -17,6 +26,12 @@ pub struct Function {
     pub microstatements: Vec<Microstatement>,
     pub kind: FnKind,
     pub origin_scope_path: String,
+    // When `Some`, this function's body has not yet been resolved into microstatements. It holds
+    // the parsed statements so the body can be resolved on-demand (lazily) the first time the
+    // function is actually referenced during codegen-reachable resolution. This lets us skip
+    // resolving the bodies of the thousands of standard-library functions that a given program
+    // never calls. `None` means the function is fully resolved (the normal, eager state).
+    pub lazy_body: Option<Vec<parse::Statement>>,
 }
 
 pub fn type_to_args(t: Arc<CType>) -> Vec<(String, ArgKind, Arc<CType>)> {
@@ -311,6 +326,7 @@ impl Function {
                         microstatements: Vec::new(),
                         kind,
                         origin_scope_path: scope.path.clone(),
+                        lazy_body: None,
                     });
                     if is_export {
                         scope
@@ -487,14 +503,24 @@ impl Function {
                 }
             },
         }?;
+        // We defer resolving the bodies of non-generic functions in the *root* scope. The root
+        // scope holds thousands of standard-library functions, the vast majority of which any
+        // given program never calls. Resolving all of their bodies up-front dominates compile
+        // latency, so instead we stash the parsed statements in `lazy_body` and resolve them
+        // on-demand the first time the function is actually referenced (see
+        // `Scope::resolve_function`). Functions in user scopes (including `main`) are still
+        // resolved eagerly so that codegen, which only has immutable access to the scope, always
+        // sees fully-resolved functions; their resolution transitively forces resolution of any
+        // root functions they reach.
+        let defer = function_ast.optgenerics.is_none() && scope.path == "@root";
         let microstatements = {
             let mut ms = Vec::new();
             for (name, kind, typen) in type_to_args(typen.clone()) {
                 ms.push(Microstatement::Arg { name, kind, typen });
             }
             // We can't generate the rest of the microstatements while the generic function is
-            // still generic
-            if function_ast.optgenerics.is_none() {
+            // still generic, and we skip it entirely for deferred (lazy) root functions.
+            if function_ast.optgenerics.is_none() && !defer {
                 for statement in &statements {
                     // The construction of microstatements in non-generic functions will never
                     // actually use the provided function for scope resolution, so we just give it
@@ -507,8 +533,11 @@ impl Function {
             ms
         };
         // Determine the actual return type of the function and check if it matches the specified
-        // return type (or update that return type if it's to be inferred
-        if let Some(ms) = microstatements.last() {
+        // return type (or update that return type if it's to be inferred. Skipped for deferred
+        // functions, whose return type is inferred when their body is later resolved.
+        if defer {
+            // Nothing to infer yet; the body is resolved lazily.
+        } else if let Some(ms) = microstatements.last() {
             if let Microstatement::Arg { .. } = ms {
                 // Don't do anything in this path, this is probably a derived function
             } else {
@@ -546,7 +575,9 @@ impl Function {
             CType::Function(i, o) => {
                 match &**o {
                     CType::Void | CType::DerivedVoid(..) => { /* Do nothing */ }
-                    CType::Infer(t, _) if t == "unknown" && function_ast.optgenerics.is_none() => {
+                    CType::Infer(t, _)
+                        if t == "unknown" && function_ast.optgenerics.is_none() && !defer =>
+                    {
                         CType::fail(&format!(
                             "The return type for {}({}) could not be inferred.",
                             name,
@@ -571,6 +602,7 @@ impl Function {
             microstatements,
             kind,
             origin_scope_path: scope.path.clone(),
+            lazy_body: if defer { Some(statements) } else { None },
         });
         if is_export {
             scope
@@ -586,6 +618,111 @@ impl Function {
                 .insert(function.name.clone(), vec![function]);
         }
         Ok(scope)
+    }
+
+    // Resolves the deferred body of a lazily-loaded function (see the `lazy_body` field and
+    // `from_ast_with_name`). It mirrors the body-resolution logic of `from_ast_with_name` for
+    // non-generic functions: it builds the body microstatements (on top of the already-present
+    // `Arg` microstatements), infers/validates the return type, and ensures the return type's
+    // constructor exists in the scope. It returns the fully-resolved function (with `lazy_body`
+    // set to `None`) along with the updated scope (which may have gained realized generic
+    // functions/types reached transitively by the body).
+    pub fn resolve_lazy<'a>(
+        mut scope: Scope<'a>,
+        func: Arc<Function>,
+    ) -> Result<(Scope<'a>, Arc<Function>), Box<dyn std::error::Error>> {
+        let statements = match &func.lazy_body {
+            Some(s) => s,
+            None => return Ok((scope, func)),
+        };
+        // Guard against infinite recursion. Non-generic functions cannot legally recurse by name
+        // (the eager path never had the function in scope while building its own body), so if we
+        // re-enter resolution for the same function it indicates an unsupported recursive
+        // definition rather than a legitimate case. Bail out cleanly so we don't hang the
+        // compiler.
+        let key = Arc::as_ptr(&func) as *const () as usize;
+        if RESOLVING.with(|r| r.borrow().contains(&key)) {
+            return Err(format!(
+                "Function {} appears to be recursively defined, which is not supported.",
+                func.name
+            )
+            .into());
+        }
+        RESOLVING.with(|r| {
+            r.borrow_mut().insert(key);
+        });
+        let result = (|| {
+            let mut typen = func.typen.clone();
+            let mut ms = func.microstatements.clone();
+            for statement in statements {
+                let res = statement_to_microstatements(statement, None, scope, ms)?;
+                scope = res.0;
+                ms = res.1;
+            }
+            // Determine the actual return type of the function and check it against any declared
+            // return type (or infer it if it was left to be inferred).
+            if let Some(last) = ms.last() {
+                if let Microstatement::Arg { .. } = last {
+                    // Don't do anything in this path, this is probably a derived function
+                } else {
+                    let current_rettype = type_to_rettype(typen.clone());
+                    let actual_rettype = match last {
+                        Microstatement::Return { value: Some(v) } => v.get_type(),
+                        _ => Arc::new(CType::Void),
+                    };
+                    if let CType::Infer(..) = &*current_rettype {
+                        let input_type = match &*typen {
+                            CType::Function(i, _) => i.clone(),
+                            _ => Arc::new(CType::Void),
+                        };
+                        typen = Arc::new(CType::Function(input_type, actual_rettype));
+                    } else if current_rettype.clone().to_strict_string(false)
+                        != actual_rettype.clone().to_strict_string(false)
+                    {
+                        CType::fail(&format!(
+                            "Function {} specified to return {} but actually returns {}",
+                            func.name,
+                            current_rettype.to_strict_string(false),
+                            actual_rettype.to_strict_string(false),
+                        ));
+                    }
+                }
+            }
+            // Ensure the return type's constructor exists in the scope.
+            match &*typen {
+                CType::Function(i, o) => match &**o {
+                    CType::Void | CType::DerivedVoid(..) => { /* Do nothing */ }
+                    CType::Infer(t, _) if t == "unknown" => {
+                        CType::fail(&format!(
+                            "The return type for {}({}) could not be inferred.",
+                            func.name,
+                            i.clone().to_strict_string(false)
+                        ));
+                    }
+                    CType::Infer(..) => { /* Do nothing */ }
+                    _otherwise => {
+                        let n = o.clone().to_callable_string();
+                        if scope.resolve_type(&n).is_none() {
+                            scope = CType::from_ctype(scope, n, o.clone());
+                        }
+                    }
+                },
+                _ => unreachable!(),
+            }
+            let resolved = Arc::new(Function {
+                name: func.name.clone(),
+                typen,
+                microstatements: ms,
+                kind: func.kind.clone(),
+                origin_scope_path: func.origin_scope_path.clone(),
+                lazy_body: None,
+            });
+            Ok((scope, resolved))
+        })();
+        RESOLVING.with(|r| {
+            r.borrow_mut().remove(&key);
+        });
+        result
     }
 
     pub fn from_generic_function<'a>(
@@ -697,6 +834,7 @@ impl Function {
                     microstatements,
                     kind,
                     origin_scope_path: scope.path.clone(),
+                    lazy_body: None,
                 });
                 if scope.functions.contains_key(&f.name) {
                     let func_vec = scope.functions.get_mut(&f.name).unwrap();
@@ -818,6 +956,7 @@ impl Function {
                     microstatements,
                     kind,
                     origin_scope_path: scope.path.clone(),
+                    lazy_body: None,
                 });
                 // Insert under suffixed name, deduplicating by both name and signature
                 if scope.functions.contains_key(&f.name) {
@@ -886,6 +1025,7 @@ impl Function {
                     microstatements,
                     kind: FnKind::CfnRealized(cfn_kind.clone()),
                     origin_scope_path: scope.path.clone(),
+                    lazy_body: None,
                 });
                 if scope.functions.contains_key(&f.name) {
                     let func_vec = scope.functions.get_mut(&f.name).unwrap();
