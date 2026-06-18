@@ -25,7 +25,7 @@ macro_rules! test {
                         return Err(format!("Unable to write {} to disk. {:?}", filename, e).into());
                     }
                 };
-                match crate::compile::build(filename.to_string()) {
+                match crate::compile::build(filename.to_string(), "release") {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
                         std::fs::remove_file(&filename)?;
@@ -85,7 +85,7 @@ macro_rules! test {
                         return Err(format!("Unable to write {} to disk. {:?}", $filename, e).into());
                     }
                 })+
-                match crate::compile::build(format!("{}.ln", $entryfile)) {
+                match crate::compile::build(format!("{}.ln", $entryfile), "release") {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
                         $( std::fs::remove_file($filename)?; )+
@@ -148,7 +148,7 @@ macro_rules! test_gpgpu {
                         return Err(format!("Unable to write {} to disk. {:?}", filename, e).into());
                     }
                 };
-                match crate::compile::build(filename.to_string()) {
+                match crate::compile::build(filename.to_string(), "release") {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
                         std::fs::remove_file(&filename)?;
@@ -258,7 +258,7 @@ macro_rules! test_ignore {
                         return Err(format!("Unable to write {} to disk. {:?}", filename, e).into());
                     }
                 };
-                match crate::compile::build(filename.to_string()) {
+                match crate::compile::build(filename.to_string(), "release") {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
                         std::fs::remove_file(&filename)?;

@@ -101,9 +101,8 @@ enum Commands {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Cli::parse();
-    if args.file.is_some() {
-        println!("TODO: Interpreter mode someday");
-        Ok(())
+    if let Some(file) = args.file {
+        compile::interp(file)
     } else {
         match &args.commands {
             Some(Commands::Bundle { file }) => Ok(compile::bundle(file.to_string())?),

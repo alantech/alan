@@ -61,10 +61,43 @@ fn acquire_file_lock(
     }
 }
 
+fn write_fast_linker_config(project_dir: &PathBuf, find_cmd: &str) {
+    let linker = if Command::new(find_cmd).arg("mold").output().is_ok() {
+        "mold"
+    } else if Command::new(find_cmd).arg("lld").output().is_ok() {
+        "lld"
+    } else {
+        return;
+    };
+    let host = match (|| -> Option<String> {
+        let output = Command::new("rustc").arg("-vV").output().ok()?;
+        let stdout = String::from_utf8(output.stdout).ok()?;
+        stdout
+            .lines()
+            .find(|l| l.starts_with("host:"))
+            .and_then(|l| l.split_whitespace().nth(1))
+            .map(|s| s.to_string())
+    })() {
+        Some(h) => h,
+        None => return,
+    };
+    let dot_cargo = project_dir.join(".cargo");
+    if std::fs::create_dir_all(&dot_cargo).is_err() {
+        return;
+    }
+    let _ = std::fs::write(
+        dot_cargo.join("config.toml"),
+        format!(
+            "[target.{}]\nrustflags = [\"-Clink-arg=-fuse-ld={}\"]\n",
+            host, linker,
+        ),
+    );
+}
+
 /// The `build` function creates a temporary directory that is a Cargo project primarily consisting
 /// of a single source file, plus a Cargo.toml file including the 3rd party dependencies in the
 /// standard library and user source code.
-pub fn build(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
+pub fn build(source_file: String, profile: &str) -> Result<String, Box<dyn std::error::Error>> {
     let find_process = if cfg!(windows) { "where" } else { "which" };
     // Fail if rustc is not present
     match Command::new(find_process).arg("rustc").output() {
@@ -110,10 +143,10 @@ pub fn build(source_file: String) -> Result<String, Box<dyn std::error::Error>> 
         p.push("alan_generated_bin");
         p
     };
-    let release_path = {
+    let binary_path = {
         let mut r = project_dir.clone();
         r.push("target");
-        r.push("release");
+        r.push(profile);
         r
     };
     let cargo_str = r#"[package]
@@ -123,6 +156,12 @@ edition = "2021"
 # To continue supporting earlier versions of Rust
 [patch.crates-io]
 bytemuck_derive = { git = "https://github.com/Lokathor/bytemuck", tag = "bytemuck_derive-v1.8.1" }
+
+[profile.interp]
+inherits = "dev"
+opt-level = 0
+debug = false
+codegen-units = 256
 
 [dependencies]"#;
     let cargo_path = {
@@ -245,10 +284,50 @@ bytemuck_derive = { git = "https://github.com/Lokathor/bytemuck", tag = "bytemuc
                 Err(e)
             }
         }?;
-        match Command::new("cargo")
-            .current_dir(project_dir.clone())
-            .arg("build")
-            .arg("--release")
+        let mut first_build = Command::new("cargo");
+        first_build.current_dir(project_dir.clone()).arg("build");
+        if profile == "release" {
+            first_build.arg("--release");
+        } else {
+            first_build.arg("--profile").arg(profile);
+        }
+        match first_build
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .output()
+        {
+            Ok(a) => Ok(a),
+            Err(e) => {
+                fs2::FileExt::unlock(&lockfile)?;
+                Err(e)
+            }
+        }?;
+        if profile != "interp" {
+            let mut interp_warmup = Command::new("cargo");
+            interp_warmup
+                .current_dir(project_dir.clone())
+                .arg("build")
+                .arg("--profile")
+                .arg("interp")
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped());
+            match interp_warmup.output() {
+                Ok(a) => Ok(a),
+                Err(e) => {
+                    fs2::FileExt::unlock(&lockfile)?;
+                    Err(e)
+                }
+            }?;
+        }
+    }
+    write_fast_linker_config(&project_dir, find_process);
+    // We need to remove the prior binary, if it exists, to prevent a prior successful compilation
+    // from accidentally being treated as the output of an unsuccessful compilation.
+    if binary_path.exists() {
+        match Command::new("rm")
+            .current_dir(binary_path.clone())
+            .arg("-f")
+            .arg("alan_generated_bin")
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .output()
@@ -260,22 +339,6 @@ bytemuck_derive = { git = "https://github.com/Lokathor/bytemuck", tag = "bytemuc
             }
         }?;
     }
-    // We need to remove the prior binary, if it exists, to prevent a prior successful compilation
-    // from accidentally being treated as the output of an unsuccessful compilation.
-    match Command::new("rm")
-        .current_dir(release_path.clone())
-        .arg("-f")
-        .arg("alan_generated_bin")
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .output()
-    {
-        Ok(a) => Ok(a),
-        Err(e) => {
-            fs2::FileExt::unlock(&lockfile)?;
-            Err(e)
-        }
-    }?;
     // Once we're here, the base hello world app we use as a build cache definitely exists, so
     // let's get to work! We can't use the `?` operator directly here, because we need to make sure
     // we remove the lockfile on any failure.
@@ -361,10 +424,14 @@ bytemuck_derive = { git = "https://github.com/Lokathor/bytemuck", tag = "bytemuc
         )?;
     }
     // Build the executable
-    match Command::new("cargo")
-        .current_dir(project_dir.clone())
-        .arg("build")
-        .arg("--release")
+    let mut build_cmd = Command::new("cargo");
+    build_cmd.current_dir(project_dir.clone()).arg("build");
+    if profile == "release" {
+        build_cmd.arg("--release");
+    } else {
+        build_cmd.arg("--profile").arg(profile);
+    }
+    match build_cmd
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .output()
@@ -390,7 +457,7 @@ bytemuck_derive = { git = "https://github.com/Lokathor/bytemuck", tag = "bytemuc
         Some(n) => n.to_string_lossy().to_string(),
     };
     match Command::new("cp")
-        .current_dir(release_path)
+        .current_dir(binary_path)
         .arg("alan_generated_bin")
         .arg(format!(
             "{}/{}",
@@ -422,8 +489,36 @@ pub fn compile(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
         .env
         .insert("ALAN_TARGET".to_string(), "release".to_string());
     Program::return_program(program);
-    build(source_file)?;
+    build(source_file, "release")?;
     println!("Done! Took {:.2}sec", start_time.elapsed().as_secs_f32());
+    Ok(())
+}
+
+/// The `interp` function builds the source file with minimal optimizations (like an interpreter),
+/// runs it, and deletes the binary.
+pub fn interp(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
+    Program::set_target_lang_rs();
+    let mut program = Program::get_program();
+    program
+        .env
+        .insert("ALAN_TARGET".to_string(), "interp".to_string());
+    Program::return_program(program);
+    let binary = build(source_file, "interp")?;
+    let mut run = Command::new(format!("./{binary}"))
+        .current_dir(current_dir()?)
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .spawn()?;
+    let ecode = run.wait()?;
+    Command::new("rm")
+        .current_dir(current_dir()?)
+        .arg(binary)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()?;
+    if !ecode.success() {
+        std::process::exit(ecode.code().unwrap());
+    }
     Ok(())
 }
 
@@ -459,7 +554,7 @@ pub fn test(source_file: String, js: bool) -> Result<(), Box<dyn std::error::Err
             std::process::exit(ecode.code().unwrap());
         }
     } else {
-        let binary = build(source_file)?;
+        let binary = build(source_file, "release")?;
         let mut run = Command::new(format!("./{binary}"))
             .current_dir(current_dir()?)
             .stdout(Stdio::inherit())
