@@ -2886,6 +2886,7 @@ impl CType {
                             _ => unreachable!(),
                         }),
                         origin_scope_path: scope.path.clone(),
+                        lazy_body: None,
                     }));
                 } else {
                     let mut microstatements = Vec::new();
@@ -3248,6 +3249,7 @@ impl CType {
                         microstatements,
                         kind,
                         origin_scope_path: scope.path.clone(),
+                        lazy_body: None,
                     }));
                 }
             }
@@ -3263,6 +3265,7 @@ impl CType {
                         microstatements: Vec::new(),
                         kind: FnKind::Derived,
                         origin_scope_path: scope.path.clone(),
+                        lazy_body: None,
                     }));
                 }
             }
@@ -3301,6 +3304,7 @@ impl CType {
                                         }],
                                         kind: FnKind::Static,
                                         origin_scope_path: scope.path.clone(),
+                                        lazy_body: None,
                                     }));
                                 }
                                 CType::Int(i) => {
@@ -3317,6 +3321,7 @@ impl CType {
                                         }],
                                         kind: FnKind::Static,
                                         origin_scope_path: scope.path.clone(),
+                                        lazy_body: None,
                                     }));
                                 }
                                 CType::Float(f) => {
@@ -3336,6 +3341,7 @@ impl CType {
                                         }],
                                         kind: FnKind::Static,
                                         origin_scope_path: scope.path.clone(),
+                                        lazy_body: None,
                                     }));
                                 }
                                 CType::Bool(b) => {
@@ -3355,6 +3361,7 @@ impl CType {
                                         }],
                                         kind: FnKind::Static,
                                         origin_scope_path: scope.path.clone(),
+                                        lazy_body: None,
                                     }));
                                 }
                                 _ => { /* Do nothing */ }
@@ -3387,6 +3394,7 @@ impl CType {
                                 microstatements: Vec::new(),
                                 kind: FnKind::Derived,
                                 origin_scope_path: scope.path.clone(),
+                                lazy_body: None,
                             }));
                         }
                         _otherwise => {
@@ -3397,6 +3405,7 @@ impl CType {
                                 microstatements: Vec::new(),
                                 kind: FnKind::Derived,
                                 origin_scope_path: scope.path.clone(),
+                                lazy_body: None,
                             }));
                         }
                     }
@@ -3411,6 +3420,7 @@ impl CType {
                     microstatements: Vec::new(),
                     kind: FnKind::Derived,
                     origin_scope_path: scope.path.clone(),
+                    lazy_body: None,
                 }));
                 // Generate parent constructor functions for each parent type
                 for parent in parents {
@@ -3441,6 +3451,7 @@ impl CType {
                         microstatements: Vec::new(),
                         kind: FnKind::Derived,
                         origin_scope_path: scope.path.clone(),
+                        lazy_body: None,
                     }));
                 }
             }
@@ -3462,6 +3473,7 @@ impl CType {
                             }],
                             kind: FnKind::Static,
                             origin_scope_path: scope.path.clone(),
+                            lazy_body: None,
                         }));
                     }
                     CType::Int(i) => {
@@ -3478,6 +3490,7 @@ impl CType {
                             }],
                             kind: FnKind::Static,
                             origin_scope_path: scope.path.clone(),
+                            lazy_body: None,
                         }));
                     }
                     CType::Float(f) => {
@@ -3494,6 +3507,7 @@ impl CType {
                             }],
                             kind: FnKind::Static,
                             origin_scope_path: scope.path.clone(),
+                            lazy_body: None,
                         }));
                     }
                     CType::Bool(b) => {
@@ -3513,6 +3527,7 @@ impl CType {
                             }],
                             kind: FnKind::Static,
                             origin_scope_path: scope.path.clone(),
+                            lazy_body: None,
                         }));
                     }
                     _ => {
@@ -3522,6 +3537,7 @@ impl CType {
                             microstatements: Vec::new(),
                             kind: FnKind::Derived,
                             origin_scope_path: scope.path.clone(),
+                            lazy_body: None,
                         }));
                     }
                 }
@@ -3532,6 +3548,7 @@ impl CType {
                     microstatements: Vec::new(),
                     kind: FnKind::Derived,
                     origin_scope_path: scope.path.clone(),
+                    lazy_body: None,
                 }));
             }
 
@@ -3552,6 +3569,7 @@ impl CType {
                         microstatements: Vec::new(),
                         kind: FnKind::Derived,
                         origin_scope_path: scope.path.clone(),
+                        lazy_body: None,
                     }));
                     // Create a store fn to re-assign-and-auto-wrap a value
                     fs.push(Arc::new(Function {
@@ -3563,6 +3581,7 @@ impl CType {
                         microstatements: Vec::new(),
                         kind: FnKind::Derived,
                         origin_scope_path: scope.path.clone(),
+                        lazy_body: None,
                     }));
                     if let CType::Void = &**e {
                         // Have a zero-arg constructor function produce the void type, if possible.
@@ -3572,6 +3591,7 @@ impl CType {
                             microstatements: Vec::new(),
                             kind: FnKind::Derived,
                             origin_scope_path: scope.path.clone(),
+                            lazy_body: None,
                         }));
                     }
                     // Create the accessor function, the name of the function will
@@ -3589,6 +3609,7 @@ impl CType {
                             microstatements: Vec::new(),
                             kind: FnKind::Derived,
                             origin_scope_path: scope.path.clone(),
+                            lazy_body: None,
                         })),
                         CType::Type(n, _) => fs.push(Arc::new(Function {
                             name: n.clone(),
@@ -3602,6 +3623,7 @@ impl CType {
                             microstatements: Vec::new(),
                             kind: FnKind::Derived,
                             origin_scope_path: scope.path.clone(),
+                            lazy_body: None,
                         })),
                         _ => {} // We can't make names for other types
                     }
@@ -3640,6 +3662,7 @@ impl CType {
                         microstatements: Vec::new(),
                         kind: FnKind::Derived,
                         origin_scope_path: scope.path.clone(),
+                        lazy_body: None,
                     }));
                 }
             }
@@ -3655,6 +3678,7 @@ impl CType {
                     microstatements: Vec::new(),
                     kind: FnKind::Derived,
                     origin_scope_path: scope.path.clone(),
+                    lazy_body: None,
                 }));
                 let size = match **s {
                     CType::Int(s) => s as usize,
@@ -3679,6 +3703,7 @@ impl CType {
                         microstatements: Vec::new(),
                         kind: FnKind::Derived,
                         origin_scope_path: scope.path.clone(),
+                        lazy_body: None,
                     }));
                 }
                 // Also include accessor functions for each
@@ -3689,6 +3714,7 @@ impl CType {
                         microstatements: Vec::new(),
                         kind: FnKind::Derived,
                         origin_scope_path: scope.path.clone(),
+                        lazy_body: None,
                     }))
                 }
             }
@@ -3706,6 +3732,7 @@ impl CType {
                     microstatements: Vec::new(),
                     kind: FnKind::DerivedVariadic,
                     origin_scope_path: scope.path.clone(),
+                    lazy_body: None,
                 }));
             }
             CType::Shared(s) => {
@@ -3717,6 +3744,7 @@ impl CType {
                     microstatements: Vec::new(),
                     kind: FnKind::Derived,
                     origin_scope_path: scope.path.clone(),
+                    lazy_body: None,
                 }));
             }
             CType::Int(i) => {
@@ -3733,6 +3761,7 @@ impl CType {
                     }],
                     kind: FnKind::Normal,
                     origin_scope_path: scope.path.clone(),
+                    lazy_body: None,
                 }));
             }
             CType::Float(f) => {
@@ -3749,6 +3778,7 @@ impl CType {
                     }],
                     kind: FnKind::Normal,
                     origin_scope_path: scope.path.clone(),
+                    lazy_body: None,
                 }));
             }
             CType::Bool(b) => {
@@ -3771,6 +3801,7 @@ impl CType {
                         }],
                         kind: FnKind::Normal,
                         origin_scope_path: scope.path.clone(),
+                        lazy_body: None,
                     }));
                 }
             }
@@ -3787,6 +3818,7 @@ impl CType {
                     }],
                     kind: FnKind::Normal,
                     origin_scope_path: scope.path.clone(),
+                    lazy_body: None,
                 }));
                 // Also include the original name if it doesn't match. TODO: Figure out why these
                 // aren't resolving in the same way
@@ -3802,6 +3834,7 @@ impl CType {
                         }],
                         kind: FnKind::Normal,
                         origin_scope_path: scope.path.clone(),
+                        lazy_body: None,
                     }));
                 }
             }
@@ -3821,6 +3854,7 @@ impl CType {
                         microstatements: Vec::new(),
                         kind: FnKind::Derived,
                         origin_scope_path: scope.path.clone(),
+                        lazy_body: None,
                     }));
                 }
             }

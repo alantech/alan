@@ -10,6 +10,12 @@ use alan_compiler::parse::get_ast;
 
 pub mod compile;
 
+// Alan's compilation is heavily allocation-bound (parsing the standard library and cloning AST /
+// type structures dominate the compiler's own CPU time). mimalloc handles the many small,
+// short-lived allocations far better than the default system allocator, cutting that overhead.
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 #[derive(Parser, Debug)]
 #[command(author, version, about, propagate_version = true)]
 struct Cli {
@@ -101,9 +107,8 @@ enum Commands {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Cli::parse();
-    if args.file.is_some() {
-        println!("TODO: Interpreter mode someday");
-        Ok(())
+    if let Some(file) = args.file {
+        compile::interp(file)
     } else {
         match &args.commands {
             Some(Commands::Bundle { file }) => Ok(compile::bundle(file.to_string())?),
@@ -159,6 +164,18 @@ fn fmt_command(files: &[String], check: bool) -> Result<(), Box<dyn std::error::
             }
         };
         let formatted = fmt(&ast);
+        // The parser strips a leading shebang line (e.g. `#!/usr/bin/env alan`) so scripts can be
+        // run directly; re-attach it here so formatting an executable script doesn't delete its
+        // shebang.
+        let formatted = if src.starts_with("#!") {
+            match src.find('\n') {
+                Some(newline) => format!("{}{}", &src[..=newline], formatted),
+                // Shebang-only file with no body: leave the original untouched.
+                None => src.clone(),
+            }
+        } else {
+            formatted
+        };
 
         if check {
             if src != formatted {

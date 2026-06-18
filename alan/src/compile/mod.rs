@@ -1,7 +1,7 @@
 use std::env::current_dir;
 use std::fs::{create_dir_all, remove_file, write, File, OpenOptions};
 use std::io::{Read, Seek, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
@@ -24,12 +24,15 @@ fn acquire_file_lock(
     let sleep_time = std::time::Duration::from_millis(50);
 
     loop {
-        // Try to open the file for exclusive access
+        // Try to open the file for exclusive access. NOTE: we must NOT truncate here -- this
+        // lockfile doubles as the store for the "last dependency update" timestamp, and truncating
+        // on every open would wipe that timestamp, making `should_rebuild_deps` always true and
+        // forcing a (often pointless) `cargo update` on every single invocation.
         match OpenOptions::new()
             .read(true)
             .write(true)
             .create(true)
-            .truncate(true)
+            .truncate(false)
             .open(lockfile_path)
         {
             Ok(file) => {
@@ -61,10 +64,191 @@ fn acquire_file_lock(
     }
 }
 
+fn write_fast_linker_config(project_dir: &Path, find_cmd: &str, bindir: &Option<PathBuf>) {
+    let dot_cargo = project_dir.join(".cargo");
+    let config_path = dot_cargo.join("config.toml");
+    // Only treat a linker as available if `which`/`where` actually *found* it. Note that
+    // `output()` returns `Ok` as long as the lookup command itself ran -- even when it reports
+    // "not found" via a non-zero exit code -- so we must inspect the exit status, not just `is_ok`.
+    // Otherwise we'd force `-fuse-ld=mold` on machines without mold and break linking entirely.
+    let is_available = |name: &str| {
+        Command::new(find_cmd)
+            .arg(name)
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false)
+    };
+    let linker = if is_available("mold") {
+        Some("mold")
+    } else if is_available("lld") {
+        Some("lld")
+    } else {
+        None
+    };
+    let linker = match linker {
+        Some(l) => l,
+        None => {
+            // No faster linker present: fall back to the default linker. Crucially, remove any
+            // config we (or an older, buggy version) may have left behind that forces a linker
+            // which isn't installed here -- otherwise every build would fail to link.
+            let _ = std::fs::remove_file(&config_path);
+            return;
+        }
+    };
+    // Fast path: if the existing config already forces the linker we found, it's correct, so we're
+    // done. This matters because it lets us skip the (relatively expensive) `rustc -vV` host-triple
+    // lookup on every build -- we only fall through to regenerating the config when it's missing or
+    // now points at a different linker (which is rare). The cheap `which` checks above are all we
+    // pay in the steady state.
+    let desired_flag = format!("-Clink-arg=-fuse-ld={linker}");
+    if let Ok(existing) = std::fs::read_to_string(&config_path) {
+        if existing.contains(&desired_flag) {
+            return;
+        }
+    }
+    // The config is missing or stale: (re)generate it. Resolve the host triple for the
+    // `[target.<triple>]` table, using the toolchain's `rustc` directly (via `bindir`) when we have
+    // it so we skip the rustup shim's overhead.
+    let rustc_path = bindir
+        .as_ref()
+        .map(|d| d.join("rustc"))
+        .unwrap_or_else(|| PathBuf::from("rustc"));
+    let host = match (|| -> Option<String> {
+        let output = Command::new(&rustc_path).arg("-vV").output().ok()?;
+        let stdout = String::from_utf8(output.stdout).ok()?;
+        stdout
+            .lines()
+            .find(|l| l.starts_with("host:"))
+            .and_then(|l| l.split_whitespace().nth(1))
+            .map(|s| s.to_string())
+    })() {
+        Some(h) => h,
+        None => return,
+    };
+    if std::fs::create_dir_all(&dot_cargo).is_err() {
+        return;
+    }
+    let _ = std::fs::write(
+        &config_path,
+        format!("[target.{host}]\nrustflags = [\"{desired_flag}\"]\n"),
+    );
+}
+
+/// Resolve the directory containing the *real* toolchain `cargo`/`rustc` binaries, bypassing the
+/// `rustup` proxy shims. When Rust is installed via rustup (the recommended way), the `cargo` and
+/// `rustc` found on `PATH` are thin shim binaries that, on *every* invocation, parse rustup's TOML
+/// config to select a toolchain and then re-exec the real binary. For a fast `alan` run that just
+/// builds a tiny program, this shim overhead (a TOML parse plus an extra process exec) is a
+/// meaningful slice of wall-clock time, and it's paid once for `cargo` and again for every `rustc`
+/// invocation. Resolving the real toolchain `bin` directory once lets us invoke those binaries
+/// directly and skip the shims entirely.
+///
+/// Returns `None` when rustup is not in use (e.g. a distro-packaged toolchain), in which case the
+/// plain `cargo`/`rustc` on `PATH` are already the real binaries and need no special handling.
+///
+/// The resolution itself costs ~40ms (it's a full `rustup which cargo` invocation), so we cache
+/// the result in `cache_dir` keyed on the things that determine which toolchain rustup would pick:
+/// the mtime of rustup's `settings.toml` (which rustup rewrites on `rustup default`/install/
+/// uninstall) and the `RUSTUP_TOOLCHAIN` override env var. A cache hit is two cheap `stat`s instead
+/// of spawning rustup, and a toolchain swap (`rustup default ...`) invalidates the cache
+/// automatically because it bumps `settings.toml`'s mtime.
+fn rustup_bindir(project_dir: &Path, cache_dir: &Path) -> Option<PathBuf> {
+    // Escape hatch: allow opting out of the bypass in case it misbehaves in an exotic toolchain
+    // setup.
+    if std::env::var_os("ALAN_DISABLE_RUSTUP_BYPASS").is_some() {
+        return None;
+    }
+    // Build the cache key from rustup's toolchain-selection inputs.
+    let settings_mtime = rustup_settings_mtime();
+    let toolchain_env = std::env::var("RUSTUP_TOOLCHAIN").unwrap_or_default();
+    let key = format!(
+        "{}\n{}",
+        settings_mtime
+            .and_then(|m| m.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_nanos())
+            .unwrap_or(0),
+        toolchain_env,
+    );
+    let cache_path = cache_dir.join(".toolchain_cache");
+    // Only trust the cache when we have a stable key (i.e. we could read settings.toml's mtime).
+    if settings_mtime.is_some() {
+        if let Ok(contents) = std::fs::read_to_string(&cache_path) {
+            if let Some((cached_key, cached_bindir)) = contents.split_once("\n::\n") {
+                if cached_key == key {
+                    let bindir = PathBuf::from(cached_bindir.trim());
+                    // Guard against a cached toolchain that has since been uninstalled.
+                    if bindir.join("cargo").exists() {
+                        return Some(bindir);
+                    }
+                }
+            }
+        }
+    }
+    // Cache miss (or no settings.toml): resolve via rustup. We run it in `project_dir` so any
+    // `rust-toolchain.toml` override resolution matches the directory where cargo will actually
+    // run.
+    let output = Command::new("rustup")
+        .current_dir(project_dir)
+        .arg("which")
+        .arg("cargo")
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let cargo_path = PathBuf::from(String::from_utf8(output.stdout).ok()?.trim());
+    let bindir = cargo_path.parent()?.to_path_buf();
+    // Best-effort cache write (skipped when we lack a stable key).
+    if settings_mtime.is_some() {
+        let _ = std::fs::write(&cache_path, format!("{}\n::\n{}", key, bindir.display()));
+    }
+    Some(bindir)
+}
+
+/// Returns the modification time of rustup's `settings.toml`, which rustup rewrites whenever the
+/// active toolchain changes (`rustup default`, toolchain install/uninstall). Used as a cheap
+/// cache-invalidation signal for `rustup_bindir`.
+fn rustup_settings_mtime() -> Option<std::time::SystemTime> {
+    let rustup_home = match std::env::var_os("RUSTUP_HOME") {
+        Some(h) => PathBuf::from(h),
+        None => dirs::home_dir()?.join(".rustup"),
+    };
+    std::fs::metadata(rustup_home.join("settings.toml"))
+        .ok()?
+        .modified()
+        .ok()
+}
+
+/// Construct a `cargo` `Command` that bypasses the rustup shims when possible (see
+/// `rustup_bindir`). `bindir` should be the cached result of a single `rustup_bindir()` call for
+/// this build so the resolution cost is paid at most once.
+fn cargo_command(bindir: &Option<PathBuf>, project_dir: &Path) -> Command {
+    let mut cmd = match bindir {
+        Some(dir) => {
+            let mut cmd = Command::new(dir.join("cargo"));
+            // Point `cargo` at the real `rustc` so it doesn't reach for the rustc shim (which it
+            // would otherwise find via `PATH`), and prepend the toolchain `bin` dir to `PATH` so
+            // any other toolchain tools resolve directly too.
+            cmd.env("RUSTC", dir.join("rustc"));
+            if let Ok(path) = std::env::var("PATH") {
+                let mut paths = vec![dir.clone()];
+                paths.extend(std::env::split_paths(&path));
+                if let Ok(joined) = std::env::join_paths(paths) {
+                    cmd.env("PATH", joined);
+                }
+            }
+            cmd
+        }
+        None => Command::new("cargo"),
+    };
+    cmd.current_dir(project_dir);
+    cmd
+}
+
 /// The `build` function creates a temporary directory that is a Cargo project primarily consisting
 /// of a single source file, plus a Cargo.toml file including the 3rd party dependencies in the
 /// standard library and user source code.
-pub fn build(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
+pub fn build(source_file: String, profile: &str) -> Result<String, Box<dyn std::error::Error>> {
     let find_process = if cfg!(windows) { "where" } else { "which" };
     // Fail if rustc is not present
     match Command::new(find_process).arg("rustc").output() {
@@ -110,10 +294,10 @@ pub fn build(source_file: String) -> Result<String, Box<dyn std::error::Error>> 
         p.push("alan_generated_bin");
         p
     };
-    let release_path = {
+    let binary_path = {
         let mut r = project_dir.clone();
         r.push("target");
-        r.push("release");
+        r.push(profile);
         r
     };
     let cargo_str = r#"[package]
@@ -123,6 +307,12 @@ edition = "2021"
 # To continue supporting earlier versions of Rust
 [patch.crates-io]
 bytemuck_derive = { git = "https://github.com/Lokathor/bytemuck", tag = "bytemuck_derive-v1.8.1" }
+
+[profile.interp]
+inherits = "dev"
+opt-level = 0
+debug = false
+codegen-units = 256
 
 [dependencies]"#;
     let cargo_path = {
@@ -135,6 +325,10 @@ bytemuck_derive = { git = "https://github.com/Lokathor/bytemuck", tag = "bytemuc
     if !alan_config.exists() {
         create_dir_all(alan_config.clone())?;
     }
+
+    // Resolve the real toolchain binaries (cached in the config dir) so every `cargo`/`rustc`
+    // invocation below can skip the rustup proxy shims.
+    let bindir = rustup_bindir(&project_dir, &alan_config);
 
     // Acquire the lock with a 3-minute timeout
     let mut lockfile = acquire_file_lock(&lockfile_path, 180)?;
@@ -245,10 +439,49 @@ bytemuck_derive = { git = "https://github.com/Lokathor/bytemuck", tag = "bytemuc
                 Err(e)
             }
         }?;
-        match Command::new("cargo")
-            .current_dir(project_dir.clone())
-            .arg("build")
-            .arg("--release")
+        let mut first_build = cargo_command(&bindir, &project_dir);
+        first_build.arg("build");
+        if profile == "release" {
+            first_build.arg("--release");
+        } else {
+            first_build.arg("--profile").arg(profile);
+        }
+        match first_build
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .output()
+        {
+            Ok(a) => Ok(a),
+            Err(e) => {
+                fs2::FileExt::unlock(&lockfile)?;
+                Err(e)
+            }
+        }?;
+        if profile != "interp" {
+            let mut interp_warmup = cargo_command(&bindir, &project_dir);
+            interp_warmup
+                .arg("build")
+                .arg("--profile")
+                .arg("interp")
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped());
+            match interp_warmup.output() {
+                Ok(a) => Ok(a),
+                Err(e) => {
+                    fs2::FileExt::unlock(&lockfile)?;
+                    Err(e)
+                }
+            }?;
+        }
+    }
+    write_fast_linker_config(&project_dir, find_process, &bindir);
+    // We need to remove the prior binary, if it exists, to prevent a prior successful compilation
+    // from accidentally being treated as the output of an unsuccessful compilation.
+    if binary_path.exists() {
+        match Command::new("rm")
+            .current_dir(binary_path.clone())
+            .arg("-f")
+            .arg("alan_generated_bin")
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .output()
@@ -260,22 +493,6 @@ bytemuck_derive = { git = "https://github.com/Lokathor/bytemuck", tag = "bytemuc
             }
         }?;
     }
-    // We need to remove the prior binary, if it exists, to prevent a prior successful compilation
-    // from accidentally being treated as the output of an unsuccessful compilation.
-    match Command::new("rm")
-        .current_dir(release_path.clone())
-        .arg("-f")
-        .arg("alan_generated_bin")
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .output()
-    {
-        Ok(a) => Ok(a),
-        Err(e) => {
-            fs2::FileExt::unlock(&lockfile)?;
-            Err(e)
-        }
-    }?;
     // Once we're here, the base hello world app we use as a build cache definitely exists, so
     // let's get to work! We can't use the `?` operator directly here, because we need to make sure
     // we remove the lockfile on any failure.
@@ -338,8 +555,7 @@ bytemuck_derive = { git = "https://github.com/Lokathor/bytemuck", tag = "bytemuc
     }?;
     // Update the cargo lockfile, if necessary
     if should_rebuild_deps {
-        match Command::new("cargo")
-            .current_dir(project_dir.clone())
+        match cargo_command(&bindir, &project_dir)
             .arg("update")
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -361,10 +577,14 @@ bytemuck_derive = { git = "https://github.com/Lokathor/bytemuck", tag = "bytemuc
         )?;
     }
     // Build the executable
-    match Command::new("cargo")
-        .current_dir(project_dir.clone())
-        .arg("build")
-        .arg("--release")
+    let mut build_cmd = cargo_command(&bindir, &project_dir);
+    build_cmd.arg("build");
+    if profile == "release" {
+        build_cmd.arg("--release");
+    } else {
+        build_cmd.arg("--profile").arg(profile);
+    }
+    match build_cmd
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .output()
@@ -390,7 +610,7 @@ bytemuck_derive = { git = "https://github.com/Lokathor/bytemuck", tag = "bytemuc
         Some(n) => n.to_string_lossy().to_string(),
     };
     match Command::new("cp")
-        .current_dir(release_path)
+        .current_dir(binary_path)
         .arg("alan_generated_bin")
         .arg(format!(
             "{}/{}",
@@ -422,8 +642,36 @@ pub fn compile(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
         .env
         .insert("ALAN_TARGET".to_string(), "release".to_string());
     Program::return_program(program);
-    build(source_file)?;
+    build(source_file, "release")?;
     println!("Done! Took {:.2}sec", start_time.elapsed().as_secs_f32());
+    Ok(())
+}
+
+/// The `interp` function builds the source file with minimal optimizations (like an interpreter),
+/// runs it, and deletes the binary.
+pub fn interp(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
+    Program::set_target_lang_rs();
+    let mut program = Program::get_program();
+    program
+        .env
+        .insert("ALAN_TARGET".to_string(), "interp".to_string());
+    Program::return_program(program);
+    let binary = build(source_file, "interp")?;
+    let mut run = Command::new(format!("./{binary}"))
+        .current_dir(current_dir()?)
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .spawn()?;
+    let ecode = run.wait()?;
+    Command::new("rm")
+        .current_dir(current_dir()?)
+        .arg(binary)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()?;
+    if !ecode.success() {
+        std::process::exit(ecode.code().unwrap());
+    }
     Ok(())
 }
 
@@ -459,7 +707,7 @@ pub fn test(source_file: String, js: bool) -> Result<(), Box<dyn std::error::Err
             std::process::exit(ecode.code().unwrap());
         }
     } else {
-        let binary = build(source_file)?;
+        let binary = build(source_file, "release")?;
         let mut run = Command::new(format!("./{binary}"))
             .current_dir(current_dir()?)
             .stdout(Stdio::inherit())

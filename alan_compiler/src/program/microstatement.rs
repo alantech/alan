@@ -665,6 +665,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                     microstatements: ms,
                     kind,
                     origin_scope_path: scope.path.clone(),
+                    lazy_body: None,
                 });
                 prior_value = Some(Microstatement::Closure { function });
             }
