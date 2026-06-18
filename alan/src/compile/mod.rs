@@ -1,7 +1,7 @@
 use std::env::current_dir;
 use std::fs::{create_dir_all, remove_file, write, File, OpenOptions};
 use std::io::{Read, Seek, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
@@ -61,7 +61,7 @@ fn acquire_file_lock(
     }
 }
 
-fn write_fast_linker_config(project_dir: &PathBuf, find_cmd: &str) {
+fn write_fast_linker_config(project_dir: &Path, find_cmd: &str) {
     let linker = if Command::new(find_cmd).arg("mold").output().is_ok() {
         "mold"
     } else if Command::new(find_cmd).arg("lld").output().is_ok() {
@@ -94,6 +94,61 @@ fn write_fast_linker_config(project_dir: &PathBuf, find_cmd: &str) {
     );
 }
 
+/// Resolve the directory containing the *real* toolchain `cargo`/`rustc` binaries, bypassing the
+/// `rustup` proxy shims. When Rust is installed via rustup (the recommended way), the `cargo` and
+/// `rustc` found on `PATH` are thin shim binaries that, on *every* invocation, parse rustup's TOML
+/// config to select a toolchain and then re-exec the real binary. For a fast `alan` run that just
+/// builds a tiny program, this shim overhead (a TOML parse plus an extra process exec) is a
+/// meaningful slice of wall-clock time, and it's paid once for `cargo` and again for every `rustc`
+/// invocation. Resolving the real toolchain `bin` directory once lets us invoke those binaries
+/// directly and skip the shims entirely.
+///
+/// Returns `None` when rustup is not in use (e.g. a distro-packaged toolchain), in which case the
+/// plain `cargo`/`rustc` on `PATH` are already the real binaries and need no special handling.
+fn rustup_bindir() -> Option<PathBuf> {
+    // Escape hatch: allow opting out of the bypass in case it misbehaves in an exotic toolchain
+    // setup.
+    if std::env::var_os("ALAN_DISABLE_RUSTUP_BYPASS").is_some() {
+        return None;
+    }
+    let output = Command::new("rustup")
+        .arg("which")
+        .arg("cargo")
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let cargo_path = PathBuf::from(String::from_utf8(output.stdout).ok()?.trim());
+    cargo_path.parent().map(|p| p.to_path_buf())
+}
+
+/// Construct a `cargo` `Command` that bypasses the rustup shims when possible (see
+/// `rustup_bindir`). `bindir` should be the cached result of a single `rustup_bindir()` call for
+/// this build so the resolution cost is paid at most once.
+fn cargo_command(bindir: &Option<PathBuf>, project_dir: &Path) -> Command {
+    let mut cmd = match bindir {
+        Some(dir) => {
+            let mut cmd = Command::new(dir.join("cargo"));
+            // Point `cargo` at the real `rustc` so it doesn't reach for the rustc shim (which it
+            // would otherwise find via `PATH`), and prepend the toolchain `bin` dir to `PATH` so
+            // any other toolchain tools resolve directly too.
+            cmd.env("RUSTC", dir.join("rustc"));
+            if let Ok(path) = std::env::var("PATH") {
+                let mut paths = vec![dir.clone()];
+                paths.extend(std::env::split_paths(&path));
+                if let Ok(joined) = std::env::join_paths(paths) {
+                    cmd.env("PATH", joined);
+                }
+            }
+            cmd
+        }
+        None => Command::new("cargo"),
+    };
+    cmd.current_dir(project_dir);
+    cmd
+}
+
 /// The `build` function creates a temporary directory that is a Cargo project primarily consisting
 /// of a single source file, plus a Cargo.toml file including the 3rd party dependencies in the
 /// standard library and user source code.
@@ -113,6 +168,9 @@ pub fn build(source_file: String, profile: &str) -> Result<String, Box<dyn std::
             Err("cargo not found. Please make sure you have rust installed before using Alan!")
         }
     }?;
+    // Resolve the real toolchain binaries once so every `cargo`/`rustc` invocation below can skip
+    // the rustup proxy shims.
+    let bindir = rustup_bindir();
     // Because all Alan programs use the same Rust dependencies (for now), we can cut down a *lot*
     // of build time by re-using the `./target/release/build` and `./target/release/deps` directory
     // in subsequent builds. Since it takes over 30 seconds to make a release build on my laptop
@@ -284,8 +342,8 @@ codegen-units = 256
                 Err(e)
             }
         }?;
-        let mut first_build = Command::new("cargo");
-        first_build.current_dir(project_dir.clone()).arg("build");
+        let mut first_build = cargo_command(&bindir, &project_dir);
+        first_build.arg("build");
         if profile == "release" {
             first_build.arg("--release");
         } else {
@@ -303,9 +361,8 @@ codegen-units = 256
             }
         }?;
         if profile != "interp" {
-            let mut interp_warmup = Command::new("cargo");
+            let mut interp_warmup = cargo_command(&bindir, &project_dir);
             interp_warmup
-                .current_dir(project_dir.clone())
                 .arg("build")
                 .arg("--profile")
                 .arg("interp")
@@ -401,8 +458,7 @@ codegen-units = 256
     }?;
     // Update the cargo lockfile, if necessary
     if should_rebuild_deps {
-        match Command::new("cargo")
-            .current_dir(project_dir.clone())
+        match cargo_command(&bindir, &project_dir)
             .arg("update")
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -424,8 +480,8 @@ codegen-units = 256
         )?;
     }
     // Build the executable
-    let mut build_cmd = Command::new("cargo");
-    build_cmd.current_dir(project_dir.clone()).arg("build");
+    let mut build_cmd = cargo_command(&bindir, &project_dir);
+    build_cmd.arg("build");
     if profile == "release" {
         build_cmd.arg("--release");
     } else {
