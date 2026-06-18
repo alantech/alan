@@ -164,6 +164,18 @@ fn fmt_command(files: &[String], check: bool) -> Result<(), Box<dyn std::error::
             }
         };
         let formatted = fmt(&ast);
+        // The parser strips a leading shebang line (e.g. `#!/usr/bin/env alan`) so scripts can be
+        // run directly; re-attach it here so formatting an executable script doesn't delete its
+        // shebang.
+        let formatted = if src.starts_with("#!") {
+            match src.find('\n') {
+                Some(newline) => format!("{}{}", &src[..=newline], formatted),
+                // Shebang-only file with no body: leave the original untouched.
+                None => src.clone(),
+            }
+        } else {
+            formatted
+        };
 
         if check {
             if src != formatted {

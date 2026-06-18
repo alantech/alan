@@ -1388,6 +1388,18 @@ test!(ln =>
 );
 
 pub fn get_ast(input: &str) -> Result<Ln, nom::Err<nom::error::Error<&str>>> {
+    // Strip an optional leading "shebang" line (e.g. `#!/usr/bin/env alan`) so that an Alan source
+    // file can be marked executable and run directly as a script. A shebang is only recognized at
+    // the very start of the file; `#!` is unambiguous since Alan comments use `//` and `/* */`.
+    let input = match input.strip_prefix("#!") {
+        Some(rest) => match rest.find('\n') {
+            // Drop the shebang line and its trailing newline, keeping everything after it.
+            Some(newline) => &rest[newline + 1..],
+            // The shebang is the entire input (no newline) -- nothing left to parse.
+            None => "",
+        },
+        None => input,
+    };
     // We wrap the `ln` root parser in `all_consuming` to cause an error if there's unexpected
     // cruft at the end of the input, which we consider a syntax error at compile time. An LSP
     // would probably use `ln` directly, instead, so new lines/functions/etc the user is currently
@@ -1401,4 +1413,8 @@ test!(get_ast =>
     pass "";
     pass " ";
     pass "export fn main {\n  print('Hello, World!');\n}";
+    // A leading shebang line is stripped so files can be run as scripts.
+    pass "#!/usr/bin/env alan\nexport fn main {\n  print('Hello, World!');\n}";
+    pass "#!/usr/bin/alan\n";
+    pass "#!/usr/bin/env alan";
 );
