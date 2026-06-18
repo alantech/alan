@@ -1,5 +1,5 @@
-use std::cell::RefCell;
-use std::collections::HashSet;
+use std::cell::{Cell, RefCell};
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use super::ctype::{withtypeoperatorslist_to_ctype, CType};
@@ -17,6 +17,61 @@ thread_local! {
     // resolved, so `resolve_lazy` can detect and reject unsupported recursive definitions instead
     // of looping forever.
     static RESOLVING: RefCell<HashSet<usize>> = RefCell::new(HashSet::new());
+
+    // A monotonically increasing counter assigning each source-defined function a "definition
+    // order" index reflecting where it appears during evaluation of the source. Alan's function
+    // dispatch is order-sensitive: a function body only "sees" definitions that appear before it,
+    // and the most-recent matching definition wins. We must preserve this under lazy loading.
+    static DEF_COUNTER: Cell<usize> = const { Cell::new(0) };
+    // Maps a source-defined function (by `Arc` identity) to its definition-order index.
+    static FN_DEF_INDEX: RefCell<HashMap<usize, usize>> = RefCell::new(HashMap::new());
+    // A stack of "visibility boundaries" -- the definition index of the (non-generic) function
+    // whose body is currently being resolved. While a boundary is in effect, function lookups only
+    // consider definitions that appear strictly before it, mirroring eager, in-order resolution.
+    static VISIBILITY_STACK: RefCell<Vec<usize>> = const { RefCell::new(Vec::new()) };
+}
+
+fn fn_ptr_key(f: &Arc<Function>) -> usize {
+    Arc::as_ptr(f) as *const () as usize
+}
+
+/// Assigns the next definition-order index to a freshly-created source-defined function and records
+/// it, returning the index. Functions created by other means (generic realizations, derived
+/// constructors/accessors, etc.) are intentionally *not* recorded -- they have no source position
+/// and are treated as always-visible.
+fn record_def_index(f: &Arc<Function>) {
+    let idx = DEF_COUNTER.with(|c| {
+        let v = c.get();
+        c.set(v + 1);
+        v
+    });
+    FN_DEF_INDEX.with(|m| m.borrow_mut().insert(fn_ptr_key(f), idx));
+}
+
+/// Looks up a function's definition-order index, if it has one.
+pub fn def_index_of(f: &Arc<Function>) -> Option<usize> {
+    FN_DEF_INDEX.with(|m| m.borrow().get(&fn_ptr_key(f)).copied())
+}
+
+/// Records an explicit definition-order index for a function. Used when a lazily-resolved function
+/// is replaced by its fully-resolved equivalent (a new `Arc`) that persists in the scope -- the
+/// replacement must inherit the original's index so dispatch ordering stays correct.
+pub fn set_def_index(f: &Arc<Function>, idx: usize) {
+    FN_DEF_INDEX.with(|m| m.borrow_mut().insert(fn_ptr_key(f), idx));
+}
+
+/// Whether the given function is visible under the current visibility boundary (see
+/// `VISIBILITY_STACK`). With no boundary in effect (e.g. resolving user code, where the whole root
+/// scope is already loaded) everything is visible. Functions without a definition index (generic
+/// realizations, derived functions, etc.) are always visible.
+pub fn is_visible(f: &Arc<Function>) -> bool {
+    VISIBILITY_STACK.with(|s| match s.borrow().last() {
+        None => true,
+        Some(&boundary) => match def_index_of(f) {
+            Some(idx) => idx < boundary,
+            None => true,
+        },
+    })
 }
 
 #[derive(Clone, Debug)]
@@ -328,6 +383,7 @@ impl Function {
                         origin_scope_path: scope.path.clone(),
                         lazy_body: None,
                     });
+                    record_def_index(&function);
                     if is_export {
                         scope
                             .exports
@@ -604,6 +660,7 @@ impl Function {
             origin_scope_path: scope.path.clone(),
             lazy_body: if defer { Some(statements) } else { None },
         });
+        record_def_index(&function);
         if is_export {
             scope
                 .exports
@@ -651,6 +708,14 @@ impl Function {
         RESOLVING.with(|r| {
             r.borrow_mut().insert(key);
         });
+        // While resolving this (non-generic) function's body, restrict visibility to definitions
+        // that appear before it -- mirroring Alan's order-sensitive dispatch. Generic functions are
+        // *not* resolved through this path; they are realized at their call site and so inherit
+        // whatever boundary is already in effect there.
+        let boundary = def_index_of(&func);
+        if let Some(b) = boundary {
+            VISIBILITY_STACK.with(|s| s.borrow_mut().push(b));
+        }
         let result = (|| {
             let mut typen = func.typen.clone();
             let mut ms = func.microstatements.clone();
@@ -719,6 +784,11 @@ impl Function {
             });
             Ok((scope, resolved))
         })();
+        if boundary.is_some() {
+            VISIBILITY_STACK.with(|s| {
+                s.borrow_mut().pop();
+            });
+        }
         RESOLVING.with(|r| {
             r.borrow_mut().remove(&key);
         });

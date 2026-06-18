@@ -376,7 +376,9 @@ impl<'a> Scope<'a> {
             if let Some(s) = scope_to_check {
                 if let Some(funcs) = s.functions.get(function) {
                     for f in funcs {
-                        fs.push(f.clone()); // TODO: Drop this clone
+                        if super::function::is_visible(f) {
+                            fs.push(f.clone()); // TODO: Drop this clone
+                        }
                     }
                 }
                 scope_to_check = match &s.parent {
@@ -387,7 +389,7 @@ impl<'a> Scope<'a> {
         }
         let out_types = fs
             .iter()
-            .map(|f| {
+            .filter_map(|f| {
                 let generics = match &f.kind {
                     FnKind::Normal
                     | FnKind::External(_)
@@ -410,8 +412,26 @@ impl<'a> Scope<'a> {
                     .iter()
                     .map(|(_, _, arg)| arg.clone())
                     .collect::<Vec<Arc<CType>>>();
-                let output = f.rettype();
-                match generics {
+                // When a function is referenced as a *value* (rather than called), we need its
+                // real return type so it can be matched against, e.g., a `(T, T) -> bool` parameter.
+                // A lazily-loaded function hasn't had its body resolved yet, so its return type is
+                // still `Infer("unknown")`; resolve the body in a throwaway child scope to recover
+                // the actual return type. (Only non-generic functions are ever lazy.)
+                let output = if f.lazy_body.is_some() {
+                    match Function::resolve_lazy(self.child(), f.clone()) {
+                        Ok((_, resolved)) => resolved.rettype(),
+                        // The body is currently being resolved -- a cyclic reference, e.g. an array
+                        // overload defined as `arr.map(self)` that maps over its own scalar
+                        // overload. We can't know its return type yet, and including it with an
+                        // `unknown` return type would corrupt the type union and break matching
+                        // against the overloads that *are* known (the ones actually needed here),
+                        // so we omit this overload from the function value's type.
+                        Err(_) => return None,
+                    }
+                } else {
+                    f.rettype()
+                };
+                Some(match generics {
                     None => Arc::new(CType::Function(
                         Arc::new(CType::Tuple(input, Vec::new())),
                         output,
@@ -424,8 +444,17 @@ impl<'a> Scope<'a> {
                             output,
                         )),
                     )),
-                }
+                })
             })
+            .collect::<Vec<Arc<CType>>>();
+        // Deduplicate structurally-identical overload types. The same function can be reachable
+        // through more than one scope in the lookup chain (e.g. once memoized as a resolved
+        // version), and duplicate members in the resulting type union confuse generic inference
+        // when this function value is matched against a higher-order parameter like `(T -> U)`.
+        let mut seen = std::collections::HashSet::new();
+        let out_types = out_types
+            .into_iter()
+            .filter(|t| seen.insert(t.clone().to_strict_string(false)))
             .collect::<Vec<Arc<CType>>>();
         if out_types.is_empty() {
             Arc::new(CType::Void)
@@ -627,10 +656,25 @@ impl<'a> Scope<'a> {
             // subsequent lookups -- including codegen's by-type lookups for function values --
             // find the resolved function instead of the lazy stand-in.
             if f.lazy_body.is_some() {
+                // Preserve the lazy function's definition-order index so the resolved replacement
+                // (a fresh `Arc`) keeps the same visibility position once memoized into the scope.
+                let f_idx = super::function::def_index_of(&f);
+                let f_ptr = Arc::as_ptr(&f);
                 return match Function::resolve_lazy(self, f) {
                     Ok((mut s, resolved)) => {
+                        if let Some(idx) = f_idx {
+                            super::function::set_def_index(&resolved, idx);
+                        }
                         if let Some(v) = s.functions.get_mut(&resolved.name) {
-                            v.insert(0, resolved.clone());
+                            // Replace the lazy stand-in in place rather than prepending a copy --
+                            // otherwise both the lazy and resolved versions linger in the scope and
+                            // get collected together (e.g. by `resolve_function_types`), producing
+                            // duplicate overloads in function-value type unions.
+                            if let Some(pos) = v.iter().position(|g| Arc::as_ptr(g) == f_ptr) {
+                                v[pos] = resolved.clone();
+                            } else {
+                                v.insert(0, resolved.clone());
+                            }
                         } else {
                             s.functions
                                 .insert(resolved.name.clone(), vec![resolved.clone()]);
@@ -716,7 +760,9 @@ impl<'a> Scope<'a> {
                 if let Some(funcs) = s.functions.get(function) {
                     // Why is this okay but cloning funcs and then appending is not?
                     for f in funcs {
-                        fs.push(f);
+                        if super::function::is_visible(f) {
+                            fs.push(f);
+                        }
                     }
                 }
                 // TODO: Types are internally referred to by their structural name, not by the name the
@@ -730,7 +776,9 @@ impl<'a> Scope<'a> {
                     match s.functions.get(&constructor_fn_name) {
                         Some(funcs) => {
                             for f in funcs {
-                                fs.push(f);
+                                if super::function::is_visible(f) {
+                                    fs.push(f);
+                                }
                             }
                         }
                         None => { /* Nothing matched, move on */ }
@@ -820,7 +868,9 @@ impl<'a> Scope<'a> {
                 if let Some(funcs) = s.functions.get(function) {
                     // Why is this okay but cloning funcs and then appending is not?
                     for f in funcs {
-                        fs.push(f);
+                        if super::function::is_visible(f) {
+                            fs.push(f);
+                        }
                     }
                 }
                 // TODO: Types are internally referred to by their structural name, not by the name the
@@ -834,7 +884,9 @@ impl<'a> Scope<'a> {
                     match s.functions.get(&constructor_fn_name) {
                         Some(funcs) => {
                             for f in funcs {
-                                fs.push(f);
+                                if super::function::is_visible(f) {
+                                    fs.push(f);
+                                }
                             }
                         }
                         None => { /* Nothing matched, move on */ }
