@@ -24,12 +24,15 @@ fn acquire_file_lock(
     let sleep_time = std::time::Duration::from_millis(50);
 
     loop {
-        // Try to open the file for exclusive access
+        // Try to open the file for exclusive access. NOTE: we must NOT truncate here -- this
+        // lockfile doubles as the store for the "last dependency update" timestamp, and truncating
+        // on every open would wipe that timestamp, making `should_rebuild_deps` always true and
+        // forcing a (often pointless) `cargo update` on every single invocation.
         match OpenOptions::new()
             .read(true)
             .write(true)
             .create(true)
-            .truncate(true)
+            .truncate(false)
             .open(lockfile_path)
         {
             Ok(file) => {
@@ -62,6 +65,13 @@ fn acquire_file_lock(
 }
 
 fn write_fast_linker_config(project_dir: &Path, find_cmd: &str) {
+    // The linker config is static for a given machine, so once it's written we can skip the
+    // (surprisingly expensive) detection work -- `which mold`/`which lld` plus a `rustc -vV` to
+    // find the host triple -- which would otherwise be paid on every single build.
+    let config_path = project_dir.join(".cargo").join("config.toml");
+    if config_path.exists() {
+        return;
+    }
     let linker = if Command::new(find_cmd).arg("mold").output().is_ok() {
         "mold"
     } else if Command::new(find_cmd).arg("lld").output().is_ok() {
