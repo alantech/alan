@@ -160,40 +160,7 @@ pub fn ctype_to_rtype(
                         }
                     }
                     CType::Import(n, d) => {
-                        match &**d {
-                            CType::Type(_, t) => match &**t {
-                                CType::Rust(d) => match &**d {
-                                    CType::Dependency(n, v) => {
-                                        let name = match &**n {
-                                            CType::TString(s) => s.clone(),
-                                            _ => CType::fail("Dependency names must be strings"),
-                                        };
-                                        let version = match &**v {
-                                            CType::TString(s) => s.clone(),
-                                            _ => CType::fail("Dependency versions must be strings"),
-                                        };
-                                        deps.insert(name, version);
-                                    }
-                                    _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
-                                }
-                                otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {otherwise:?}"))
-                            }
-                            CType::Rust(d) => match &**d {
-                                CType::Dependency(n, v) => {
-                                    let name = match &**n {
-                                        CType::TString(s) => s.clone(),
-                                        _ => CType::fail("Dependency names must be strings"),
-                                    };
-                                    let version = match &**v {
-                                        CType::TString(s) => s.clone(),
-                                        _ => CType::fail("Dependency versions must be strings"),
-                                    };
-                                    deps.insert(name, version);
-                                }
-                                _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
-                            }
-                            otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {otherwise:?}"))
-                        }
+                        super::register_rust_dependency(&**d, &mut deps);
                         let native_type = match &**n {
                             CType::TString(s) => s.clone(),
                             _ => CType::fail("Native import names must be strings"),
@@ -233,40 +200,7 @@ pub fn ctype_to_rtype(
                     }
                 }
                 CType::Import(n, d) => {
-                    match &**d {
-                        CType::Type(_, t) => match &**t {
-                            CType::Rust(d) => match &**d {
-                                CType::Dependency(n, v) => {
-                                    let name = match &**n {
-                                        CType::TString(s) => s.clone(),
-                                        _ => CType::fail("Dependency names must be strings"),
-                                    };
-                                    let version = match &**v {
-                                        CType::TString(s) => s.clone(),
-                                        _ => CType::fail("Dependency versions must be strings"),
-                                    };
-                                    deps.insert(name, version);
-                                }
-                                _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
-                            }
-                            otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {otherwise:?}"))
-                        }
-                        CType::Rust(d) => match &**d {
-                            CType::Dependency(n, v) => {
-                                let name = match &**n {
-                                    CType::TString(s) => s.clone(),
-                                    _ => CType::fail("Dependency names must be strings"),
-                                };
-                                let version = match &**v {
-                                    CType::TString(s) => s.clone(),
-                                    _ => CType::fail("Dependency versions must be strings"),
-                                };
-                                deps.insert(name, version);
-                            }
-                            _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
-                        }
-                        otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {otherwise:?}"))
-                    }
+                    super::register_rust_dependency(&**d, &mut deps);
                     let native_type = match &**n {
                         CType::TString(s) => s.clone(),
                         _ => CType::fail("Native import names must be strings"),
@@ -390,40 +324,7 @@ pub fn ctype_to_rtype(
                                 let res = ctype_to_rtype(ts[0].clone(), deps)?;
                                 let s = res.0;
                                 deps = res.1;
-                                match &**d {
-                                    CType::Type(_, t) => match &**t {
-                                        CType::Rust(d) => match &**d {
-                                            CType::Dependency(n, v) => {
-                                                let name = match &**n {
-                                                    CType::TString(s) => s.clone(),
-                                                    _ => CType::fail("Dependency names must be strings"),
-                                                };
-                                                let version = match &**v {
-                                                    CType::TString(s) => s.clone(),
-                                                    _ => CType::fail("Dependency versions must be strings"),
-                                                };
-                                                deps.insert(name, version);
-                                            }
-                                            _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
-                                        }
-                                        otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {otherwise:?}"))
-                                    }
-                                    CType::Rust(d) => match &**d {
-                                        CType::Dependency(n, v) => {
-                                            let name = match &**n {
-                                                CType::TString(s) => s.clone(),
-                                                _ => CType::fail("Dependency names must be strings"),
-                                            };
-                                            let version = match &**v {
-                                                CType::TString(s) => s.clone(),
-                                                _ => CType::fail("Dependency versions must be strings"),
-                                            };
-                                            deps.insert(name, version);
-                                        }
-                                        _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
-                                    }
-                                    otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {otherwise:?}"))
-                                }
+                                super::register_rust_dependency(&**d, &mut deps);
                                 Ok((format!("Result<{}, {}>", s, "alan_std::AlanError"), deps))
                             }
                             _ => Ok((Arc::new(CType::Either(ts.clone(), Vec::new())).to_callable_string(), deps)),
@@ -437,40 +338,7 @@ pub fn ctype_to_rtype(
                                     let res = ctype_to_rtype(ts[0].clone(), deps)?;
                                     let s = res.0;
                                     deps = res.1;
-                                    match &**d {
-                                        CType::Type(_, t) => match &**t {
-                                            CType::Rust(d) => match &**d {
-                                                CType::Dependency(n, v) => {
-                                                    let name = match &**n {
-                                                        CType::TString(s) => s.clone(),
-                                                        _ => CType::fail("Dependency names must be strings"),
-                                                    };
-                                                    let version = match &**v {
-                                                        CType::TString(s) => s.clone(),
-                                                        _ => CType::fail("Dependency versions must be strings"),
-                                                    };
-                                                    deps.insert(name, version);
-                                                }
-                                                _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
-                                            }
-                                            otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {otherwise:?}"))
-                                        }
-                                        CType::Rust(d) => match &**d {
-                                            CType::Dependency(n, v) => {
-                                                let name = match &**n {
-                                                    CType::TString(s) => s.clone(),
-                                                    _ => CType::fail("Dependency names must be strings"),
-                                                };
-                                                let version = match &**v {
-                                                    CType::TString(s) => s.clone(),
-                                                    _ => CType::fail("Dependency versions must be strings"),
-                                                };
-                                                deps.insert(name, version);
-                                            }
-                                            _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
-                                        }
-                                        otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {otherwise:?}"))
-                                    }
+                                    super::register_rust_dependency(&**d, &mut deps);
                                     Ok((format!("Result<{}, {}>", s, "alan_std::AlanError"), deps))
                                 }
                                 _ => Ok((Arc::new(CType::Either(ts.clone(), Vec::new())).to_callable_string(), deps)),
@@ -552,40 +420,7 @@ pub fn generate(
                     }
                 }
                 CType::Import(n, d) => {
-                    match &**d {
-                        CType::Type(_, t) => match &**t {
-                            CType::Rust(d) => match &**d {
-                                CType::Dependency(n, v) => {
-                                    let name = match &**n {
-                                        CType::TString(s) => s.clone(),
-                                        _ => CType::fail("Dependency names must be strings"),
-                                    };
-                                    let version = match &**v {
-                                        CType::TString(s) => s.clone(),
-                                        _ => CType::fail("Dependency versions must be strings"),
-                                    };
-                                    deps.insert(name, version);
-                                }
-                                _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
-                            }
-                            otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {otherwise:?}"))
-                        }
-                        CType::Rust(d) => match &**d {
-                            CType::Dependency(n, v) => {
-                                let name = match &**n {
-                                    CType::TString(s) => s.clone(),
-                                    _ => CType::fail("Dependency names must be strings"),
-                                };
-                                let version = match &**v {
-                                    CType::TString(s) => s.clone(),
-                                    _ => CType::fail("Dependency versions must be strings"),
-                                };
-                                deps.insert(name, version);
-                            }
-                            _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
-                        }
-                        otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {otherwise:?}"))
-                    }
+                    super::register_rust_dependency(&**d, &mut deps);
                     let native_type = match &**n {
                         CType::TString(s) => s.clone(),
                         _ => CType::fail("Native import names must be strings"),

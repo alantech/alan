@@ -1,10 +1,50 @@
 use ordered_hash_map::OrderedHashMap;
 
 use crate::lntors::function::generate as fn_generate;
-use crate::program::Program;
+use crate::program::{CType, Program};
 
 mod function;
 mod typen;
+
+pub(crate) fn register_rust_dependency(
+    d: &CType,
+    deps: &mut OrderedHashMap<String, String>,
+) {
+    match d {
+        CType::Type(_, t) => match &**t {
+            CType::Rust(d) => match &**d {
+                CType::Dependency(n, v) => {
+                    let name = match &**n {
+                        CType::TString(s) => s.clone(),
+                        _ => CType::fail("Dependency names must be strings"),
+                    };
+                    let version = match &**v {
+                        CType::TString(s) => s.clone(),
+                        _ => CType::fail("Dependency versions must be strings"),
+                    };
+                    deps.insert(name, version);
+                }
+                _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
+            }
+            otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {otherwise:?}"))
+        }
+        CType::Rust(d) => match &**d {
+            CType::Dependency(n, v) => {
+                let name = match &**n {
+                    CType::TString(s) => s.clone(),
+                    _ => CType::fail("Dependency names must be strings"),
+                };
+                let version = match &**v {
+                    CType::TString(s) => s.clone(),
+                    _ => CType::fail("Dependency versions must be strings"),
+                };
+                deps.insert(name, version);
+            }
+            _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
+        }
+        otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {otherwise:?}"))
+    }
+}
 
 pub fn lntors(
     entry_file: String,
