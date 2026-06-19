@@ -12,7 +12,6 @@ use alan_compiler::lntojs::lntojs;
 use alan_compiler::lntors::lntors;
 use alan_compiler::program::Program;
 
-mod golden_tests;
 mod integration_tests;
 
 /// Acquire an exclusive lock on a file with timeout and retry logic
