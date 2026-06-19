@@ -14,14 +14,7 @@ use crate::program::{ArgKind, CType, CfnKind, FnKind, Function, Microstatement, 
 fn build_shared_vars(parent_fn: &Function) -> OrderedHashMap<String, Arc<CType>> {
     let mut shared_vars: OrderedHashMap<String, Arc<CType>> = OrderedHashMap::new();
 
-    // First pass: check function parameters
-    for (_, _, ptype) in parent_fn.args() {
-        if let CType::Shared(_inner) = ptype.as_ref() {
-            // Parameter is Shared, add to map
-        }
-    }
-
-    // Second pass: scan microstatements for assignments
+    // First pass: scan microstatements for assignments
     for ms in &parent_fn.microstatements {
         if let Microstatement::Assignment { name, value, .. } = ms {
             match value.as_ref() {
@@ -64,7 +57,7 @@ fn build_shared_vars(parent_fn: &Function) -> OrderedHashMap<String, Arc<CType>>
         }
     }
 
-    // Third pass: trace variable chains to resolve indirect Shared assignments
+    // Second pass: trace variable chains to resolve indirect Shared assignments
     let mut changed = true;
     while changed {
         changed = false;
@@ -135,6 +128,7 @@ fn render_arg(
 pub fn from_microstatement(
     microstatement: &Microstatement,
     parent_fn: &Function,
+    shared_vars: &OrderedHashMap<String, Arc<CType>>,
     scope: &Scope,
     mut out: OrderedHashMap<String, String>,
     mut deps: OrderedHashMap<String, String>,
@@ -175,7 +169,7 @@ pub fn from_microstatement(
             value,
             mutable,
         } => {
-            let (val, o, d) = from_microstatement(value, parent_fn, scope, out, deps)?;
+            let (val, o, d) = from_microstatement(value, parent_fn, shared_vars, scope, out, deps)?;
             out = o;
             deps = d;
             let final_val = match val.strip_prefix("&mut ") {
@@ -192,7 +186,6 @@ pub fn from_microstatement(
             // Also check if the assigned value is a variable that originates from Shared
             let is_shared_var = if !is_shared {
                 if let Microstatement::Value { representation, .. } = value.as_ref() {
-                    let shared_vars = build_shared_vars(parent_fn);
                     shared_vars.contains_key(representation)
                 } else {
                     false
@@ -227,7 +220,7 @@ pub fn from_microstatement(
                 .collect::<Vec<String>>();
             let mut inner_statements = Vec::new();
             for ms in &function.microstatements {
-                let (val, o, d) = from_microstatement(ms, parent_fn, scope, out, deps)?;
+                let (val, o, d) = from_microstatement(ms, parent_fn, shared_vars, scope, out, deps)?;
                 out = o;
                 deps = d;
                 inner_statements.push(val);
@@ -358,7 +351,7 @@ pub fn from_microstatement(
         Microstatement::Array { vals, .. } => {
             let mut val_representations = Vec::new();
             for val in vals {
-                let (rep, o, d) = from_microstatement(val, parent_fn, scope, out, deps)?;
+                let (rep, o, d) = from_microstatement(val, parent_fn, shared_vars, scope, out, deps)?;
                 val_representations.push(rep);
                 out = o;
                 deps = d;
@@ -373,11 +366,11 @@ pub fn from_microstatement(
             // Hackery to inline `if` calls *if* it's safe to do so.
             if let FnKind::Bind(fname) = &function.kind {
                 if fname == "ifstatementhack" {
-                    let res = from_microstatement(&args[0], parent_fn, scope, out, deps)?;
+                    let res = from_microstatement(&args[0], parent_fn, shared_vars, scope, out, deps)?;
                     let conditional = res.0;
                     out = res.1;
                     deps = res.2;
-                    let res = from_microstatement(&args[1], parent_fn, scope, out, deps)?;
+                    let res = from_microstatement(&args[1], parent_fn, shared_vars, scope, out, deps)?;
                     let successblock = res.0.replacen("|| {", "{", 1);
                     out = res.1;
                     deps = res.2;
@@ -387,15 +380,15 @@ pub fn from_microstatement(
                         deps,
                     ));
                 } else if fname == "ifelsestatementhack" {
-                    let res = from_microstatement(&args[0], parent_fn, scope, out, deps)?;
+                    let res = from_microstatement(&args[0], parent_fn, shared_vars, scope, out, deps)?;
                     let conditional = res.0;
                     out = res.1;
                     deps = res.2;
-                    let res = from_microstatement(&args[1], parent_fn, scope, out, deps)?;
+                    let res = from_microstatement(&args[1], parent_fn, shared_vars, scope, out, deps)?;
                     let successblock = res.0.replacen("|| {", "{", 1);
                     out = res.1;
                     deps = res.2;
-                    let res = from_microstatement(&args[2], parent_fn, scope, out, deps)?;
+                    let res = from_microstatement(&args[2], parent_fn, shared_vars, scope, out, deps)?;
                     let failblock = res.0.replacen("|| {", "{", 1);
                     out = res.1;
                     deps = res.2;
@@ -405,14 +398,14 @@ pub fn from_microstatement(
                         deps,
                     ));
                 } else if fname == "whileloophack" {
-                    let res = from_microstatement(&args[0], parent_fn, scope, out, deps)?;
+                    let res = from_microstatement(&args[0], parent_fn, shared_vars, scope, out, deps)?;
                     let conditionalparts = res.0.split("return").collect::<Vec<&str>>();
                     let conditional = [conditionalparts[0], &conditionalparts[1].replace(";", "")]
                         .join("")
                         .replacen("|| {", "{", 1);
                     out = res.1;
                     deps = res.2;
-                    let res = from_microstatement(&args[1], parent_fn, scope, out, deps)?;
+                    let res = from_microstatement(&args[1], parent_fn, shared_vars, scope, out, deps)?;
                     let loopblock = res.0.replacen("|| {", "{", 1);
                     out = res.1;
                     deps = res.2;
@@ -443,9 +436,8 @@ pub fn from_microstatement(
                     out = res.0;
                     deps = res.1;
                     let mut argstrs = Vec::new();
-                    let shared_vars = build_shared_vars(parent_fn);
                     for (i, arg) in args.iter().enumerate() {
-                        let (a, o, d) = from_microstatement(arg, parent_fn, scope, out, deps)?;
+                        let (a, o, d) = from_microstatement(arg, parent_fn, shared_vars, scope, out, deps)?;
                         out = o;
                         deps = d;
                         let arg_type = arg.get_type();
@@ -487,9 +479,8 @@ pub fn from_microstatement(
                 }
                 FnKind::Bind(rustname) | FnKind::ExternalBind(rustname, _) => {
                     let mut argstrs = Vec::new();
-                    let shared_vars = build_shared_vars(parent_fn);
                     for (i, arg) in args.iter().enumerate() {
-                        let (a, o, d) = from_microstatement(arg, parent_fn, scope, out, deps)?;
+                        let (a, o, d) = from_microstatement(arg, parent_fn, shared_vars, scope, out, deps)?;
                         out = o;
                         deps = d;
                         let arg_type = arg.get_type();
@@ -575,7 +566,7 @@ pub fn from_microstatement(
                     deps = d;
                     let mut argstrs = Vec::new();
                     for arg in args {
-                        let (a, o, d) = from_microstatement(arg, parent_fn, scope, out, deps)?;
+                        let (a, o, d) = from_microstatement(arg, parent_fn, shared_vars, scope, out, deps)?;
                         out = o;
                         deps = d;
                         let arg_type = arg.get_type();
@@ -589,7 +580,6 @@ pub fn from_microstatement(
                         || (!matches!(&*arg_type, CType::Function(..))
                             && match &args[0] {
                                 Microstatement::Value { representation, .. } => {
-                                    let shared_vars = build_shared_vars(parent_fn);
                                     shared_vars.contains_key(representation)
                                 }
                                 Microstatement::FnCall { function, .. } => {
@@ -617,7 +607,7 @@ pub fn from_microstatement(
                     deps = d;
                     let mut argstrs = Vec::new();
                     for arg in args {
-                        let (a, o, d) = from_microstatement(arg, parent_fn, scope, out, deps)?;
+                        let (a, o, d) = from_microstatement(arg, parent_fn, shared_vars, scope, out, deps)?;
                         out = o;
                         deps = d;
                         let arg_type = arg.get_type();
@@ -695,7 +685,6 @@ pub fn from_microstatement(
                                 _ => String::new(),
                             };
                             if !arg_name.is_empty() {
-                                let shared_vars = build_shared_vars(parent_fn);
                                 is_shared = shared_vars.contains_key(&arg_name);
                             }
                         }
@@ -1989,7 +1978,7 @@ pub fn from_microstatement(
         Microstatement::VarCall { name, args, .. } => {
             let mut argstrs = Vec::new();
             for arg in args {
-                let (a, o, d) = from_microstatement(arg, parent_fn, scope, out, deps)?;
+                let (a, o, d) = from_microstatement(arg, parent_fn, shared_vars, scope, out, deps)?;
                 out = o;
                 deps = d;
                 // If the argument is itself a function, this is the only place in Rust
@@ -2014,7 +2003,7 @@ pub fn from_microstatement(
         }
         Microstatement::Return { value } => match value {
             Some(val) => {
-                let (retval, o, d) = from_microstatement(val, parent_fn, scope, out, deps)?;
+                let (retval, o, d) = from_microstatement(val, parent_fn, shared_vars, scope, out, deps)?;
                 out = o;
                 deps = d;
                 Ok((
@@ -2048,6 +2037,7 @@ pub fn generate(
     ),
     Box<dyn std::error::Error>,
 > {
+    let shared_vars = build_shared_vars(function);
     let mut fn_string = "".to_string();
     // First make sure all of the function argument types are defined
     let mut arg_strs = Vec::new();
@@ -2112,7 +2102,7 @@ pub fn generate(
     )
     .to_string();
     for microstatement in &function.microstatements {
-        let (stmt, o, d) = from_microstatement(microstatement, function, scope, out, deps)?;
+        let (stmt, o, d) = from_microstatement(microstatement, function, &shared_vars, scope, out, deps)?;
         out = o;
         deps = d;
         fn_string = format!("{fn_string}    {stmt};\n");
