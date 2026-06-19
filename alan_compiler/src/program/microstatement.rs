@@ -71,6 +71,10 @@ pub enum NativeCallKind {
     Method,
     /// `recv.name` (no call parens; exactly one arg, the receiver)
     Property,
+    /// `name(args...)` — a plain function/macro-style native call (e.g.
+    /// `format!("{}", arg1)`). There is no receiver; every argument is a call
+    /// argument. The surface syntax is identical across our backends.
+    Function,
 }
 
 impl Microstatement {

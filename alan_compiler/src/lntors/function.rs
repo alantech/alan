@@ -606,12 +606,20 @@ pub fn from_microstatement(
                 };
                 rendered.push(s);
             }
-            let (recv, rest) = rendered
-                .split_first()
-                .expect("NativeCall always has a receiver argument");
             let call = match kind {
-                NativeCallKind::Method => format!("{}.{}({})", recv, name, rest.join(", ")),
-                NativeCallKind::Property => format!("{}.{}", recv, name),
+                NativeCallKind::Function => format!("{}({})", name, rendered.join(", ")),
+                NativeCallKind::Method => {
+                    let (recv, rest) = rendered
+                        .split_first()
+                        .expect("a Method NativeCall always has a receiver argument");
+                    format!("{}.{}({})", recv, name, rest.join(", "))
+                }
+                NativeCallKind::Property => {
+                    let (recv, _) = rendered
+                        .split_first()
+                        .expect("a Property NativeCall always has a receiver argument");
+                    format!("{}.{}", recv, name)
+                }
             };
             // Apply the result type's serialization (e.g. wrapping a `&str` result
             // in `.to_string()` for a `string` return) by rendering the assembled
@@ -698,7 +706,32 @@ pub fn from_microstatement(
                     // If this function is called from exactly one site and is a single
                     // `return <expr>`, inline it here by substituting its parameters for our
                     // argument expressions, so the function itself is never emitted.
-                    if matches!(function.kind, FnKind::Normal)
+                    // Skip inlining when any argument is a `Shared{T}` value. The
+                    // inlined body may use a parameter in a position (e.g. a native
+                    // call argument) that renders it raw, but a `Shared` argument
+                    // requires the deref/lock conversion (`&(*x.read().unwrap())`)
+                    // that the function-call boundary applies via `render_arg`.
+                    // Reproducing that structurally is involved, and `Shared`
+                    // arguments are rare, so we conservatively keep the real call.
+                    // `shared_vars` also captures variables whose `get_type()` hides
+                    // their `Shared`-ness (e.g. a deep clone), which a type check
+                    // alone would miss.
+                    let any_arg_shared = args.iter().any(|arg| {
+                        if matches!(&*arg.get_type(), CType::Shared(_)) {
+                            return true;
+                        }
+                        match arg {
+                            Microstatement::Value { representation, .. } => {
+                                shared_vars.contains_key(representation)
+                            }
+                            Microstatement::FnCall { function, .. } => {
+                                shared_vars.contains_key(&function.name)
+                            }
+                            _ => false,
+                        }
+                    });
+                    if !any_arg_shared
+                        && matches!(function.kind, FnKind::Normal)
                         && crate::program::inline::is_inline_target(
                             &crate::program::inline::fn_identity(function),
                         )

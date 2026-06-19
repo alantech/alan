@@ -277,12 +277,20 @@ pub fn from_microstatement(
                 };
                 rendered.push(s);
             }
-            let (recv, rest) = rendered
-                .split_first()
-                .expect("NativeCall always has a receiver argument");
             let call = match kind {
-                NativeCallKind::Method => format!("{}.{}({})", recv, name, rest.join(", ")),
-                NativeCallKind::Property => format!("{}.{}", recv, name),
+                NativeCallKind::Function => format!("{}({})", name, rendered.join(", ")),
+                NativeCallKind::Method => {
+                    let (recv, rest) = rendered
+                        .split_first()
+                        .expect("a Method NativeCall always has a receiver argument");
+                    format!("{}.{}({})", recv, name, rest.join(", "))
+                }
+                NativeCallKind::Property => {
+                    let (recv, _) = rendered
+                        .split_first()
+                        .expect("a Property NativeCall always has a receiver argument");
+                    format!("{}.{}", recv, name)
+                }
             };
             // Apply the result type's serialization by rendering the assembled call
             // through the `Value` handler with the call's return type.

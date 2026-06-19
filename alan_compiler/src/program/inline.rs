@@ -315,6 +315,9 @@ fn count_var_uses(ms: &Microstatement, name: &str) -> usize {
         }
         Microstatement::Assignment { value, .. } => count_var_uses(value, name),
         Microstatement::Return { value: Some(v) } => count_var_uses(v, name),
+        Microstatement::NativeCall { args, .. } => {
+            args.iter().map(|a| count_var_uses(a, name)).sum()
+        }
         _ => 0,
     }
 }
