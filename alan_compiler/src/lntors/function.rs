@@ -89,6 +89,48 @@ fn build_shared_vars(parent_fn: &Function) -> OrderedHashMap<String, Arc<CType>>
     shared_vars
 }
 
+fn render_arg(
+    a: &str,
+    arg_is_shared: bool,
+    needs_deref: bool,
+    arg_kind: &ArgKind,
+    parent_fn: &Function,
+) -> String {
+    match arg_kind {
+        ArgKind::Mut => {
+            if arg_is_shared {
+                format!("&mut (*({a}).write().unwrap())")
+            } else {
+                let mut prefix = "&mut ";
+                for (name, kind, _) in &parent_fn.args() {
+                    if name == a {
+                        if let ArgKind::Mut = kind {
+                            prefix = "";
+                        }
+                    }
+                }
+                format!("{prefix}{a}")
+            }
+        }
+        ArgKind::Ref | ArgKind::Deref => {
+            if needs_deref {
+                format!("&(*({a}).read().unwrap())")
+            } else {
+                format!("&{a}")
+            }
+        }
+        ArgKind::Own => {
+            if needs_deref {
+                format!("(*({a}).read().unwrap()).clone()")
+            } else if arg_is_shared {
+                format!("{}.clone()", a)
+            } else {
+                a.to_string()
+            }
+        }
+    }
+}
+
 #[allow(clippy::type_complexity)]
 pub fn from_microstatement(
     microstatement: &Microstatement,
@@ -423,46 +465,15 @@ pub fn from_microstatement(
                             _ => false,
                         };
                         let needs_deref = arg_is_shared && !param_is_shared;
-                        let maybe_deref = if needs_deref {
-                            Some(format!("(*({a}).read().unwrap()).clone()"))
-                        } else {
-                            None
-                        };
                         match &*arg_type {
                             CType::Function(..) => argstrs.push(a.to_string()),
-                            _ => match function.args()[i].1 {
-                                ArgKind::Mut => {
-                                    if arg_is_shared {
-                                        argstrs.push(format!("&mut (*({a}).write().unwrap())"));
-                                    } else {
-                                        let mut prefix = "&mut ";
-                                        for (name, kind, _) in &parent_fn.args() {
-                                            if name == &a {
-                                                if let ArgKind::Mut = kind {
-                                                    prefix = "";
-                                                }
-                                            }
-                                        }
-                                        argstrs.push(format!("{prefix}{a}"));
-                                    }
-                                }
-                                ArgKind::Ref | ArgKind::Deref => {
-                                    if needs_deref {
-                                        argstrs.push(format!("&(*({a}).read().unwrap())"));
-                                    } else {
-                                        argstrs.push(format!("&{a}"));
-                                    }
-                                }
-                                ArgKind::Own => {
-                                    if let Some(deref_expr) = maybe_deref {
-                                        argstrs.push(deref_expr);
-                                    } else if arg_is_shared {
-                                        argstrs.push(format!("{}.clone()", a));
-                                    } else {
-                                        argstrs.push(a.clone());
-                                    }
-                                }
-                            },
+                            _ => argstrs.push(render_arg(
+                                &a,
+                                arg_is_shared,
+                                needs_deref,
+                                &function.args()[i].1,
+                                parent_fn,
+                            )),
                         }
                     }
                     if let FnKind::External(d) = &function.kind {
@@ -499,39 +510,13 @@ pub fn from_microstatement(
                         let needs_deref = arg_is_shared && !param_is_shared;
                         match &*arg_type {
                             CType::Function(..) => argstrs.push(a.to_string()),
-                            _ => match function.args()[i].1 {
-                                ArgKind::Mut => {
-                                    if arg_is_shared {
-                                        argstrs.push(format!("&mut (*({a}).write().unwrap())"));
-                                    } else {
-                                        let mut prefix = "&mut ";
-                                        for (name, kind, _) in &parent_fn.args() {
-                                            if name == &a {
-                                                if let ArgKind::Mut = kind {
-                                                    prefix = "";
-                                                }
-                                            }
-                                        }
-                                        argstrs.push(format!("{prefix}{a}"));
-                                    }
-                                }
-                                ArgKind::Ref | ArgKind::Deref => {
-                                    if needs_deref {
-                                        argstrs.push(format!("&(*({a}).read().unwrap())"));
-                                    } else {
-                                        argstrs.push(format!("&{a}"));
-                                    }
-                                }
-                                ArgKind::Own => {
-                                    if needs_deref {
-                                        argstrs.push(format!("(*({a}).read().unwrap()).clone()"));
-                                    } else if arg_is_shared {
-                                        argstrs.push(format!("{}.clone()", a));
-                                    } else {
-                                        argstrs.push(a.clone());
-                                    }
-                                }
-                            },
+                            _ => argstrs.push(render_arg(
+                                &a,
+                                arg_is_shared,
+                                needs_deref,
+                                &function.args()[i].1,
+                                parent_fn,
+                            )),
                         }
                     }
                     if let FnKind::ExternalBind(_, d) = &function.kind {
