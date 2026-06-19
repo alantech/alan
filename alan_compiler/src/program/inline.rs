@@ -123,11 +123,16 @@ fn expr_is_substitutable(ms: &Microstatement) -> bool {
         Microstatement::Array { vals, .. } => vals.iter().all(expr_is_substitutable),
         Microstatement::Assignment { value, .. } => expr_is_substitutable(value),
         Microstatement::Return { value: Some(v) } => expr_is_substitutable(v),
-        // `NativeCall` bodies (the native method/property leaf wrappers) are not
-        // inlined yet: their receiver may be consumed by the native method (e.g.
-        // `unwrap` takes the value by ownership), which needs the move/last-use
-        // analysis we haven't implemented. Excluding them keeps this refactor
-        // behavior-preserving.
+        // `NativeCall` bodies (native method/property leaf wrappers, e.g.
+        // `arg0.unwrap()`) are substitutable. The receiver may be *consumed* by
+        // the native method, but that is sound to inline whenever the wrapper's
+        // corresponding parameter is declared `Own`: the caller has already
+        // relinquished ownership at the call site, so moving the substituted
+        // argument in the body happens at the same program point. The per-param
+        // `ArgKind` gating in `build_inline_substitution`/`build_multi_inline`
+        // enforces that (a `Ref`/`Deref` param appearing as a NativeCall arg is
+        // rejected by `param_only_borrowed`).
+        Microstatement::NativeCall { args, .. } => args.iter().all(expr_is_substitutable),
         _ => false,
     }
 }
@@ -173,7 +178,46 @@ fn param_only_borrowed(ms: &Microstatement, name: &str) -> bool {
         // A direct `let y = <param>` moves the parameter into the local.
         Microstatement::Assignment { value, .. } => !is_named(value) && param_only_borrowed(value, name),
         Microstatement::Return { value: Some(v) } => !is_named(v) && param_only_borrowed(v, name),
+        // A `NativeCall` carries no per-argument `ArgKind` (the receiver's
+        // `Own`/`Ref` kind is lost when lowered from the bind signature), and a
+        // native method may consume its receiver (e.g. `unwrap`). So treat a
+        // direct appearance of the parameter as *any* native-call argument
+        // (receiver or otherwise) as a potential consume; only nested borrowed
+        // sub-positions are borrow-only.
+        Microstatement::NativeCall { args, .. } => {
+            args.iter().all(|a| !is_named(a) && param_only_borrowed(a, name))
+        }
         _ => true,
+    }
+}
+
+/// Decides whether a single parameter of an inline candidate is safe to
+/// substitute, given how it is used across the body expression(s) `exprs` and
+/// its declared `ArgKind`/type.
+///
+/// - `Own`: the caller already moved the argument into the call at this site, so
+///   consuming (or projecting/moving out of) the parameter in the body happens
+///   at the same program point and preserves semantics. No borrow-only or
+///   movable-projection restriction applies. (The duplication rule in the caller
+///   still prevents re-evaluating a non-trivial argument.)
+/// - `Ref`/`Deref`: the caller passed a borrow (`&T`)/copy, so the body may only
+///   borrow the parameter — moving or projecting-and-moving out of it would
+///   move/alias the caller's value. Enforced via `param_only_borrowed` plus the
+///   movable-projection check.
+/// - `Mut`: not inlined (mutating through a `&mut` parameter is out of scope).
+fn param_is_inlinable(
+    exprs: &[&Microstatement],
+    name: &str,
+    kind: &ArgKind,
+    ptypen: &CType,
+) -> bool {
+    match kind {
+        ArgKind::Own => true,
+        ArgKind::Ref | ArgKind::Deref => {
+            !type_has_movable_projection(ptypen)
+                && exprs.iter().all(|e| param_only_borrowed(e, name))
+        }
+        ArgKind::Mut => false,
     }
 }
 
@@ -349,15 +393,8 @@ pub fn build_inline_substitution(
     }
     let expr = single_return_expr(function)?;
     let mut subs = HashMap::new();
-    for ((pname, _kind, ptypen), arg) in params.iter().zip(args.iter()) {
-        // A parameter whose type can have a field/element moved out of it is
-        // unsafe to inline (a `b.0`-style projection would move the caller's val).
-        if type_has_movable_projection(ptypen) {
-            return None;
-        }
-        // The parameter must only be borrowed in the body, otherwise inlining
-        // would move/mutate the caller's value (see `param_only_borrowed`).
-        if !param_only_borrowed(expr, pname) {
+    for ((pname, kind, ptypen), arg) in params.iter().zip(args.iter()) {
+        if !param_is_inlinable(&[expr], pname, kind, ptypen) {
             return None;
         }
         let uses = count_var_uses(expr, pname);
@@ -434,6 +471,20 @@ pub fn rewrite(
                 .as_ref()
                 .map(|v| Box::new(rewrite(v, param_subs, local_renames))),
         },
+        Microstatement::NativeCall {
+            typen,
+            kind,
+            name,
+            args,
+        } => Microstatement::NativeCall {
+            typen: typen.clone(),
+            kind: kind.clone(),
+            name: name.clone(),
+            args: args
+                .iter()
+                .map(|a| rewrite(a, param_subs, local_renames))
+                .collect(),
+        },
         _ => ms.clone(),
     }
 }
@@ -508,16 +559,10 @@ pub fn build_multi_inline(
         }
     }
     let mut param_subs = HashMap::new();
-    for ((pname, _kind, ptypen), arg) in params.iter().zip(args.iter()) {
-        // A parameter whose type can have a field/element moved out of it is
-        // unsafe to inline (a `b.0`-style projection would move the caller's val).
-        if type_has_movable_projection(ptypen) {
-            return None;
-        }
-        // Every use across all statements and the tail must be borrow-only.
-        let borrowed = stmts.iter().all(|s| param_only_borrowed(s, pname))
-            && param_only_borrowed(tail, pname);
-        if !borrowed {
+    let mut exprs: Vec<&Microstatement> = stmts.clone();
+    exprs.push(tail);
+    for ((pname, kind, ptypen), arg) in params.iter().zip(args.iter()) {
+        if !param_is_inlinable(&exprs, pname, kind, ptypen) {
             return None;
         }
         let uses: usize = stmts.iter().map(|s| count_var_uses(s, pname)).sum::<usize>()
