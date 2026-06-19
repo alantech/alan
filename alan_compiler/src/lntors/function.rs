@@ -201,6 +201,28 @@ fn is_borrowable_ref_arg(name: &str, parent_fn: &Function) -> bool {
             .any(|ms| ref_arg_escapes(ms, name))
 }
 
+/// Returns true if the rendered Rust type string is a primitive scalar whose
+/// literal form is type-ambiguous (`{integer}`/`{float}`) without an explicit
+/// annotation. Used to decide whether to annotate a `let` binding.
+fn is_primitive_scalar_rtype(s: &str) -> bool {
+    matches!(
+        s,
+        "i8" | "i16"
+            | "i32"
+            | "i64"
+            | "i128"
+            | "isize"
+            | "u8"
+            | "u16"
+            | "u32"
+            | "u64"
+            | "u128"
+            | "usize"
+            | "f32"
+            | "f64"
+    )
+}
+
 fn render_arg(
     a: &str,
     arg_is_shared: bool,
@@ -375,11 +397,31 @@ pub fn from_microstatement(
             } else {
                 final_val
             };
+            // Annotate primitive scalar bindings (`let x: i64 = ...`) so Rust does
+            // not leave the type ambiguous (`{integer}`/`{float}`). The function
+            // boundary used to pin these types; without an annotation, inlining a
+            // bound method onto such a binding (e.g. `e.exp()`) fails to resolve.
+            // `shared_vars` also captures bindings whose RHS is a deep `.clone()`
+            // of a `Shared` value (rendered as `Arc<RwLock<T>>`) even though the
+            // value's `get_type()` reports the inner `T`; annotating those with the
+            // inner primitive type would mismatch the `Arc` they actually hold.
+            let annotation = if is_shared || is_shared_var || shared_vars.contains_key(name) {
+                String::new()
+            } else {
+                let (rtype_str, d) = typen::ctype_to_rtype(value_type.clone(), deps)?;
+                deps = d;
+                if is_primitive_scalar_rtype(&rtype_str) {
+                    format!(": {rtype_str}")
+                } else {
+                    String::new()
+                }
+            };
             Ok((
                 format!(
-                    "let {}{} = {}",
+                    "let {}{}{} = {}",
                     if *mutable { "mut " } else { "" },
                     name,
+                    annotation,
                     assigned
                 ),
                 out,
