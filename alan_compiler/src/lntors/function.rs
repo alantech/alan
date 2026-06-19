@@ -124,6 +124,51 @@ fn render_arg(
     }
 }
 
+/// Render a microstatement that is expected to be a no-argument closure as a
+/// bare Rust block (`{ ... }`), suitable for inlining into `if`/`while` control
+/// flow. This replaces fragile `replacen("|| {", "{", 1)` string surgery with a
+/// structural render that mirrors the `Microstatement::Closure` arm. Falls back
+/// to rendering the value and stripping the closure prefix for any non-closure
+/// or argument-bearing input, preserving the previous behavior exactly.
+#[allow(clippy::type_complexity)]
+fn render_inline_block(
+    microstatement: &Microstatement,
+    parent_fn: &Function,
+    shared_vars: &OrderedHashMap<String, Arc<CType>>,
+    scope: &Scope,
+    mut out: OrderedHashMap<String, String>,
+    mut deps: OrderedHashMap<String, String>,
+) -> Result<
+    (
+        String,
+        OrderedHashMap<String, String>,
+        OrderedHashMap<String, String>,
+    ),
+    Box<dyn std::error::Error>,
+> {
+    if let Microstatement::Closure { function } = microstatement {
+        if function.args().is_empty() {
+            let mut inner_statements = Vec::new();
+            for ms in &function.microstatements {
+                let (val, o, d) =
+                    from_microstatement(ms, parent_fn, shared_vars, scope, out, deps)?;
+                out = o;
+                deps = d;
+                inner_statements.push(val);
+            }
+            return Ok((
+                format!("{{\n        {};\n    }}", inner_statements.join(";\n        ")),
+                out,
+                deps,
+            ));
+        }
+    }
+    // Fallback: render normally and strip the closure prefix textually.
+    let (val, o, d) =
+        from_microstatement(microstatement, parent_fn, shared_vars, scope, out, deps)?;
+    Ok((val.replacen("|| {", "{", 1), o, d))
+}
+
 #[allow(clippy::type_complexity)]
 pub fn from_microstatement(
     microstatement: &Microstatement,
@@ -370,8 +415,8 @@ pub fn from_microstatement(
                     let conditional = res.0;
                     out = res.1;
                     deps = res.2;
-                    let res = from_microstatement(&args[1], parent_fn, shared_vars, scope, out, deps)?;
-                    let successblock = res.0.replacen("|| {", "{", 1);
+                    let res = render_inline_block(&args[1], parent_fn, shared_vars, scope, out, deps)?;
+                    let successblock = res.0;
                     out = res.1;
                     deps = res.2;
                     return Ok((
@@ -384,12 +429,12 @@ pub fn from_microstatement(
                     let conditional = res.0;
                     out = res.1;
                     deps = res.2;
-                    let res = from_microstatement(&args[1], parent_fn, shared_vars, scope, out, deps)?;
-                    let successblock = res.0.replacen("|| {", "{", 1);
+                    let res = render_inline_block(&args[1], parent_fn, shared_vars, scope, out, deps)?;
+                    let successblock = res.0;
                     out = res.1;
                     deps = res.2;
-                    let res = from_microstatement(&args[2], parent_fn, shared_vars, scope, out, deps)?;
-                    let failblock = res.0.replacen("|| {", "{", 1);
+                    let res = render_inline_block(&args[2], parent_fn, shared_vars, scope, out, deps)?;
+                    let failblock = res.0;
                     out = res.1;
                     deps = res.2;
                     return Ok((
@@ -398,6 +443,11 @@ pub fn from_microstatement(
                         deps,
                     ));
                 } else if fname == "whileloophack" {
+                    // The condition closure ends in `return <expr>;`. We flatten it into a
+                    // block-expression (`{ setup; <expr> }`) by splitting off the trailing
+                    // return. This remains string-based because reproducing the exact
+                    // whitespace structurally is not worth the churn; the loop body, however,
+                    // is rendered structurally via `render_inline_block` below.
                     let res = from_microstatement(&args[0], parent_fn, shared_vars, scope, out, deps)?;
                     let conditionalparts = res.0.split("return").collect::<Vec<&str>>();
                     let conditional = [conditionalparts[0], &conditionalparts[1].replace(";", "")]
@@ -405,8 +455,8 @@ pub fn from_microstatement(
                         .replacen("|| {", "{", 1);
                     out = res.1;
                     deps = res.2;
-                    let res = from_microstatement(&args[1], parent_fn, shared_vars, scope, out, deps)?;
-                    let loopblock = res.0.replacen("|| {", "{", 1);
+                    let res = render_inline_block(&args[1], parent_fn, shared_vars, scope, out, deps)?;
+                    let loopblock = res.0;
                     out = res.1;
                     deps = res.2;
                     return Ok((
