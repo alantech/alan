@@ -123,6 +123,11 @@ fn expr_is_substitutable(ms: &Microstatement) -> bool {
         Microstatement::Array { vals, .. } => vals.iter().all(expr_is_substitutable),
         Microstatement::Assignment { value, .. } => expr_is_substitutable(value),
         Microstatement::Return { value: Some(v) } => expr_is_substitutable(v),
+        // `NativeCall` bodies (the native method/property leaf wrappers) are not
+        // inlined yet: their receiver may be consumed by the native method (e.g.
+        // `unwrap` takes the value by ownership), which needs the move/last-use
+        // analysis we haven't implemented. Excluding them keeps this refactor
+        // behavior-preserving.
         _ => false,
     }
 }
@@ -278,6 +283,11 @@ fn walk(
         Microstatement::Closure { function } => {
             for m in &function.microstatements {
                 walk(m, counts, bodies, visited);
+            }
+        }
+        Microstatement::NativeCall { args, .. } => {
+            for a in args {
+                walk(a, counts, bodies, visited);
             }
         }
         Microstatement::Value { .. } | Microstatement::Arg { .. } | Microstatement::Return { .. } => {

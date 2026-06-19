@@ -5,6 +5,7 @@ use weak_table::PtrWeakKeyHashMap;
 
 use super::function::{type_to_args, type_to_rettype};
 use super::ArgKind;
+use super::NativeCallKind;
 use super::Export;
 use super::FnKind;
 use super::Function;
@@ -13,6 +14,21 @@ use super::Program;
 use super::Scope;
 use super::TypeOperatorMapping;
 use crate::parse;
+
+/// For a native bind argument, returns its rendered representation and whether it
+/// was "trimmed" — i.e. a compile-time literal (`Int`/`Float`/`Bool`/`TString`)
+/// inlined directly into the generated code rather than passed as a runtime
+/// parameter. Non-literal arguments render as their parameter name (which keeps
+/// them structurally substitutable downstream).
+fn native_arg_repr(arg: &(String, ArgKind, Arc<CType>)) -> (String, bool) {
+    match &*arg.2 {
+        CType::Int(i) => (format!("{i}"), true),
+        CType::Float(f) => (format!("{f}"), true),
+        CType::Bool(b) => ((if *b { "true" } else { "false" }).to_string(), true),
+        CType::TString(s) => (format!("\"{}\"", s.replace('"', "\\\"")), true),
+        _ => (arg.0.clone(), false),
+    }
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum CType {
@@ -3059,63 +3075,29 @@ impl CType {
                         },
                         CType::Method(f) => match &**f {
                             CType::TString(s) => {
-                                let arg_car = args[0].clone();
-                                let arg_cdr = args.clone().split_off(1);
+                                // Keep the receiver and arguments structural (one
+                                // `Value` each) so they can be substituted later; the
+                                // `recv.name(rest)` serialization now lives in each
+                                // codegen layer (identical for Rust and JS).
+                                let native_args = args
+                                    .iter()
+                                    .map(|arg| {
+                                        let (repr, trimmed) = native_arg_repr(arg);
+                                        if trimmed {
+                                            trimmed_args = true;
+                                        }
+                                        Microstatement::Value {
+                                            typen: arg.2.clone(),
+                                            representation: repr,
+                                        }
+                                    })
+                                    .collect::<Vec<Microstatement>>();
                                 microstatements.push(Microstatement::Return {
-                                    value: Some(Box::new(Microstatement::Value {
+                                    value: Some(Box::new(Microstatement::NativeCall {
                                         typen: rettype.clone(),
-                                        representation: format!(
-                                            "{}.{}({})",
-                                            match &*arg_car.2 {
-                                                CType::Int(i) => {
-                                                    trimmed_args = true;
-                                                    format!("{i}")
-                                                }
-                                                CType::Float(f) => {
-                                                    trimmed_args = true;
-                                                    format!("{f}")
-                                                }
-                                                CType::Bool(b) => {
-                                                    trimmed_args = true;
-                                                    match b {
-                                                        true => "true".to_string(),
-                                                        false => "false".to_string(),
-                                                    }
-                                                }
-                                                CType::TString(s) => {
-                                                    trimmed_args = true;
-                                                    format!("\"{}\"", s.replace("\"", "\\\""))
-                                                }
-                                                _ => arg_car.0.clone(),
-                                            },
-                                            s,
-                                            arg_cdr
-                                                .into_iter()
-                                                .map(|a| match &*a.2 {
-                                                    CType::Int(i) => {
-                                                        trimmed_args = true;
-                                                        format!("{i}")
-                                                    }
-                                                    CType::Float(f) => {
-                                                        trimmed_args = true;
-                                                        format!("{f}")
-                                                    }
-                                                    CType::Bool(b) => {
-                                                        trimmed_args = true;
-                                                        match b {
-                                                            true => "true".to_string(),
-                                                            false => "false".to_string(),
-                                                        }
-                                                    }
-                                                    CType::TString(s) => {
-                                                        trimmed_args = true;
-                                                        format!("\"{}\"", s.replace("\"", "\\\""))
-                                                    }
-                                                    _ => a.0.clone(),
-                                                })
-                                                .collect::<Vec<String>>()
-                                                .join(", ")
-                                        ),
+                                        kind: NativeCallKind::Method,
+                                        name: s.clone(),
+                                        args: native_args,
                                     })),
                                 });
                             }
@@ -3128,36 +3110,19 @@ impl CType {
                                 if args.len() > 1 {
                                     CType::fail(&format!("Property bindings may only have one argument, the value the property is accessed from. Not {args:?}"))
                                 } else {
-                                    let arg_car = args[0].clone();
+                                    let (repr, trimmed) = native_arg_repr(&args[0]);
+                                    if trimmed {
+                                        trimmed_args = true;
+                                    }
                                     microstatements.push(Microstatement::Return {
-                                        value: Some(Box::new(Microstatement::Value {
+                                        value: Some(Box::new(Microstatement::NativeCall {
                                             typen: rettype.clone(),
-                                            representation: format!(
-                                                "{}.{}",
-                                                match &*arg_car.2 {
-                                                    CType::Int(i) => {
-                                                        trimmed_args = true;
-                                                        format!("{i}")
-                                                    }
-                                                    CType::Float(f) => {
-                                                        trimmed_args = true;
-                                                        format!("{f}")
-                                                    }
-                                                    CType::Bool(b) => {
-                                                        trimmed_args = true;
-                                                        match b {
-                                                            true => "true".to_string(),
-                                                            false => "false".to_string(),
-                                                        }
-                                                    }
-                                                    CType::TString(s) => {
-                                                        trimmed_args = true;
-                                                        format!("\"{}\"", s.replace("\"", "\\\""))
-                                                    }
-                                                    _ => arg_car.0.clone(),
-                                                },
-                                                s,
-                                            ),
+                                            kind: NativeCallKind::Property,
+                                            name: s.clone(),
+                                            args: vec![Microstatement::Value {
+                                                typen: args[0].2.clone(),
+                                                representation: repr,
+                                            }],
                                         })),
                                     });
                                 }

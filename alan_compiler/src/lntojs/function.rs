@@ -6,7 +6,9 @@ use ordered_hash_map::OrderedHashMap;
 
 use crate::lntojs::typen;
 use crate::parse::{booln, integer, real};
-use crate::program::{ArgKind, CType, CfnKind, FnKind, Function, Microstatement, Program, Scope};
+use crate::program::{
+    ArgKind, CType, CfnKind, FnKind, Function, Microstatement, NativeCallKind, Program, Scope,
+};
 
 #[allow(clippy::type_complexity)]
 pub fn from_microstatement(
@@ -219,6 +221,50 @@ pub fn from_microstatement(
                 deps = d;
             }
             Ok((format!("[{}]", val_representations.join(", ")), out, deps))
+        }
+        Microstatement::NativeCall {
+            typen,
+            kind,
+            name,
+            args,
+        } => {
+            // Serialize a native method/property here in the codegen layer (the
+            // syntax is identical for Rust and JS). `args[0]` is the receiver.
+            // A `Value` argument is emitted by its raw representation (a parameter
+            // name or an inlined literal) so the native construct operates on the
+            // value directly. Non-`Value` arguments (only possible once these are
+            // inlined) render normally.
+            let mut rendered = Vec::new();
+            for a in args {
+                let s = if let Microstatement::Value { representation, .. } = a {
+                    representation.clone()
+                } else {
+                    let (s, o, d) = from_microstatement(a, parent_fn, scope, out, deps)?;
+                    out = o;
+                    deps = d;
+                    s
+                };
+                rendered.push(s);
+            }
+            let (recv, rest) = rendered
+                .split_first()
+                .expect("NativeCall always has a receiver argument");
+            let call = match kind {
+                NativeCallKind::Method => format!("{}.{}({})", recv, name, rest.join(", ")),
+                NativeCallKind::Property => format!("{}.{}", recv, name),
+            };
+            // Apply the result type's serialization by rendering the assembled call
+            // through the `Value` handler with the call's return type.
+            from_microstatement(
+                &Microstatement::Value {
+                    typen: typen.clone(),
+                    representation: call,
+                },
+                parent_fn,
+                scope,
+                out,
+                deps,
+            )
         }
         Microstatement::FnCall { function, args } => {
             let mut arg_types = Vec::new();

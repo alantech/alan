@@ -50,6 +50,27 @@ pub enum Microstatement {
     Return {
         value: Option<Box<Microstatement>>,
     }, // TODO: Conditionals
+    /// A call into a native construct of the target language whose syntax is
+    /// shared across our backends (a method `recv.name(rest)` or a property
+    /// access `recv.name`). `args[0]` is always the receiver. Unlike the old
+    /// approach of baking a pre-rendered code string into a `Value`, the
+    /// arguments are kept structurally so they can be substituted (e.g. by the
+    /// inliner) and serialized by each codegen layer.
+    NativeCall {
+        typen: Arc<CType>,
+        kind: NativeCallKind,
+        name: String,
+        args: Vec<Microstatement>,
+    },
+}
+
+/// The kind of native construct a `Microstatement::NativeCall` represents.
+#[derive(Clone, Debug, PartialEq)]
+pub enum NativeCallKind {
+    /// `recv.name(rest_args...)`
+    Method,
+    /// `recv.name` (no call parens; exactly one arg, the receiver)
+    Property,
 }
 
 impl Microstatement {
@@ -66,6 +87,7 @@ impl Microstatement {
             Self::FnCall { function, args: _ } => function.rettype(),
             Self::Closure { function } => function.typen.clone(),
             Self::VarCall { typen, .. } => typen.clone(),
+            Self::NativeCall { typen, .. } => typen.clone(),
         }
     }
 }

@@ -5,7 +5,9 @@ use std::sync::Arc;
 use ordered_hash_map::OrderedHashMap;
 
 use crate::lntors::typen;
-use crate::program::{ArgKind, CType, CfnKind, FnKind, Function, Microstatement, Program, Scope};
+use crate::program::{
+    ArgKind, CType, CfnKind, FnKind, Function, Microstatement, NativeCallKind, Program, Scope,
+};
 
 /// Build a map of variable names to the inner type of their Shared{T} wrapper,
 /// by tracing variable assignments back to their origin. A variable is considered
@@ -99,6 +101,7 @@ fn references_var(ms: &Microstatement, name: &str) -> bool {
             .microstatements
             .iter()
             .any(|m| references_var(m, name)),
+        Microstatement::NativeCall { args, .. } => args.iter().any(|a| references_var(a, name)),
         Microstatement::Arg { .. } => false,
     }
 }
@@ -145,6 +148,11 @@ fn ref_arg_escapes(ms: &Microstatement, name: &str) -> bool {
             .microstatements
             .iter()
             .any(|m| references_var(m, name)),
+        // Conservatively treat use as a native method/property receiver/arg as an
+        // escape (a method may consume its receiver, e.g. `unwrap`).
+        Microstatement::NativeCall { args, .. } => {
+            args.iter().any(|a| is_named(a) || ref_arg_escapes(a, name))
+        }
         Microstatement::Value { .. } | Microstatement::Arg { .. } => false,
     }
 }
@@ -530,6 +538,53 @@ pub fn from_microstatement(
                 out,
                 deps,
             ))
+        }
+        Microstatement::NativeCall {
+            typen,
+            kind,
+            name,
+            args,
+        } => {
+            // Serialize a native method/property here in the codegen layer (the
+            // syntax is identical for Rust and JS). `args[0]` is the receiver.
+            // A `Value` argument is emitted by its raw representation (a parameter
+            // name or an inlined literal) so the native construct operates on the
+            // value directly. Non-`Value` arguments (only possible once these are
+            // inlined) render normally.
+            let mut rendered = Vec::new();
+            for a in args {
+                let s = if let Microstatement::Value { representation, .. } = a {
+                    representation.clone()
+                } else {
+                    let (s, o, d) =
+                        from_microstatement(a, parent_fn, shared_vars, scope, out, deps)?;
+                    out = o;
+                    deps = d;
+                    s
+                };
+                rendered.push(s);
+            }
+            let (recv, rest) = rendered
+                .split_first()
+                .expect("NativeCall always has a receiver argument");
+            let call = match kind {
+                NativeCallKind::Method => format!("{}.{}({})", recv, name, rest.join(", ")),
+                NativeCallKind::Property => format!("{}.{}", recv, name),
+            };
+            // Apply the result type's serialization (e.g. wrapping a `&str` result
+            // in `.to_string()` for a `string` return) by rendering the assembled
+            // call through the `Value` handler with the call's return type.
+            from_microstatement(
+                &Microstatement::Value {
+                    typen: typen.clone(),
+                    representation: call,
+                },
+                parent_fn,
+                shared_vars,
+                scope,
+                out,
+                deps,
+            )
         }
         Microstatement::FnCall { function, args } => {
             // Hackery to inline `if` calls *if* it's safe to do so.

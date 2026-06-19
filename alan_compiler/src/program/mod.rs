@@ -23,6 +23,7 @@ pub use fnkind::FnKind;
 
 pub use function::Function;
 pub use microstatement::Microstatement;
+pub use microstatement::NativeCallKind;
 pub use operatormapping::OperatorMapping;
 pub use program::Program;
 pub use scope::Scope;
