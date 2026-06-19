@@ -173,22 +173,23 @@ fn param_only_borrowed(ms: &Microstatement, name: &str) -> bool {
 }
 
 /// Returns true if the type (after unwrapping `Type`/`Group`/`Shared`) supports
-/// moving a field/element out of it (tuples, structs, fixed buffers, arrays, sum
-/// types). Inlining a parameter of such a type is unsafe because the body may
-/// project-and-move out of it (e.g. `b.0`), which — once the parameter is the
-/// caller's own value rather than the function's private copy — moves out of the
-/// caller's value. Scalars, strings, and opaque bound types have no such movable
+/// moving a field/element out of it via an accessor that borrows the whole value
+/// (tuple `.N`, struct fields, fixed buffers, arrays). Inlining a parameter of
+/// such a type is unsafe because the body may project-and-move out of it (e.g.
+/// `b.0`), which — once the parameter is the caller's own value rather than the
+/// function's private copy — moves out of the caller's value.
+///
+/// `Either`/sum types are deliberately excluded: their variant access either
+/// clones or takes ownership (an `Own` argument, already caught by the escape
+/// analysis), so a borrowed sum value is never moved out from behind the
+/// reference. Scalars, strings, and opaque bound types likewise have no movable
 /// projections.
 fn type_has_movable_projection(t: &CType) -> bool {
     match t {
         CType::Type(_, inner) | CType::Group(inner) | CType::Shared(inner) => {
             type_has_movable_projection(inner)
         }
-        CType::Tuple(..)
-        | CType::Buffer(..)
-        | CType::Array(_)
-        | CType::Either(..)
-        | CType::Field(..) => true,
+        CType::Tuple(..) | CType::Buffer(..) | CType::Array(_) | CType::Field(..) => true,
         _ => false,
     }
 }
