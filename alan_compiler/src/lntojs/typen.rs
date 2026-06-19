@@ -96,40 +96,7 @@ pub fn ctype_to_jtype(
             CType::Binds(name, _) => match &**name {
                 CType::TString(_) => Ok(("".to_string(), deps)),
                 CType::Import(n, d) => {
-                    match &**d {
-                            CType::Type(_, t) => match &**t {
-                                CType::Nodejs(d) => match &**d {
-                                    CType::Dependency(n, v) => {
-                                        let name = match &**n {
-                                            CType::TString(s) => s.clone(),
-                                            _ => CType::fail("Dependency name must be a string"),
-                                        };
-                                        let version = match &**v {
-                                            CType::TString(s) => s.clone(),
-                                            _ => CType::fail("Dependency version must be a string"),
-                                        };
-                                        deps.insert(name, version);
-                                    }
-                                    _ => CType::fail("Node.js dependencies must be declared with the dependency syntax"),
-                                }
-                                otherwise => CType::fail(&format!("Native imports compiled to Javascript *must* be declared Nodejs{{D}} dependencies: {otherwise:?}"))
-                            }
-                            CType::Nodejs(d) => match &**d {
-                                CType::Dependency(n, v) => {
-                                    let name = match &**n {
-                                        CType::TString(s) => s.clone(),
-                                        _ => CType::fail("Dependency name must be a string"),
-                                    };
-                                    let version = match &**v {
-                                        CType::TString(s) => s.clone(),
-                                        _ => CType::fail("Dependency version must be a string"),
-                                    };
-                                    deps.insert(name, version);
-                                }
-                                _ => CType::fail("Node.js dependencies must be declared with dependency syntax"),
-                            }
-                            otherwise => CType::fail(&format!("Native imports compiled to Javascript *must* be declared Nodejs{{D}} dependencies: {otherwise:?}"))
-                        }
+                    super::register_nodejs_dependency(&**d, &mut deps);
                     match &**n {
                         CType::TString(s) => s.clone(),
                         _ => CType::fail("Native import names must be strings"),
@@ -151,40 +118,7 @@ pub fn ctype_to_jtype(
             match &**n {
                 CType::TString(s) => Ok((s.clone(), deps)),
                 CType::Import(n, d) => {
-                    match &**d {
-                        CType::Type(_, t) => match &**t {
-                            CType::Nodejs(d) => match &**d {
-                                CType::Dependency(n, v) => {
-                                    let name = match &**n {
-                                        CType::TString(s) => s.clone(),
-                                        _ => CType::fail("Dependency name must be a string"),
-                                    };
-                                    let version = match &**v {
-                                        CType::TString(s) => s.clone(),
-                                        _ => CType::fail("Dependency version must be a string"),
-                                    };
-                                    deps.insert(name, version);
-                                }
-                                _ => CType::fail("Node.js dependencies must be declared with the dependency syntax"),
-                            }
-                            otherwise => CType::fail(&format!("Native imports compiled to Javascript must be declared Nodejs{{D}} dependencies: {otherwise:?}"))
-                        }
-                        CType::Nodejs(d) => match &**d {
-                            CType::Dependency(n, v) => {
-                                let name = match &**n {
-                                    CType::TString(s) => s.clone(),
-                                    _ => CType::fail("Dependency name must be a string"),
-                                };
-                                let version = match &**v {
-                                    CType::TString(s) => s.clone(),
-                                    _ => CType::fail("Dependency version must be a string"),
-                                };
-                                deps.insert(name, version);
-                            }
-                            _ => CType::fail("Node.js dependencies must be declared with the dependency syntax"),
-                        }
-                        otherwise => CType::fail(&format!("Native imports compiled to Javascript must be declared Nodejs{{D}} dependencies: {otherwise:?}"))
-                    }
+                    super::register_nodejs_dependency(&**d, &mut deps);
                     let native_type = match &**n {
                         CType::TString(s) => s.clone(),
                         _ => CType::fail("Native import names must be strings"),
