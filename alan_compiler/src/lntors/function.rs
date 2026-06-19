@@ -82,6 +82,114 @@ fn build_shared_vars(parent_fn: &Function) -> OrderedHashMap<String, Arc<CType>>
     shared_vars
 }
 
+/// Returns true if `name` is referenced anywhere within `ms` (recursively).
+fn references_var(ms: &Microstatement, name: &str) -> bool {
+    match ms {
+        Microstatement::Value { representation, .. } => representation == name,
+        Microstatement::Assignment { value, .. } => references_var(value, name),
+        Microstatement::Return { value } => match value {
+            Some(v) => references_var(v, name),
+            None => false,
+        },
+        Microstatement::FnCall { args, .. } | Microstatement::VarCall { args, .. } => {
+            args.iter().any(|a| references_var(a, name))
+        }
+        Microstatement::Array { vals, .. } => vals.iter().any(|v| references_var(v, name)),
+        Microstatement::Closure { function } => function
+            .microstatements
+            .iter()
+            .any(|m| references_var(m, name)),
+        Microstatement::Arg { .. } => false,
+    }
+}
+
+/// Returns true if the argument `name` is used anywhere in `ms` in a position
+/// that requires *owning* the value (move, mutate, deref-copy, return-by-value,
+/// alias, store-in-array, or capture-by-closure). Such uses make the
+/// "keep it as a borrow (`&T`) and elide the defensive clone" optimization
+/// unsafe. A use purely as an `ArgKind::Ref` argument is safe because the
+/// generated expression for it is a `&T` either way.
+fn ref_arg_escapes(ms: &Microstatement, name: &str) -> bool {
+    let is_named = |m: &Microstatement| {
+        matches!(m, Microstatement::Value { representation, .. } if representation == name)
+    };
+    match ms {
+        Microstatement::FnCall { function, args } => {
+            let params = function.args();
+            for (i, arg) in args.iter().enumerate() {
+                if is_named(arg) {
+                    // A direct use of the arg in call position is only safe when
+                    // the corresponding parameter takes it by reference (`&T`).
+                    match params.get(i).map(|p| &p.1) {
+                        Some(ArgKind::Ref) => {}
+                        _ => return true,
+                    }
+                } else if ref_arg_escapes(arg, name) {
+                    return true;
+                }
+            }
+            false
+        }
+        Microstatement::VarCall { args, .. } => {
+            // We don't have parameter kinds for an indirect call, so be conservative.
+            args.iter().any(|a| is_named(a) || ref_arg_escapes(a, name))
+        }
+        Microstatement::Return { value: Some(v) } => is_named(v) || ref_arg_escapes(v, name),
+        Microstatement::Return { value: None } => false,
+        Microstatement::Assignment { value, .. } => is_named(value) || ref_arg_escapes(value, name),
+        Microstatement::Array { vals, .. } => {
+            vals.iter().any(|v| is_named(v) || ref_arg_escapes(v, name))
+        }
+        // Conservatively treat any capture of the arg by a closure as an escape.
+        Microstatement::Closure { function } => function
+            .microstatements
+            .iter()
+            .any(|m| references_var(m, name)),
+        Microstatement::Value { .. } | Microstatement::Arg { .. } => false,
+    }
+}
+
+/// Returns true if the type (after unwrapping `Type`/`Group`/`Shared` wrappers)
+/// supports moving a field/element out of it (tuples, structs, fixed buffers,
+/// arrays, sum types). Keeping such a value as a borrow is unsafe because the
+/// body may project-and-move out of it (e.g. `b.0`), which is illegal behind a
+/// shared reference. Scalars, strings, and opaque bound types have no such
+/// movable projections.
+fn type_has_movable_projection(t: &CType) -> bool {
+    match t {
+        CType::Type(_, inner) | CType::Group(inner) | CType::Shared(inner) => {
+            type_has_movable_projection(inner)
+        }
+        CType::Tuple(..)
+        | CType::Buffer(..)
+        | CType::Array(_)
+        | CType::Either(..)
+        | CType::Field(..) => true,
+        _ => false,
+    }
+}
+
+/// Returns true if `name` is a non-`Shared`, `ArgKind::Ref` parameter of
+/// `parent_fn` that can be left as a borrow (`&T`) in the generated body instead
+/// of being defensively cloned into an owned local. This requires that:
+///   - its type has no movable field/element projections (see above), and
+///   - no use of it requires ownership (see `ref_arg_escapes`).
+/// We also restrict to non-`Shared` types to keep the (already subtle)
+/// `Shared{T}` deref/locking logic untouched for now.
+fn is_borrowable_ref_arg(name: &str, parent_fn: &Function) -> bool {
+    let is_ref_value_arg = parent_fn.args().iter().any(|(n, k, t)| {
+        n == name
+            && matches!(k, ArgKind::Ref)
+            && !matches!(&**t, CType::Shared(_))
+            && !type_has_movable_projection(t)
+    });
+    is_ref_value_arg
+        && !parent_fn
+            .microstatements
+            .iter()
+            .any(|ms| ref_arg_escapes(ms, name))
+}
+
 fn render_arg(
     a: &str,
     arg_is_shared: bool,
@@ -108,6 +216,10 @@ fn render_arg(
         ArgKind::Ref | ArgKind::Deref => {
             if needs_deref {
                 format!("&(*({a}).read().unwrap())")
+            } else if is_borrowable_ref_arg(a, parent_fn) {
+                // `a` is already a `&T` binding (its defensive clone was elided),
+                // so pass it straight through rather than re-borrowing it.
+                a.to_string()
             } else {
                 format!("&{a}")
             }
@@ -196,11 +308,20 @@ pub fn from_microstatement(
                     ArgKind::Mut => Ok(("".to_string(), out, deps)), // We actively want to mutate the argument, don't
                     // alias it
                     ArgKind::Own => Ok(("".to_string(), out, deps)), // We already own the value
-                    ArgKind::Ref => Ok((
-                        format!("let mut {name} = {name}.clone()"), // TODO: not always mutable
-                        out,
-                        deps,
-                    )), // TODO: Should these two be distinguished?
+                    ArgKind::Ref => {
+                        if is_borrowable_ref_arg(name, parent_fn) {
+                            // The argument is only ever used by reference, so keep it as the
+                            // incoming `&T` borrow instead of defensively cloning it into an
+                            // owned local. `render_arg` knows to pass it through directly.
+                            Ok(("".to_string(), out, deps))
+                        } else {
+                            Ok((
+                                format!("let mut {name} = {name}.clone()"), // TODO: not always mutable
+                                out,
+                                deps,
+                            ))
+                        }
+                    } // TODO: Should these two be distinguished?
                     ArgKind::Deref => Ok((
                         format!("let mut {name} = *{name}"), // TODO: not always mutable
                         out,
