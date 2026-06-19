@@ -78,6 +78,10 @@ pub fn lntors(
     // arguments.
     assert_eq!(func.len(), 1);
     assert_eq!(func[0].args().len(), 0);
+    // Determine which single-use functions can be inlined into their sole caller.
+    crate::program::inline::set_inline_targets(crate::program::inline::compute_inline_targets(
+        &func[0],
+    ));
     // Assertion proven, start emitting the Rust `main` function
     let (fns, deps) = fn_generate(
         "main".to_string(),

@@ -4,6 +4,7 @@ mod ctype;
 mod export;
 mod fnkind;
 mod function;
+pub mod inline;
 mod microstatement;
 mod operatormapping;
 #[allow(clippy::module_inception)]

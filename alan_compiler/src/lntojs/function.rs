@@ -241,6 +241,26 @@ pub fn from_microstatement(
                     Err("Generic functions should have been resolved before reaching here".into())
                 }
                 FnKind::Normal | FnKind::External(_) => {
+                    // If this function is called from exactly one site and is a single
+                    // `return <expr>`, inline it here by substituting its parameters for our
+                    // argument expressions, so the function itself is never emitted.
+                    if matches!(function.kind, FnKind::Normal)
+                        && crate::program::inline::is_inline_target(
+                            &crate::program::inline::fn_identity(function),
+                        )
+                    {
+                        if let Some(subs) =
+                            crate::program::inline::build_inline_substitution(function, args)
+                        {
+                            if let Some(expr) = crate::program::inline::single_return_expr(function)
+                            {
+                                let inlined = crate::program::inline::substitute(expr, &subs);
+                                return from_microstatement(
+                                    &inlined, parent_fn, scope, out, deps,
+                                );
+                            }
+                        }
+                    }
                     let (_, o, d) = typen::generate(function.rettype(), out, deps)?;
                     out = o;
                     deps = d;
