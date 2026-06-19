@@ -603,6 +603,7 @@ pub fn from_microstatement(
                             &crate::program::inline::fn_identity(function),
                         )
                     {
+                        // Single `return <expr>` body: inline as a pure expression.
                         if let Some(subs) =
                             crate::program::inline::build_inline_substitution(function, args)
                         {
@@ -617,6 +618,36 @@ pub fn from_microstatement(
                                     out,
                                     deps,
                                 );
+                            }
+                        }
+                        // Multi-statement body: inline as a block expression (which also lets
+                        // values drop early). Skip when the callee has `Shared` locals, whose
+                        // deref/clone rendering depends on a `shared_vars` map we don't thread in.
+                        if build_shared_vars(function).is_empty() {
+                            if let Some((stmts, tail)) =
+                                crate::program::inline::build_multi_inline(function, args)
+                            {
+                                let mut block = "{\n".to_string();
+                                for s in &stmts {
+                                    let (rendered, o, d) = from_microstatement(
+                                        s, parent_fn, shared_vars, scope, out, deps,
+                                    )?;
+                                    out = o;
+                                    deps = d;
+                                    block.push_str(&format!("        {rendered};\n"));
+                                }
+                                let (tail_str, o, d) = from_microstatement(
+                                    &tail, parent_fn, shared_vars, scope, out, deps,
+                                )?;
+                                out = o;
+                                deps = d;
+                                // Match the `Return` handler: the tail is a value, not a `&mut`.
+                                let tail_str = match tail_str.strip_prefix("&mut ") {
+                                    Some(s) => s.to_string(),
+                                    None => tail_str,
+                                };
+                                block.push_str(&format!("        {tail_str}\n    }}"));
+                                return Ok((block, out, deps));
                             }
                         }
                     }
