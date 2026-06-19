@@ -10,6 +10,58 @@ use crate::program::{
     ArgKind, CType, CfnKind, FnKind, Function, Microstatement, NativeCallKind, Program, Scope,
 };
 
+/// If `representation` is a compile-time literal of a primitive native type
+/// (`string`/`i64`/`u64`/`f64`/`bool`), returns it wrapped in the corresponding
+/// `alan_std` boxing class (`new alan_std.I64(1n)`, `new alan_std.Str("x")`,
+/// ...). Returns `None` for anything else — including a non-literal of those
+/// types (e.g. a variable/parameter name), which is already a boxed value and
+/// must be passed through untouched.
+///
+/// This is the single place that knows how primitive literals are boxed for the
+/// JS runtime, so both the `Value` handler and the `NativeCall` serializer (which
+/// may receive a substituted literal as a method receiver/argument once inlining
+/// is enabled) produce identical, valid output.
+fn box_native_value(typen: &CType, representation: &str) -> Option<String> {
+    match typen {
+        CType::Type(n, _) if n == "string" => {
+            if representation.starts_with('"') {
+                Some(format!(
+                    "new alan_std.Str({})",
+                    representation.replace('\n', "\\n")
+                ))
+            } else {
+                None
+            }
+        }
+        CType::Type(n, _) if n == "i64" || n == "u64" => {
+            if all_consuming(integer).parse(representation).is_ok() {
+                if n == "i64" {
+                    Some(format!("new alan_std.I64({representation}n)"))
+                } else {
+                    Some(format!("new alan_std.U64({representation}n)"))
+                }
+            } else {
+                None
+            }
+        }
+        CType::Type(n, _) if n == "f64" => {
+            if all_consuming(real).parse(representation).is_ok() {
+                Some(format!("new alan_std.F64({representation})"))
+            } else {
+                None
+            }
+        }
+        CType::Type(n, _) if n == "bool" => {
+            if all_consuming(booln).parse(representation).is_ok() {
+                Some(format!("new alan_std.Bool({representation})"))
+            } else {
+                None
+            }
+        }
+        _ => None,
+    }
+}
+
 #[allow(clippy::type_complexity)]
 pub fn from_microstatement(
     microstatement: &Microstatement,
@@ -80,41 +132,13 @@ pub fn from_microstatement(
             typen,
             representation,
         } => match &**typen {
-            CType::Type(n, _) if n == "string" => {
-                if representation.starts_with("\"") {
-                    Ok((
-                        format!("new alan_std.Str({})", representation.replace("\n", "\\n")),
-                        out,
-                        deps,
-                    ))
-                } else {
-                    Ok((representation.clone(), out, deps))
-                }
-            }
-            CType::Type(n, _) if n == "i64" || n == "u64" => {
-                if all_consuming(integer).parse(representation).is_ok() {
-                    if n == "i64" {
-                        Ok((format!("new alan_std.I64({representation}n)"), out, deps))
-                    } else {
-                        Ok((format!("new alan_std.U64({representation}n)"), out, deps))
-                    }
-                } else {
-                    Ok((representation.clone(), out, deps))
-                }
-            }
-            CType::Type(n, _) if n == "f64" => {
-                if all_consuming(real).parse(representation).is_ok() {
-                    Ok((format!("new alan_std.F64({representation})"), out, deps))
-                } else {
-                    Ok((representation.clone(), out, deps))
-                }
-            }
-            CType::Type(n, _) if n == "bool" => {
-                if all_consuming(booln).parse(representation).is_ok() {
-                    Ok((format!("new alan_std.Bool({representation})"), out, deps))
-                } else {
-                    Ok((representation.clone(), out, deps))
-                }
+            CType::Type(n, _) if n == "string" || n == "i64" || n == "u64" || n == "f64" || n == "bool" => {
+                Ok((
+                    box_native_value(typen, representation)
+                        .unwrap_or_else(|| representation.clone()),
+                    out,
+                    deps,
+                ))
             }
             CType::Binds(n, _) => match &**n {
                 CType::TString(_) => Ok((representation.clone(), out, deps)),
@@ -230,14 +254,21 @@ pub fn from_microstatement(
         } => {
             // Serialize a native method/property here in the codegen layer (the
             // syntax is identical for Rust and JS). `args[0]` is the receiver.
-            // A `Value` argument is emitted by its raw representation (a parameter
-            // name or an inlined literal) so the native construct operates on the
-            // value directly. Non-`Value` arguments (only possible once these are
-            // inlined) render normally.
+            // A `Value` argument that is a variable/parameter name is emitted
+            // directly (it is already a boxed runtime value); a `Value` that is a
+            // compile-time literal is boxed into its `alan_std` class via
+            // `box_native_value` so an inlined literal receiver/argument (e.g.
+            // `new alan_std.I64(1n).wrappingAdd(...)`) is valid and type-correct
+            // rather than a bare `1.wrappingAdd(...)`. Non-`Value` arguments (only
+            // possible once these are inlined) render normally.
             let mut rendered = Vec::new();
             for a in args {
-                let s = if let Microstatement::Value { representation, .. } = a {
-                    representation.clone()
+                let s = if let Microstatement::Value {
+                    typen: at,
+                    representation,
+                } = a
+                {
+                    box_native_value(at, representation).unwrap_or_else(|| representation.clone())
                 } else {
                     let (s, o, d) = from_microstatement(a, parent_fn, scope, out, deps)?;
                     out = o;
