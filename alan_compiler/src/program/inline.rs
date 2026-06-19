@@ -179,15 +179,75 @@ fn param_only_borrowed(ms: &Microstatement, name: &str) -> bool {
         Microstatement::Assignment { value, .. } => !is_named(value) && param_only_borrowed(value, name),
         Microstatement::Return { value: Some(v) } => !is_named(v) && param_only_borrowed(v, name),
         // A `NativeCall` carries no per-argument `ArgKind` (the receiver's
-        // `Own`/`Ref` kind is lost when lowered from the bind signature), and a
-        // native method may consume its receiver (e.g. `unwrap`). So treat a
-        // direct appearance of the parameter as *any* native-call argument
-        // (receiver or otherwise) as a potential consume; only nested borrowed
-        // sub-positions are borrow-only.
+        // `Own`/`Ref` kind is lost when lowered from the bind signature). A native
+        // method *can* consume its receiver (e.g. `unwrap`), but this function is
+        // only ever evaluated for a `Ref`/`Deref` parameter (see
+        // `param_is_inlinable`). A borrowed parameter that flows into a native
+        // call is provably only borrowed there: a wrapper `fn(arg0: &T) =
+        // arg0.method(..)` could not have compiled if `method` moved out of the
+        // `&T` receiver/argument. So a direct appearance of the parameter as any
+        // native-call argument is a borrow; only nested sub-expressions need to be
+        // checked recursively.
         Microstatement::NativeCall { args, .. } => {
-            args.iter().all(|a| !is_named(a) && param_only_borrowed(a, name))
+            args.iter().all(|a| is_named(a) || param_only_borrowed(a, name))
         }
         _ => true,
+    }
+}
+
+/// Returns true if `s` is a plain identifier path (a variable/parameter
+/// reference such as `v` or `n.foo`), as opposed to a compile-time literal
+/// (`1`, `3.14`, `true`, `"x"`). Used to decide whether substituting an argument
+/// into a native-call position (which bypasses call-site conversion) is safe.
+fn is_plain_identifier(s: &str) -> bool {
+    if s == "true" || s == "false" {
+        return false;
+    }
+    let mut chars = s.chars();
+    match chars.next() {
+        Some(c) if c.is_ascii_alphabetic() || c == '_' => {}
+        _ => return false,
+    }
+    s.chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '.' || c == ':')
+}
+
+/// Returns true if substituting `arg` into a `NativeCall` position is safe.
+/// `NativeCall` arguments render by their raw representation (a method receiver
+/// or native argument), bypassing the conversions a normal call boundary applies
+/// — e.g. the Rust backend leaves an integer literal type-ambiguous (`{integer}`,
+/// so `1.wrapping_mul(..)` does not resolve), and a literal would also drop a
+/// wrapping/coercion. A plain variable/parameter reference is already the
+/// converted, concretely-typed value (and primitive bindings are now annotated),
+/// so it is safe; any non-`Value` expression renders through normal codegen.
+fn arg_is_conversion_free(arg: &Microstatement) -> bool {
+    match arg {
+        Microstatement::Value { representation, .. } => is_plain_identifier(representation),
+        _ => true,
+    }
+}
+
+/// Returns true if the parameter `name` appears as a *direct argument* of a
+/// `NativeCall` anywhere in `ms` (the receiver or another native argument).
+/// Such a position renders the substituted argument by its raw representation,
+/// bypassing call-site conversion, so a literal argument there is unsafe.
+fn param_used_as_native_arg(ms: &Microstatement, name: &str) -> bool {
+    let is_named = |m: &Microstatement| {
+        matches!(m, Microstatement::Value { representation, .. } if representation == name)
+    };
+    match ms {
+        Microstatement::NativeCall { args, .. } => args
+            .iter()
+            .any(|a| is_named(a) || param_used_as_native_arg(a, name)),
+        Microstatement::FnCall { args, .. } | Microstatement::VarCall { args, .. } => {
+            args.iter().any(|a| param_used_as_native_arg(a, name))
+        }
+        Microstatement::Array { vals, .. } => {
+            vals.iter().any(|v| param_used_as_native_arg(v, name))
+        }
+        Microstatement::Assignment { value, .. } => param_used_as_native_arg(value, name),
+        Microstatement::Return { value: Some(v) } => param_used_as_native_arg(v, name),
+        _ => false,
     }
 }
 
@@ -397,6 +457,12 @@ pub fn build_inline_substitution(
         if !param_is_inlinable(&[expr], pname, kind, ptypen) {
             return None;
         }
+        // A parameter feeding a native-call position must be substituted by a
+        // conversion-free argument (rendered raw there, so a literal would lose
+        // its call-site coercion / be type-ambiguous).
+        if param_used_as_native_arg(expr, pname) && !arg_is_conversion_free(arg) {
+            return None;
+        }
         let uses = count_var_uses(expr, pname);
         let trivial = matches!(
             arg,
@@ -563,6 +629,13 @@ pub fn build_multi_inline(
     exprs.push(tail);
     for ((pname, kind, ptypen), arg) in params.iter().zip(args.iter()) {
         if !param_is_inlinable(&exprs, pname, kind, ptypen) {
+            return None;
+        }
+        // A parameter feeding a native-call position must be substituted by a
+        // conversion-free argument (see `build_inline_substitution`).
+        if exprs.iter().any(|e| param_used_as_native_arg(e, pname))
+            && !arg_is_conversion_free(arg)
+        {
             return None;
         }
         let uses: usize = stmts.iter().map(|s| count_var_uses(s, pname)).sum::<usize>()
