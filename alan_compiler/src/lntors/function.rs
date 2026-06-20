@@ -2461,7 +2461,12 @@ pub fn generate(
         },
     )
     .to_string();
-    for microstatement in &function.microstatements {
+    // Elide `clone(x)` calls that are the provable last use of `x`, moving the
+    // original instead. `shared_vars` (plus the value's own type) identifies the
+    // `Shared` values whose deep-clone-vs-handle-move aliasing must be preserved.
+    let is_shared_name = |name: &str| shared_vars.contains_key(name);
+    let body = crate::program::liveness::elide_last_use_clones(function, &is_shared_name);
+    for microstatement in &body {
         let (stmt, o, d) = from_microstatement(microstatement, function, &shared_vars, scope, out, deps)?;
         out = o;
         deps = d;

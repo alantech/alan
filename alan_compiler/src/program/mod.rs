@@ -5,6 +5,7 @@ mod export;
 mod fnkind;
 mod function;
 pub mod inline;
+pub mod liveness;
 mod microstatement;
 mod operatormapping;
 #[allow(clippy::module_inception)]
