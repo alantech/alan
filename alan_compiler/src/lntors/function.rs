@@ -242,14 +242,16 @@ fn param_name_promoted(function: &Function, name: &str) -> bool {
 }
 
 /// Returns true if `name` names a value the function body being emitted
-/// (`parent_fn`) owns and can move from: an `Own`/`Deref` parameter, or a local
+/// (`parent_fn`) owns and can move from: an `Own`/`Deref` parameter, a `Ref`
+/// parameter that was promoted to owned (see `promote_param_to_own`), or a local
 /// whose defining assignment produces a fresh owned value (anything other than a
 /// bare alias of another variable, which could be a borrow). Borrowed
-/// (`Ref`/`Mut`) parameters are never movable.
+/// (`Ref`/`Mut`) parameters that were not promoted are never movable.
 fn is_movable_owned(parent_fn: &Function, name: &str) -> bool {
     for (n, k, _) in parent_fn.args() {
         if n == name {
-            return matches!(k, ArgKind::Own | ArgKind::Deref);
+            return matches!(k, ArgKind::Own | ArgKind::Deref)
+                || param_name_promoted(parent_fn, name);
         }
     }
     for ms in &parent_fn.microstatements {
@@ -296,6 +298,37 @@ fn caller_can_move(parent_fn: &Function, name: &str) -> bool {
         .map(|m| liveness::count_uses(m, name))
         .sum();
     here == 1 && after == 0
+}
+
+/// Returns true if a single argument is safe to *consume* (move) at the current
+/// call site: a temporary/literal (any non-`Value`, or a `Value` that is not a
+/// known caller variable) is always movable, and a known variable is movable
+/// only when `caller_can_move` permits. Used to gate inlining a function that
+/// consumes the value supplied for a parameter.
+fn arg_safe_to_consume(arg: &Microstatement, parent_fn: &Function) -> bool {
+    match arg {
+        Microstatement::Value { representation, .. } if is_known_variable(parent_fn, representation) => {
+            caller_can_move(parent_fn, representation)
+        }
+        _ => true,
+    }
+}
+
+/// Returns true if inlining `function` at this call site is safe with respect to
+/// ownership: for every parameter the body would *consume*, the corresponding
+/// caller argument must be safe to move here. Inlining splices the body in,
+/// bypassing the call boundary's clone-protection (and any cascade of further
+/// inlines), so a consumed argument that is a still-live caller variable would be
+/// moved illegally. Pure-borrow parameters impose no constraint.
+fn inline_consumes_are_safe(
+    function: &Function,
+    args: &[Microstatement],
+    parent_fn: &Function,
+) -> bool {
+    args.iter().enumerate().all(|(i, arg)| {
+        !crate::program::inline::param_consumes_value(function, i)
+            || arg_safe_to_consume(arg, parent_fn)
+    })
 }
 
 /// Build a map of variable names to the inner type of their Shared{T} wrapper,
@@ -470,8 +503,7 @@ fn is_borrowable_ref_arg(name: &str, parent_fn: &Function) -> bool {
 }
 
 /// Returns true if the rendered Rust type string is a primitive scalar whose
-/// literal form is type-ambiguous (`{integer}`/`{float}`) without an explicit
-/// annotation. Used to decide whether to annotate a `let` binding.
+/// literal form is type-ambiguous (`{integer}`/`{float}`) without an annotation.
 fn is_primitive_scalar_rtype(s: &str) -> bool {
     matches!(
         s,
@@ -489,6 +521,86 @@ fn is_primitive_scalar_rtype(s: &str) -> bool {
             | "f32"
             | "f64"
     )
+}
+
+/// Renders `t` to a Rust type string and returns it only if it is a clean
+/// *single-type reference* suitable to nest inside `Option<..>`/`Vec<..>`: not
+/// empty, not a borrow/`impl`/`Fn` type, and free of the punctuation that marks
+/// tuples or multi-argument generics (`,` `(` `{` `#`, newlines). This guarantees
+/// the constructed annotation matches the value's rendered type.
+#[allow(clippy::type_complexity)]
+fn clean_element_rtype(
+    t: Arc<CType>,
+    deps: OrderedHashMap<String, String>,
+) -> Result<(Option<String>, OrderedHashMap<String, String>), Box<dyn std::error::Error>> {
+    let (s, deps) = typen::ctype_to_rtype(t, deps)?;
+    let clean = !s.is_empty()
+        && !s.starts_with('&')
+        && !s.starts_with("impl")
+        && !s.contains("Fn")
+        && !s.contains(['{', '}', '#', '\n', ',', '(', ')']);
+    Ok((if clean { Some(s) } else { None }, deps))
+}
+
+/// Builds the type annotation (`: T`, or empty) for a `let` binding of
+/// `value_type`. Only the ambiguous-but-reliable shapes are annotated (see the
+/// call site): primitive scalars, `Option<T>` (an `Either` with a `void`
+/// variant), and `Vec<T>` (arrays). The element type must render as a clean
+/// reference; anything else yields no annotation.
+#[allow(clippy::type_complexity)]
+fn let_binding_annotation(
+    value_type: Arc<CType>,
+    out: OrderedHashMap<String, String>,
+    mut deps: OrderedHashMap<String, String>,
+) -> Result<
+    (
+        String,
+        OrderedHashMap<String, String>,
+        OrderedHashMap<String, String>,
+    ),
+    Box<dyn std::error::Error>,
+> {
+    // Unwrap named `Type`/`Group` wrappers to the structural type the value
+    // actually renders as (e.g. `Maybe{i64}` -> `Either([i64, void])`).
+    let mut structural = value_type;
+    while let CType::Type(_, inner) | CType::Group(inner) = &*structural {
+        structural = inner.clone();
+    }
+    let anno = match &*structural {
+        CType::Array(inner) => {
+            let (el, d) = clean_element_rtype(inner.clone(), deps)?;
+            deps = d;
+            el.map(|s| format!(": Vec<{s}>"))
+        }
+        // `Option<T>`: an `Either` of exactly two variants, one of which is
+        // `void`. The other variant is the payload `T`.
+        CType::Either(variants, _)
+            if variants.len() == 2 && variants.iter().any(|v| matches!(&**v, CType::Void)) =>
+        {
+            let payload = variants
+                .iter()
+                .find(|v| !matches!(&***v, CType::Void))
+                .cloned();
+            match payload {
+                Some(p) => {
+                    let (el, d) = clean_element_rtype(p, deps)?;
+                    deps = d;
+                    el.map(|s| format!(": Option<{s}>"))
+                }
+                None => None,
+            }
+        }
+        _ => {
+            let (s, d) = typen::ctype_to_rtype(structural.clone(), deps)?;
+            deps = d;
+            if is_primitive_scalar_rtype(&s) {
+                Some(format!(": {s}"))
+            } else {
+                None
+            }
+        }
+    };
+    Ok((anno.unwrap_or_default(), out, deps))
 }
 
 fn render_arg(
@@ -674,24 +786,50 @@ pub fn from_microstatement(
             } else {
                 final_val
             };
-            // Annotate primitive scalar bindings (`let x: i64 = ...`) so Rust does
-            // not leave the type ambiguous (`{integer}`/`{float}`). The function
-            // boundary used to pin these types; without an annotation, inlining a
-            // bound method onto such a binding (e.g. `e.exp()`) fails to resolve.
+            // Annotate the binding's type (`let x: T = ...`) so Rust does not
+            // leave it ambiguous. The function-call boundary used to pin these
+            // types; folding/inlining the call away can remove the only
+            // constraint, leaving e.g. a `{integer}`/`{float}` literal or an
+            // unbound generic (`None`, `vec![]`) un-inferable. We annotate only a
+            // *fresh owned* value (a constructor/call/array result, not a bare
+            // `Value` alias of another variable -- whose rendered form could be a
+            // borrow `&T` that a `T` annotation would reject), and skip reference,
+            // `impl`, and function (`Fn`) types for the same reason.
             // `shared_vars` also captures bindings whose RHS is a deep `.clone()`
             // of a `Shared` value (rendered as `Arc<RwLock<T>>`) even though the
             // value's `get_type()` reports the inner `T`; annotating those with the
-            // inner primitive type would mismatch the `Arc` they actually hold.
-            let annotation = if is_shared || is_shared_var || shared_vars.contains_key(name) {
+            // inner type would mismatch the `Arc` they actually hold.
+            // A bare `Value` that names a known caller variable is an *alias*
+            // whose rendered form could be a borrow (`&T`); annotating it `T`
+            // would be wrong. A `Value` that is a literal (numeric/string/bool)
+            // still needs annotation (a float/int literal is otherwise ambiguous).
+            let is_alias = matches!(
+                value.as_ref(),
+                Microstatement::Value { representation, .. }
+                    if is_known_variable(parent_fn, representation)
+            );
+            let annotation = if is_shared
+                || is_shared_var
+                || shared_vars.contains_key(name)
+                || is_alias
+            {
                 String::new()
             } else {
-                let (rtype_str, d) = typen::ctype_to_rtype(value_type.clone(), deps)?;
+                // Annotate only the specific ambiguous-but-reliable shapes whose
+                // value renders without a type pin, constructing each string so it
+                // provably matches the rendered value (folding away the call that
+                // used to pin the type can otherwise leave these un-inferable):
+                //   - a primitive scalar (`{integer}`/`{float}` literal),
+                //   - `Option<T>` (an `Either` with a `void` variant -> `None`/
+                //     `Some(..)`), and
+                //   - `Vec<T>` (an array literal, possibly empty).
+                // `T` must itself render as a clean single-type reference. Other
+                // shapes (tuples, `Result` -- which already carries a turbofish --
+                // structs, etc.) are left un-annotated, as before.
+                let (anno, o, d) = let_binding_annotation(value_type.clone(), out, deps)?;
+                out = o;
                 deps = d;
-                if is_primitive_scalar_rtype(&rtype_str) {
-                    format!(": {rtype_str}")
-                } else {
-                    String::new()
-                }
+                anno
             };
             Ok((
                 format!(
@@ -1015,6 +1153,7 @@ pub fn from_microstatement(
                         && crate::program::inline::is_inline_target(
                             &crate::program::inline::fn_identity(function),
                         )
+                        && inline_consumes_are_safe(function, args, parent_fn)
                     {
                         // Single `return <expr>` body: inline as a pure expression.
                         if let Some(subs) =
@@ -1107,12 +1246,15 @@ pub fn from_microstatement(
                         let needs_deref = arg_is_shared && !param_is_shared;
                         match &*arg_type {
                             CType::Function(..) => argstrs.push(a.to_string()),
-                            // A parameter promoted to take ownership (see
-                            // `promote_param_to_own`): supply an owned value.
-                            // `Shared`/deref arguments keep the existing owning
-                            // conversion. Otherwise move the value when it is at
-                            // its last use here, else clone to keep it available.
-                            _ if promote_param_to_own(function, i)
+                            // A parameter taken by value -- either promoted (see
+                            // `promote_param_to_own`) or already declared `Own` --
+                            // needs an owned argument. `Shared`/deref arguments keep
+                            // the existing owning conversion. Otherwise move the
+                            // value when it is at its last use here, else clone to
+                            // keep it available (clone-protected ownership, which
+                            // also makes inlining consuming-parameter wrappers safe).
+                            _ if (promote_param_to_own(function, i)
+                                || matches!(function.args()[i].1, ArgKind::Own))
                                 && !arg_is_shared
                                 && !needs_deref =>
                             {

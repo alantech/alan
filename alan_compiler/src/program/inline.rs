@@ -130,32 +130,82 @@ fn expr_is_substitutable(ms: &Microstatement) -> bool {
         // relinquished ownership at the call site, so moving the substituted
         // argument in the body happens at the same program point. The per-param
         // `ArgKind` gating in `build_inline_substitution`/`build_multi_inline`
-        // enforces that (a `Ref`/`Deref` param appearing as a NativeCall arg is
-        // rejected by `param_only_borrowed`).
+        // enforces that (see `param_borrowed_or_clone_protected`).
         Microstatement::NativeCall { args, .. } => args.iter().all(expr_is_substitutable),
         _ => false,
     }
 }
 
 /// Returns true if every occurrence of the parameter `name` within the body
-/// expression `ms` is a *non-consuming* use: passed as an `ArgKind::Ref`
-/// (borrowed) or `ArgKind::Deref` (copied, the kind is only used for `Copy`
-/// types) argument.
+/// expression `ms` is safe to inline: either a *non-consuming* use (passed as a
+/// `Ref`/`Deref` argument, or a native-call argument), or a *clone-protected*
+/// consume (passed as an `ArgKind::Own` argument of a real function call).
 ///
 /// This is the key correctness gate for inlining: when we splice the body into
-/// the caller and substitute a caller variable/expression for the parameter, any
-/// position that *consumes* the value (move into an owned/mut argument, store
-/// into an array, or appear as the returned value itself) would move or mutate
-/// the caller's value. The original function boundary protected against that (it
-/// received `&T` and worked on its own copy), so inlining such uses would change
-/// ownership semantics (and typically fails to compile in Rust). Borrowing and
-/// copying do not consume the caller's value, so they preserve the semantics.
+/// the caller and substitute a caller variable/expression for the parameter, a
+/// bare-value/array/return position would move the caller's value outright, and
+/// a `Mut` argument would mutate it -- neither is protected, so they are
+/// rejected. Borrowing/copying preserve the value, and an `Own` argument is
+/// rendered by the Rust backend with clone-protected ownership (it moves the
+/// substituted value at its last use, otherwise clones it), so a value
+/// substituted there is never double-moved.
+///
+/// A `NativeCall` carries no per-argument `ArgKind` (the receiver's `Own`/`Ref`
+/// kind is lost when lowered from the bind signature). A native method *can*
+/// consume its receiver (e.g. `unwrap`), but this function is only ever evaluated
+/// for a `Ref`/`Deref` parameter (see `param_is_inlinable`): a wrapper
+/// `fn(arg0: &T) = arg0.method(..)` could not have compiled if `method` moved out
+/// of the `&T` receiver, so a direct appearance of the parameter as a native-call
+/// argument is provably a borrow. Only nested sub-expressions need recursion.
+fn param_borrowed_or_clone_protected(ms: &Microstatement, name: &str) -> bool {
+    let is_named = |m: &Microstatement| {
+        matches!(m, Microstatement::Value { representation, .. } if representation == name)
+    };
+    match ms {
+        Microstatement::Value { representation, .. } => representation != name,
+        Microstatement::FnCall { function, args } => {
+            let params = function.args();
+            for (i, arg) in args.iter().enumerate() {
+                if is_named(arg) {
+                    if !matches!(
+                        params.get(i).map(|p| &p.1),
+                        Some(ArgKind::Ref) | Some(ArgKind::Deref) | Some(ArgKind::Own)
+                    ) {
+                        return false;
+                    }
+                } else if !param_borrowed_or_clone_protected(arg, name) {
+                    return false;
+                }
+            }
+            true
+        }
+        Microstatement::Array { vals, .. } => vals
+            .iter()
+            .all(|v| !is_named(v) && param_borrowed_or_clone_protected(v, name)),
+        Microstatement::Assignment { value, .. } => {
+            !is_named(value) && param_borrowed_or_clone_protected(value, name)
+        }
+        Microstatement::Return { value: Some(v) } => {
+            !is_named(v) && param_borrowed_or_clone_protected(v, name)
+        }
+        Microstatement::NativeCall { args, .. } => args
+            .iter()
+            .all(|a| is_named(a) || param_borrowed_or_clone_protected(a, name)),
+        _ => true,
+    }
+}
+
+/// Strict variant: returns true only if every occurrence of `name` is a
+/// genuinely *non-consuming* use -- a `Ref`/`Deref` function argument, or a
+/// native-call argument (provably a borrow for a `Ref`/`Deref` parameter; see
+/// the note on `param_borrowed_or_clone_protected`). Unlike that function this
+/// does *not* accept `Own` arguments, so it identifies the consuming uses that
+/// require the caller's value to be movable at the spliced site.
 fn param_only_borrowed(ms: &Microstatement, name: &str) -> bool {
     let is_named = |m: &Microstatement| {
         matches!(m, Microstatement::Value { representation, .. } if representation == name)
     };
     match ms {
-        // A bare occurrence (e.g. the returned value itself) consumes the value.
         Microstatement::Value { representation, .. } => representation != name,
         Microstatement::FnCall { function, args } => {
             let params = function.args();
@@ -173,25 +223,37 @@ fn param_only_borrowed(ms: &Microstatement, name: &str) -> bool {
             }
             true
         }
-        // Array elements are moved into the constructed vector.
-        Microstatement::Array { vals, .. } => vals.iter().all(|v| !is_named(v) && param_only_borrowed(v, name)),
-        // A direct `let y = <param>` moves the parameter into the local.
-        Microstatement::Assignment { value, .. } => !is_named(value) && param_only_borrowed(value, name),
+        Microstatement::Array { vals, .. } => {
+            vals.iter().all(|v| !is_named(v) && param_only_borrowed(v, name))
+        }
+        Microstatement::Assignment { value, .. } => {
+            !is_named(value) && param_only_borrowed(value, name)
+        }
         Microstatement::Return { value: Some(v) } => !is_named(v) && param_only_borrowed(v, name),
-        // A `NativeCall` carries no per-argument `ArgKind` (the receiver's
-        // `Own`/`Ref` kind is lost when lowered from the bind signature). A native
-        // method *can* consume its receiver (e.g. `unwrap`), but this function is
-        // only ever evaluated for a `Ref`/`Deref` parameter (see
-        // `param_is_inlinable`). A borrowed parameter that flows into a native
-        // call is provably only borrowed there: a wrapper `fn(arg0: &T) =
-        // arg0.method(..)` could not have compiled if `method` moved out of the
-        // `&T` receiver/argument. So a direct appearance of the parameter as any
-        // native-call argument is a borrow; only nested sub-expressions need to be
-        // checked recursively.
         Microstatement::NativeCall { args, .. } => {
             args.iter().all(|a| is_named(a) || param_only_borrowed(a, name))
         }
         _ => true,
+    }
+}
+
+/// Returns true if inlining `function` would move (consume) the value supplied
+/// for parameter `idx`, so the caller's argument must be a temporary or provably
+/// movable at the spliced call site. An `Own`/`Mut` parameter is owned (treat as
+/// consuming); a `Ref`/`Deref` parameter consumes only if some use is not a pure
+/// borrow (e.g. it flows into an `Own` argument, the clone-protected case).
+pub fn param_consumes_value(function: &Function, idx: usize) -> bool {
+    let params = function.args();
+    let Some((name, kind, _)) = params.get(idx) else {
+        return false;
+    };
+    match kind {
+        ArgKind::Own | ArgKind::Mut => true,
+        ArgKind::Ref | ArgKind::Deref => !function
+            .microstatements
+            .iter()
+            .filter(|m| !matches!(m, Microstatement::Arg { .. }))
+            .all(|e| param_only_borrowed(e, name)),
     }
 }
 
@@ -216,10 +278,11 @@ fn is_plain_identifier(s: &str) -> bool {
 /// `NativeCall` arguments render by their raw representation (a method receiver
 /// or native argument), bypassing the conversions a normal call boundary applies
 /// — e.g. the Rust backend leaves an integer literal type-ambiguous (`{integer}`,
-/// so `1.wrapping_mul(..)` does not resolve), and a literal would also drop a
-/// wrapping/coercion. A plain variable/parameter reference is already the
-/// converted, concretely-typed value (and primitive bindings are now annotated),
-/// so it is safe; any non-`Value` expression renders through normal codegen.
+/// so `1.wrapping_mul(..)` does not resolve), and a string literal would render
+/// as `&str` rather than the `.to_string()`-converted `String` the position may
+/// expect. A plain variable/parameter reference is already the converted,
+/// concretely-typed value (and primitive bindings are now annotated), so it is
+/// safe; any non-`Value` expression renders through normal codegen.
 fn arg_is_conversion_free(arg: &Microstatement) -> bool {
     match arg {
         Microstatement::Value { representation, .. } => is_plain_identifier(representation),
@@ -262,7 +325,8 @@ fn param_used_as_native_arg(ms: &Microstatement, name: &str) -> bool {
 ///   still prevents re-evaluating a non-trivial argument.)
 /// - `Ref`/`Deref`: the caller passed a borrow (`&T`)/copy, so the body may only
 ///   borrow the parameter — moving or projecting-and-moving out of it would
-///   move/alias the caller's value. Enforced via `param_only_borrowed` plus the
+///   move/alias the caller's value. Enforced via
+///   `param_borrowed_or_clone_protected` plus the
 ///   movable-projection check.
 /// - `Mut`: not inlined (mutating through a `&mut` parameter is out of scope).
 fn param_is_inlinable(
@@ -275,7 +339,9 @@ fn param_is_inlinable(
         ArgKind::Own => true,
         ArgKind::Ref | ArgKind::Deref => {
             !type_has_movable_projection(ptypen)
-                && exprs.iter().all(|e| param_only_borrowed(e, name))
+                && exprs
+                    .iter()
+                    .all(|e| param_borrowed_or_clone_protected(e, name))
         }
         ArgKind::Mut => false,
     }
@@ -392,11 +458,16 @@ pub fn compute_inline_targets(entry: &Arc<Function>) -> HashSet<String> {
     collect(entry, &mut counts, &mut bodies, &mut visited);
     counts
         .into_iter()
-        .filter(|(_, n)| *n == 1)
-        .filter_map(|(id, _)| {
+        .filter_map(|(id, n)| {
             let f = bodies.get(&id)?;
-            // Inlinable as either a single return expression or a multi-statement
-            // (block) body.
+            // A single-use function may inline as a single return expression or a
+            // multi-statement (block) body. A *multi*-use function may also be
+            // folded into every call site, but only when it is a trivial
+            // single-statement wrapper whose parameters are all pure borrows, so
+            // duplicating it adds neither code bulk nor clones.
+            if n != 1 && !is_trivially_foldable(f) {
+                return None;
+            }
             if single_return_expr(f).is_none() && multi_statement_body(f).is_none() {
                 return None;
             }
@@ -410,6 +481,43 @@ pub fn compute_inline_targets(entry: &Arc<Function>) -> HashSet<String> {
             Some(id)
         })
         .collect()
+}
+
+/// Returns true if `function` is a trivial single-statement wrapper that is
+/// cheap and clone-free to fold into *every* call site (even when called more
+/// than once): its body is a single `return <expr>` where `<expr>` is one
+/// function call or native method/property/operator access whose arguments are
+/// all leaves (parameter references or literals, no nested calls), and every
+/// parameter is used only by borrow. The pure-borrow requirement guarantees that
+/// duplicating the body across call sites introduces no additional clones.
+fn is_trivially_foldable(function: &Function) -> bool {
+    let Some(expr) = single_return_expr(function) else {
+        return false;
+    };
+    // The body must be a single call/access whose arguments are leaves.
+    let args_are_leaves = |args: &[Microstatement]| {
+        args.iter().all(|a| {
+            matches!(
+                a,
+                Microstatement::Value { .. } | Microstatement::Arg { .. }
+            )
+        })
+    };
+    let shallow = match expr {
+        Microstatement::FnCall { args, .. } | Microstatement::NativeCall { args, .. } => {
+            args_are_leaves(args)
+        }
+        _ => false,
+    };
+    if !shallow {
+        return false;
+    }
+    // Every parameter must be used only by borrow (no consumption), so folding
+    // into multiple sites cannot add clones.
+    function
+        .args()
+        .iter()
+        .all(|(name, _, _)| param_only_borrowed(expr, name))
 }
 
 /// Installs the set of inline targets for the current codegen run.
