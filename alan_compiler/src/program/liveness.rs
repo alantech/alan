@@ -42,6 +42,29 @@ pub fn count_uses(ms: &Microstatement, name: &str) -> usize {
     }
 }
 
+/// Returns true if the type (after unwrapping `Type`/`Group`/`Shared`) supports
+/// moving a field/element out of it via an accessor that borrows the whole value
+/// (tuple `.N`, struct fields, fixed buffers, arrays). Keeping such a value as a
+/// borrow — or inlining a parameter of such a type — is unsafe because the body
+/// may project-and-move out of it (e.g. `b.0`), which is illegal behind a shared
+/// reference and, once the value is the caller's own, moves out of the caller's
+/// value.
+///
+/// `Either`/sum types are deliberately excluded: their variant access either
+/// clones (`match &x { Some(v) => v.clone() }`) or takes ownership (an `Own`
+/// argument, already caught by the escape analysis), so a borrowed sum value is
+/// never moved out from behind the reference. Scalars, strings, and opaque bound
+/// types likewise have no movable projections.
+pub fn type_has_movable_projection(t: &CType) -> bool {
+    match t {
+        CType::Type(_, inner) | CType::Group(inner) | CType::Shared(inner) => {
+            type_has_movable_projection(inner)
+        }
+        CType::Tuple(..) | CType::Buffer(..) | CType::Array(_) | CType::Field(..) => true,
+        _ => false,
+    }
+}
+
 /// Returns true if `value` (after unwrapping `Type`/`Group`) is a `Shared{T}`.
 fn type_is_shared(t: &CType) -> bool {
     match t {

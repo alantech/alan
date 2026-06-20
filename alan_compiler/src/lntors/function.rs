@@ -157,28 +157,7 @@ fn ref_arg_escapes(ms: &Microstatement, name: &str) -> bool {
     }
 }
 
-/// Returns true if the type (after unwrapping `Type`/`Group`/`Shared` wrappers)
-/// supports moving a field/element out of it via an accessor that borrows the
-/// whole value (tuple `.N`, struct fields, fixed buffers, arrays). Keeping such a
-/// value as a borrow is unsafe because the body may project-and-move out of it
-/// (e.g. `b.0`), which is illegal behind a shared reference, and the escape
-/// analysis treats the accessor's `&self` argument as a harmless borrow.
-///
-/// `Either`/sum types are deliberately *not* included: their variant access
-/// either clones (`match &x { Some(v) => v.clone() }`) or takes ownership (e.g.
-/// `unwrap`, which appears as an `Own` argument and is already caught by the
-/// escape analysis), so a borrowed sum value is never moved out from behind the
-/// reference. Scalars, strings, and opaque bound types likewise have no movable
-/// projections.
-fn type_has_movable_projection(t: &CType) -> bool {
-    match t {
-        CType::Type(_, inner) | CType::Group(inner) | CType::Shared(inner) => {
-            type_has_movable_projection(inner)
-        }
-        CType::Tuple(..) | CType::Buffer(..) | CType::Array(_) | CType::Field(..) => true,
-        _ => false,
-    }
-}
+use crate::program::liveness::type_has_movable_projection;
 
 /// Returns true if `name` is a non-`Shared`, `ArgKind::Ref` parameter of
 /// `parent_fn` that can be left as a borrow (`&T`) in the generated body instead

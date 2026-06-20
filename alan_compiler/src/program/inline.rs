@@ -281,27 +281,7 @@ fn param_is_inlinable(
     }
 }
 
-/// Returns true if the type (after unwrapping `Type`/`Group`/`Shared`) supports
-/// moving a field/element out of it via an accessor that borrows the whole value
-/// (tuple `.N`, struct fields, fixed buffers, arrays). Inlining a parameter of
-/// such a type is unsafe because the body may project-and-move out of it (e.g.
-/// `b.0`), which — once the parameter is the caller's own value rather than the
-/// function's private copy — moves out of the caller's value.
-///
-/// `Either`/sum types are deliberately excluded: their variant access either
-/// clones or takes ownership (an `Own` argument, already caught by the escape
-/// analysis), so a borrowed sum value is never moved out from behind the
-/// reference. Scalars, strings, and opaque bound types likewise have no movable
-/// projections.
-fn type_has_movable_projection(t: &CType) -> bool {
-    match t {
-        CType::Type(_, inner) | CType::Group(inner) | CType::Shared(inner) => {
-            type_has_movable_projection(inner)
-        }
-        CType::Tuple(..) | CType::Buffer(..) | CType::Array(_) | CType::Field(..) => true,
-        _ => false,
-    }
-}
+use crate::program::liveness::type_has_movable_projection;
 
 /// Counts the number of times the variable `name` is referenced in `ms`.
 fn count_var_uses(ms: &Microstatement, name: &str) -> usize {
