@@ -82,6 +82,9 @@ pub fn lntors(
     crate::program::inline::set_inline_targets(crate::program::inline::compute_inline_targets(
         &func[0],
     ));
+    // Determine which functions are referenced as first-class values, so their
+    // parameter signatures are not changed by the ownership-promotion pass.
+    function::set_fn_value_refs(&func[0]);
     // Assertion proven, start emitting the Rust `main` function
     let (fns, deps) = fn_generate(
         "main".to_string(),

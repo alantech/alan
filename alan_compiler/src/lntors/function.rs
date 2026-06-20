@@ -1,13 +1,302 @@
 // Builds a function and everything it needs, recursively. Given a read-only handle on it's own
 // scope and the program in case it needs to generate required text from somewhere else.
+use std::cell::{Cell, RefCell};
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use ordered_hash_map::OrderedHashMap;
 
 use crate::lntors::typen;
+use crate::program::liveness;
 use crate::program::{
     ArgKind, CType, CfnKind, FnKind, Function, Microstatement, NativeCallKind, Program, Scope,
 };
+
+thread_local! {
+    // Index of the top-level statement of the function currently being emitted.
+    // `usize::MAX` means "unknown" (we are not directly inside the `generate`
+    // statement loop), which disables the move optimization conservatively.
+    static STMT_IDX: Cell<usize> = const { Cell::new(usize::MAX) };
+    // Greater than zero while rendering a nested scope (closure body or an
+    // inlined callee body) where the enclosing function's per-statement liveness
+    // no longer applies. Moves are disabled (we clone instead) while untrusted.
+    static UNTRUSTED_DEPTH: Cell<usize> = const { Cell::new(0) };
+    // Names of functions referenced as first-class values (callbacks, stored
+    // function pointers) anywhere in the reachable program. Such a function must
+    // keep the `&T` parameter signature the higher-order call site expects (our
+    // callbacks are `impl Fn(&T, ...)`), so its parameters are never promoted to
+    // owned. Populated once per codegen run from the entry function.
+    static FN_VALUE_REFS: RefCell<HashSet<String>> = RefCell::new(HashSet::new());
+}
+
+/// Recursively collect the names of functions referenced as first-class values
+/// (a `Value` whose type is a `CType::Function`) reachable from `ms`, descending
+/// through called function bodies and closures (guarded by `visited` function
+/// identities to terminate on recursion).
+fn collect_fn_value_refs(
+    ms: &Microstatement,
+    refs: &mut HashSet<String>,
+    visited: &mut HashSet<String>,
+) {
+    match ms {
+        Microstatement::Value {
+            typen,
+            representation,
+        } if matches!(&**typen, CType::Function(..)) => {
+            refs.insert(representation.clone());
+        }
+        Microstatement::FnCall { function, args } => {
+            let id = crate::program::inline::fn_identity(function);
+            if visited.insert(id) {
+                for m in &function.microstatements {
+                    collect_fn_value_refs(m, refs, visited);
+                }
+            }
+            for a in args {
+                collect_fn_value_refs(a, refs, visited);
+            }
+        }
+        Microstatement::Closure { function } => {
+            for m in &function.microstatements {
+                collect_fn_value_refs(m, refs, visited);
+            }
+        }
+        Microstatement::VarCall { args, .. } | Microstatement::NativeCall { args, .. } => {
+            for a in args {
+                collect_fn_value_refs(a, refs, visited);
+            }
+        }
+        Microstatement::Array { vals, .. } => {
+            for v in vals {
+                collect_fn_value_refs(v, refs, visited);
+            }
+        }
+        Microstatement::Assignment { value, .. } => collect_fn_value_refs(value, refs, visited),
+        Microstatement::Return { value: Some(v) } => collect_fn_value_refs(v, refs, visited),
+        _ => {}
+    }
+}
+
+/// Installs the set of first-class-referenced function names for this codegen
+/// run by walking the reachable call graph from `entry`.
+pub fn set_fn_value_refs(entry: &Arc<Function>) {
+    let mut refs = HashSet::new();
+    let mut visited = HashSet::new();
+    for m in &entry.microstatements {
+        collect_fn_value_refs(m, &mut refs, &mut visited);
+    }
+    FN_VALUE_REFS.with(|r| *r.borrow_mut() = refs);
+}
+
+/// RAII guard that marks the current rendering scope as "untrusted" for the
+/// ownership-move optimization (a closure body or an inlined callee body, where
+/// the enclosing function's per-statement liveness no longer applies). While
+/// alive, `caller_can_move` returns false, so promoted-owned arguments are
+/// cloned rather than moved. The decrement on `Drop` is `?`-early-return-safe.
+struct UntrustedGuard;
+impl UntrustedGuard {
+    fn new() -> Self {
+        UNTRUSTED_DEPTH.with(|d| d.set(d.get() + 1));
+        UntrustedGuard
+    }
+}
+impl Drop for UntrustedGuard {
+    fn drop(&mut self) {
+        UNTRUSTED_DEPTH.with(|d| d.set(d.get() - 1));
+    }
+}
+
+/// RAII guard installed at each function-emission boundary (`generate`). A
+/// function body is rendered in its own trusted statement context, so we reset
+/// the untrusted depth to zero for its duration; on `Drop` (including a `?`
+/// early return) it restores the caller's statement index and depth, so that
+/// emitting a callee inline while processing a caller's arguments does not
+/// clobber the caller's per-statement liveness context.
+struct StmtCtxGuard {
+    idx: usize,
+    depth: usize,
+}
+impl StmtCtxGuard {
+    fn enter_function() -> Self {
+        let g = StmtCtxGuard {
+            idx: STMT_IDX.with(|c| c.get()),
+            depth: UNTRUSTED_DEPTH.with(|c| c.get()),
+        };
+        UNTRUSTED_DEPTH.with(|c| c.set(0));
+        g
+    }
+}
+impl Drop for StmtCtxGuard {
+    fn drop(&mut self) {
+        STMT_IDX.with(|c| c.set(self.idx));
+        UNTRUSTED_DEPTH.with(|c| c.set(self.depth));
+    }
+}
+
+/// Returns true if a use of an argument named `name` anywhere in `function`'s
+/// body requires *owning* the value (per `ref_arg_escapes`), i.e. the parameter
+/// would otherwise be defensively cloned at function entry.
+fn requires_ownership(function: &Function, name: &str) -> bool {
+    function
+        .microstatements
+        .iter()
+        .any(|ms| ref_arg_escapes(ms, name))
+}
+
+/// Returns true if `name` appears as a *non-receiver* argument of any native
+/// call in `ms` (recursively): every argument of a `Function`-kind native call,
+/// or `args[1..]` of a `Method`/`Property` call. Such positions are rendered
+/// *raw* and must match the native construct's expected borrow form (e.g.
+/// `vec.join(sep)` needs `sep: &str`), so a parameter used there cannot be
+/// promoted to an owned value. A native *receiver* (`args[0]` of a
+/// `Method`/`Property`) is exempt: Rust method-call syntax auto-refs/auto-muts
+/// or moves the receiver as the method requires, so an owned receiver is always
+/// valid.
+fn used_as_native_value_arg(ms: &Microstatement, name: &str) -> bool {
+    let is_named = |m: &Microstatement| {
+        matches!(m, Microstatement::Value { representation, .. } if representation == name)
+    };
+    match ms {
+        Microstatement::NativeCall { kind, args, .. } => {
+            let nonreceiver = match kind {
+                NativeCallKind::Function => &args[..],
+                // Receiver is args[0]; only args[1..] are raw value arguments.
+                NativeCallKind::Method | NativeCallKind::Property => {
+                    args.split_first().map(|(_, rest)| rest).unwrap_or(&[])
+                }
+            };
+            if nonreceiver.iter().any(is_named) {
+                return true;
+            }
+            // Recurse into all args (a nested native call may also qualify).
+            args.iter().any(|a| used_as_native_value_arg(a, name))
+        }
+        Microstatement::FnCall { args, .. } | Microstatement::VarCall { args, .. } => {
+            args.iter().any(|a| used_as_native_value_arg(a, name))
+        }
+        Microstatement::Array { vals, .. } => {
+            vals.iter().any(|v| used_as_native_value_arg(v, name))
+        }
+        Microstatement::Assignment { value, .. } => used_as_native_value_arg(value, name),
+        Microstatement::Return { value: Some(v) } => used_as_native_value_arg(v, name),
+        Microstatement::Closure { function } => function
+            .microstatements
+            .iter()
+            .any(|m| used_as_native_value_arg(m, name)),
+        _ => false,
+    }
+}
+
+/// Decide whether parameter `idx` of `function` should be emitted as an owned
+/// (`T`) parameter instead of a borrow (`&T`). We promote a `Ref` parameter to
+/// `Own` exactly when the body needs to own it (so it is currently defensively
+/// cloned at entry); the caller then supplies ownership by moving the value when
+/// it is at its last use, or cloning it otherwise. This is a pure function of
+/// the callee, so the definition site (`generate`) and every call site agree
+/// without any whole-program bookkeeping.
+///
+/// Restricted to `Normal` functions (the only ones we emit *and* whose call
+/// sites we render via `render_arg`), non-`Shared`, non-function-typed value
+/// parameters.
+fn promote_param_to_own(function: &Function, idx: usize) -> bool {
+    if !matches!(function.kind, FnKind::Normal) {
+        return false;
+    }
+    // A function referenced as a first-class value must keep its `&T` signature
+    // to match the higher-order call site (`impl Fn(&T, ...)`). User functions
+    // are matched by name via the reachable-graph pre-pass; compiler-synthesized
+    // platform-call wrappers (the `Call{N, F}` references, named `Call_*`) exist
+    // specifically to be passed as function values, so they are excluded by name
+    // prefix. Both checks are pure (the set is fixed before any rendering), so
+    // the definition site and every call site agree.
+    if function.name.starts_with("Call_")
+        || FN_VALUE_REFS.with(|r| r.borrow().contains(&function.name))
+    {
+        return false;
+    }
+    let args = function.args();
+    let Some((name, kind, t)) = args.get(idx) else {
+        return false;
+    };
+    matches!(kind, ArgKind::Ref)
+        && !matches!(&**t, CType::Shared(_))
+        && !matches!(&**t, CType::Function(..))
+        && requires_ownership(function, name)
+        // A parameter rendered raw in a native value-argument position must keep
+        // the borrow form that position expects; do not take it by value.
+        && !function
+            .microstatements
+            .iter()
+            .any(|ms| used_as_native_value_arg(ms, name))
+}
+
+/// Returns true if the parameter named `name` of `function` is promoted to an
+/// owned parameter (see `promote_param_to_own`).
+fn param_name_promoted(function: &Function, name: &str) -> bool {
+    function
+        .args()
+        .iter()
+        .position(|(n, _, _)| n == name)
+        .map(|i| promote_param_to_own(function, i))
+        .unwrap_or(false)
+}
+
+/// Returns true if `name` names a value the function body being emitted
+/// (`parent_fn`) owns and can move from: an `Own`/`Deref` parameter, or a local
+/// whose defining assignment produces a fresh owned value (anything other than a
+/// bare alias of another variable, which could be a borrow). Borrowed
+/// (`Ref`/`Mut`) parameters are never movable.
+fn is_movable_owned(parent_fn: &Function, name: &str) -> bool {
+    for (n, k, _) in parent_fn.args() {
+        if n == name {
+            return matches!(k, ArgKind::Own | ArgKind::Deref);
+        }
+    }
+    for ms in &parent_fn.microstatements {
+        if let Microstatement::Assignment { name: n, value, .. } = ms {
+            if n == name {
+                return !matches!(&**value, Microstatement::Value { .. });
+            }
+        }
+    }
+    false
+}
+
+/// Returns true if `name` is a parameter or a locally-assigned variable of
+/// `parent_fn` (as opposed to a literal/constant rendered as a `Value`). Only
+/// known variables risk aliasing a value used elsewhere; an unrecognized `Value`
+/// representation is a literal/temporary that is always safe to move.
+fn is_known_variable(parent_fn: &Function, name: &str) -> bool {
+    parent_fn.args().iter().any(|(n, _, _)| n == name)
+        || parent_fn.microstatements.iter().any(|ms| {
+            matches!(ms, Microstatement::Assignment { name: n, .. } if n == name)
+        })
+}
+
+/// Returns true if, at the current statement of `parent_fn`, the variable `name`
+/// can be *moved* into a call (rather than cloned) to satisfy a promoted owned
+/// parameter: we must be in a trusted top-level-statement context, the value
+/// must be owned/movable, used exactly once in this statement, and never again
+/// afterward.
+fn caller_can_move(parent_fn: &Function, name: &str) -> bool {
+    if UNTRUSTED_DEPTH.with(|d| d.get()) > 0 {
+        return false;
+    }
+    let idx = STMT_IDX.with(|c| c.get());
+    let stmts = &parent_fn.microstatements;
+    if idx >= stmts.len() {
+        return false;
+    }
+    if !is_movable_owned(parent_fn, name) {
+        return false;
+    }
+    let here = liveness::count_uses(&stmts[idx], name);
+    let after: usize = stmts[idx + 1..]
+        .iter()
+        .map(|m| liveness::count_uses(m, name))
+        .sum();
+    here == 1 && after == 0
+}
 
 /// Build a map of variable names to the inner type of their Shared{T} wrapper,
 /// by tracing variable assignments back to their origin. A variable is considered
@@ -270,6 +559,10 @@ fn render_inline_block(
     ),
     Box<dyn std::error::Error>,
 > {
+    // An inlined control-flow block (`if`/`while` body) executes conditionally
+    // or repeatedly, so the enclosing statement's last-use reasoning does not
+    // hold inside it: disable the move optimization here.
+    let _untrusted = UntrustedGuard::new();
     if let Microstatement::Closure { function } = microstatement {
         if function.args().is_empty() {
             let mut inner_statements = Vec::new();
@@ -321,7 +614,12 @@ pub fn from_microstatement(
                     // alias it
                     ArgKind::Own => Ok(("".to_string(), out, deps)), // We already own the value
                     ArgKind::Ref => {
-                        if is_borrowable_ref_arg(name, parent_fn) {
+                        if param_name_promoted(parent_fn, name) {
+                            // The parameter is taken by value (`mut name: T`), so we
+                            // already own it — no defensive clone, and the `mut` binding
+                            // provides the mutable owned local the clone used to.
+                            Ok(("".to_string(), out, deps))
+                        } else if is_borrowable_ref_arg(name, parent_fn) {
                             // The argument is only ever used by reference, so keep it as the
                             // incoming `&T` borrow instead of defensively cloning it into an
                             // owned local. `render_arg` knows to pass it through directly.
@@ -416,6 +714,9 @@ pub fn from_microstatement(
                     _ => n,
                 })
                 .collect::<Vec<String>>();
+            // A closure body may run later or repeatedly, so the enclosing
+            // statement's last-use reasoning does not apply: disable moves.
+            let _untrusted = UntrustedGuard::new();
             let mut inner_statements = Vec::new();
             for ms in &function.microstatements {
                 let (val, o, d) = from_microstatement(ms, parent_fn, shared_vars, scope, out, deps)?;
@@ -722,6 +1023,11 @@ pub fn from_microstatement(
                             if let Some(expr) = crate::program::inline::single_return_expr(function)
                             {
                                 let inlined = crate::program::inline::substitute(expr, &subs);
+                                // The inlined expression splices the callee's body
+                                // into this statement; the enclosing per-statement
+                                // last-use reasoning does not model its internal
+                                // ownership, so render it with moves disabled.
+                                let _untrusted = UntrustedGuard::new();
                                 return from_microstatement(
                                     &inlined,
                                     parent_fn,
@@ -739,6 +1045,9 @@ pub fn from_microstatement(
                             if let Some((stmts, tail)) =
                                 crate::program::inline::build_multi_inline(function, args)
                             {
+                                // The inlined block splices the callee's body into
+                                // this statement; render it with moves disabled.
+                                let _untrusted = UntrustedGuard::new();
                                 let mut block = "{\n".to_string();
                                 for s in &stmts {
                                     let (rendered, o, d) = from_microstatement(
@@ -798,6 +1107,32 @@ pub fn from_microstatement(
                         let needs_deref = arg_is_shared && !param_is_shared;
                         match &*arg_type {
                             CType::Function(..) => argstrs.push(a.to_string()),
+                            // A parameter promoted to take ownership (see
+                            // `promote_param_to_own`): supply an owned value.
+                            // `Shared`/deref arguments keep the existing owning
+                            // conversion. Otherwise move the value when it is at
+                            // its last use here, else clone to keep it available.
+                            _ if promote_param_to_own(function, i)
+                                && !arg_is_shared
+                                && !needs_deref =>
+                            {
+                                let owned = match arg {
+                                    // A known variable that cannot be moved here
+                                    // (still live, borrowed, or in an untrusted
+                                    // scope) must be cloned to stay available.
+                                    Microstatement::Value { representation, .. }
+                                        if is_known_variable(parent_fn, representation)
+                                            && !caller_can_move(parent_fn, representation) =>
+                                    {
+                                        format!("{a}.clone()")
+                                    }
+                                    // A non-`Value` argument is a fresh temporary
+                                    // (already owned), a literal `Value`, or a
+                                    // movable variable: pass/move it directly.
+                                    _ => a.to_string(),
+                                };
+                                argstrs.push(owned);
+                            }
                             _ => argstrs.push(render_arg(
                                 &a,
                                 arg_is_shared,
@@ -2376,11 +2711,12 @@ pub fn generate(
     ),
     Box<dyn std::error::Error>,
 > {
+    let _ctx = StmtCtxGuard::enter_function();
     let shared_vars = build_shared_vars(function);
     let mut fn_string = "".to_string();
     // First make sure all of the function argument types are defined
     let mut arg_strs = Vec::new();
-    for arg in &function.args() {
+    for (idx, arg) in function.args().iter().enumerate() {
         let (l, k, t) = arg;
         // Re-add Mut{} for closure function arguments but then mark it as a reference
         let ty = if let ArgKind::Mut = k {
@@ -2401,6 +2737,11 @@ pub fn generate(
             } else {
                 arg_strs.push(format!("{l}: {t_str}"));
             }
+        } else if promote_param_to_own(function, idx) {
+            // Take this parameter by value (owned) instead of `&T`, eliminating
+            // the defensive entry clone. Declared `mut` to preserve the mutable
+            // owned-local semantics the defensive clone used to provide.
+            arg_strs.push(format!("mut {l}: {t_str}"));
         } else {
             match k {
                 ArgKind::Mut => arg_strs.push(format!("{l}: &mut {t_str}")),
@@ -2445,11 +2786,16 @@ pub fn generate(
     // `Shared` values whose deep-clone-vs-handle-move aliasing must be preserved.
     let is_shared_name = |name: &str| shared_vars.contains_key(name);
     let body = crate::program::liveness::elide_last_use_clones(function, &is_shared_name);
-    for microstatement in &body {
+    for (idx, microstatement) in body.iter().enumerate() {
+        STMT_IDX.with(|c| c.set(idx));
         let (stmt, o, d) = from_microstatement(microstatement, function, &shared_vars, scope, out, deps)?;
         out = o;
         deps = d;
-        fn_string = format!("{fn_string}    {stmt};\n");
+        // Skip no-op statements (e.g. an argument-prologue binding that was
+        // elided), which would otherwise emit a stray empty `;`.
+        if !stmt.is_empty() {
+            fn_string = format!("{fn_string}    {stmt};\n");
+        }
     }
     fn_string = format!("{fn_string}}}");
     out.insert(rustname, fn_string);
