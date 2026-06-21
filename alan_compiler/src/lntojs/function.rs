@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use nom::combinator::all_consuming;
@@ -73,6 +74,52 @@ fn is_promise_head(typen: Arc<CType>) -> bool {
     matches!(&*t, CType::Promise(_))
 }
 
+fn function_codegen_is_async(function: Arc<Function>) -> bool {
+    fn microstatement_awaits_for_codegen(ms: &Microstatement, seen: &mut HashSet<usize>) -> bool {
+        match ms {
+            Microstatement::Assignment { value, .. } => microstatement_awaits_for_codegen(value, seen),
+            Microstatement::FnCall { function, args } => {
+                function_codegen_is_async_inner(function.clone(), seen)
+                    || args
+                        .iter()
+                        .any(|a| microstatement_awaits_for_codegen(a, seen))
+            }
+            Microstatement::VarCall { typen, args, .. } => {
+                is_promise_head(typen.clone())
+                    || args
+                        .iter()
+                        .any(|a| microstatement_awaits_for_codegen(a, seen))
+            }
+            Microstatement::Array { vals, .. } => vals
+                .iter()
+                .any(|v| microstatement_awaits_for_codegen(v, seen)),
+            Microstatement::Return { value } => value
+                .as_deref()
+                .is_some_and(|v| microstatement_awaits_for_codegen(v, seen)),
+            Microstatement::NativeCall { args, .. } => args
+                .iter()
+                .any(|a| microstatement_awaits_for_codegen(a, seen)),
+            Microstatement::Closure { function } => function_codegen_is_async_inner(function.clone(), seen),
+            Microstatement::Arg { .. } | Microstatement::Value { .. } => false,
+        }
+    }
+
+    fn function_codegen_is_async_inner(function: Arc<Function>, seen: &mut HashSet<usize>) -> bool {
+        let ptr = Arc::as_ptr(&function) as usize;
+        if !seen.insert(ptr) {
+            return false;
+        }
+        is_promise_head(function.rettype())
+            || function
+                .microstatements
+                .iter()
+                .any(|ms| microstatement_awaits_for_codegen(ms, seen))
+    }
+
+    let mut seen = HashSet::new();
+    function_codegen_is_async_inner(function, &mut seen)
+}
+
 #[allow(clippy::type_complexity)]
 pub fn from_microstatement(
     microstatement: &Microstatement,
@@ -122,7 +169,7 @@ pub fn from_microstatement(
                 .into_iter()
                 .map(|(n, _, _)| n)
                 .collect::<Vec<String>>();
-            let async_prefix = if is_promise_head(function.rettype()) {
+            let async_prefix = if function_codegen_is_async(function.clone()) {
                 "async "
             } else {
                 ""
@@ -406,7 +453,7 @@ pub fn from_microstatement(
                     }
                     let call = format!("{}({})", jsname, argstrs.join(", "));
                     Ok((
-                        if is_promise_head(function.rettype()) {
+                        if function_codegen_is_async(function.clone()) {
                             format!("(await {call})")
                         } else {
                             format!("({call})")
@@ -432,7 +479,7 @@ pub fn from_microstatement(
                     }
                     let call = format!("{}({})", jsname, argstrs.join(", "));
                     Ok((
-                        if is_promise_head(function.rettype()) {
+                        if function_codegen_is_async(function.clone()) {
                             format!("(await {call})")
                         } else {
                             format!("({call})")
@@ -1747,7 +1794,7 @@ pub fn generate(
     // a shared library). LLVM *probably* doesn't deduplicate this redundancy, so this will need to
     // be revisited, but it eliminates a whole host of generation problems that I can come back to
     // later.
-    let fn_async = if is_promise_head(function.rettype()) {
+    let fn_async = if function_codegen_is_async(Arc::new(function.clone())) {
         "async "
     } else {
         ""

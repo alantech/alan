@@ -44,7 +44,57 @@ fn is_function_head(typen: Arc<CType>) -> bool {
     matches!(&*t, CType::Function(..))
 }
 
+fn degroup_type_group(typen: Arc<CType>) -> Arc<CType> {
+    let mut t = typen.degroup();
+    while matches!(&*t, CType::Type(..) | CType::Group(_)) {
+        t = match &*t {
+            CType::Type(_, inner) | CType::Group(inner) => inner.clone().degroup(),
+            _ => unreachable!(),
+        };
+    }
+    t
+}
+
+fn is_promise_head_for_dispatch(typen: Arc<CType>) -> bool {
+    let mut t = degroup_type_group(typen);
+    while matches!(&*t, CType::Type(..) | CType::Group(_)) {
+        t = match &*t {
+            CType::Type(_, inner) | CType::Group(inner) => inner.clone().degroup(),
+            _ => unreachable!(),
+        };
+    }
+    matches!(&*t, CType::Promise(_))
+}
+
+fn function_return_dispatch_accepts(expected: Arc<CType>, actual: Arc<CType>) -> bool {
+    if Program::is_target_lang_rs() {
+        return expected.accepts(actual);
+    }
+    if degroup_type_group(expected.clone()).to_strict_string(false)
+        == degroup_type_group(actual.clone()).to_strict_string(false)
+    {
+        return true;
+    }
+    let expected_is_promise = is_promise_head_for_dispatch(expected.clone());
+    let actual_is_promise = is_promise_head_for_dispatch(actual.clone());
+    if expected_is_promise != actual_is_promise {
+        return false;
+    }
+    expected.accepts(actual)
+}
+
 fn function_dispatch_accepts(expected: Arc<CType>, actual: Arc<CType>) -> bool {
+    if !Program::is_target_lang_rs() {
+        let expected_head = degroup_type_group(expected.clone());
+        let actual_head = degroup_type_group(actual.clone());
+        match (&*expected_head, &*actual_head) {
+            (CType::Function(ei, eo), CType::Function(ai, ao)) => {
+                return function_dispatch_accepts(ei.clone(), ai.clone())
+                    && function_return_dispatch_accepts(eo.clone(), ao.clone());
+            }
+            _ => {}
+        }
+    }
     if expected.clone().accepts(actual.clone()) {
         return true;
     }
@@ -71,6 +121,35 @@ fn function_dispatch_accepts(expected: Arc<CType>, actual: Arc<CType>) -> bool {
         }
     }
     false
+}
+
+fn degroup_type_group_promise(typen: Arc<CType>) -> Arc<CType> {
+    let mut t = typen.degroup();
+    while matches!(&*t, CType::Type(..) | CType::Group(_) | CType::Promise(_)) {
+        t = match &*t {
+            CType::Type(_, inner) | CType::Group(inner) | CType::Promise(inner) => {
+                inner.clone().degroup()
+            }
+            _ => unreachable!(),
+        };
+    }
+    t
+}
+
+fn function_type_lookup_match(expected: Arc<CType>, candidate: Arc<CType>) -> bool {
+    let expected = degroup_type_group(expected);
+    let candidate = degroup_type_group(candidate);
+    if expected.clone().to_strict_string(false) == candidate.clone().to_strict_string(false) {
+        return true;
+    }
+    match (&*expected, &*candidate) {
+        (CType::Function(ei, eo), CType::Function(ci, co)) => {
+            ei.clone().to_strict_string(false) == ci.clone().to_strict_string(false)
+                && degroup_type_group_promise(eo.clone()).to_strict_string(false)
+                    == degroup_type_group_promise(co.clone()).to_strict_string(false)
+        }
+        _ => false,
+    }
 }
 
 impl<'a> Scope<'a> {
@@ -514,13 +593,15 @@ impl<'a> Scope<'a> {
     ) -> Option<Arc<Function>> {
         // Iterates through every function with the same name visible from the provided scope and
         // returns the one that matches the provided function type, if any
-        let fn_type_str = fn_type.degroup().to_strict_string(false);
+        let fn_type_str = fn_type.clone().degroup().to_strict_string(false);
         let mut scope_to_check: Option<&Scope> = Some(self);
         while scope_to_check.is_some() {
             if let Some(s) = scope_to_check {
                 if let Some(funcs) = s.functions.get(function) {
                     for f in funcs {
-                        if f.typen.clone().to_strict_string(false) == fn_type_str {
+                        if f.typen.clone().to_strict_string(false) == fn_type_str
+                            || function_type_lookup_match(fn_type.clone(), f.typen.clone())
+                        {
                             return Some(f.clone());
                         }
                     }
@@ -621,24 +702,20 @@ impl<'a> Scope<'a> {
                 }
             }
         }
-        let mut match_index = None;
         for (idx, possible_args) in possible_args_vec.iter().enumerate() {
             let mut args_match = true;
             for (i, arg) in args.iter().enumerate() {
                 let fnarg = possible_args[i].2.clone();
                 let callarg = arg.clone();
-                if !function_dispatch_accepts(fnarg.clone(), callarg.clone()) {
+                if !function_dispatch_accepts(fnarg, callarg) {
                     args_match = false;
                     break;
                 }
             }
-            if args_match {
-                match_index = Some(idx);
-                break;
+            if !args_match {
+                continue;
             }
-        }
-        if let Some(i) = match_index {
-            let generic_f = generic_fs.get(i).unwrap();
+            let generic_f = generic_fs.get(idx).unwrap();
             for arg in args {
                 match &**arg {
                     CType::Generic(n, _, t) if matches!(&**t, CType::Function(..)) => {

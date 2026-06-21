@@ -1,7 +1,16 @@
 export fn{Rs} while "whileloophack" :: (() -> bool, () -> ()) -> ();
 export fn{Js} while
+  "((c, l) => { while (c().val) { l(); } })"
+  :: (() -> bool, () -> ()) -> ();
+export fn{Js} while
+  "(async (c, l) => { while ((await c()).val) { l(); } })"
+  :: (() -> Promise{bool}, () -> ()) -> Promise{()};
+export fn{Js} while
+  "(async (c, l) => { while (c().val) { await l(); } })"
+  :: (() -> bool, () -> Promise{()}) -> Promise{()};
+export fn{Js} while
   "(async (c, l) => { while ((await c()).val) { await l(); } })"
-  :: (() -> bool, () -> ()) -> Promise{()};
+  :: (() -> Promise{bool}, () -> Promise{()}) -> Promise{()};
 export fn iter{T}(f: Mut{(i64) -> T}, n: i64) {
   let out = {T[]}();
   let i = 0;

@@ -188,10 +188,10 @@ fn microstatement_awaits(ms: &Microstatement) -> bool {
             .as_deref()
             .is_some_and(microstatement_awaits),
         Microstatement::NativeCall { args, .. } => args.iter().any(microstatement_awaits),
-        // Deliberately do not descend into nested closures.
-        Microstatement::Closure { .. } | Microstatement::Arg { .. } | Microstatement::Value { .. } => {
-            false
+        Microstatement::Closure { function } => {
+            is_promise_head(function.rettype()) || body_awaits(&function.microstatements)
         }
+        Microstatement::Arg { .. } | Microstatement::Value { .. } => false,
     }
 }
 
