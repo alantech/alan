@@ -184,7 +184,7 @@ pub fn ctype_to_rtype(
                         }
                     }
                     CType::Import(n, d) => {
-                        super::register_rust_dependency(&**d, &mut deps);
+                        super::register_rust_dependency(d, &mut deps);
                         let native_type = match &**n {
                             CType::TString(s) => s.clone(),
                             _ => CType::fail("Native import names must be strings"),
@@ -224,7 +224,7 @@ pub fn ctype_to_rtype(
                     }
                 }
                 CType::Import(n, d) => {
-                    super::register_rust_dependency(&**d, &mut deps);
+                    super::register_rust_dependency(d, &mut deps);
                     let native_type = match &**n {
                         CType::TString(s) => s.clone(),
                         _ => CType::fail("Native import names must be strings"),
@@ -348,7 +348,7 @@ pub fn ctype_to_rtype(
                                 let res = ctype_to_rtype(ts[0].clone(), deps)?;
                                 let s = res.0;
                                 deps = res.1;
-                                super::register_rust_dependency(&**d, &mut deps);
+                                super::register_rust_dependency(d, &mut deps);
                                 Ok((format!("Result<{}, {}>", s, "alan_std::AlanError"), deps))
                             }
                             _ => Ok((Arc::new(CType::Either(ts.clone(), Vec::new())).to_callable_string(), deps)),
@@ -362,7 +362,7 @@ pub fn ctype_to_rtype(
                                     let res = ctype_to_rtype(ts[0].clone(), deps)?;
                                     let s = res.0;
                                     deps = res.1;
-                                    super::register_rust_dependency(&**d, &mut deps);
+                                    super::register_rust_dependency(d, &mut deps);
                                     Ok((format!("Result<{}, {}>", s, "alan_std::AlanError"), deps))
                                 }
                                 _ => Ok((Arc::new(CType::Either(ts.clone(), Vec::new())).to_callable_string(), deps)),
@@ -444,7 +444,7 @@ pub fn generate(
                     }
                 }
                 CType::Import(n, d) => {
-                    super::register_rust_dependency(&**d, &mut deps);
+                    super::register_rust_dependency(d, &mut deps);
                     let native_type = match &**n {
                         CType::TString(s) => s.clone(),
                         _ => CType::fail("Native import names must be strings"),

@@ -96,11 +96,7 @@ pub fn elide_last_use_clones(
     let mut result = Vec::with_capacity(stmts.len());
     for (i, ms) in stmts.iter().enumerate() {
         // Is variable `name` referenced in any statement strictly after `i`?
-        let used_later = |name: &str| {
-            stmts[i + 1..]
-                .iter()
-                .any(|m| count_uses(m, name) > 0)
-        };
+        let used_later = |name: &str| stmts[i + 1..].iter().any(|m| count_uses(m, name) > 0);
         // A `clone(x)` node in this statement may be elided when:
         //   - `x` is a plain identifier (a `Value`),
         //   - `x` is not a borrowed parameter (movability),
@@ -128,7 +124,11 @@ fn rewrite_clone(ms: &Microstatement, can_elide: &dyn Fn(&str, &CType) -> bool) 
     // A direct `clone(Value{x})` that is eligible collapses to the argument.
     if let Microstatement::FnCall { function, args } = ms {
         if matches!(function.kind, FnKind::CfnRealized(CfnKind::Clone)) && args.len() == 1 {
-            if let Microstatement::Value { representation, typen } = &args[0] {
+            if let Microstatement::Value {
+                representation,
+                typen,
+            } = &args[0]
+            {
                 if can_elide(representation, typen) {
                     return args[0].clone();
                 }

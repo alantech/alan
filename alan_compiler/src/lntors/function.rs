@@ -153,9 +153,7 @@ fn requires_ownership(function: &Function, name: &str) -> bool {
 /// or moves the receiver as the method requires, so an owned receiver is always
 /// valid.
 fn used_as_native_value_arg(ms: &Microstatement, name: &str) -> bool {
-    let is_named = |m: &Microstatement| {
-        matches!(m, Microstatement::Value { representation, .. } if representation == name)
-    };
+    let is_named = |m: &Microstatement| matches!(m, Microstatement::Value { representation, .. } if representation == name);
     match ms {
         Microstatement::NativeCall { kind, args, .. } => {
             let nonreceiver = match kind {
@@ -280,9 +278,10 @@ fn is_movable_owned(parent_fn: &Function, name: &str) -> bool {
 /// representation is a literal/temporary that is always safe to move.
 fn is_known_variable(parent_fn: &Function, name: &str) -> bool {
     parent_fn.args().iter().any(|(n, _, _)| n == name)
-        || parent_fn.microstatements.iter().any(|ms| {
-            matches!(ms, Microstatement::Assignment { name: n, .. } if n == name)
-        })
+        || parent_fn
+            .microstatements
+            .iter()
+            .any(|ms| matches!(ms, Microstatement::Assignment { name: n, .. } if n == name))
 }
 
 /// Returns true if, at the current statement of `parent_fn`, the variable `name`
@@ -317,7 +316,9 @@ fn caller_can_move(parent_fn: &Function, name: &str) -> bool {
 /// consumes the value supplied for a parameter.
 fn arg_safe_to_consume(arg: &Microstatement, parent_fn: &Function) -> bool {
     match arg {
-        Microstatement::Value { representation, .. } if is_known_variable(parent_fn, representation) => {
+        Microstatement::Value { representation, .. }
+            if is_known_variable(parent_fn, representation) =>
+        {
             caller_can_move(parent_fn, representation)
         }
         _ => true,
@@ -445,9 +446,7 @@ fn references_var(ms: &Microstatement, name: &str) -> bool {
 /// unsafe. A use purely as an `ArgKind::Ref` argument is safe because the
 /// generated expression for it is a `&T` either way.
 fn ref_arg_escapes(ms: &Microstatement, name: &str) -> bool {
-    let is_named = |m: &Microstatement| {
-        matches!(m, Microstatement::Value { representation, .. } if representation == name)
-    };
+    let is_named = |m: &Microstatement| matches!(m, Microstatement::Value { representation, .. } if representation == name);
     match ms {
         Microstatement::FnCall { function, args } => {
             let params = function.args();
@@ -739,7 +738,10 @@ fn render_inline_block(
                 inner_statements.push(val);
             }
             return Ok((
-                format!("{{\n        {};\n    }}", inner_statements.join(";\n        ")),
+                format!(
+                    "{{\n        {};\n    }}",
+                    inner_statements.join(";\n        ")
+                ),
                 out,
                 deps,
             ));
@@ -793,11 +795,7 @@ pub fn from_microstatement(
                             // A borrowed `string` is `&str`; `.to_string()` (not
                             // `.clone()`, which would stay `&str`) gives the owned
                             // `String` copy the body works on.
-                            Ok((
-                                format!("let mut {name} = {name}.to_string()"),
-                                out,
-                                deps,
-                            ))
+                            Ok((format!("let mut {name} = {name}.to_string()"), out, deps))
                         } else {
                             Ok((
                                 format!("let mut {name} = {name}.clone()"), // TODO: not always mutable
@@ -870,29 +868,26 @@ pub fn from_microstatement(
                 Microstatement::Value { representation, .. }
                     if is_known_variable(parent_fn, representation)
             );
-            let annotation = if is_shared
-                || is_shared_var
-                || shared_vars.contains_key(name)
-                || is_alias
-            {
-                String::new()
-            } else {
-                // Annotate only the specific ambiguous-but-reliable shapes whose
-                // value renders without a type pin, constructing each string so it
-                // provably matches the rendered value (folding away the call that
-                // used to pin the type can otherwise leave these un-inferable):
-                //   - a primitive scalar (`{integer}`/`{float}` literal),
-                //   - `Option<T>` (an `Either` with a `void` variant -> `None`/
-                //     `Some(..)`), and
-                //   - `Vec<T>` (an array literal, possibly empty).
-                // `T` must itself render as a clean single-type reference. Other
-                // shapes (tuples, `Result` -- which already carries a turbofish --
-                // structs, etc.) are left un-annotated, as before.
-                let (anno, o, d) = let_binding_annotation(value_type.clone(), out, deps)?;
-                out = o;
-                deps = d;
-                anno
-            };
+            let annotation =
+                if is_shared || is_shared_var || shared_vars.contains_key(name) || is_alias {
+                    String::new()
+                } else {
+                    // Annotate only the specific ambiguous-but-reliable shapes whose
+                    // value renders without a type pin, constructing each string so it
+                    // provably matches the rendered value (folding away the call that
+                    // used to pin the type can otherwise leave these un-inferable):
+                    //   - a primitive scalar (`{integer}`/`{float}` literal),
+                    //   - `Option<T>` (an `Either` with a `void` variant -> `None`/
+                    //     `Some(..)`), and
+                    //   - `Vec<T>` (an array literal, possibly empty).
+                    // `T` must itself render as a clean single-type reference. Other
+                    // shapes (tuples, `Result` -- which already carries a turbofish --
+                    // structs, etc.) are left un-annotated, as before.
+                    let (anno, o, d) = let_binding_annotation(value_type.clone(), out, deps)?;
+                    out = o;
+                    deps = d;
+                    anno
+                };
             Ok((
                 format!(
                     "let {}{}{} = {}",
@@ -919,7 +914,8 @@ pub fn from_microstatement(
             let _untrusted = UntrustedGuard::new();
             let mut inner_statements = Vec::new();
             for ms in &function.microstatements {
-                let (val, o, d) = from_microstatement(ms, parent_fn, shared_vars, scope, out, deps)?;
+                let (val, o, d) =
+                    from_microstatement(ms, parent_fn, shared_vars, scope, out, deps)?;
                 out = o;
                 deps = d;
                 inner_statements.push(val);
@@ -950,7 +946,7 @@ pub fn from_microstatement(
                     }
                 }
                 CType::Import(n, d) => {
-                    super::register_rust_dependency(&**d, &mut deps);
+                    super::register_rust_dependency(d, &mut deps);
                     match &**n {
                         CType::TString(_) => { /* Do nothing */ }
                         _ => CType::fail("Native import names must be strings"),
@@ -1020,7 +1016,7 @@ pub fn from_microstatement(
                                 out = res.0;
                                 deps = res.1;
                                 if let FnKind::External(d) = &fun.kind {
-                                    super::register_rust_dependency(&**d, &mut deps);
+                                    super::register_rust_dependency(d, &mut deps);
                                 }
                                 // A borrowed-`string` parameter is rendered as `&str`,
                                 // but a higher-order call site that monomorphizes the
@@ -1052,7 +1048,7 @@ pub fn from_microstatement(
                                 if let FnKind::ExternalGeneric(_, _, d)
                                 | FnKind::ExternalBind(_, d) = &fun.kind
                                 {
-                                    super::register_rust_dependency(&**d, &mut deps);
+                                    super::register_rust_dependency(d, &mut deps);
                                 }
                                 Ok((rustname.clone(), out, deps))
                             }
@@ -1065,7 +1061,8 @@ pub fn from_microstatement(
         Microstatement::Array { vals, .. } => {
             let mut val_representations = Vec::new();
             for val in vals {
-                let (rep, o, d) = from_microstatement(val, parent_fn, shared_vars, scope, out, deps)?;
+                let (rep, o, d) =
+                    from_microstatement(val, parent_fn, shared_vars, scope, out, deps)?;
                 val_representations.push(rep);
                 out = o;
                 deps = d;
@@ -1142,11 +1139,13 @@ pub fn from_microstatement(
             // Hackery to inline `if` calls *if* it's safe to do so.
             if let FnKind::Bind(fname) = &function.kind {
                 if fname == "ifstatementhack" {
-                    let res = from_microstatement(&args[0], parent_fn, shared_vars, scope, out, deps)?;
+                    let res =
+                        from_microstatement(&args[0], parent_fn, shared_vars, scope, out, deps)?;
                     let conditional = res.0;
                     out = res.1;
                     deps = res.2;
-                    let res = render_inline_block(&args[1], parent_fn, shared_vars, scope, out, deps)?;
+                    let res =
+                        render_inline_block(&args[1], parent_fn, shared_vars, scope, out, deps)?;
                     let successblock = res.0;
                     out = res.1;
                     deps = res.2;
@@ -1156,15 +1155,18 @@ pub fn from_microstatement(
                         deps,
                     ));
                 } else if fname == "ifelsestatementhack" {
-                    let res = from_microstatement(&args[0], parent_fn, shared_vars, scope, out, deps)?;
+                    let res =
+                        from_microstatement(&args[0], parent_fn, shared_vars, scope, out, deps)?;
                     let conditional = res.0;
                     out = res.1;
                     deps = res.2;
-                    let res = render_inline_block(&args[1], parent_fn, shared_vars, scope, out, deps)?;
+                    let res =
+                        render_inline_block(&args[1], parent_fn, shared_vars, scope, out, deps)?;
                     let successblock = res.0;
                     out = res.1;
                     deps = res.2;
-                    let res = render_inline_block(&args[2], parent_fn, shared_vars, scope, out, deps)?;
+                    let res =
+                        render_inline_block(&args[2], parent_fn, shared_vars, scope, out, deps)?;
                     let failblock = res.0;
                     out = res.1;
                     deps = res.2;
@@ -1179,14 +1181,16 @@ pub fn from_microstatement(
                     // return. This remains string-based because reproducing the exact
                     // whitespace structurally is not worth the churn; the loop body, however,
                     // is rendered structurally via `render_inline_block` below.
-                    let res = from_microstatement(&args[0], parent_fn, shared_vars, scope, out, deps)?;
+                    let res =
+                        from_microstatement(&args[0], parent_fn, shared_vars, scope, out, deps)?;
                     let conditionalparts = res.0.split("return").collect::<Vec<&str>>();
                     let conditional = [conditionalparts[0], &conditionalparts[1].replace(";", "")]
                         .join("")
                         .replacen("|| {", "{", 1);
                     out = res.1;
                     deps = res.2;
-                    let res = render_inline_block(&args[1], parent_fn, shared_vars, scope, out, deps)?;
+                    let res =
+                        render_inline_block(&args[1], parent_fn, shared_vars, scope, out, deps)?;
                     let loopblock = res.0;
                     out = res.1;
                     deps = res.2;
@@ -1274,14 +1278,24 @@ pub fn from_microstatement(
                                 let mut block = "{\n".to_string();
                                 for s in &stmts {
                                     let (rendered, o, d) = from_microstatement(
-                                        s, parent_fn, shared_vars, scope, out, deps,
+                                        s,
+                                        parent_fn,
+                                        shared_vars,
+                                        scope,
+                                        out,
+                                        deps,
                                     )?;
                                     out = o;
                                     deps = d;
                                     block.push_str(&format!("        {rendered};\n"));
                                 }
                                 let (tail_str, o, d) = from_microstatement(
-                                    &tail, parent_fn, shared_vars, scope, out, deps,
+                                    &tail,
+                                    parent_fn,
+                                    shared_vars,
+                                    scope,
+                                    out,
+                                    deps,
                                 )?;
                                 out = o;
                                 deps = d;
@@ -1308,7 +1322,8 @@ pub fn from_microstatement(
                     deps = res.1;
                     let mut argstrs = Vec::new();
                     for (i, arg) in args.iter().enumerate() {
-                        let (a, o, d) = from_microstatement(arg, parent_fn, shared_vars, scope, out, deps)?;
+                        let (a, o, d) =
+                            from_microstatement(arg, parent_fn, shared_vars, scope, out, deps)?;
                         out = o;
                         deps = d;
                         let arg_type = arg.get_type();
@@ -1380,7 +1395,7 @@ pub fn from_microstatement(
                         }
                     }
                     if let FnKind::External(d) = &function.kind {
-                        super::register_rust_dependency(&**d, &mut deps);
+                        super::register_rust_dependency(d, &mut deps);
                     }
                     Ok((
                         format!("{}({})", rustname, argstrs.join(", ")).to_string(),
@@ -1391,7 +1406,8 @@ pub fn from_microstatement(
                 FnKind::Bind(rustname) | FnKind::ExternalBind(rustname, _) => {
                     let mut argstrs = Vec::new();
                     for (i, arg) in args.iter().enumerate() {
-                        let (a, o, d) = from_microstatement(arg, parent_fn, shared_vars, scope, out, deps)?;
+                        let (a, o, d) =
+                            from_microstatement(arg, parent_fn, shared_vars, scope, out, deps)?;
                         out = o;
                         deps = d;
                         let arg_type = arg.get_type();
@@ -1422,7 +1438,7 @@ pub fn from_microstatement(
                         }
                     }
                     if let FnKind::ExternalBind(_, d) = &function.kind {
-                        super::register_rust_dependency(&**d, &mut deps);
+                        super::register_rust_dependency(d, &mut deps);
                     }
                     Ok((
                         format!("{}({})", rustname, argstrs.join(", ")).to_string(),
@@ -1456,7 +1472,7 @@ pub fn from_microstatement(
                                     }
                                 }
                                 CType::Import(n, d) => {
-                                    super::register_rust_dependency(&**d, &mut deps);
+                                    super::register_rust_dependency(d, &mut deps);
                                     match &**n {
                                         CType::TString(_) => { /* Do nothing */ }
                                         _ => CType::fail("Native import names must be strings"),
@@ -1477,7 +1493,8 @@ pub fn from_microstatement(
                     deps = d;
                     let mut argstrs = Vec::new();
                     for arg in args {
-                        let (a, o, d) = from_microstatement(arg, parent_fn, shared_vars, scope, out, deps)?;
+                        let (a, o, d) =
+                            from_microstatement(arg, parent_fn, shared_vars, scope, out, deps)?;
                         out = o;
                         deps = d;
                         let arg_type = arg.get_type();
@@ -1525,7 +1542,8 @@ pub fn from_microstatement(
                     deps = d;
                     let mut argstrs = Vec::new();
                     for arg in args {
-                        let (a, o, d) = from_microstatement(arg, parent_fn, shared_vars, scope, out, deps)?;
+                        let (a, o, d) =
+                            from_microstatement(arg, parent_fn, shared_vars, scope, out, deps)?;
                         out = o;
                         deps = d;
                         let arg_type = arg.get_type();
@@ -2432,7 +2450,7 @@ pub fn from_microstatement(
                                             }
                                             CType::Import(n, d) => match &**n {
                                                 CType::TString(s) if s == &enum_name => {
-                                                    super::register_rust_dependency(&**d, &mut deps);
+                                                    super::register_rust_dependency(d, &mut deps);
                                                     // Special-casing for Option and Result mapping. TODO:
                                                     // Make this more centralized
                                                     if ts.len() == 2 {
@@ -2921,7 +2939,8 @@ pub fn from_microstatement(
         }
         Microstatement::Return { value } => match value {
             Some(val) => {
-                let (retval, o, d) = from_microstatement(val, parent_fn, shared_vars, scope, out, deps)?;
+                let (retval, o, d) =
+                    from_microstatement(val, parent_fn, shared_vars, scope, out, deps)?;
                 out = o;
                 deps = d;
                 Ok((
@@ -3035,7 +3054,8 @@ pub fn generate(
     let body = crate::program::liveness::elide_last_use_clones(function, &is_shared_name);
     for (idx, microstatement) in body.iter().enumerate() {
         STMT_IDX.with(|c| c.set(idx));
-        let (stmt, o, d) = from_microstatement(microstatement, function, &shared_vars, scope, out, deps)?;
+        let (stmt, o, d) =
+            from_microstatement(microstatement, function, &shared_vars, scope, out, deps)?;
         out = o;
         deps = d;
         // Skip no-op statements (e.g. an argument-prologue binding that was

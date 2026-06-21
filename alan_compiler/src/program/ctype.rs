@@ -5,11 +5,11 @@ use weak_table::PtrWeakKeyHashMap;
 
 use super::function::{type_to_args, type_to_rettype};
 use super::ArgKind;
-use super::NativeCallKind;
 use super::Export;
 use super::FnKind;
 use super::Function;
 use super::Microstatement;
+use super::NativeCallKind;
 use super::Program;
 use super::Scope;
 use super::TypeOperatorMapping;

@@ -158,9 +158,7 @@ fn expr_is_substitutable(ms: &Microstatement) -> bool {
 /// of the `&T` receiver, so a direct appearance of the parameter as a native-call
 /// argument is provably a borrow. Only nested sub-expressions need recursion.
 fn param_borrowed_or_clone_protected(ms: &Microstatement, name: &str) -> bool {
-    let is_named = |m: &Microstatement| {
-        matches!(m, Microstatement::Value { representation, .. } if representation == name)
-    };
+    let is_named = |m: &Microstatement| matches!(m, Microstatement::Value { representation, .. } if representation == name);
     match ms {
         Microstatement::Value { representation, .. } => representation != name,
         Microstatement::FnCall { function, args } => {
@@ -202,9 +200,7 @@ fn param_borrowed_or_clone_protected(ms: &Microstatement, name: &str) -> bool {
 /// does *not* accept `Own` arguments, so it identifies the consuming uses that
 /// require the caller's value to be movable at the spliced site.
 fn param_only_borrowed(ms: &Microstatement, name: &str) -> bool {
-    let is_named = |m: &Microstatement| {
-        matches!(m, Microstatement::Value { representation, .. } if representation == name)
-    };
+    let is_named = |m: &Microstatement| matches!(m, Microstatement::Value { representation, .. } if representation == name);
     match ms {
         Microstatement::Value { representation, .. } => representation != name,
         Microstatement::FnCall { function, args } => {
@@ -223,16 +219,16 @@ fn param_only_borrowed(ms: &Microstatement, name: &str) -> bool {
             }
             true
         }
-        Microstatement::Array { vals, .. } => {
-            vals.iter().all(|v| !is_named(v) && param_only_borrowed(v, name))
-        }
+        Microstatement::Array { vals, .. } => vals
+            .iter()
+            .all(|v| !is_named(v) && param_only_borrowed(v, name)),
         Microstatement::Assignment { value, .. } => {
             !is_named(value) && param_only_borrowed(value, name)
         }
         Microstatement::Return { value: Some(v) } => !is_named(v) && param_only_borrowed(v, name),
-        Microstatement::NativeCall { args, .. } => {
-            args.iter().all(|a| is_named(a) || param_only_borrowed(a, name))
-        }
+        Microstatement::NativeCall { args, .. } => args
+            .iter()
+            .all(|a| is_named(a) || param_only_borrowed(a, name)),
         _ => true,
     }
 }
@@ -295,9 +291,7 @@ fn arg_is_conversion_free(arg: &Microstatement) -> bool {
 /// Such a position renders the substituted argument by its raw representation,
 /// bypassing call-site conversion, so a literal argument there is unsafe.
 fn param_used_as_native_arg(ms: &Microstatement, name: &str) -> bool {
-    let is_named = |m: &Microstatement| {
-        matches!(m, Microstatement::Value { representation, .. } if representation == name)
-    };
+    let is_named = |m: &Microstatement| matches!(m, Microstatement::Value { representation, .. } if representation == name);
     match ms {
         Microstatement::NativeCall { args, .. } => args
             .iter()
@@ -353,12 +347,8 @@ use crate::program::liveness::type_has_movable_projection;
 fn count_var_uses(ms: &Microstatement, name: &str) -> usize {
     match ms {
         Microstatement::Value { representation, .. } => usize::from(representation == name),
-        Microstatement::FnCall { args, .. } => {
-            args.iter().map(|a| count_var_uses(a, name)).sum()
-        }
-        Microstatement::Array { vals, .. } => {
-            vals.iter().map(|v| count_var_uses(v, name)).sum()
-        }
+        Microstatement::FnCall { args, .. } => args.iter().map(|a| count_var_uses(a, name)).sum(),
+        Microstatement::Array { vals, .. } => vals.iter().map(|v| count_var_uses(v, name)).sum(),
         Microstatement::Assignment { value, .. } => count_var_uses(value, name),
         Microstatement::Return { value: Some(v) } => count_var_uses(v, name),
         Microstatement::NativeCall { args, .. } => {
@@ -443,8 +433,9 @@ fn walk(
                 walk(a, counts, bodies, visited);
             }
         }
-        Microstatement::Value { .. } | Microstatement::Arg { .. } | Microstatement::Return { .. } => {
-        }
+        Microstatement::Value { .. }
+        | Microstatement::Arg { .. }
+        | Microstatement::Return { .. } => {}
     }
 }
 
@@ -496,12 +487,8 @@ fn is_trivially_foldable(function: &Function) -> bool {
     };
     // The body must be a single call/access whose arguments are leaves.
     let args_are_leaves = |args: &[Microstatement]| {
-        args.iter().all(|a| {
-            matches!(
-                a,
-                Microstatement::Value { .. } | Microstatement::Arg { .. }
-            )
-        })
+        args.iter()
+            .all(|a| matches!(a, Microstatement::Value { .. } | Microstatement::Arg { .. }))
     };
     let shallow = match expr {
         Microstatement::FnCall { args, .. } | Microstatement::NativeCall { args, .. } => {
@@ -620,7 +607,10 @@ pub fn rewrite(
             value,
         } => Microstatement::Assignment {
             mutable: *mutable,
-            name: local_renames.get(name).cloned().unwrap_or_else(|| name.clone()),
+            name: local_renames
+                .get(name)
+                .cloned()
+                .unwrap_or_else(|| name.clone()),
             value: Box::new(rewrite(value, param_subs, local_renames)),
         },
         Microstatement::Return { value } => Microstatement::Return {
@@ -651,7 +641,9 @@ pub fn rewrite(
 /// `return <expr>`, returns `(middle statements, return expression)`. These can
 /// be inlined as a block expression. Returns `None` for single-statement bodies
 /// (handled by `single_return_expr`) or unsupported statement shapes.
-pub fn multi_statement_body(function: &Function) -> Option<(Vec<&Microstatement>, &Microstatement)> {
+pub fn multi_statement_body(
+    function: &Function,
+) -> Option<(Vec<&Microstatement>, &Microstatement)> {
     if !matches!(function.kind, FnKind::Normal) {
         return None;
     }
@@ -724,12 +716,14 @@ pub fn build_multi_inline(
         }
         // A parameter feeding a native-call position must be substituted by a
         // conversion-free argument (see `build_inline_substitution`).
-        if exprs.iter().any(|e| param_used_as_native_arg(e, pname))
-            && !arg_is_conversion_free(arg)
+        if exprs.iter().any(|e| param_used_as_native_arg(e, pname)) && !arg_is_conversion_free(arg)
         {
             return None;
         }
-        let uses: usize = stmts.iter().map(|s| count_var_uses(s, pname)).sum::<usize>()
+        let uses: usize = stmts
+            .iter()
+            .map(|s| count_var_uses(s, pname))
+            .sum::<usize>()
             + count_var_uses(tail, pname);
         let trivial = matches!(
             arg,

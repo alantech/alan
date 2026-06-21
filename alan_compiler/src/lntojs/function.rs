@@ -132,7 +132,9 @@ pub fn from_microstatement(
             typen,
             representation,
         } => match &**typen {
-            CType::Type(n, _) if n == "string" || n == "i64" || n == "u64" || n == "f64" || n == "bool" => {
+            CType::Type(n, _)
+                if n == "string" || n == "i64" || n == "u64" || n == "f64" || n == "bool" =>
+            {
                 Ok((
                     box_native_value(typen, representation)
                         .unwrap_or_else(|| representation.clone()),
@@ -143,7 +145,7 @@ pub fn from_microstatement(
             CType::Binds(n, _) => match &**n {
                 CType::TString(_) => Ok((representation.clone(), out, deps)),
                 CType::Import(n, d) => {
-                    super::register_nodejs_dependency(&**d, &mut deps);
+                    super::register_nodejs_dependency(d, &mut deps);
                     match &**n {
                         CType::TString(_) => { /* Do nothing */ }
                         _ => CType::fail("Native import names must be strings"),
@@ -210,7 +212,7 @@ pub fn from_microstatement(
                             out = o;
                             deps = d;
                             if let FnKind::External(d) = &fun.kind {
-                                super::register_nodejs_dependency(&**d, &mut deps);
+                                super::register_nodejs_dependency(d, &mut deps);
                             }
                             Ok((jsname, out, deps))
                         }
@@ -221,7 +223,7 @@ pub fn from_microstatement(
                             if let FnKind::ExternalGeneric(_, _, d) | FnKind::ExternalBind(_, d) =
                                 &fun.kind
                             {
-                                super::register_nodejs_dependency(&**d, &mut deps);
+                                super::register_nodejs_dependency(d, &mut deps);
                             }
                             Ok((jsname.clone(), out, deps))
                         }
@@ -351,9 +353,7 @@ pub fn from_microstatement(
                             if let Some(expr) = crate::program::inline::single_return_expr(function)
                             {
                                 let inlined = crate::program::inline::substitute(expr, &subs);
-                                return from_microstatement(
-                                    &inlined, parent_fn, scope, out, deps,
-                                );
+                                return from_microstatement(&inlined, parent_fn, scope, out, deps);
                             }
                         }
                     }
@@ -385,7 +385,7 @@ pub fn from_microstatement(
                         }
                     }
                     if let FnKind::External(d) = &function.kind {
-                        super::register_nodejs_dependency(&**d, &mut deps);
+                        super::register_nodejs_dependency(d, &mut deps);
                     }
                     Ok((
                         format!("(await {}({}))", jsname, argstrs.join(", ")).to_string(),
@@ -406,7 +406,7 @@ pub fn from_microstatement(
                         }
                     }
                     if let FnKind::ExternalBind(_, d) = &function.kind {
-                        super::register_nodejs_dependency(&**d, &mut deps);
+                        super::register_nodejs_dependency(d, &mut deps);
                     }
                     Ok((
                         format!("(await {}({}))", jsname, argstrs.join(", ")).to_string(),
@@ -425,7 +425,7 @@ pub fn from_microstatement(
                             CType::Binds(n, _) => match &**n {
                                 CType::TString(_) => Ok((representation.clone(), out, deps)),
                                 CType::Import(n, d) => {
-                                    super::register_nodejs_dependency(&**d, &mut deps);
+                                    super::register_nodejs_dependency(d, &mut deps);
                                     match &**n {
                                         CType::TString(_) => { /* Do nothing */ }
                                         _ => CType::fail("Native import names must be strings"),
@@ -1132,7 +1132,7 @@ pub fn from_microstatement(
                                             }
                                             CType::Import(n, d) => match &**n {
                                                 CType::TString(s) if s == &enum_name => {
-                                                    super::register_nodejs_dependency(&**d, &mut deps);
+                                                    super::register_nodejs_dependency(d, &mut deps);
                                                     // Special-casing for Option and Result mapping. TODO:
                                                     // Make this more centralized
                                                     if ts.len() == 2 {

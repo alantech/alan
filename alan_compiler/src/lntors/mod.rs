@@ -6,10 +6,7 @@ use crate::program::{CType, Program};
 mod function;
 mod typen;
 
-pub(crate) fn register_rust_dependency(
-    d: &CType,
-    deps: &mut OrderedHashMap<String, String>,
-) {
+pub(crate) fn register_rust_dependency(d: &CType, deps: &mut OrderedHashMap<String, String>) {
     match d {
         CType::Type(_, t) => match &**t {
             CType::Rust(d) => match &**d {
