@@ -621,6 +621,21 @@ fn is_string_type(t: &CType) -> bool {
     }
 }
 
+/// Serialize a `string`-typed value's representation to an owned `String`.
+/// A `string` result is normally normalized to an owned `String` by appending
+/// `.to_string()` (the native expression may yield a borrowed `&str` -- e.g. a
+/// string literal or a `&str`-returning method). When the expression already
+/// produces an owned `String` (a `format!(...)`, which is how every `string`
+/// conversion/`concat` is bound), that `.to_string()` is a redundant clone, so
+/// emit the expression as-is.
+fn owned_string_repr(representation: &str) -> String {
+    if representation.starts_with("format!(") {
+        representation.to_string()
+    } else {
+        format!("{representation}.to_string()")
+    }
+}
+
 /// If `arg` is a string *literal* (a `Value` whose representation is a quoted
 /// string rather than an identifier), return that literal. It is already a
 /// `&'static str`, so it can be passed to a borrowed `&str` parameter directly
@@ -919,19 +934,13 @@ pub fn from_microstatement(
             typen,
             representation,
         } => match &**typen {
-            CType::Type(n, _) if n == "string" => Ok((
-                format!("{representation}.to_string()").to_string(),
-                out,
-                deps,
-            )),
+            CType::Type(n, _) if n == "string" => {
+                Ok((owned_string_repr(representation), out, deps))
+            }
             CType::Binds(n, _) => match &**n {
                 CType::TString(s) => {
                     if s == "String" {
-                        Ok((
-                            format!("{representation}.to_string()").to_string(),
-                            out,
-                            deps,
-                        ))
+                        Ok((owned_string_repr(representation), out, deps))
                     } else {
                         Ok((representation.clone(), out, deps))
                     }
