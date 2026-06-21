@@ -108,10 +108,6 @@ fn function_dispatch_accepts(expected: Arc<CType>, actual: Arc<CType>) -> bool {
                     }
                     continue;
                 }
-                CType::Generic(_, _, inner) => {
-                    stack.push(inner.clone());
-                    continue;
-                }
                 _ => {}
             }
             if !Program::is_target_lang_rs() {
@@ -130,6 +126,9 @@ fn function_dispatch_accepts(expected: Arc<CType>, actual: Arc<CType>) -> bool {
             }
             if expected.clone().accepts(candidate.clone()) {
                 return true;
+            }
+            if let CType::Generic(_, _, inner) = &*candidate {
+                stack.push(inner.clone());
             }
         }
         return false;
