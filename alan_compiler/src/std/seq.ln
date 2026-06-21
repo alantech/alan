@@ -1,8 +1,8 @@
 export fn{Rs} while "whileloophack" :: (() -> bool, () -> ()) -> ();
 export fn{Js} while
   "(async (c, l) => { while ((await c()).val) { await l(); } })"
-  :: (() -> bool, () -> ()) -> ();
-export fn iter{T}(f: Mut{(i64) -> T}, n: i64) -> T[] {
+  :: (() -> bool, () -> ()) -> Promise{()};
+export fn iter{T}(f: Mut{(i64) -> T}, n: i64) {
   let out = {T[]}();
   let i = 0;
   while(fn = i < n, fn {
@@ -12,7 +12,7 @@ export fn iter{T}(f: Mut{(i64) -> T}, n: i64) -> T[] {
   });
   return out;
 }
-export fn iter(f: Mut{(i64) -> ()}, n: i64) -> () {
+export fn iter(f: Mut{(i64) -> ()}, n: i64) {
   let i = 0;
   while(fn = i < n, fn {
     f(i);

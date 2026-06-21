@@ -524,7 +524,7 @@ test!(print_function => r#"export fn main() {
     stdout "Hello, World\n";
     status 0;
 );
-test!(duration_print => r#"export fn main() -> void {
+test!(duration_print => r#"export fn main() {
   const i = now();
   wait(110); // Increased from 10ms to 110ms because the node.js event loop seems less
   // capable of guaranteeing staying below 20ms in the delay here. Adding an extra

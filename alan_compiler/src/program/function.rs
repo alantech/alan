@@ -163,6 +163,42 @@ pub fn type_to_rettype(t: Arc<CType>) -> Arc<CType> {
     }
 }
 
+fn is_promise_head(t: Arc<CType>) -> bool {
+    let mut t = t.degroup();
+    while matches!(&*t, CType::Type(..)) {
+        t = match &*t {
+            CType::Type(_, inner) => inner.clone().degroup(),
+            _ => unreachable!(),
+        };
+    }
+    matches!(&*t, CType::Promise(_))
+}
+
+fn microstatement_awaits(ms: &Microstatement) -> bool {
+    match ms {
+        Microstatement::Assignment { value, .. } => microstatement_awaits(value),
+        Microstatement::FnCall { function, args } => {
+            is_promise_head(function.rettype()) || args.iter().any(microstatement_awaits)
+        }
+        Microstatement::VarCall { typen, args, .. } => {
+            is_promise_head(typen.clone()) || args.iter().any(microstatement_awaits)
+        }
+        Microstatement::Array { vals, .. } => vals.iter().any(microstatement_awaits),
+        Microstatement::Return { value } => value
+            .as_deref()
+            .is_some_and(microstatement_awaits),
+        Microstatement::NativeCall { args, .. } => args.iter().any(microstatement_awaits),
+        // Deliberately do not descend into nested closures.
+        Microstatement::Closure { .. } | Microstatement::Arg { .. } | Microstatement::Value { .. } => {
+            false
+        }
+    }
+}
+
+fn body_awaits(microstatements: &[Microstatement]) -> bool {
+    microstatements.iter().any(microstatement_awaits)
+}
+
 pub fn args_and_rettype_to_type(
     args: Vec<(String, ArgKind, Arc<CType>)>,
     rettype: Arc<CType>,
@@ -598,10 +634,13 @@ impl Function {
                 // Don't do anything in this path, this is probably a derived function
             } else {
                 let current_rettype = type_to_rettype(typen.clone());
-                let actual_rettype = match ms {
+                let mut actual_rettype = match ms {
                     Microstatement::Return { value: Some(v) } => v.get_type(),
                     _ => Arc::new(CType::Void),
                 };
+                if body_awaits(&microstatements) && !is_promise_head(actual_rettype.clone()) {
+                    actual_rettype = CType::promise(actual_rettype);
+                }
                 if let CType::Infer(..) = &*current_rettype {
                     // We're definitely replacing with the inferred type
                     let input_type = match &*typen {
@@ -731,10 +770,13 @@ impl Function {
                     // Don't do anything in this path, this is probably a derived function
                 } else {
                     let current_rettype = type_to_rettype(typen.clone());
-                    let actual_rettype = match last {
+                    let mut actual_rettype = match last {
                         Microstatement::Return { value: Some(v) } => v.get_type(),
                         _ => Arc::new(CType::Void),
                     };
+                    if body_awaits(&ms) && !is_promise_head(actual_rettype.clone()) {
+                        actual_rettype = CType::promise(actual_rettype);
+                    }
                     if let CType::Infer(..) = &*current_rettype {
                         let input_type = match &*typen {
                             CType::Function(i, _) => i.clone(),
@@ -868,10 +910,13 @@ impl Function {
                     if let Microstatement::Arg { .. } = ms {
                         // Don't do anything in this path, this is probably a derived function
                     } else {
-                        let actual_rettype = match ms {
+                        let mut actual_rettype = match ms {
                             Microstatement::Return { value: Some(v) } => v.get_type(),
                             _ => Arc::new(CType::Void),
                         };
+                        if body_awaits(&microstatements) && !is_promise_head(actual_rettype.clone()) {
+                            actual_rettype = CType::promise(actual_rettype);
+                        }
                         if let CType::Infer(..) = &*rettype {
                             rettype = actual_rettype;
                         } else if rettype.clone().to_strict_string(false)
@@ -999,10 +1044,13 @@ impl Function {
                     if let Microstatement::Arg { .. } = ms {
                         // Don't do anything in this path, this is probably a derived function
                     } else {
-                        let actual_rettype = match ms {
+                        let mut actual_rettype = match ms {
                             Microstatement::Return { value: Some(v) } => v.get_type(),
                             _ => Arc::new(CType::Void),
                         };
+                        if body_awaits(&microstatements) && !is_promise_head(actual_rettype.clone()) {
+                            actual_rettype = CType::promise(actual_rettype);
+                        }
                         if let CType::Infer(..) = &*rettype {
                             rettype = actual_rettype;
                         } else if rettype.clone().to_strict_string(false)

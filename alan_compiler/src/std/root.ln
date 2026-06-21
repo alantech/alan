@@ -52,6 +52,7 @@ ctype Binds{T}; // A direct reference into the platform language's type system
  * access.
  */
 ctype Shared{T};
+ctype Promise{T};
 ctype Call{N, F}; // A reference to a function call (or method, etc) in the platform language
 ctype Infix{O}; // A reference to a native infix operation in the platform language
 ctype Prefix{O}; // A reference to a native prefix operation in the platform language
@@ -1691,39 +1692,39 @@ fn{Js} pop{T} (a: Mut{T[]}) -> T? {
 fn{Rs} map{T, U} "alan_std::map_onearg" <- RootBacking :: (T[], T -> U) -> U[];
 fn{Js} map{T, U}
   "(async (a, f) => { let out = []; for (let v of a) { out.push(await f(v)); } return out; })"
-  :: (T[], f: T -> U) -> U[];
+  :: (T[], f: T -> U) -> Promise{U[]};
 fn{Rs} map{T, U} "alan_std::map_twoarg" <- RootBacking :: (T[], (T, i64) -> U) -> U[];
 fn{Js} map{T, U}
   "(async (a, f) => { let out = []; for (let i = 0; i < a.length; i++) { out.push(await f(a[i], new alan_std.I64(i))); } return out; })"
   <- RootBacking
-  :: (T[], f: (T, i64) -> U) -> U[];
+  :: (T[], f: (T, i64) -> U) -> Promise{U[]};
 fn{Rs} parmap{T, U} "alan_std::parmap_onearg" <- RootBacking :: (T[], T -> U) -> U[];
 fn{Rs} filter{T} "alan_std::filter_onearg" <- RootBacking :: (T[], T -> bool) -> T[];
 fn{Js} filter{T} (a: T[], f: T -> bool) =
   {
     "(async (a, f) => { let out = []; for (let v of a) { if ((await f(v)).val) { out.push(v); } } return out; })"
-    :: (T[], T -> bool) -> T[]
+    :: (T[], T -> bool) -> Promise{T[]}
   }(a, f);
 fn{Rs} filter{T} "alan_std::filter_twoarg" <- RootBacking :: (T[], (T, i64) -> bool) -> T[];
 fn{Js} filter{T} (a: T[], f: (T, i64) -> bool) =
   {
     "(async (a, f) => { let out = []; for (let i = 0; i < a.length; i++) { if ((await f(a[i], new alan_std.I64(i))).val) { out.push(a[i]); } } return out; })"
     <- RootBacking
-    :: (T[], (T, i64) -> bool) -> T[]
+    :: (T[], (T, i64) -> bool) -> Promise{T[]}
   }(a, f);
 fn{Rs} reduce{T} "alan_std::reduce_sametype" <- RootBacking :: (T[], (T, T) -> T) -> T?;
 fn{Js} reduce{T}
   "(async (a, f) => { if (a.length === 0) { return null; } let out = a[0]; for (let i = 1; i < a.length; i++) { out = await f(out, a[i]); } return out; })"
-  :: (T[], (T, T) -> T) -> T?;
+  :: (T[], (T, T) -> T) -> Promise{T?};
 fn{Rs} reduce{T} "alan_std::reduce_sametype_idx" <- RootBacking :: (T[], (T, T, i64) -> T) -> T?;
 fn{Js} reduce{T}
   "(async (a, f) => { if (a.length === 0) { return null; } let out = a[0]; for (let i = 1; i < a.length; i++) { out = await f(out, a[i], new alan_std.I64(i)); } return out; })"
   <- RootBacking
-  :: (T[], (T, T, i64) -> T) -> T?;
+  :: (T[], (T, T, i64) -> T) -> Promise{T?};
 fn{Rs} reduce{T, U} "alan_std::reduce_difftype" <- RootBacking :: (T[], U, (U, T) -> U) -> U;
 fn{Js} reduce{T, U}
   "(async (a, i, f) => { let out = i; for (let i = 0; i < a.length; i++) { out = await f(out, a[i]); } return out; })"
-  :: (T[], U, (U, T) -> U) -> U;
+  :: (T[], U, (U, T) -> U) -> Promise{U};
 fn{Rs} reduce{T, U}
   "alan_std::reduce_difftype_idx"
   <- RootBacking
@@ -1731,7 +1732,7 @@ fn{Rs} reduce{T, U}
 fn{Js} reduce{T, U}
   "(async (a, i, f) => { let out = i; for (let i = 0; i < a.length; i++) { out = await f(out, a[i], new alan_std.I64(i)); } return out; })"
   <- RootBacking
-  :: (T[], U, (U, T, i64) -> U) -> U;
+  :: (T[], U, (U, T, i64) -> U) -> Promise{U};
 fn{Rs} concat{T} "alan_std::concat" <- RootBacking :: (T[], T[]) -> T[];
 fn{Js} concat{T} (a: T[], b: T[]) -> T[] = {Method{"concat"} :: (T[], T[]) -> T[]}(a, b);
 fn{Rs} append{T} "alan_std::append" <- RootBacking :: (Mut{T[]}, T[]);
@@ -1747,13 +1748,13 @@ fn{Js} has{T} (a: T[], f: T -> bool) =
   {
     "(async (a, f) => { for (let v of a) { if ((await f(v)).val) { return new alan_std.Bool(true); } } return new alan_std.Bool(false); })"
     <- RootBacking
-    :: (T[], T -> bool) -> bool
+    :: (T[], T -> bool) -> Promise{bool}
   }(a, f);
 fn{Rs} find{T} "alan_std::findarray" <- RootBacking :: (T[], T -> bool) -> T?;
 fn{Js} find{T} (a: T[], f: T -> bool) -> T? =
   {
     "(async (a, f) => { for (let v of a) { if ((await f(v)).val) { return v; } } return null; })"
-    :: (T[], T -> bool) -> T?
+    :: (T[], T -> bool) -> Promise{T?}
   }(a, f);
 // TODO: The `if` syntactic sugar will make these `if` calls much nicer
 fn index{T}(a: Array{T}, v: T) =
@@ -1773,14 +1774,14 @@ fn{Js} every{T} (a: T[], f: T -> bool) =
   {
     "(async (a, f) => { for (let v of a) { if (!(await f(v)).val) { return new alan_std.Bool(false); } } return new alan_std.Bool(true); })"
     <- RootBacking
-    :: (T[], T -> bool) -> bool
+    :: (T[], T -> bool) -> Promise{bool}
   }(a, f);
 fn{Rs} some{T} "alan_std::somearray" <- RootBacking :: (T[], T -> bool) -> bool;
 fn{Js} some{T} (a: T[], f: T -> bool) =
   {
     "(async (a, f) => { for (let v of a) { if ((await f(v)).val) { return new alan_std.Bool(true); } } return new alan_std.Bool(false); })"
     <- RootBacking
-    :: (T[], T -> bool) -> bool
+    :: (T[], T -> bool) -> Promise{bool}
   }(a, f);
 fn{Rs} repeat{T} "alan_std::repeatarray" <- RootBacking :: (T[], i64) -> T[];
 fn{Js} repeat{T} (a: T[], c: i64) =
@@ -1805,7 +1806,7 @@ fn{Js} last{T} (v: T[]) = {Method{"at"} :: (T[], -1) -> T?}(v);
 fn{Rs} swap{T} "alan_std::swaparray" <- RootBacking :: (Mut{T[]}, i64, i64) -> void!;
 fn{Js} swap{T} "alan_std.swap" <- RootBacking :: (T[], i64, i64) -> void!;
 fn{Rs} sort{T} "alan_std::sortarray" <- RootBacking :: (Mut{T[]}, (T, T) -> i8) -> void;
-fn{Js} sort{T} "alan_std.sort" <- RootBacking :: (Mut{T[]}, (T, T) -> i8) -> void;
+fn{Js} sort{T} "alan_std.sort" <- RootBacking :: (Mut{T[]}, (T, T) -> i8) -> Promise{void};
 fn sort{T} (arr: Mut{T[]}) =
   sort(arr, fn(a: T, b: T) = if(a == b, 0.i8, if(a < b, -1.i8, 1.i8)));
 fn magnitude (arr: f32[]) = (arr.map(fn(v: f32) = v ** 2.0.f32).reduce(add) ?? 0.0.f32).sqrt;
@@ -1848,7 +1849,7 @@ fn{Js} get{T, S}
   :: (T[S], i64) -> T?;
 fn{Rs} map{T, S, U} "alan_std::mapbuffer_onearg" <- RootBacking :: (T[S], T -> U) -> (U[S]);
 fn{Js} map{T, S, U} (a: T[S], f: T -> U) =
-  {"Promise.all" :: Buffer{U, S} -> Buffer{U, S}}({
+  {"Promise.all" :: Buffer{U, S} -> Promise{Buffer{U, S}}}({
     Method{"map"}
     :: (Buffer{T, S}, T -> U) -> Buffer{U, S}
   }(a, f));
@@ -1857,7 +1858,7 @@ fn{Rs} map{T, S, U}
   <- RootBacking
   :: (Buffer{T, S}, (T, i64) -> U) -> Buffer{U, S};
 fn{Js} map{T, S, U} (a: T[S], f: (T, i64) -> U) =
-  {"Promise.all" :: Buffer{U, S} -> Buffer{U, S}}({
+  {"Promise.all" :: Buffer{U, S} -> Promise{Buffer{U, S}}}({
     Method{"map"}
     :: (Buffer{T, S}, (T, i32) -> U) -> Buffer{U, S}
   }(a, fn(v: T, i: i32) = f(v, i.i64)));
@@ -1865,7 +1866,7 @@ fn{Rs} reduce{T, S} "alan_std::reducebuffer_sametype" <- RootBacking :: (T[S], (
 fn{Js} reduce{T, S} (a: T[S], f: (T, T) -> T) =
   {
     "(async (a, f) => { if (a.length === 0) { return null; } let out = a[0]; for (let i = 1; i < a.length; i++) { out = await f(out, a[i]); } return out; })"
-    :: (T[S], (T, T) -> T) -> T?
+    :: (T[S], (T, T) -> T) -> Promise{T?}
   }(a, f);
 fn{Rs} reduce{T, S, U}
   "alan_std::reducebuffer_difftype"
@@ -1874,7 +1875,7 @@ fn{Rs} reduce{T, S, U}
 fn{Js} reduce{T, S, U} (a: T[S], i: U, f: (U, T) -> U) =
   {
     "(async (a, i, f) => { let out = i; for (let i = 0; i < a.length; i++) { out = await f(out, a[i]); } return out; })"
-    :: (T[S], U, (U, T) -> U) -> U
+    :: (T[S], U, (U, T) -> U) -> Promise{U}
   }(a, i, f);
 fn{Rs} has{T, S} "alan_std::hasbuffer" <- RootBacking :: (T[S], T) -> bool;
 fn{Js} has{T, S} (a: T[S], v: T) = a.reduce(false, fn(out: bool, t: T) = if(out, true, t == v));
@@ -1883,20 +1884,20 @@ fn{Js} has{T, S} (a: T[S], f: T -> bool) =
   {
     "(async (a, f) => { for (let v of a) { if ((await f(v)).val) { return new alan_std.Bool(true); } } return new alan_std.Bool(false); })"
     <- RootBacking
-    :: (T[S], T -> bool) -> bool
+    :: (T[S], T -> bool) -> Promise{bool}
   }(a, f);
 fn{Rs} find{T, S} "alan_std::findbuffer" <- RootBacking :: (T[S], T -> bool) -> T?;
 fn{Js} find{T, S} (a: T[S], f: T -> bool) -> T? =
   {
     "(async (a, f) => { for (let v of a) { if ((await f(v)).val) { return v; } } return null; })"
-    :: (T[S], T -> bool) -> T?
+    :: (T[S], T -> bool) -> Promise{T?}
   }(a, f);
 fn{Rs} every{T, S} "alan_std::everybuffer" <- RootBacking :: (T[S], T -> bool) -> bool;
 fn{Js} every{T, S} (a: T[S], f: T -> bool) =
   {
     "(async (a, f) => { for (let v of a) { if (!(await f(v)).val) { return new alan_std.Bool(false); } } return new alan_std.Bool(true); })"
     <- RootBacking
-    :: (T[S], T -> bool) -> bool
+    :: (T[S], T -> bool) -> Promise{bool}
   }(a, f);
 fn{Rs} concatInner{T, S, N} "alan_std::concatbuffer" <- RootBacking :: (Mut{T[S + N]}, T[S], T[N]);
 fn{Js} concatInner{T, S, N}
@@ -1940,7 +1941,7 @@ fn dot{I}(a: Buffer{I, 4}, b: Buffer{I, 4}) = a.0 * b.0 + a.1 * b.1 + a.2 * b.2 
 fn{Rs} swap{T, S} "alan_std::swapbuffer" <- RootBacking :: (Mut{Buffer{T, S}}, i64, i64) -> void!;
 fn{Js} swap{T, S} "alan_std.swap" <- RootBacking :: (Buffer{T, S}, i64, i64) -> void!;
 fn{Rs} sort{T, S} "alan_std::sortbuffer" <- RootBacking :: (Mut{Buffer{T, S}}, (T, T) -> i8) -> void;
-fn{Js} sort{T, S} "alan_std.sort" <- RootBacking :: (Mut{Buffer{T, S}}, (T, T) -> i8) -> void;
+fn{Js} sort{T, S} "alan_std.sort" <- RootBacking :: (Mut{Buffer{T, S}}, (T, T) -> i8) -> Promise{void};
 fn sort{T, S} (arr: Mut{Buffer{T, S}}) =
   sort(arr, fn(a: T, b: T) = if(a == b, 0.i8, if(a < b, -1.i8, 1.i8)));
 fn magnitude{S} (buf: f32[S]) = (buf.map(fn(v: f32) = v ** 2.0.f32).reduce(add) ?? 0.0.f32).sqrt;
@@ -2335,7 +2336,7 @@ fn{Rs} wait (t: i64) =
   }(t.u64));
 fn{Js} wait
   "((t) => new Promise((r) => setTimeout(() => { r(performance.now()) }, Number(t))))"
-  :: i64 -> f64;
+  :: i64 -> Promise{f64};
 /// Time-related functions
 fn{Rs} now "std::time::Instant::now" :: () -> Instant;
 fn{Js} now "performance.now" :: () -> Performance;
@@ -2379,7 +2380,7 @@ fn{Js} GBuffer{T}(bu: BufferUsages, arr: T[]) {
   let fallibleRawBuffer = {
     "alan_std.createBufferInit"
     <- RootBacking
-    :: (BufferUsages, T[]) -> Fallible{GBufferRaw}
+    :: (BufferUsages, T[]) -> Promise{Fallible{GBufferRaw}}
   }(bu, arr);
   return if(fallibleRawBuffer.exists, fn {
     return Fallible{GBuffer{T}}(GBuffer{T}(fallibleRawBuffer.getOrExit));
@@ -2399,7 +2400,7 @@ fn{Js} GBuffer{T}(bu: BufferUsages, size: i64) {
   let fallibleRawBuffer = {
     "alan_std.createEmptyBuffer"
     <- RootBacking
-    :: (BufferUsages, i32) -> GBufferRaw!
+    :: (BufferUsages, i32) -> Promise{GBufferRaw!}
   }(bu, size.i32);
   return if(fallibleRawBuffer.exists, fn {
     return Fallible{GBuffer{T}}(GBuffer{T}(fallibleRawBuffer.getOrExit));
@@ -2446,9 +2447,9 @@ fn GPGPU{T}(src: string, buf: GBuffer{T}, local: Buffer{i64, 3}) -> GPGPU {
   return GPGPU(src, [[buf.rawBuffer]], {i64[3]}(x, y, z), local);
 }
 fn{Rs} run "alan_std::gpu_run" <- RootBacking :: Mut{GPGPU};
-fn{Js} run "alan_std.gpuRun" <- RootBacking :: GPGPU;
+fn{Js} run "alan_std.gpuRun" <- RootBacking :: Promise{GPGPU};
 fn{Rs} run "alan_std::gpu_run_list" <- RootBacking :: Mut{GPGPU[]};
-fn{Js} run "alan_std.gpuRunList" <- RootBacking :: GPGPU[];
+fn{Js} run "alan_std.gpuRunList" <- RootBacking :: Promise{GPGPU[]};
 fn{Rs} shader Property{"source.clone()"} :: GPGPU -> string;
 fn{Js} shader Property{"source"} :: GPGPU -> string;
 /*
@@ -2459,7 +2460,7 @@ fn{Rs} read{T}(gb: GBuffer{T}) {
   return {"alan_std::read_buffer" <- RootBacking :: GBufferRaw -> T[]}(gb.rawBuffer);
 }
 fn{Js} read{T}(gb: GBuffer{T}) =
-  {"alan_std.readBuffer" <- RootBacking :: (GBufferRaw, string) -> T[]}(
+  {"alan_std.readBuffer" <- RootBacking :: (GBufferRaw, string) -> Promise{T[]}}(
     gb.rawBuffer,
     String{T}()
   );
@@ -2467,7 +2468,7 @@ fn{Js} read{T}(gb: GBuffer{T}) =
 fn{Rs} replace{T}(gb: GBuffer{T}, vals: T[]) =
   {"alan_std::replace_buffer" <- RootBacking :: (GBufferRaw, T[]) -> ()!}(gb.rawBuffer, vals);
 fn{Js} replace{T}(gb: GBuffer{T}, vals: T[]) {
-  return {"alan_std.replaceBuffer" <- RootBacking :: (GBufferRaw, T[]) -> ()!}(gb.rawBuffer, vals);
+  return {"alan_std.replaceBuffer" <- RootBacking :: (GBufferRaw, T[]) -> Promise{()!}}(gb.rawBuffer, vals);
 }
 /// Ergonomic GPGPU-related types and functions
 // The WgpuType provides a mechanism to build up the logic for a compute shader with normal-looking
@@ -5680,7 +5681,7 @@ fn{Rs} window
 fn{Js} window
   "alan_std.runWindow"
   <- RootBacking
-  :: (Window -> (), Window -> u32[], Frame -> GPGPU[]) -> ()!;
+  :: (Window -> (), Window -> u32[], Frame -> GPGPU[]) -> Promise{()!};
 fn{Rs} width Method{"width"} :: Window -> u32;
 fn{Js} width "alan_std.contextWidth" <- RootBacking :: Window -> u32;
 fn{Rs} height Method{"height"} :: Window -> u32;
