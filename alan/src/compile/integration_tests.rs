@@ -889,6 +889,18 @@ export fn{Mac || Js} main {
     stdout "0.33, 1.00, 1.00, 1.00, 2.00, 1.67, 1.67, 3.00, 2.33\n";
 );
 
+test!(map_i32_function_value_sync_dispatch => r#"fn conv(idx: Buffer{i64, 3}) -> Buffer{i32, 3} {
+  return idx.map(i32);
+}
+
+export fn main {
+  let out = conv({i64[3]}(1, 2, 3));
+  out.len.string.print;
+}
+"#;
+    stdout "3\n";
+);
+
 // Functions and Custom Operators
 
 test!(basic_function_usage => r#"fn foo() = print('foo');

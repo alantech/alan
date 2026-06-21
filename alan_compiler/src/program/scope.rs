@@ -93,32 +93,48 @@ fn function_dispatch_accepts(expected: Arc<CType>, actual: Arc<CType>) -> bool {
                 && function_return_dispatch_accepts(eo.clone(), ao.clone());
         }
     }
-    if expected.clone().accepts(actual.clone()) {
-        return true;
-    }
-    if !is_function_head(expected.clone()) {
-        return false;
-    }
-    let mut stack = vec![actual];
-    while let Some(candidate) = stack.pop() {
-        let candidate = candidate.degroup();
-        if expected.clone().accepts(candidate.clone()) {
-            return true;
-        }
-        match &*candidate {
-            CType::Type(_, inner) | CType::Group(inner) | CType::Promise(inner) => {
-                stack.push(inner.clone())
+    if is_function_head(expected.clone()) {
+        let mut stack = vec![actual];
+        while let Some(candidate) = stack.pop() {
+            let candidate = candidate.degroup();
+            match &*candidate {
+                CType::Type(_, inner) | CType::Group(inner) | CType::Promise(inner) => {
+                    stack.push(inner.clone());
+                    continue;
+                }
+                CType::AnyOf(ts) | CType::Either(ts, _) => {
+                    for t in ts {
+                        stack.push(t.clone());
+                    }
+                    continue;
+                }
+                CType::Generic(_, _, inner) => {
+                    stack.push(inner.clone());
+                    continue;
+                }
+                _ => {}
             }
-            CType::AnyOf(ts) | CType::Either(ts, _) => {
-                for t in ts {
-                    stack.push(t.clone());
+            if !Program::is_target_lang_rs() {
+                let expected_head = degroup_type_group(expected.clone());
+                let candidate_head = degroup_type_group(candidate.clone());
+                if let (CType::Function(ei, eo), CType::Function(ai, ao)) =
+                    (&*expected_head, &*candidate_head)
+                {
+                    if function_dispatch_accepts(ei.clone(), ai.clone())
+                        && function_return_dispatch_accepts(eo.clone(), ao.clone())
+                    {
+                        return true;
+                    }
+                    continue;
                 }
             }
-            CType::Generic(_, _, inner) => stack.push(inner.clone()),
-            _ => {}
+            if expected.clone().accepts(candidate.clone()) {
+                return true;
+            }
         }
+        return false;
     }
-    false
+    expected.accepts(actual)
 }
 
 fn degroup_type_group_promise(typen: Arc<CType>) -> Arc<CType> {
