@@ -621,6 +621,22 @@ fn is_string_type(t: &CType) -> bool {
     }
 }
 
+/// If `arg` is a string *literal* (a `Value` whose representation is a quoted
+/// string rather than an identifier), return that literal. It is already a
+/// `&'static str`, so it can be passed to a borrowed `&str` parameter directly
+/// instead of through the allocate-then-borrow `&"...".to_string()`.
+fn string_literal_arg(arg: &Microstatement) -> Option<String> {
+    match arg {
+        Microstatement::Value {
+            representation,
+            typen,
+        } if is_string_type(typen) && representation.starts_with('"') => {
+            Some(representation.clone())
+        }
+        _ => None,
+    }
+}
+
 fn render_arg(
     a: &str,
     arg_is_shared: bool,
@@ -1294,6 +1310,17 @@ pub fn from_microstatement(
                         let needs_deref = arg_is_shared && !param_is_shared;
                         match &*arg_type {
                             CType::Function(..) => argstrs.push(a.to_string()),
+                            // A string literal passed to a borrowed `&str`
+                            // parameter (one we render, i.e. `Ref` and not
+                            // promoted to an owned `String`) is already a
+                            // `&'static str`: emit it directly rather than
+                            // `&"...".to_string()` (allocate then borrow).
+                            _ if matches!(function.args()[i].1, ArgKind::Ref)
+                                && !promote_param_to_own(function, i)
+                                && string_literal_arg(arg).is_some() =>
+                            {
+                                argstrs.push(string_literal_arg(arg).unwrap());
+                            }
                             // A parameter taken by value -- either promoted (see
                             // `promote_param_to_own`) or already declared `Own` --
                             // needs an owned argument. `Shared`/deref arguments keep
