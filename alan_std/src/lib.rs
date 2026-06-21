@@ -84,7 +84,7 @@ pub fn getstring(a: &str, i: &i64) -> Result<String, AlanError> {
 
 /// `indexstring` finds the index where the specified substring starts, if possible
 #[inline(always)]
-pub fn indexstring(a: &String, b: &String) -> Result<i64, AlanError> {
+pub fn indexstring(a: &str, b: &str) -> Result<i64, AlanError> {
     a.find(b).map(|v| v as i64).ok_or(AlanError {
         message: format!("Could not find {b} in {a}"),
     })

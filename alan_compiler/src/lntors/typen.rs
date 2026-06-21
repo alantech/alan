@@ -5,6 +5,30 @@ use ordered_hash_map::OrderedHashMap;
 
 use crate::program::CType;
 
+/// Does this type denote the alan `string` (which lowers to Rust `String`)?
+/// Used so a *borrowed* string parameter of a closure type is rendered as the
+/// idiomatic `&str` rather than `&String`. An inline closure passed to an
+/// `alan_std` generic monomorphized to `String` still type-checks: its params
+/// are inferred to `&String` and the `&str`-typed body call coerces.
+fn is_string_ctype(t: &CType) -> bool {
+    match t {
+        CType::Type(n, inner) => n == "string" || is_string_ctype(inner),
+        CType::Group(inner) => is_string_ctype(inner),
+        CType::Binds(n, _) => matches!(&**n, CType::TString(s) if s == "String"),
+        _ => false,
+    }
+}
+
+/// The borrowed-element rendering for a closure parameter: `str` for a string
+/// (so the surrounding `&` yields `&str`), otherwise the type's own rendering.
+fn closure_param_form(t: &CType, rendered: String) -> String {
+    if is_string_ctype(t) {
+        "str".to_string()
+    } else {
+        rendered
+    }
+}
+
 pub fn ctype_to_rtype(
     ctype: Arc<CType>,
     mut deps: OrderedHashMap<String, String>,
@@ -30,7 +54,7 @@ pub fn ctype_to_rtype(
                                     deps = res.1;
                                     out.push(match &**t {
                                         CType::Mut(_) => format!("mut {s}"),
-                                        _ => s,
+                                        _ => closure_param_form(t, s),
                                     });
                                 }
                                 out.join(", &")
@@ -41,7 +65,7 @@ pub fn ctype_to_rtype(
                                 deps = res.1;
                                 match &otherwise {
                                     CType::Mut(_) => format!("mut {s}"),
-                                    _ => s,
+                                    _ => closure_param_form(otherwise, s),
                                 }
                             }
                         }, {
@@ -255,15 +279,15 @@ pub fn ctype_to_rtype(
                                 let res = ctype_to_rtype(t.clone(), deps)?;
                                 let s = res.0;
                                 deps = res.1;
-                                out.push(s);
+                                out.push(closure_param_form(t, s));
                             }
                             out.join(", &")
                         },
-                        _otherwise => {
+                        otherwise => {
                             let res = ctype_to_rtype(i.clone(), deps)?;
                             let s = res.0;
                             deps = res.1;
-                            s
+                            closure_param_form(otherwise, s)
                         }
                     }, {
                         let res = ctype_to_rtype(o.clone(), deps)?;

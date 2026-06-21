@@ -198,20 +198,26 @@ fn used_as_native_value_arg(ms: &Microstatement, name: &str) -> bool {
 /// Restricted to `Normal` functions (the only ones we emit *and* whose call
 /// sites we render via `render_arg`), non-`Shared`, non-function-typed value
 /// parameters.
+/// Returns true if `function` is (or may be) referenced as a first-class value,
+/// so its signature must stay the form a higher-order call site expects
+/// (`impl Fn(&T, ...)`, with the element type the callback is invoked with --
+/// e.g. `&String`, not `&str`, for `alan_std`'s `String`-monomorphized generics).
+/// User functions are matched by name via the reachable-graph pre-pass;
+/// compiler-synthesized platform-call wrappers (the `Call{N, F}` references,
+/// named `Call_*`) exist specifically to be passed as function values, so they
+/// are matched by name prefix. Both are pure (the set is fixed before any
+/// rendering), so the definition site and every call site agree.
+fn is_value_referenced(function: &Function) -> bool {
+    function.name.starts_with("Call_")
+        || FN_VALUE_REFS.with(|r| r.borrow().contains(&function.name))
+}
+
 fn promote_param_to_own(function: &Function, idx: usize) -> bool {
     if !matches!(function.kind, FnKind::Normal) {
         return false;
     }
-    // A function referenced as a first-class value must keep its `&T` signature
-    // to match the higher-order call site (`impl Fn(&T, ...)`). User functions
-    // are matched by name via the reachable-graph pre-pass; compiler-synthesized
-    // platform-call wrappers (the `Call{N, F}` references, named `Call_*`) exist
-    // specifically to be passed as function values, so they are excluded by name
-    // prefix. Both checks are pure (the set is fixed before any rendering), so
-    // the definition site and every call site agree.
-    if function.name.starts_with("Call_")
-        || FN_VALUE_REFS.with(|r| r.borrow().contains(&function.name))
-    {
+    // A first-class-referenced function must keep its `&T` signature.
+    if is_value_referenced(function) {
         return false;
     }
     let args = function.args();
@@ -603,6 +609,18 @@ fn let_binding_annotation(
     Ok((anno.unwrap_or_default(), out, deps))
 }
 
+/// Returns true if `t` is the alan `string` type (which lowers to Rust `String`),
+/// after unwrapping `Type`/`Group` wrappers. A borrowed `string` is rendered as
+/// `&str` and "make an owned copy" (`clone`/defensive clone) is `.to_string()`.
+fn is_string_type(t: &CType) -> bool {
+    match t {
+        CType::Type(n, inner) => n == "string" || is_string_type(inner),
+        CType::Group(inner) => is_string_type(inner),
+        CType::Binds(n, _) => matches!(&**n, CType::TString(s) if s == "String"),
+        _ => false,
+    }
+}
+
 fn render_arg(
     a: &str,
     arg_is_shared: bool,
@@ -736,6 +754,15 @@ pub fn from_microstatement(
                             // incoming `&T` borrow instead of defensively cloning it into an
                             // owned local. `render_arg` knows to pass it through directly.
                             Ok(("".to_string(), out, deps))
+                        } else if is_string_type(typen) {
+                            // A borrowed `string` is `&str`; `.to_string()` (not
+                            // `.clone()`, which would stay `&str`) gives the owned
+                            // `String` copy the body works on.
+                            Ok((
+                                format!("let mut {name} = {name}.to_string()"),
+                                out,
+                                deps,
+                            ))
                         } else {
                             Ok((
                                 format!("let mut {name} = {name}.clone()"), // TODO: not always mutable
@@ -966,7 +993,28 @@ pub fn from_microstatement(
                                 if let FnKind::External(d) = &fun.kind {
                                     super::register_rust_dependency(&**d, &mut deps);
                                 }
-                                Ok((rustname, out, deps))
+                                // A borrowed-`string` parameter is rendered as `&str`,
+                                // but a higher-order call site that monomorphizes the
+                                // element type to `String` invokes the callback with
+                                // `&String` (e.g. `alan_std`'s generic buffer/array
+                                // reducers). A bare `fn(&str)` path does not satisfy
+                                // `Fn(&String)`, so wrap the reference in a closure: the
+                                // closure's parameter types are *inferred* from the
+                                // expected bound (`&String`) and the forwarded call
+                                // coerces `&String` -> `&str`. For any other callback
+                                // shape this is an identity wrapper.
+                                let has_borrowed_string = fun.args().iter().any(|(_, k, t)| {
+                                    matches!(k, ArgKind::Ref) && is_string_type(t)
+                                });
+                                if has_borrowed_string {
+                                    let params = (0..fun.args().len())
+                                        .map(|i| format!("arg{i}"))
+                                        .collect::<Vec<_>>()
+                                        .join(", ");
+                                    Ok((format!("|{params}| {rustname}({params})"), out, deps))
+                                } else {
+                                    Ok((rustname, out, deps))
+                                }
                             }
                             FnKind::Bind(rustname)
                             | FnKind::BoundGeneric(_, rustname)
@@ -1411,6 +1459,13 @@ pub fn from_microstatement(
                                 out,
                                 deps,
                             ))
+                        }
+                        // A borrowed `string` is `&str`, whose `.clone()` is still
+                        // `&str`; `.to_string()` produces the owned `String` copy
+                        // that `clone` is meant to yield (and also works for an
+                        // owned `String`/`&String` argument).
+                        _ if is_string_type(&arg_type) => {
+                            Ok((format!("{}.to_string()", argstrs[0]), out, deps))
                         }
                         _ => Ok((format!("{}.clone()", argstrs[0]), out, deps)),
                     }
@@ -2888,6 +2943,9 @@ pub fn generate(
             match k {
                 ArgKind::Mut => arg_strs.push(format!("{l}: &mut {t_str}")),
                 ArgKind::Own => arg_strs.push(format!("{l}: {t_str}")),
+                // A borrowed `string` is taken as `&str` (idiomatic, and accepts a
+                // `&String` argument by deref coercion) rather than `&String`.
+                _ if t_str == "String" => arg_strs.push(format!("{l}: &str")),
                 _ => arg_strs.push(format!("{l}: &{t_str}")),
             }
         }
