@@ -179,14 +179,21 @@ pub fn from_microstatement(
                 let (val, o, d) = from_microstatement(ms, parent_fn, scope, out, deps)?;
                 out = o;
                 deps = d;
-                inner_statements.push(val);
+                if !val.trim().is_empty() {
+                    inner_statements.push(val);
+                }
             }
+            let body = if inner_statements.is_empty() {
+                "".to_string()
+            } else {
+                format!("\n        {};\n    ", inner_statements.join(";\n        "))
+            };
             Ok((
                 format!(
-                    "{}function ({}) {{\n        {};\n    }}",
+                    "{}function ({}) {{{}}}",
                     async_prefix,
                     arg_names.join(", "),
-                    inner_statements.join(";\n        "),
+                    body,
                 ),
                 out,
                 deps,
@@ -1811,6 +1818,9 @@ pub fn generate(
         let (stmt, o, d) = from_microstatement(microstatement, function, scope, out, deps)?;
         out = o;
         deps = d;
+        if stmt.trim().is_empty() {
+            continue;
+        }
         fn_string = format!("{fn_string}    {stmt};\n");
     }
     fn_string = format!("{fn_string}}}");
