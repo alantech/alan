@@ -77,7 +77,9 @@ fn is_promise_head(typen: Arc<CType>) -> bool {
 fn function_codegen_is_async(function: Arc<Function>) -> bool {
     fn microstatement_awaits_for_codegen(ms: &Microstatement, seen: &mut HashSet<usize>) -> bool {
         match ms {
-            Microstatement::Assignment { value, .. } => microstatement_awaits_for_codegen(value, seen),
+            Microstatement::Assignment { value, .. } => {
+                microstatement_awaits_for_codegen(value, seen)
+            }
             Microstatement::FnCall { function, args } => {
                 function_codegen_is_async_inner(function.clone(), seen)
                     || args
@@ -99,7 +101,9 @@ fn function_codegen_is_async(function: Arc<Function>) -> bool {
             Microstatement::NativeCall { args, .. } => args
                 .iter()
                 .any(|a| microstatement_awaits_for_codegen(a, seen)),
-            Microstatement::Closure { function } => function_codegen_is_async_inner(function.clone(), seen),
+            Microstatement::Closure { function } => {
+                function_codegen_is_async_inner(function.clone(), seen)
+            }
             Microstatement::Arg { .. } | Microstatement::Value { .. } => false,
         }
     }
@@ -1726,11 +1730,7 @@ pub fn from_microstatement(
                 }
             }
         }
-        Microstatement::VarCall {
-            name,
-            typen,
-            args,
-        } => {
+        Microstatement::VarCall { name, typen, args } => {
             let mut argstrs = Vec::new();
             for arg in args {
                 let (a, o, d) = from_microstatement(arg, parent_fn, scope, out, deps)?;

@@ -87,12 +87,10 @@ fn function_dispatch_accepts(expected: Arc<CType>, actual: Arc<CType>) -> bool {
     if !Program::is_target_lang_rs() {
         let expected_head = degroup_type_group(expected.clone());
         let actual_head = degroup_type_group(actual.clone());
-        match (&*expected_head, &*actual_head) {
-            (CType::Function(ei, eo), CType::Function(ai, ao)) => {
-                return function_dispatch_accepts(ei.clone(), ai.clone())
-                    && function_return_dispatch_accepts(eo.clone(), ao.clone());
-            }
-            _ => {}
+        if let (CType::Function(ei, eo), CType::Function(ai, ao)) = (&*expected_head, &*actual_head)
+        {
+            return function_dispatch_accepts(ei.clone(), ai.clone())
+                && function_return_dispatch_accepts(eo.clone(), ao.clone());
         }
     }
     if expected.clone().accepts(actual.clone()) {
@@ -999,11 +997,7 @@ impl<'a> Scope<'a> {
                         if is_function_head(expected.clone()) && !is_function_head(actual.clone()) {
                             continue;
                         }
-                        reduced_fn_args.push((
-                            format!("arg{i}"),
-                            kind.clone(),
-                            expected.clone(),
-                        ));
+                        reduced_fn_args.push((format!("arg{i}"), kind.clone(), expected.clone()));
                         reduced_call_args.push(actual);
                     }
                     if reduced_fn_args.len() < fargs.len() {
@@ -1029,7 +1023,8 @@ impl<'a> Scope<'a> {
                         value_call_args.push(args[i].clone());
                     }
                     if !value_fn_args.is_empty() && value_fn_args.len() < fargs.len() {
-                        if let Ok(gs) = CType::infer_generics(self, g, &value_fn_args, &value_call_args)
+                        if let Ok(gs) =
+                            CType::infer_generics(self, g, &value_fn_args, &value_call_args)
                         {
                             if candidate_matches(&gs) {
                                 return Some(gs);

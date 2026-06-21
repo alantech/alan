@@ -184,9 +184,7 @@ fn microstatement_awaits(ms: &Microstatement) -> bool {
             is_promise_head(typen.clone()) || args.iter().any(microstatement_awaits)
         }
         Microstatement::Array { vals, .. } => vals.iter().any(microstatement_awaits),
-        Microstatement::Return { value } => value
-            .as_deref()
-            .is_some_and(microstatement_awaits),
+        Microstatement::Return { value } => value.as_deref().is_some_and(microstatement_awaits),
         Microstatement::NativeCall { args, .. } => args.iter().any(microstatement_awaits),
         Microstatement::Closure { function } => {
             is_promise_head(function.rettype()) || body_awaits(&function.microstatements)
@@ -914,7 +912,8 @@ impl Function {
                             Microstatement::Return { value: Some(v) } => v.get_type(),
                             _ => Arc::new(CType::Void),
                         };
-                        if body_awaits(&microstatements) && !is_promise_head(actual_rettype.clone()) {
+                        if body_awaits(&microstatements) && !is_promise_head(actual_rettype.clone())
+                        {
                             actual_rettype = CType::promise(actual_rettype);
                         }
                         if let CType::Infer(..) = &*rettype {
@@ -1048,7 +1047,8 @@ impl Function {
                             Microstatement::Return { value: Some(v) } => v.get_type(),
                             _ => Arc::new(CType::Void),
                         };
-                        if body_awaits(&microstatements) && !is_promise_head(actual_rettype.clone()) {
+                        if body_awaits(&microstatements) && !is_promise_head(actual_rettype.clone())
+                        {
                             actual_rettype = CType::promise(actual_rettype);
                         }
                         if let CType::Infer(..) = &*rettype {
