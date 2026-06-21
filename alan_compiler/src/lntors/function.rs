@@ -493,8 +493,10 @@ use crate::program::liveness::type_has_movable_projection;
 /// Returns true if `name` is a non-`Shared`, `ArgKind::Ref` parameter of
 /// `parent_fn` that can be left as a borrow (`&T`) in the generated body instead
 /// of being defensively cloned into an owned local. This requires that:
-///   - its type has no movable field/element projections (see above), and
-///   - no use of it requires ownership (see `ref_arg_escapes`).
+///
+/// - its type has no movable field/element projections (see above), and
+/// - no use of it requires ownership (see `ref_arg_escapes`).
+///
 /// We also restrict to non-`Shared` types to keep the (already subtle)
 /// `Shared{T}` deref/locking logic untouched for now.
 fn is_borrowable_ref_arg(name: &str, parent_fn: &Function) -> bool {
