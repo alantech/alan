@@ -4,6 +4,8 @@ mod ctype;
 mod export;
 mod fnkind;
 mod function;
+pub mod inline;
+pub mod liveness;
 mod microstatement;
 mod operatormapping;
 #[allow(clippy::module_inception)]
@@ -22,6 +24,7 @@ pub use fnkind::FnKind;
 
 pub use function::Function;
 pub use microstatement::Microstatement;
+pub use microstatement::NativeCallKind;
 pub use operatormapping::OperatorMapping;
 pub use program::Program;
 pub use scope::Scope;

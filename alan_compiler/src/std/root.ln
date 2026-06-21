@@ -1638,11 +1638,7 @@ fn{Js} index
   "((a, b) => { let idx = a.val.indexOf(b.val); if (idx < 0) { return new alan_std.AlanError(new alan_std.Str(`Could not find ${b.val} in ${a.val}`)); } else { return new alan_std.I64(idx); } })"
   <- RootBacking
   :: (string, string) -> i64!;
-fn{Rs} eq (a: string, b: string) =
-  {Infix{"=="} :: (string, string) -> bool}({Method{"as_str"} :: string -> string}(a), {
-    Method{"as_str"}
-    :: string -> string
-  }(b));
+fn{Rs} eq (a: string, b: string) = {Infix{"=="} :: (string, string) -> bool}(a, b);
 fn{Js} eq "((a, b) => new alan_std.Bool(a.val == b.val))" <- RootBacking :: (string, string) -> bool;
 fn{Rs} neq Infix{"!="} :: (Own{string}, Own{string}) -> bool;
 fn{Js} neq

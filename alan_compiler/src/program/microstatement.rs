@@ -50,6 +50,43 @@ pub enum Microstatement {
     Return {
         value: Option<Box<Microstatement>>,
     }, // TODO: Conditionals
+    /// A call into a native construct of the target language. The `name` (the
+    /// bound method/operator/function/cast spelling) and `args` are kept
+    /// structurally -- rather than baked into a pre-rendered `Value` string --
+    /// so they can be substituted (e.g. by the inliner) and serialized by each
+    /// codegen layer. `kind` selects the surface form. Most forms share syntax
+    /// across our backends; the only exception is `Cast`, which is Rust-only
+    /// (every `Cast{..}` bind is `fn{Rs}`, so it is never constructed when
+    /// targeting JavaScript).
+    NativeCall {
+        typen: Arc<CType>,
+        kind: NativeCallKind,
+        name: String,
+        args: Vec<Microstatement>,
+    },
+}
+
+/// The kind of native construct a `Microstatement::NativeCall` represents. For
+/// the receiver-based forms (`Method`/`Property`) `args[0]` is the receiver.
+#[derive(Clone, Debug, PartialEq)]
+pub enum NativeCallKind {
+    /// `recv.name(rest_args...)`
+    Method,
+    /// `recv.name` (no call parens; exactly one arg, the receiver)
+    Property,
+    /// `name(args...)` — a plain function/macro-style native call (e.g.
+    /// `format!("{}", arg1)`). There is no receiver; every argument is a call
+    /// argument.
+    Function,
+    /// `(lhs name rhs)` — a native infix operator (e.g. `+`, `==`); exactly two
+    /// arguments.
+    Infix,
+    /// `(name operand)` — a native prefix operator (e.g. `!`); exactly one
+    /// argument.
+    Prefix,
+    /// `(operand as name)` — a native cast to the target type `name`. Rust-only
+    /// syntax; never constructed for the JavaScript backend.
+    Cast,
 }
 
 impl Microstatement {
@@ -66,6 +103,7 @@ impl Microstatement {
             Self::FnCall { function, args: _ } => function.rettype(),
             Self::Closure { function } => function.typen.clone(),
             Self::VarCall { typen, .. } => typen.clone(),
+            Self::NativeCall { typen, .. } => typen.clone(),
         }
     }
 }

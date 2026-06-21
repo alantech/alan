@@ -1,10 +1,47 @@
 use ordered_hash_map::OrderedHashMap;
 
 use crate::lntors::function::generate as fn_generate;
-use crate::program::Program;
+use crate::program::{CType, Program};
 
 mod function;
 mod typen;
+
+pub(crate) fn register_rust_dependency(d: &CType, deps: &mut OrderedHashMap<String, String>) {
+    match d {
+        CType::Type(_, t) => match &**t {
+            CType::Rust(d) => match &**d {
+                CType::Dependency(n, v) => {
+                    let name = match &**n {
+                        CType::TString(s) => s.clone(),
+                        _ => CType::fail("Dependency names must be strings"),
+                    };
+                    let version = match &**v {
+                        CType::TString(s) => s.clone(),
+                        _ => CType::fail("Dependency versions must be strings"),
+                    };
+                    deps.insert(name, version);
+                }
+                _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
+            }
+            otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {otherwise:?}"))
+        }
+        CType::Rust(d) => match &**d {
+            CType::Dependency(n, v) => {
+                let name = match &**n {
+                    CType::TString(s) => s.clone(),
+                    _ => CType::fail("Dependency names must be strings"),
+                };
+                let version = match &**v {
+                    CType::TString(s) => s.clone(),
+                    _ => CType::fail("Dependency versions must be strings"),
+                };
+                deps.insert(name, version);
+            }
+            _ => CType::fail("Rust dependencies must be declared with the dependency syntax"),
+        }
+        otherwise => CType::fail(&format!("Native imports compiled to Rust *must* be declared Rust{{D}} dependencies: {otherwise:?}"))
+    }
+}
 
 pub fn lntors(
     entry_file: String,
@@ -38,6 +75,13 @@ pub fn lntors(
     // arguments.
     assert_eq!(func.len(), 1);
     assert_eq!(func[0].args().len(), 0);
+    // Determine which single-use functions can be inlined into their sole caller.
+    crate::program::inline::set_inline_targets(crate::program::inline::compute_inline_targets(
+        &func[0],
+    ));
+    // Determine which functions are referenced as first-class values, so their
+    // parameter signatures are not changed by the ownership-promotion pass.
+    function::set_fn_value_refs(&func[0]);
     // Assertion proven, start emitting the Rust `main` function
     let (fns, deps) = fn_generate(
         "main".to_string(),

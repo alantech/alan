@@ -6,6 +6,43 @@ use crate::program::{CType, Program};
 mod function;
 mod typen;
 
+pub(crate) fn register_nodejs_dependency(d: &CType, deps: &mut OrderedHashMap<String, String>) {
+    match d {
+        CType::Type(_, t) => match &**t {
+            CType::Nodejs(d) => match &**d {
+                CType::Dependency(n, v) => {
+                    let name = match &**n {
+                        CType::TString(s) => s.clone(),
+                        _ => CType::fail("Dependency names must be strings"),
+                    };
+                    let version = match &**v {
+                        CType::TString(s) => s.clone(),
+                        _ => CType::fail("Dependency versions must be strings"),
+                    };
+                    deps.insert(name, version);
+                }
+                _ => CType::fail("Node.js dependencies must be declared with the dependency syntax"),
+            }
+            otherwise => CType::fail(&format!("Native imports compiled to Javascript must be declared Nodejs{{D}} dependencies: {otherwise:?}"))
+        }
+        CType::Nodejs(d) => match &**d {
+            CType::Dependency(n, v) => {
+                let name = match &**n {
+                    CType::TString(s) => s.clone(),
+                    _ => CType::fail("Dependency names must be strings"),
+                };
+                let version = match &**v {
+                    CType::TString(s) => s.clone(),
+                    _ => CType::fail("Dependency versions must be strings"),
+                };
+                deps.insert(name, version);
+            }
+            _ => CType::fail("Node.js dependencies must be declared with the dependency syntax"),
+        }
+        otherwise => CType::fail(&format!("Native imports compiled to Javascript must be declared Nodejs{{D}} dependencies: {otherwise:?}"))
+    }
+}
+
 pub fn lntojs(
     entry_file: String,
 ) -> Result<(String, OrderedHashMap<String, String>), Box<dyn std::error::Error>> {
@@ -38,6 +75,10 @@ pub fn lntojs(
     // arguments.
     assert_eq!(func.len(), 1);
     assert_eq!(func[0].args().len(), 0);
+    // Determine which single-use functions can be inlined into their sole caller.
+    crate::program::inline::set_inline_targets(crate::program::inline::compute_inline_targets(
+        &func[0],
+    ));
     // Assertion proven, start emitting the `main` function to run as an IIFE
     let (fns, deps) = fn_generate(
         "main".to_string(),

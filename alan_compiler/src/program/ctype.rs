@@ -9,10 +9,50 @@ use super::Export;
 use super::FnKind;
 use super::Function;
 use super::Microstatement;
+use super::NativeCallKind;
 use super::Program;
 use super::Scope;
 use super::TypeOperatorMapping;
 use crate::parse;
+
+/// For a native bind argument, returns its rendered representation and whether it
+/// was "trimmed" — i.e. a compile-time literal (`Int`/`Float`/`Bool`/`TString`)
+/// inlined directly into the generated code rather than passed as a runtime
+/// parameter. Non-literal arguments render as their parameter name (which keeps
+/// them structurally substitutable downstream).
+fn native_arg_repr(arg: &(String, ArgKind, Arc<CType>)) -> (String, bool) {
+    match &*arg.2 {
+        CType::Int(i) => (format!("{i}"), true),
+        CType::Float(f) => (format!("{f}"), true),
+        CType::Bool(b) => ((if *b { "true" } else { "false" }).to_string(), true),
+        CType::TString(s) => (format!("\"{}\"", s.replace('"', "\\\"")), true),
+        _ => (arg.0.clone(), false),
+    }
+}
+
+/// Lower the arguments of a native bind into structural `Value` microstatements
+/// for a `NativeCall`. A compile-time literal argument is inlined as its literal
+/// representation (and flips `trimmed` so the caller drops it from the wrapper's
+/// signature); any other argument is referenced by its parameter name. Shared by
+/// every native bind shape (function/method/property/operator/cast) so the
+/// literal handling lives in exactly one place.
+fn native_call_args(
+    args: &[(String, ArgKind, Arc<CType>)],
+    trimmed: &mut bool,
+) -> Vec<Microstatement> {
+    args.iter()
+        .map(|arg| {
+            let (repr, was_trimmed) = native_arg_repr(arg);
+            if was_trimmed {
+                *trimmed = true;
+            }
+            Microstatement::Value {
+                typen: arg.2.clone(),
+                representation: repr,
+            }
+        })
+        .collect()
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum CType {
@@ -2916,40 +2956,19 @@ impl CType {
                     };
                     match call_name {
                         CType::TString(s) => {
+                            // A plain native function/macro call (e.g. `format!`),
+                            // serialized as `name(args)`. The name and each argument
+                            // are kept structural (one `Value` each, literals trimmed
+                            // inline) so the wrapper can be inlined. This is the same
+                            // for `Normal` and `External` binds: an `External` wrapper
+                            // keeps `FnKind::External`, so it is not inlined and its
+                            // dependency is still registered at the emitted call site.
                             microstatements.push(Microstatement::Return {
-                                value: Some(Box::new(Microstatement::Value {
+                                value: Some(Box::new(Microstatement::NativeCall {
                                     typen: rettype.clone(),
-                                    representation: format!(
-                                        "{}({})",
-                                        s,
-                                        args.iter()
-                                            .map(|(name, _, typen)| {
-                                                match &**typen {
-                                                    CType::Int(i) => {
-                                                        trimmed_args = true;
-                                                        format!("{i}")
-                                                    }
-                                                    CType::Float(f) => {
-                                                        trimmed_args = true;
-                                                        format!("{f}")
-                                                    }
-                                                    CType::Bool(b) => {
-                                                        trimmed_args = true;
-                                                        match b {
-                                                            true => "true".to_string(),
-                                                            false => "false".to_string(),
-                                                        }
-                                                    }
-                                                    CType::TString(s) => {
-                                                        trimmed_args = true;
-                                                        format!("\"{}\"", s.replace("\"", "\\\""))
-                                                    }
-                                                    _ => name.clone(),
-                                                }
-                                            })
-                                            .collect::<Vec<String>>()
-                                            .join(", ")
-                                    ),
+                                    kind: NativeCallKind::Function,
+                                    name: s.clone(),
+                                    args: native_call_args(&args, &mut trimmed_args),
                                 })),
                             });
                         }
@@ -2959,56 +2978,11 @@ impl CType {
                                     CType::fail("Native infix operators may only be bound with two input arguments");
                                 }
                                 microstatements.push(Microstatement::Return {
-                                    value: Some(Box::new(Microstatement::Value {
+                                    value: Some(Box::new(Microstatement::NativeCall {
                                         typen: rettype.clone(),
-                                        representation: format!(
-                                            "({} {} {})",
-                                            match &*args[0].2 {
-                                                CType::Int(i) => {
-                                                    trimmed_args = true;
-                                                    format!("{i}")
-                                                }
-                                                CType::Float(f) => {
-                                                    trimmed_args = true;
-                                                    format!("{f}")
-                                                }
-                                                CType::Bool(b) => {
-                                                    trimmed_args = true;
-                                                    match b {
-                                                        true => "true".to_string(),
-                                                        false => "false".to_string(),
-                                                    }
-                                                }
-                                                CType::TString(s) => {
-                                                    trimmed_args = true;
-                                                    format!("\"{}\"", s.replace("\"", "\\\""))
-                                                }
-                                                _ => args[0].0.clone(),
-                                            },
-                                            s,
-                                            match &*args[1].2 {
-                                                CType::Int(i) => {
-                                                    trimmed_args = true;
-                                                    format!("{i}")
-                                                }
-                                                CType::Float(f) => {
-                                                    trimmed_args = true;
-                                                    format!("{f}")
-                                                }
-                                                CType::Bool(b) => {
-                                                    trimmed_args = true;
-                                                    match b {
-                                                        true => "true".to_string(),
-                                                        false => "false".to_string(),
-                                                    }
-                                                }
-                                                CType::TString(s) => {
-                                                    trimmed_args = true;
-                                                    format!("\"{}\"", s.replace("\"", "\\\""))
-                                                }
-                                                _ => args[1].0.clone(),
-                                            },
-                                        ),
+                                        kind: NativeCallKind::Infix,
+                                        name: s.clone(),
+                                        args: native_call_args(&args, &mut trimmed_args),
                                     })),
                                 });
                             }
@@ -3022,34 +2996,11 @@ impl CType {
                                     CType::fail("Native prefix operators may only be bound with one input argument");
                                 }
                                 microstatements.push(Microstatement::Return {
-                                    value: Some(Box::new(Microstatement::Value {
+                                    value: Some(Box::new(Microstatement::NativeCall {
                                         typen: rettype.clone(),
-                                        representation: format!(
-                                            "({} {})",
-                                            s,
-                                            match &*args[0].2 {
-                                                CType::Int(i) => {
-                                                    trimmed_args = true;
-                                                    format!("{i}")
-                                                }
-                                                CType::Float(f) => {
-                                                    trimmed_args = true;
-                                                    format!("{f}")
-                                                }
-                                                CType::Bool(b) => {
-                                                    trimmed_args = true;
-                                                    match b {
-                                                        true => "true".to_string(),
-                                                        false => "false".to_string(),
-                                                    }
-                                                }
-                                                CType::TString(s) => {
-                                                    trimmed_args = true;
-                                                    format!("\"{}\"", s.replace("\"", "\\\""))
-                                                }
-                                                _ => args[0].0.clone(),
-                                            },
-                                        ),
+                                        kind: NativeCallKind::Prefix,
+                                        name: s.clone(),
+                                        args: native_call_args(&args, &mut trimmed_args),
                                     })),
                                 });
                             }
@@ -3059,63 +3010,16 @@ impl CType {
                         },
                         CType::Method(f) => match &**f {
                             CType::TString(s) => {
-                                let arg_car = args[0].clone();
-                                let arg_cdr = args.clone().split_off(1);
+                                // Keep the receiver and arguments structural (one
+                                // `Value` each) so they can be substituted later; the
+                                // `recv.name(rest)` serialization lives in each codegen
+                                // layer. `args[0]` is the receiver.
                                 microstatements.push(Microstatement::Return {
-                                    value: Some(Box::new(Microstatement::Value {
+                                    value: Some(Box::new(Microstatement::NativeCall {
                                         typen: rettype.clone(),
-                                        representation: format!(
-                                            "{}.{}({})",
-                                            match &*arg_car.2 {
-                                                CType::Int(i) => {
-                                                    trimmed_args = true;
-                                                    format!("{i}")
-                                                }
-                                                CType::Float(f) => {
-                                                    trimmed_args = true;
-                                                    format!("{f}")
-                                                }
-                                                CType::Bool(b) => {
-                                                    trimmed_args = true;
-                                                    match b {
-                                                        true => "true".to_string(),
-                                                        false => "false".to_string(),
-                                                    }
-                                                }
-                                                CType::TString(s) => {
-                                                    trimmed_args = true;
-                                                    format!("\"{}\"", s.replace("\"", "\\\""))
-                                                }
-                                                _ => arg_car.0.clone(),
-                                            },
-                                            s,
-                                            arg_cdr
-                                                .into_iter()
-                                                .map(|a| match &*a.2 {
-                                                    CType::Int(i) => {
-                                                        trimmed_args = true;
-                                                        format!("{i}")
-                                                    }
-                                                    CType::Float(f) => {
-                                                        trimmed_args = true;
-                                                        format!("{f}")
-                                                    }
-                                                    CType::Bool(b) => {
-                                                        trimmed_args = true;
-                                                        match b {
-                                                            true => "true".to_string(),
-                                                            false => "false".to_string(),
-                                                        }
-                                                    }
-                                                    CType::TString(s) => {
-                                                        trimmed_args = true;
-                                                        format!("\"{}\"", s.replace("\"", "\\\""))
-                                                    }
-                                                    _ => a.0.clone(),
-                                                })
-                                                .collect::<Vec<String>>()
-                                                .join(", ")
-                                        ),
+                                        kind: NativeCallKind::Method,
+                                        name: s.clone(),
+                                        args: native_call_args(&args, &mut trimmed_args),
                                     })),
                                 });
                             }
@@ -3128,36 +3032,12 @@ impl CType {
                                 if args.len() > 1 {
                                     CType::fail(&format!("Property bindings may only have one argument, the value the property is accessed from. Not {args:?}"))
                                 } else {
-                                    let arg_car = args[0].clone();
                                     microstatements.push(Microstatement::Return {
-                                        value: Some(Box::new(Microstatement::Value {
+                                        value: Some(Box::new(Microstatement::NativeCall {
                                             typen: rettype.clone(),
-                                            representation: format!(
-                                                "{}.{}",
-                                                match &*arg_car.2 {
-                                                    CType::Int(i) => {
-                                                        trimmed_args = true;
-                                                        format!("{i}")
-                                                    }
-                                                    CType::Float(f) => {
-                                                        trimmed_args = true;
-                                                        format!("{f}")
-                                                    }
-                                                    CType::Bool(b) => {
-                                                        trimmed_args = true;
-                                                        match b {
-                                                            true => "true".to_string(),
-                                                            false => "false".to_string(),
-                                                        }
-                                                    }
-                                                    CType::TString(s) => {
-                                                        trimmed_args = true;
-                                                        format!("\"{}\"", s.replace("\"", "\\\""))
-                                                    }
-                                                    _ => arg_car.0.clone(),
-                                                },
-                                                s,
-                                            ),
+                                            kind: NativeCallKind::Property,
+                                            name: s.clone(),
+                                            args: native_call_args(&args, &mut trimmed_args),
                                         })),
                                     });
                                 }
@@ -3174,34 +3054,11 @@ impl CType {
                                     );
                                 }
                                 microstatements.push(Microstatement::Return {
-                                    value: Some(Box::new(Microstatement::Value {
+                                    value: Some(Box::new(Microstatement::NativeCall {
                                         typen: rettype.clone(),
-                                        representation: format!(
-                                            "({} as {})",
-                                            match &*args[0].2 {
-                                                CType::Int(i) => {
-                                                    trimmed_args = true;
-                                                    format!("{i}")
-                                                }
-                                                CType::Float(f) => {
-                                                    trimmed_args = true;
-                                                    format!("{f}")
-                                                }
-                                                CType::Bool(b) => {
-                                                    trimmed_args = true;
-                                                    match b {
-                                                        true => "true".to_string(),
-                                                        false => "false".to_string(),
-                                                    }
-                                                }
-                                                CType::TString(s) => {
-                                                    trimmed_args = true;
-                                                    format!("\"{}\"", s.replace("\"", "\\\""))
-                                                }
-                                                _ => args[0].0.clone(),
-                                            },
-                                            s
-                                        ),
+                                        kind: NativeCallKind::Cast,
+                                        name: s.clone(),
+                                        args: native_call_args(&args, &mut trimmed_args),
                                     })),
                                 });
                             }
