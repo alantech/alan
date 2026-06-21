@@ -159,7 +159,11 @@ fn used_as_native_value_arg(ms: &Microstatement, name: &str) -> bool {
     match ms {
         Microstatement::NativeCall { kind, args, .. } => {
             let nonreceiver = match kind {
-                NativeCallKind::Function => &args[..],
+                // No receiver: every argument is a raw value position.
+                NativeCallKind::Function
+                | NativeCallKind::Infix
+                | NativeCallKind::Prefix
+                | NativeCallKind::Cast => &args[..],
                 // Receiver is args[0]; only args[1..] are raw value arguments.
                 NativeCallKind::Method | NativeCallKind::Property => {
                     args.split_first().map(|(_, rest)| rest).unwrap_or(&[])
@@ -1078,12 +1082,13 @@ pub fn from_microstatement(
             name,
             args,
         } => {
-            // Serialize a native method/property here in the codegen layer (the
-            // syntax is identical for Rust and JS). `args[0]` is the receiver.
-            // A `Value` argument is emitted by its raw representation (a parameter
-            // name or an inlined literal) so the native construct operates on the
-            // value directly. Non-`Value` arguments (only possible once these are
-            // inlined) render normally.
+            // Serialize a native construct (function/method/property/operator/cast)
+            // in the codegen layer; `kind` selects the surface form. For the
+            // receiver-based forms `args[0]` is the receiver. A `Value` argument is
+            // emitted by its raw representation (a parameter name or an inlined
+            // literal) so the native construct operates on the value directly.
+            // Non-`Value` arguments (only possible once these are inlined) render
+            // normally.
             let mut rendered = Vec::new();
             for a in args {
                 let s = if let Microstatement::Value { representation, .. } = a {
@@ -1111,6 +1116,12 @@ pub fn from_microstatement(
                         .expect("a Property NativeCall always has a receiver argument");
                     format!("{}.{}", recv, name)
                 }
+                NativeCallKind::Infix => {
+                    // `(lhs op rhs)` — exactly two arguments (enforced at bind realization).
+                    format!("({} {} {})", rendered[0], name, rendered[1])
+                }
+                NativeCallKind::Prefix => format!("({} {})", name, rendered[0]),
+                NativeCallKind::Cast => format!("({} as {})", rendered[0], name),
             };
             // Apply the result type's serialization (e.g. wrapping a `&str` result
             // in `.to_string()` for a `string` return) by rendering the assembled

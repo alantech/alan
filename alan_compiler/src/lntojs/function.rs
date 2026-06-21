@@ -252,8 +252,9 @@ pub fn from_microstatement(
             name,
             args,
         } => {
-            // Serialize a native method/property here in the codegen layer (the
-            // syntax is identical for Rust and JS). `args[0]` is the receiver.
+            // Serialize a native construct (function/method/property/operator) in
+            // the codegen layer; `kind` selects the surface form. For the
+            // receiver-based forms `args[0]` is the receiver.
             // A `Value` argument that is a variable/parameter name is emitted
             // directly (it is already a boxed runtime value); a `Value` that is a
             // compile-time literal is boxed into its `alan_std` class via
@@ -290,6 +291,16 @@ pub fn from_microstatement(
                         .split_first()
                         .expect("a Property NativeCall always has a receiver argument");
                     format!("{}.{}", recv, name)
+                }
+                NativeCallKind::Infix => {
+                    // `(lhs op rhs)` — exactly two arguments (enforced at bind realization).
+                    format!("({} {} {})", rendered[0], name, rendered[1])
+                }
+                NativeCallKind::Prefix => format!("({} {})", name, rendered[0]),
+                // `Cast` is Rust-only syntax (every `Cast{..}` bind is `fn{Rs}`), so a
+                // `NativeCallKind::Cast` is never constructed when targeting JavaScript.
+                NativeCallKind::Cast => {
+                    return Err("native casts have no JavaScript form".into());
                 }
             };
             // Apply the result type's serialization by rendering the assembled call
