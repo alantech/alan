@@ -4051,15 +4051,38 @@ impl CType {
                 name.clone(),
                 t.clone().swap_subtype(old_type, new_type),
             )),
-            CType::Either(ts, parents) => Arc::new(CType::Either(
-                ts.iter()
-                    .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
-                    .collect::<Vec<Arc<CType>>>(),
-                parents
+            CType::Either(ts, parents) => {
+                let new_ts = ts
                     .iter()
                     .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
-                    .collect::<Vec<Arc<CType>>>(),
-            )),
+                    .collect::<Vec<Arc<CType>>>();
+                let new_parents = parents
+                    .iter()
+                    .map(|t| t.clone().swap_subtype(old_type.clone(), new_type.clone()))
+                    .collect::<Vec<Arc<CType>>>();
+                // Substitution can produce an `Either` whose variants are no longer distinct -- e.g.
+                // `Maybe{()}` becomes `() | ()`, or `Fallible{Error}` becomes `Error | Error`. Such a
+                // degenerate `Either` has no meaningful tag to discriminate on and is really just its
+                // single underlying type, so we dedup the variants and collapse a singleton back to a
+                // plain type (matching `CType::either`'s own normalization).
+                //
+                // This collapse can cause a generic compound function (e.g. `print{T}(v: T!)`, whose
+                // body recurses on the `Error` variant) to collapse into a signature identical to a
+                // leaf call like `print(Error)`. That is safe *as long as the leaf has a concrete
+                // (non-generic) definition*, since concrete functions are resolved before generics
+                // (`Scope::resolve_function`), terminating the recursion. The `print`/`eprint` leaves
+                // in `root.ln` are concrete on both backends for exactly this reason.
+                let mut seen = std::collections::HashSet::new();
+                let deduped: Vec<Arc<CType>> = new_ts
+                    .into_iter()
+                    .filter(|t| seen.insert(t.clone().degroup().to_callable_string()))
+                    .collect();
+                if deduped.len() == 1 {
+                    deduped.into_iter().next().unwrap()
+                } else {
+                    Arc::new(CType::Either(deduped, new_parents))
+                }
+            }
             CType::Prop(t, p) => CType::prop(
                 t.clone().swap_subtype(old_type.clone(), new_type.clone()),
                 p.clone().swap_subtype(old_type, new_type),

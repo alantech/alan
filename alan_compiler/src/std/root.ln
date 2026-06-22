@@ -816,6 +816,9 @@ fn{Js} eq "((a, b) => new alan_std.Bool(a.val == b.val))" :: (bool, bool) -> boo
 fn{Rs} neq Infix{"!="} :: (bool, bool) -> bool;
 fn{Js} neq "((a, b) => new alan_std.Bool(a.val != b.val))" :: (bool, bool) -> bool;
 // The value/single-closure sugar desugars into the compiler-provided `if` cfn declared below it.
+// The single-closure form covers the void case too (`t: () -> ()`): there `Maybe{T}` is `Maybe{()}`
+// = `() | ()`, which collapses to `()` (an `Either` of identical variants is just that type), so no
+// degenerate `Maybe{void}` is produced and no special void overload is needed.
 fn if{T}(c: bool, t: T) = if(c, fn() = Maybe{T}(t), fn() = Maybe{T}());
 fn if{T}(c: bool, t: T, f: T) = if(c, fn() = t, fn() = f);
 fn if{T}(c: bool, t: () -> T) = if(c, fn() = Maybe{T}(t()), fn() = Maybe{T}());
@@ -826,6 +829,13 @@ fn if{T}(c: bool, t: () -> T) = if(c, fn() = Maybe{T}(t()), fn() = Maybe{T}());
 // recurse). A value-argument `if` skips this cfn -- its `() -> T` params reject plain values -- and
 // falls through to the sugar as usual.
 cfn if{T} (bool, () -> T, () -> T) -> T;
+// Void single-closure form: the closure runs only for its side effects, so -- unlike the generic
+// `() -> T` sugar above -- it must not wrap the result in `Maybe{T}` (`Maybe{()}` is degenerate).
+// These non-generic overloads are selected ahead of the generic sugars for the `() -> ()` case. On
+// JS the closure can be passed through the cfn (with an empty else) and called; on Rust a closure
+// that mutates a captured variable needs `FnMut`, which a passed `impl Fn()` parameter isn't, so we
+// inline the closure body via the dedicated statement form instead (the cfn inlines literal branch
+// closures, but here the branch is a closure *parameter*).
 /// Float-related functions
 fn{Rs} add Infix{"+"} :: (f32, f32) -> f32;
 fn{Js} add "((a, b) => new alan_std.F32(a.val + b.val))" <- RootBacking :: (f32, f32) -> f32;
@@ -5842,6 +5852,7 @@ fn{Js} print (i: i64[]) = "[".concat(i.map(string).join(", ")).concat("]").print
 fn{Js} print (u: u64[]) = "[".concat(u.map(string).join(", ")).concat("]").print;
 fn{Js} print{S} (i: Buffer{i64, S}) = "[".concat(i.map(string).join(", ")).concat("]").print;
 fn{Js} print{S} (u: Buffer{u64, S}) = "[".concat(u.map(string).join(", ")).concat("]").print;
+fn{Rs} print (e: Error) = e.string.print;
 fn{Js} print (e: Error) = "Error: ".concat(e.string).print;
 fn{Rs} print (d: Duration) =
   {"println!" :: ("{}.{:0>9}", u64, u32)}({Method{"as_secs"} :: Duration -> u64}(d), {
@@ -5853,15 +5864,18 @@ fn{Js} print(v: void) = {"console.log" :: "void"}();
 fn{Rs} print(s: string) = {"println!" :: ("{}", string)}(s);
 fn{Rs} print{T, N}(a: T[N]) = "[".concat(a.map(fn(v: T) = string(v)).join(", ")).concat("]").print;
 fn{Rs} print{T}(a: T[]) = "[".concat(a.map(fn(v: T) = string(v)).join(", ")).concat("]").print;
+// `Maybe{T}` (`T | ()`) needs its own printer: the generic `Either{A, B}` printer above can't
+// extract a `()` (void) variant via `getOrExit`. Safe under `Either` collapse because the `void`
+// and `string` leaves it bottoms out to are concrete (non-generic) on both backends.
 fn print{T}(v: T?) = if(v.exists, fn = print(v!!), fn = print("void"));
-fn print{T}(v: T!) = if({T}(v).exists, fn = print(v!!), fn = print(v.Error!!));
-fn{Js} print{T}(v: void!) = if({T}(v).exists, fn = "void".print, fn = print(v.Error!!));
 fn{Rs} eprint{T}(v: T) = {"eprintln!" :: ("{}", string)}(v.string);
 fn{Js} eprint{T}(v: T) = {"console.error" :: string}(v.string);
 fn{Rs} eprint(v: void) = {"eprintln!" :: "void"}();
 fn{Js} eprint(v: void) = {"console.error" :: "void"}();
 fn{Rs} eprint(s: string) = {"eprintln!" :: ("{}", string)}(s);
 fn{Js} eprint "((s) => console.error(s.val))" :: string;
+fn{Rs} eprint (e: Error) = e.string.eprint;
+fn{Js} eprint (e: Error) = "Error: ".concat(e.string).eprint;
 fn{Js} eprint (b: bool) = b.string.print;
 fn{Js} eprint (i: i8) = i.string.print;
 fn{Js} eprint (u: u8) = u.string.print;
@@ -5876,8 +5890,10 @@ fn{Js} eprint (f: f64) = f.string.print;
 fn{Js} eprint (i: i64[]) = "[".concat(i.map(string).join(", ")).concat("]").print;
 fn{Js} eprint (u: u64[]) = "[".concat(u.map(string).join(", ")).concat("]").print;
 fn{Rs} eprint{T}(a: T[]) = "[".concat(a.map(string).join(", ")).concat("]").eprint;
-fn{Rs} eprint{T}(v: T?) = if(v.exists, fn = eprint(v!!), fn = eprint("void"));
-fn{Rs} eprint{T}(v: T!) = if({T}(v).exists, fn = eprint(v!!), fn = eprint(v.Error!!));
+fn eprint{A, B}(v: Either{A, B}) {
+  return if({A}(v).exists, fn = {A}(v).getOrExit.eprint, fn = {B}(v).getOrExit.eprint);
+}
+fn eprint{T}(v: T?) = if(v.exists, fn = eprint(v!!), fn = eprint("void"));
 
 fn{Rs} stdout (s: string) {
   {"print!" :: ("{}", string)}(s);

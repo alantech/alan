@@ -1215,46 +1215,12 @@ pub fn from_microstatement(
             )
         }
         Microstatement::FnCall { function, args } => {
-            // Hackery to inline `if` calls *if* it's safe to do so.
+            // Hackery to inline `while` loops *if* it's safe to do so. (The `if`/`else` statement
+            // hacks were removed: conditionals now compile through the `if{T}` cfn -- see the
+            // `FnKind::CfnRealized(CfnKind::IfElse)` arm below.) TODO: migrate this to a
+            // `CfnKind::WhileLoop` as well.
             if let FnKind::Bind(fname) = &function.kind {
-                if fname == "ifstatementhack" {
-                    let res =
-                        from_microstatement(&args[0], parent_fn, shared_vars, scope, out, deps)?;
-                    let conditional = res.0;
-                    out = res.1;
-                    deps = res.2;
-                    let res =
-                        render_inline_block(&args[1], parent_fn, shared_vars, scope, out, deps)?;
-                    let successblock = res.0;
-                    out = res.1;
-                    deps = res.2;
-                    return Ok((
-                        format!("if {conditional} {successblock}").to_string(),
-                        out,
-                        deps,
-                    ));
-                } else if fname == "ifelsestatementhack" {
-                    let res =
-                        from_microstatement(&args[0], parent_fn, shared_vars, scope, out, deps)?;
-                    let conditional = res.0;
-                    out = res.1;
-                    deps = res.2;
-                    let res =
-                        render_inline_block(&args[1], parent_fn, shared_vars, scope, out, deps)?;
-                    let successblock = res.0;
-                    out = res.1;
-                    deps = res.2;
-                    let res =
-                        render_inline_block(&args[2], parent_fn, shared_vars, scope, out, deps)?;
-                    let failblock = res.0;
-                    out = res.1;
-                    deps = res.2;
-                    return Ok((
-                        format!("if {conditional} {successblock} else {failblock}").to_string(),
-                        out,
-                        deps,
-                    ));
-                } else if fname == "whileloophack" {
+                if fname == "whileloophack" {
                     // The condition closure ends in `return <expr>;`. We flatten it into a
                     // block-expression (`{ setup; <expr> }`) by splitting off the trailing
                     // return. This remains string-based because reproducing the exact
