@@ -124,6 +124,96 @@ fn function_codegen_is_async(function: Arc<Function>) -> bool {
     function_codegen_is_async_inner(function, &mut seen)
 }
 
+/// Render a conditional branch closure's body as a sequence of JS statements (with any `return`s
+/// kept intact), suitable for inlining inside a native `if (...) { ... } else { ... }` block.
+#[allow(clippy::type_complexity)]
+fn render_js_branch_body(
+    microstatement: &Microstatement,
+    parent_fn: &Function,
+    scope: &Scope,
+    mut out: OrderedHashMap<String, String>,
+    mut deps: OrderedHashMap<String, String>,
+) -> Result<
+    (
+        String,
+        OrderedHashMap<String, String>,
+        OrderedHashMap<String, String>,
+    ),
+    Box<dyn std::error::Error>,
+> {
+    if let Microstatement::Closure { function } = microstatement {
+        let mut parts = Vec::new();
+        for ms in &function.microstatements {
+            let (val, o, d) = from_microstatement(ms, parent_fn, scope, out, deps)?;
+            out = o;
+            deps = d;
+            if !val.trim().is_empty() {
+                parts.push(val);
+            }
+        }
+        return Ok((parts.join(";\n        "), out, deps));
+    }
+    // Fallback: render normally (e.g. a non-closure expression).
+    from_microstatement(microstatement, parent_fn, scope, out, deps)
+}
+
+/// Render a realized `if{T}` cfn call (`args[0]` condition, `args[1]`/`args[2]` branch closures) as
+/// a native `if (cond) { ... } else { ... }` block, inlining each branch closure's body. Used in
+/// statement positions (return / discarded-statement) where the closure overhead can be dropped
+/// entirely so V8 sees a native conditional.
+#[allow(clippy::type_complexity)]
+fn render_js_native_ifelse(
+    args: &[Microstatement],
+    parent_fn: &Function,
+    scope: &Scope,
+    mut out: OrderedHashMap<String, String>,
+    mut deps: OrderedHashMap<String, String>,
+) -> Result<
+    (
+        String,
+        OrderedHashMap<String, String>,
+        OrderedHashMap<String, String>,
+    ),
+    Box<dyn std::error::Error>,
+> {
+    let (cond, o, d) = from_microstatement(&args[0], parent_fn, scope, out, deps)?;
+    out = o;
+    deps = d;
+    // The condition is a boxed `alan_std.Bool`; a bare object is always truthy in JS, so unwrap
+    // its `.val` (falling back to the value itself if it is already a primitive).
+    let cond = format!("({cond})?.val ?? ({cond})");
+    let (then_body, o, d) = render_js_branch_body(&args[1], parent_fn, scope, out, deps)?;
+    out = o;
+    deps = d;
+    let (else_body, o, d) = render_js_branch_body(&args[2], parent_fn, scope, out, deps)?;
+    out = o;
+    deps = d;
+    let then_block = if then_body.trim().is_empty() {
+        "{}".to_string()
+    } else {
+        format!("{{\n        {then_body};\n    }}")
+    };
+    let else_block = if else_body.trim().is_empty() {
+        "{}".to_string()
+    } else {
+        format!("{{\n        {else_body};\n    }}")
+    };
+    Ok((
+        format!("if ({cond}) {then_block} else {else_block}"),
+        out,
+        deps,
+    ))
+}
+
+/// Whether a microstatement is a realized `if{T}` cfn call.
+fn is_ifelse_call(ms: &Microstatement) -> bool {
+    matches!(
+        ms,
+        Microstatement::FnCall { function, .. }
+            if matches!(&function.kind, FnKind::CfnRealized(CfnKind::IfElse))
+    )
+}
+
 #[allow(clippy::type_complexity)]
 pub fn from_microstatement(
     microstatement: &Microstatement,
@@ -569,6 +659,30 @@ pub fn from_microstatement(
                         );
                     }
                     Ok((format!("clone({})", argstrs[0]), out, deps))
+                }
+                FnKind::CfnRealized(CfnKind::IfElse) => {
+                    // Value position: emit an IIFE so the conditional stays an expression. The
+                    // IIFE is colored by whether either branch closure awaits -- a pure (sync)
+                    // conditional becomes a plain sync IIFE with no `await`, while an awaiting
+                    // branch produces an awaited async IIFE. Statement positions (return /
+                    // discarded) are special-cased elsewhere to drop the IIFE entirely.
+                    let (inner, o, d) = render_js_native_ifelse(args, parent_fn, scope, out, deps)?;
+                    out = o;
+                    deps = d;
+                    let is_async = if let Microstatement::Closure { function } = &args[1] {
+                        function_codegen_is_async(function.clone())
+                    } else {
+                        false
+                    } || if let Microstatement::Closure { function } = &args[2] {
+                        function_codegen_is_async(function.clone())
+                    } else {
+                        false
+                    };
+                    if is_async {
+                        Ok((format!("(await (async () => {{ {inner} }})())"), out, deps))
+                    } else {
+                        Ok((format!("(() => {{ {inner} }})()"), out, deps))
+                    }
                 }
                 FnKind::Derived | FnKind::DerivedVariadic => {
                     // The initial work to get the values to construct the type is the same as
@@ -1751,6 +1865,14 @@ pub fn from_microstatement(
         }
         Microstatement::Return { value } => match value {
             Some(val) => {
+                // Return position: when the returned value is a cfn-`if`, emit the native
+                // `if (c) { ...A... } else { ...B... }` directly with the branches' internal
+                // `return`s intact -- no `return ...;` wrapper, no closure/IIFE overhead.
+                if let Microstatement::FnCall { function, args } = &**val {
+                    if matches!(&function.kind, FnKind::CfnRealized(CfnKind::IfElse)) {
+                        return render_js_native_ifelse(args, parent_fn, scope, out, deps);
+                    }
+                }
                 let (retval, o, d) = from_microstatement(val, parent_fn, scope, out, deps)?;
                 out = o;
                 deps = d;
@@ -1815,6 +1937,17 @@ pub fn generate(
     )
     .to_string();
     for microstatement in &function.microstatements {
+        // Discarded statement position: a top-level void cfn-`if` emits the native `if/else`
+        // form directly rather than a pointless IIFE statement.
+        if is_ifelse_call(microstatement) {
+            if let Microstatement::FnCall { args, .. } = microstatement {
+                let (stmt, o, d) = render_js_native_ifelse(args, function, scope, out, deps)?;
+                out = o;
+                deps = d;
+                fn_string = format!("{fn_string}    {stmt}\n");
+                continue;
+            }
+        }
         let (stmt, o, d) = from_microstatement(microstatement, function, scope, out, deps)?;
         out = o;
         deps = d;

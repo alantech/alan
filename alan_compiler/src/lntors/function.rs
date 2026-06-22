@@ -626,6 +626,15 @@ fn is_string_type(t: &CType) -> bool {
     }
 }
 
+fn is_bool_type(t: &CType) -> bool {
+    match t {
+        CType::Type(n, inner) => n == "bool" || is_bool_type(inner),
+        CType::Group(inner) => is_bool_type(inner),
+        CType::Binds(n, _) => matches!(&**n, CType::TString(s) if s == "bool"),
+        _ => false,
+    }
+}
+
 /// Serialize a `string`-typed value's representation to an owned `String`.
 /// A `string` result is normally normalized to an owned `String` by appending
 /// `.to_string()` (the native expression may yield a borrowed `&str` -- e.g. a
@@ -744,6 +753,74 @@ fn render_inline_block(
                     "{{\n        {};\n    }}",
                     inner_statements.join(";\n        ")
                 ),
+                out,
+                deps,
+            ));
+        }
+    }
+    // Fallback: render normally and strip the closure prefix textually.
+    let (val, o, d) =
+        from_microstatement(microstatement, parent_fn, shared_vars, scope, out, deps)?;
+    Ok((val.replacen("|| {", "{", 1), o, d))
+}
+
+/// Render a conditional branch closure as a Rust block *expression*. Because Rust `if` is an
+/// expression, a branch whose body ends in `return X` is inlined with that terminal return turned
+/// into the block's tail expression `X` (no `return`, no trailing `;`); the surrounding context
+/// (a `return`, `let`, or bare statement) then wraps the whole `if`/`else`. A void branch (no
+/// trailing value-return) renders as a plain `{ stmts; }` block.
+#[allow(clippy::type_complexity)]
+fn render_branch_block(
+    microstatement: &Microstatement,
+    parent_fn: &Function,
+    shared_vars: &OrderedHashMap<String, Arc<CType>>,
+    scope: &Scope,
+    mut out: OrderedHashMap<String, String>,
+    mut deps: OrderedHashMap<String, String>,
+) -> Result<
+    (
+        String,
+        OrderedHashMap<String, String>,
+        OrderedHashMap<String, String>,
+    ),
+    Box<dyn std::error::Error>,
+> {
+    // A branch executes conditionally, so the enclosing statement's last-use reasoning does not
+    // hold inside it: disable the move optimization here.
+    let _untrusted = UntrustedGuard::new();
+    if let Microstatement::Closure { function } = microstatement {
+        if function.args().is_empty() {
+            let mss = &function.microstatements;
+            let mut parts: Vec<String> = Vec::new();
+            for (i, ms) in mss.iter().enumerate() {
+                let is_last = i + 1 == mss.len();
+                match (is_last, ms) {
+                    (true, Microstatement::Return { value: Some(v) }) => {
+                        let (val, o, d) =
+                            from_microstatement(v, parent_fn, shared_vars, scope, out, deps)?;
+                        out = o;
+                        deps = d;
+                        // Terminal value-return becomes the block's tail expression.
+                        let tail = match val.strip_prefix("&mut ") {
+                            Some(s) => s.to_string(),
+                            None => val,
+                        };
+                        parts.push(tail);
+                    }
+                    (true, Microstatement::Return { value: None }) => { /* void tail */ }
+                    _ => {
+                        let (val, o, d) =
+                            from_microstatement(ms, parent_fn, shared_vars, scope, out, deps)?;
+                        out = o;
+                        deps = d;
+                        if !val.is_empty() {
+                            parts.push(format!("{val};"));
+                        }
+                    }
+                }
+            }
+            return Ok((
+                format!("{{\n        {}\n    }}", parts.join("\n        ")),
                 out,
                 deps,
             ));
@@ -1138,46 +1215,12 @@ pub fn from_microstatement(
             )
         }
         Microstatement::FnCall { function, args } => {
-            // Hackery to inline `if` calls *if* it's safe to do so.
+            // Hackery to inline `while` loops *if* it's safe to do so. (The `if`/`else` statement
+            // hacks were removed: conditionals now compile through the `if{T}` cfn -- see the
+            // `FnKind::CfnRealized(CfnKind::IfElse)` arm below.) TODO: migrate this to a
+            // `CfnKind::WhileLoop` as well.
             if let FnKind::Bind(fname) = &function.kind {
-                if fname == "ifstatementhack" {
-                    let res =
-                        from_microstatement(&args[0], parent_fn, shared_vars, scope, out, deps)?;
-                    let conditional = res.0;
-                    out = res.1;
-                    deps = res.2;
-                    let res =
-                        render_inline_block(&args[1], parent_fn, shared_vars, scope, out, deps)?;
-                    let successblock = res.0;
-                    out = res.1;
-                    deps = res.2;
-                    return Ok((
-                        format!("if {conditional} {successblock}").to_string(),
-                        out,
-                        deps,
-                    ));
-                } else if fname == "ifelsestatementhack" {
-                    let res =
-                        from_microstatement(&args[0], parent_fn, shared_vars, scope, out, deps)?;
-                    let conditional = res.0;
-                    out = res.1;
-                    deps = res.2;
-                    let res =
-                        render_inline_block(&args[1], parent_fn, shared_vars, scope, out, deps)?;
-                    let successblock = res.0;
-                    out = res.1;
-                    deps = res.2;
-                    let res =
-                        render_inline_block(&args[2], parent_fn, shared_vars, scope, out, deps)?;
-                    let failblock = res.0;
-                    out = res.1;
-                    deps = res.2;
-                    return Ok((
-                        format!("if {conditional} {successblock} else {failblock}").to_string(),
-                        out,
-                        deps,
-                    ));
-                } else if fname == "whileloophack" {
+                if fname == "whileloophack" {
                     // The condition closure ends in `return <expr>;`. We flatten it into a
                     // block-expression (`{ setup; <expr> }`) by splitting off the trailing
                     // return. This remains string-based because reproducing the exact
@@ -1535,6 +1578,50 @@ pub fn from_microstatement(
                         }
                         _ => Ok((format!("{}.clone()", argstrs[0]), out, deps)),
                     }
+                }
+                FnKind::CfnRealized(CfnKind::IfElse) => {
+                    // `if{T}(cond, () -> T, () -> T) -> T`. Rust `if` is an expression, so we
+                    // render `if cond { A } else { B }` and let the surrounding context (a
+                    // `return`, `let`, or bare statement) wrap it. Each branch closure is inlined,
+                    // its terminal `return X` becoming the block's tail expression `X`.
+                    let (cond, o, d) =
+                        from_microstatement(&args[0], parent_fn, shared_vars, scope, out, deps)?;
+                    out = o;
+                    deps = d;
+                    // Rust `if` needs a `bool` by value. When the condition is a bare `bool`
+                    // function parameter it is borrowed (`&bool`, `ArgKind::Ref`, not promoted to
+                    // an owned local) -- e.g. the `c` threaded through the `if` value sugar -- so
+                    // dereference it. Inline expressions (comparisons), literals, and owned locals
+                    // are already `bool` values.
+                    let cond = match &args[0] {
+                        Microstatement::Value {
+                            typen,
+                            representation,
+                        } if is_bool_type(&typen.clone().degroup())
+                            && parent_fn.args().iter().any(|(n, k, t)| {
+                                n == representation
+                                    && matches!(k, ArgKind::Ref)
+                                    && is_bool_type(&t.clone().degroup())
+                            })
+                            && !param_name_promoted(parent_fn, representation) =>
+                        {
+                            format!("*{cond}")
+                        }
+                        _ => cond,
+                    };
+                    let (then_block, o, d) =
+                        render_branch_block(&args[1], parent_fn, shared_vars, scope, out, deps)?;
+                    out = o;
+                    deps = d;
+                    let (else_block, o, d) =
+                        render_branch_block(&args[2], parent_fn, shared_vars, scope, out, deps)?;
+                    out = o;
+                    deps = d;
+                    Ok((
+                        format!("if {cond} {then_block} else {else_block}"),
+                        out,
+                        deps,
+                    ))
                 }
                 FnKind::Derived | FnKind::DerivedVariadic => {
                     // The initial work to get the values to construct the type is the same as

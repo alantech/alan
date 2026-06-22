@@ -90,19 +90,6 @@ pub fn indexstring(a: &str, b: &str) -> Result<i64, AlanError> {
     })
 }
 
-// Boolean-related functions
-
-/// `ifbool` executes the true function on true, and the false function on false, returning the
-/// value returned by either function
-#[inline(always)]
-pub fn ifbool<T>(c: &bool, mut t: impl FnMut() -> T, mut f: impl FnMut() -> T) -> T {
-    if *c {
-        t()
-    } else {
-        f()
-    }
-}
-
 // Array-related functions
 
 /// `getarray` returns a value from an array at the location specified

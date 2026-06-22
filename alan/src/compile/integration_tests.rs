@@ -658,6 +658,98 @@ test_gpgpu!(gpu_if => r#"export fn main {
     stdout "[0, 1, 6, 1]\n";
 );
 
+// Closure-form GPU `if`: deferred arms emit a real `if (c) { ... } else { ... }` wgsl block
+// (vs. the value form above, which lowers to a branchless `select`). Both arms derive from a
+// shared upstream value (`doubled`); the rewrite splits each arm's statements into the shared
+// prefix (hoisted once, before the block) and the branch-local remainder (emitted inside the
+// matching brace). `shaderOf` mirrors `map`'s lowering but returns the generated wgsl so we can
+// assert statement placement; the `map` call then confirms the shader actually compiles and runs.
+// For input [1,2,3,4]: doubled = [2,4,6,8]; `val > 2` selects [-, -, +, +] -> [1, 3, 7, 9].
+test_gpgpu!(gpu_if_block => r#"fn shaderOf{G, G2}(
+  gb: GBuffer{G},
+  f: Prop{WgpuTypeMap, String{G}} -> Prop{WgpuTypeMap, String{G2}}
+) {
+  let idx = gFor(gb.cpulen);
+  let val = gb[idx];
+  let out = GBuffer{G2}(gb.cpulen)!!;
+  let compute = out[idx].store(f(val));
+  return compute.build.shader;
+}
+export fn main {
+  let b = GBuffer([1.i32, 2.i32, 3.i32, 4.i32])!!;
+  b.shaderOf(fn(val: gi32) {
+    let doubled = val * 2.gi32;
+    return if(val > 2.gi32, fn = doubled + 1.gi32, fn = doubled - 1.gi32);
+  }).print;
+  b.map(fn(val: gi32) {
+    let doubled = val * 2.gi32;
+    return if(val > 2.gi32, fn = doubled + 1.gi32, fn = doubled - 1.gi32);
+  }).read.print;
+}
+"#;
+    // Shared upstream (`doubled`) hoisted to top level (2-space indent), declared once:
+    stdout_contains "  var mul_i32_";
+    // A real branch, not a `select`:
+    stdout_contains "  if (";
+    stdout_contains "  } else {";
+    // Each arm's local var lands inside its brace (4-space indent):
+    stdout_contains "    var add_i32_";
+    stdout_contains "    var sub_i32_";
+    // The result `var` is declared before the block (top level):
+    stdout_contains "  var if_i32_";
+    // ...and the shader compiles and runs with correct per-branch results:
+    stdout_contains "[1, 3, 7, 9]";
+);
+
+// The same guarded GPU branch written with block (`if cond { ... } else { ... }`) syntax instead of
+// the functional `if(cond, fn = ..., fn = ...)` form. The Phase 1 conditional lowering routes the
+// `gbool` condition through the same closure-form `if`, so it must produce the identical real
+// `if`/`else` wgsl block (not a `select`) and the identical result -- this guards against the block
+// syntax silently regressing to the value form or failing to dispatch for `gbool`.
+test_gpgpu!(gpu_if_block_syntax => r#"fn shaderOf{G, G2}(
+  gb: GBuffer{G},
+  f: Prop{WgpuTypeMap, String{G}} -> Prop{WgpuTypeMap, String{G2}}
+) {
+  let idx = gFor(gb.cpulen);
+  let val = gb[idx];
+  let out = GBuffer{G2}(gb.cpulen)!!;
+  let compute = out[idx].store(f(val));
+  return compute.build.shader;
+}
+export fn main {
+  let b = GBuffer([1.i32, 2.i32, 3.i32, 4.i32])!!;
+  b.shaderOf(fn(val: gi32) {
+    let doubled = val * 2.gi32;
+    if val > 2.gi32 {
+      return doubled + 1.gi32;
+    } else {
+      return doubled - 1.gi32;
+    }
+  }).print;
+  b.map(fn(val: gi32) {
+    let doubled = val * 2.gi32;
+    if val > 2.gi32 {
+      return doubled + 1.gi32;
+    } else {
+      return doubled - 1.gi32;
+    }
+  }).read.print;
+}
+"#;
+    // Shared upstream (`doubled`) hoisted to top level (2-space indent), declared once:
+    stdout_contains "  var mul_i32_";
+    // A real branch, not a `select`:
+    stdout_contains "  if (";
+    stdout_contains "  } else {";
+    // Each arm's local var lands inside its brace (4-space indent):
+    stdout_contains "    var add_i32_";
+    stdout_contains "    var sub_i32_";
+    // The result `var` is declared before the block (top level):
+    stdout_contains "  var if_i32_";
+    // ...and the shader compiles and runs with correct per-branch results:
+    stdout_contains "[1, 3, 7, 9]";
+);
+
 test_gpgpu!(gpu_replace => r#"export fn main {
   let b = GBuffer([1.i32, 2.i32, 3.i32, 4.i32])!!;
   b.map(fn(val: gi32) = val + 2).read.print;
@@ -992,102 +1084,211 @@ export fn main {
 
 // Conditionals
 
-test_ignore!(basic_conditionals => r#"
-    fn bar() {
-      print('bar!');
-    }
-
-    fn baz() {
-      print('baz!');
-    }
-
-    export fn main {
-      if 1 == 0 {
-        print('What!?');
-      } else {
-        print('Math is sane...');
-      }
-
-      if 1 == 0 {
-        print('Not this again...');
-      } else if 1 == 2 {
-        print('Still wrong...');
-      } else {
-        print('Math is still sane, for now...');
-      }
-
-      const foo: bool = true == true;
-      if foo bar else baz
-
-      const isTrue = true == true;
-      cond(isTrue, fn {
-        print(\"It's true!\");
-      });
-      cond(!isTrue, fn {
-        print('This should not have run');
-      });
-    }"#;
-    stdout r#"Math is sane...
-Math is still sane, for now...
-bar!
-It's true!
+// An `if`/`else` where both branches return, but with a trailing tail after the conditional. The
+// early-return branch exits; the fall-through path runs the tail.
+test!(conditional_early_return_with_tail => r#"fn classify(n: i64) -> string {
+  if n < 0 {
+    return 'negative';
+  }
+  return 'nonneg';
+}
+export fn main {
+  print(classify(0 - 3));
+  print(classify(5));
+}
 "#;
+    stdout "negative\nnonneg\n";
 );
-test_ignore!(nested_conditionals => r#"
-    export fn main {
-      if true {
-        print(1);
-        if 1 == 2 {
-          print('What?');
-        } else {
-          print(2);
-          if 2 == 1 {
-            print('Uhh...');
-          } else if 2 == 2 {
-            print(3);
-          } else {
-            print('Nope');
-          }
-        }
-      } else {
-        print('Hmm');
-      }
-    }"#;
-    stdout "1\n2\n3\n";
+// `else if` chains normalize into nested conditionals.
+test!(conditional_else_if_chain => r#"fn name(n: i64) -> string {
+  if n == 1 {
+    return 'one';
+  } else if n == 2 {
+    return 'two';
+  } else {
+    return 'other';
+  }
+}
+export fn main {
+  print(name(1));
+  print(name(2));
+  print(name(3));
+}
+"#;
+    stdout "one\ntwo\nother\n";
 );
-test_ignore!(early_return => r#"
-    fn nearOrFar(distance: float64) -> string {
-      if distance < 5.0 {
-        return 'Near!';
-      } else {
-        return 'Far!';
-      }
+// A nested conditional with partial (non-exhaustive) returns: the tail (`print('end')`) is
+// duplicated onto every fall-through path, so it runs whenever a branch does not early-return.
+test!(conditional_nested_partial_returns => r#"fn check(n: i64) {
+  if n > 0 {
+    print('positive');
+    if n > 10 {
+      print('big');
+      return;
     }
-
-    export fn main {
-      print(nearOrFar(3.14));
-      print(nearOrFar(6.28));
-    }"#;
-    stdout "Near!\nFar!\n";
+  }
+  print('end');
+}
+export fn main {
+  check(50);
+  check(5);
+  check(0 - 1);
+}
+"#;
+    stdout "positive\nbig\npositive\nend\nend\n";
 );
-/* Dropping the ternary operators since either they behave consistently with other operators and
- * are therefore unexpected for end users, or they are inconsistent and a whole lot of pain is
- * needed to support them. */
-test_ignore!(conditional_let_assignment => r#"
-    export fn main {
-      let a = 0;
-      let b = 1;
-      let c = 2;
-
-      if true {
-        a = b;
-      } else {
-        a = c;
-      }
-      print(a);
-    }"#;
-    stdout "1\n";
+// A void, side-effect-only `if` with no `else`, followed by more statements.
+test!(conditional_void_no_else => r#"export fn main {
+  let x = 5;
+  if x == 5 {
+    print('five');
+  }
+  print('after');
+}
+"#;
+    stdout "five\nafter\n";
 );
+// A void conditional whose taken branch awaits (`wait` is async on the JS backend). The enclosing
+// function must be colored correctly so the awaited work completes before the following statement.
+test!(conditional_void_async_branch => r#"export fn main {
+  let x = 1;
+  if x == 1 {
+    let t = wait(10);
+    print('waited');
+  } else {
+    print('skipped');
+  }
+  print('done');
+}
+"#;
+    stdout "waited\ndone\n";
+);
+// Both branches return *and* there is a trailing statement after the conditional: the tail is
+// unreachable, which is a compile error.
+test_compile_error!(conditional_both_arms_return_with_tail => r#"fn f(n: i64) -> string {
+  if n > 0 {
+    return 'pos';
+  } else {
+    return 'neg';
+  }
+  return 'unreachable';
+}
+export fn main {
+  print(f(1));
+}
+"#;
+    error "Unreachable statements after a conditional in which both branches return";
+);
+// JS-specific codegen check: a pure (non-awaiting) value conditional compiles to a *synchronous*
+// IIFE -- a plain `(() => { ... })()` with no `await` and no `async` wrapper. This is the win the
+// sync-function coloring enables.
+#[cfg(test)]
+mod conditional_js_sync_iife {
+    #[test]
+    fn conditional_js_sync_iife() -> Result<(), Box<dyn std::error::Error>> {
+        alan_compiler::program::Program::set_target_lang_js();
+        let filename = "conditional_js_sync_iife.ln".to_string();
+        std::fs::write(
+            &filename,
+            r#"export fn main {
+  let r = if(true, fn() = 'a', fn() = 'b');
+  print(r);
+}
+"#,
+        )?;
+        let res = alan_compiler::lntojs::lntojs(filename.clone());
+        std::fs::remove_file(&filename)?;
+        let (js, _deps) = res?;
+        assert!(
+            js.contains("(() => { if ("),
+            "expected a synchronous arrow IIFE for a pure value conditional, got:\n{js}"
+        );
+        assert!(
+            !js.contains("await (async () =>"),
+            "a pure conditional should not produce an awaited async IIFE, got:\n{js}"
+        );
+        Ok(())
+    }
+}
+// JS-specific (Promise transparency, problem 1): a *pure-Alan* function declared to return a
+// concrete type (`f64`) whose body returns an awaited native value (`wait` -> `Promise{f64}` on
+// JS) type-checks -- Alan auto-awaits, so `Promise{f64}` is transparent to the declared `f64` --
+// and is correctly colored `async` with the `await` emitted. (`wait` is synchronous on the Rust
+// backend, so this awaited-return shape is JS-only and can't be a cross-backend `test!`.)
+#[cfg(test)]
+mod conditional_js_async_plain_return {
+    #[test]
+    fn conditional_js_async_plain_return() -> Result<(), Box<dyn std::error::Error>> {
+        alan_compiler::program::Program::set_target_lang_js();
+        let filename = "conditional_js_async_plain_return.ln".to_string();
+        std::fs::write(
+            &filename,
+            r#"fn fetchVal(b: bool) -> f64 {
+  return wait(10);
+}
+export fn main {
+  print(fetchVal(true).string);
+}
+"#,
+        )?;
+        // Compiling at all is the regression check: this previously failed with "specified to
+        // return f64 but actually returns Promise{f64}". (The single-`return` function is inlined
+        // into `main`, so the await/async land there rather than in a separate `fetchVal`.)
+        let res = alan_compiler::lntojs::lntojs(filename.clone());
+        std::fs::remove_file(&filename)?;
+        let (js, _deps) = res?;
+        assert!(
+            js.contains("async function main"),
+            "the awaiting call should color the enclosing function async, got:\n{js}"
+        );
+        assert!(
+            js.contains("await"),
+            "the awaited native call should be emitted with `await`, got:\n{js}"
+        );
+        Ok(())
+    }
+}
+// JS-specific (Promise transparency, problem 2): a value conditional whose branches return awaited
+// native values resolves to the `if{T}` cfn (with `T` Promise-transparent), emits a native
+// return-position `if/else` with `await` in both branches, and colors the function `async`.
+#[cfg(test)]
+mod conditional_js_async_return_branches {
+    #[test]
+    fn conditional_js_async_return_branches() -> Result<(), Box<dyn std::error::Error>> {
+        alan_compiler::program::Program::set_target_lang_js();
+        let filename = "conditional_js_async_return_branches.ln".to_string();
+        std::fs::write(
+            &filename,
+            r#"fn pick(b: bool) -> f64 {
+  if b {
+    return wait(10);
+  } else {
+    return wait(20);
+  }
+}
+export fn main {
+  print(pick(true).string);
+}
+"#,
+        )?;
+        let res = alan_compiler::lntojs::lntojs(filename.clone());
+        std::fs::remove_file(&filename)?;
+        let (js, _deps) = res?;
+        assert!(
+            js.contains("async function pick"),
+            "an awaiting conditional function should be colored async, got:\n{js}"
+        );
+        assert!(
+            js.contains("if (") && js.contains("} else {"),
+            "expected a native return-position if/else, got:\n{js}"
+        );
+        assert!(
+            js.matches("await").count() >= 2,
+            "expected both awaiting branches to emit `await`, got:\n{js}"
+        );
+        Ok(())
+    }
+}
 
 test!(conditional_compilation => r#"type{true} foo = string;
 type{false} foo = i64;

@@ -815,18 +815,27 @@ fn{Rs} eq Infix{"=="} :: (bool, bool) -> bool;
 fn{Js} eq "((a, b) => new alan_std.Bool(a.val == b.val))" :: (bool, bool) -> bool;
 fn{Rs} neq Infix{"!="} :: (bool, bool) -> bool;
 fn{Js} neq "((a, b) => new alan_std.Bool(a.val != b.val))" :: (bool, bool) -> bool;
+// The value/single-closure sugar desugars into the compiler-provided `if` cfn declared below it.
+// The single-closure form covers the void case too (`t: () -> ()`): there `Maybe{T}` is `Maybe{()}`
+// = `() | ()`, which collapses to `()` (an `Either` of identical variants is just that type), so no
+// degenerate `Maybe{void}` is produced and no special void overload is needed.
 fn if{T}(c: bool, t: T) = if(c, fn() = Maybe{T}(t), fn() = Maybe{T}());
 fn if{T}(c: bool, t: T, f: T) = if(c, fn() = t, fn() = f);
 fn if{T}(c: bool, t: () -> T) = if(c, fn() = Maybe{T}(t()), fn() = Maybe{T}());
-fn{Rs} if{T} "alan_std::ifbool" <- RootBacking :: (bool, () -> T, () -> T) -> T;
-fn{Js} if{T} "alan_std.ifbool" <- RootBacking :: (bool, () -> T, () -> T) -> T;
-fn{Js} if(c: bool, t: () -> ()) {
-  if(c, t, fn {
-    0;
-  });
-}
-fn{Rs} if "ifstatementhack" :: (bool, () -> ()) -> ();
-fn{Rs} if "ifelsestatementhack" :: (bool, () -> (), () -> ()) -> ();
+// The compiler-provided `if` cfn renders native control flow (the void case is just `T = ()`).
+// Per Alan's "most-recent definition wins" dispatch, it is declared *after* the sugar above so
+// that an `if` call whose branch arguments are closures (`() -> T`) resolves here rather than to
+// the `(bool, T, T)` value sugar (which would otherwise match with `T` bound to a closure type and
+// recurse). A value-argument `if` skips this cfn -- its `() -> T` params reject plain values -- and
+// falls through to the sugar as usual.
+cfn if{T} (bool, () -> T, () -> T) -> T;
+// Void single-closure form: the closure runs only for its side effects, so -- unlike the generic
+// `() -> T` sugar above -- it must not wrap the result in `Maybe{T}` (`Maybe{()}` is degenerate).
+// These non-generic overloads are selected ahead of the generic sugars for the `() -> ()` case. On
+// JS the closure can be passed through the cfn (with an empty else) and called; on Rust a closure
+// that mutates a captured variable needs `FnMut`, which a passed `impl Fn()` parameter isn't, so we
+// inline the closure body via the dedicated statement form instead (the cfn inlines literal branch
+// closures, but here the branch is a closure *parameter*).
 /// Float-related functions
 fn{Rs} add Infix{"+"} :: (f32, f32) -> f32;
 fn{Js} add "((a, b) => new alan_std.F32(a.val + b.val))" <- RootBacking :: (f32, f32) -> f32;
@@ -2219,6 +2228,21 @@ fn{Js} Array{V} (d: Dict{string, V}) =
   }(d);
 fn{Rs} concat{K, V} "alan_std::concatdict" <- RootBacking :: (Dict{K, V}, Dict{K, V}) -> Dict{K, V};
 fn{Js} concat{K, V} "((a, b) => new Map([...a, ...b]))" :: (Dict{K, V}, Dict{K, V}) -> Dict{K, V};
+// Set-like operations over dictionaries, keyed by `K`. `intersection` keeps the entries of `a`
+// whose key also appears in `b`; `difference` keeps the entries of `a` whose key does *not* appear
+// in `b`. Both take the value from `a` and preserve `a`'s insertion order. Implemented in pure Alan
+// (no backend bindings) via `Array`/`has`/`reduce`, building the result immutably with `concat` so
+// the reduce closure never mutates captured state.
+fn intersection{K, V}(a: Dict{K, V}, b: Dict{K, V}) {
+  return a.Array.reduce(Dict{K, V}(), fn(o: Dict{K, V}, kv: (K, V)) {
+    return if(b.has(kv.0), fn = o.concat(Dict{K, V}(kv.0, kv.1)), fn = o);
+  });
+}
+fn difference{K, V}(a: Dict{K, V}, b: Dict{K, V}) {
+  return a.Array.reduce(Dict{K, V}(), fn(o: Dict{K, V}, kv: (K, V)) {
+    return if(b.has(kv.0), fn = o, fn = o.concat(Dict{K, V}(kv.0, kv.1)));
+  });
+}
 /// Set-related functions
 fn Set{V}(v: V) {
   let out = Set{V}();
@@ -2610,7 +2634,12 @@ fn build{N}(ret: N) {
     .concat(")\nfn main(@builtin(global_invocation_id) id: vec3u) {\n");
   let wgslFunctionBody = ret.statements.Array.map(fn(kv: (string, string)) {
     return if(kv.0.eq("@builtin(global_invocation_id) id: vec3u"), fn() = "", fn() {
-      return "  ".concat(kv.1).concat(";\n");
+      // A block-shaped statement (e.g. an emitted `if (c) { ... } else { ... }`) is multi-line and
+      // already carries its own indentation, so render it verbatim. Scalar statements are single
+      // lines that still need the per-statement leading indent and trailing `;`.
+      return if(kv.1.index("\n").exists, fn() = kv.1.concat("\n"), fn() {
+        return "  ".concat(kv.1).concat(";\n");
+      });
     });
   }).join("");
   let wgsl = wgslHeader.concat(wgslFunctionHeader).concat(wgslFunctionBody).concat("}");
@@ -5470,7 +5499,20 @@ fn gte(a: gvec4u, b: gvec4u) = gInfix{gvec4u, gvec4u, gvec4b}('>=', 'gte', a, b)
 fn gte(a: gvec4i, b: gvec4i) = gInfix{gvec4i, gvec4i, gvec4b}('>=', 'gte', a, b);
 fn gte(a: gvec4f, b: gvec4f) = gInfix{gvec4f, gvec4f, gvec4b}('>=', 'gte', a, b);
 /// GPGPU Conditional functions
-fn if{T}(c: gbool, t: () -> T, f: () -> T) = if(c, t(), f());
+// Two GPU `if` forms with deliberately different wgsl lowerings:
+//   * The *value* form (`T` arms) receives both arms already evaluated, so there is nothing left to
+//     guard -- it lowers to a branchless `select(false_val, true_val, cond)`.
+//   * The *closure* form (`() -> T` arms) defers evaluation, so it emits a real
+//     `if (c) { ... } else { ... }` block and each arm's statements only run on its branch.
+// Pick the closure form when an arm has work that must not run on the other branch; pick the value
+// form for cheap, pure expressions.
+//
+// Ordering matters, exactly as it does for the CPU `if` cfn: a closure-argument call *also* matches
+// the value form (binding `T` to the closure type `() -> T`), which would then try to read
+// `.varName` off a closure and fail. Per "most-recent definition wins", the closure form is
+// declared *after* the value form so closure-argument calls resolve to it; a value-argument call
+// skips the closure form (its `() -> T` params reject plain values) and falls through to the value
+// form.
 fn if{T}(c: gbool, t: T, f: T) {
   let varName = "select("
     .concat(f.varName)
@@ -5482,6 +5524,55 @@ fn if{T}(c: gbool, t: T, f: T) {
   let statements = f.statements.concat(t.statements).concat(c.statements);
   let buffers = f.buffers.union(t.buffers).union(c.buffers);
   return {T}(varName, statements, buffers);
+}
+fn if{T}(c: gbool, t: () -> T, f: () -> T) {
+  // Evaluate both arms. Each arm's `statements` is the full ordered chain needed to compute its
+  // result, which shares a common prefix with the other arm (the work done before the branch).
+  let tv = t();
+  let fv = f();
+  let typename = {T.typeName}();
+  // Split each arm into the prefix shared by both arms (emitted once, before the block) and the
+  // branch-local remainder (emitted inside the matching brace so it only runs on that branch).
+  // `intersection` captures its second argument in a reduce closure, so it is taken by value (and
+  // thus consumed); pass a fresh copy of the false arm's statements (`concat` with an empty dict
+  // returns a new dictionary) so the original survives for `fDelta`.
+  let fStmtsCopy = fv.statements.concat(Dict{string, string}());
+  let shared = tv.statements.intersection(fStmtsCopy);
+  let tDelta = tv.statements.difference(shared);
+  let fDelta = fv.statements.difference(shared);
+  // A result `var` declared before the block; each arm assigns its own value into it.
+  let resultVar = "if_"
+    .concat(typename)
+    .concat('_')
+    .concat(uuid().string.replace('-', '_'));
+  let declaration = "var ".concat(resultVar).concat(": ").concat(typename);
+  let tBody = tDelta.Array.map(fn(kv: (string, string)) {
+    return if(kv.1.index("\n").exists, fn = kv.1.concat("\n"), fn = "    ".concat(kv.1).concat(";\n"));
+  }).join("");
+  let fBody = fDelta.Array.map(fn(kv: (string, string)) {
+    return if(kv.1.index("\n").exists, fn = kv.1.concat("\n"), fn = "    ".concat(kv.1).concat(";\n"));
+  }).join("");
+  let block = "  if ("
+    .concat(c.varName)
+    .concat(") {\n")
+    .concat(tBody)
+    .concat("    ")
+    .concat(resultVar)
+    .concat(" = ")
+    .concat(tv.varName)
+    .concat(";\n  } else {\n")
+    .concat(fBody)
+    .concat("    ")
+    .concat(resultVar)
+    .concat(" = ")
+    .concat(fv.varName)
+    .concat(";\n  }");
+  let statements = c.statements
+    .concat(shared)
+    .concat(Dict{string, string}(resultVar, declaration))
+    .concat(Dict{string, string}(resultVar.concat("_block"), block));
+  let buffers = c.buffers.union(tv.buffers).union(fv.buffers);
+  return {T}(resultVar, statements, buffers);
 }
 /// GPU Boolean and Bitwise methods
 fn not(a: gu32) = gPrefix('!', 'not', a);
@@ -5843,6 +5934,7 @@ fn{Js} print (i: i64[]) = "[".concat(i.map(string).join(", ")).concat("]").print
 fn{Js} print (u: u64[]) = "[".concat(u.map(string).join(", ")).concat("]").print;
 fn{Js} print{S} (i: Buffer{i64, S}) = "[".concat(i.map(string).join(", ")).concat("]").print;
 fn{Js} print{S} (u: Buffer{u64, S}) = "[".concat(u.map(string).join(", ")).concat("]").print;
+fn{Rs} print (e: Error) = e.string.print;
 fn{Js} print (e: Error) = "Error: ".concat(e.string).print;
 fn{Rs} print (d: Duration) =
   {"println!" :: ("{}.{:0>9}", u64, u32)}({Method{"as_secs"} :: Duration -> u64}(d), {
@@ -5854,15 +5946,18 @@ fn{Js} print(v: void) = {"console.log" :: "void"}();
 fn{Rs} print(s: string) = {"println!" :: ("{}", string)}(s);
 fn{Rs} print{T, N}(a: T[N]) = "[".concat(a.map(fn(v: T) = string(v)).join(", ")).concat("]").print;
 fn{Rs} print{T}(a: T[]) = "[".concat(a.map(fn(v: T) = string(v)).join(", ")).concat("]").print;
+// `Maybe{T}` (`T | ()`) needs its own printer: the generic `Either{A, B}` printer above can't
+// extract a `()` (void) variant via `getOrExit`. Safe under `Either` collapse because the `void`
+// and `string` leaves it bottoms out to are concrete (non-generic) on both backends.
 fn print{T}(v: T?) = if(v.exists, fn = print(v!!), fn = print("void"));
-fn print{T}(v: T!) = if({T}(v).exists, fn = print(v!!), fn = print(v.Error!!));
-fn{Js} print{T}(v: void!) = if({T}(v).exists, fn = "void".print, fn = print(v.Error!!));
 fn{Rs} eprint{T}(v: T) = {"eprintln!" :: ("{}", string)}(v.string);
 fn{Js} eprint{T}(v: T) = {"console.error" :: string}(v.string);
 fn{Rs} eprint(v: void) = {"eprintln!" :: "void"}();
 fn{Js} eprint(v: void) = {"console.error" :: "void"}();
 fn{Rs} eprint(s: string) = {"eprintln!" :: ("{}", string)}(s);
 fn{Js} eprint "((s) => console.error(s.val))" :: string;
+fn{Rs} eprint (e: Error) = e.string.eprint;
+fn{Js} eprint (e: Error) = "Error: ".concat(e.string).eprint;
 fn{Js} eprint (b: bool) = b.string.print;
 fn{Js} eprint (i: i8) = i.string.print;
 fn{Js} eprint (u: u8) = u.string.print;
@@ -5877,8 +5972,10 @@ fn{Js} eprint (f: f64) = f.string.print;
 fn{Js} eprint (i: i64[]) = "[".concat(i.map(string).join(", ")).concat("]").print;
 fn{Js} eprint (u: u64[]) = "[".concat(u.map(string).join(", ")).concat("]").print;
 fn{Rs} eprint{T}(a: T[]) = "[".concat(a.map(string).join(", ")).concat("]").eprint;
-fn{Rs} eprint{T}(v: T?) = if(v.exists, fn = eprint(v!!), fn = eprint("void"));
-fn{Rs} eprint{T}(v: T!) = if({T}(v).exists, fn = eprint(v!!), fn = eprint(v.Error!!));
+fn eprint{A, B}(v: Either{A, B}) {
+  return if({A}(v).exists, fn = {A}(v).getOrExit.eprint, fn = {B}(v).getOrExit.eprint);
+}
+fn eprint{T}(v: T?) = if(v.exists, fn = eprint(v!!), fn = eprint("void"));
 
 fn{Rs} stdout (s: string) {
   {"print!" :: ("{}", string)}(s);
