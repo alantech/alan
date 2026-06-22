@@ -692,7 +692,19 @@ export function swap(a, i, j) {
   a[j.val] = temp;
 }
 
-async function merge(left, right, sorter) {
+function mergeSync(left, right, sorter) {
+  let arr = [];
+  while (left.length && right.length) {
+    if (sorter(left[0], right[0]) < 0) {
+      arr.push(left.shift());
+    } else {
+      arr.push(right.shift());
+    }
+  }
+  return [ ...arr, ...left, ...right ];
+}
+
+async function mergeAsync(left, right, sorter) {
   let arr = [];
   while (left.length && right.length) {
     if ((await sorter(left[0], right[0])) < 0) {
@@ -704,7 +716,7 @@ async function merge(left, right, sorter) {
   return [ ...arr, ...left, ...right ];
 }
 
-export async function sort(a, sorter) {
+export function sortSync(a, sorter) {
   // I really didn't want to write my own sorter, but here we are. This is a merge sort. It's not a
   // true in-place merge sort, but I fake it at the end. Should be made better in the future.
   if (a.length < 2) {
@@ -713,11 +725,262 @@ export async function sort(a, sorter) {
   let half = Math.floor(a.length / 2);
   let right = [...a];
   let left = right.splice(0, half);
-  await sort(left, sorter);
-  await sort(right, sorter);
-  let res = await merge(left, right, sorter);
+  sortSync(left, sorter);
+  sortSync(right, sorter);
+  let res = mergeSync(left, right, sorter);
   for (let i = 0; i < res.length; i++) {
     a[i] = res[i];
+  }
+}
+
+export async function sortAsync(a, sorter) {
+  // I really didn't want to write my own sorter, but here we are. This is a merge sort. It's not a
+  // true in-place merge sort, but I fake it at the end. Should be made better in the future.
+  if (a.length < 2) {
+    return;
+  }
+  let half = Math.floor(a.length / 2);
+  let right = [...a];
+  let left = right.splice(0, half);
+  await sortAsync(left, sorter);
+  await sortAsync(right, sorter);
+  let res = await mergeAsync(left, right, sorter);
+  for (let i = 0; i < res.length; i++) {
+    a[i] = res[i];
+  }
+}
+
+export const sort = sortAsync;
+
+export function mapSync(a, f) {
+  let out = [];
+  for (let v of a) {
+    out.push(f(v));
+  }
+  return out;
+}
+
+export async function mapAsync(a, f) {
+  let out = [];
+  for (let v of a) {
+    out.push(await f(v));
+  }
+  return out;
+}
+
+export function mapSyncIdx(a, f) {
+  let out = [];
+  for (let i = 0; i < a.length; i++) {
+    out.push(f(a[i], new I64(i)));
+  }
+  return out;
+}
+
+export async function mapAsyncIdx(a, f) {
+  let out = [];
+  for (let i = 0; i < a.length; i++) {
+    out.push(await f(a[i], new I64(i)));
+  }
+  return out;
+}
+
+export function filterSync(a, f) {
+  let out = [];
+  for (let v of a) {
+    if (f(v).val) {
+      out.push(v);
+    }
+  }
+  return out;
+}
+
+export async function filterAsync(a, f) {
+  let out = [];
+  for (let v of a) {
+    if ((await f(v)).val) {
+      out.push(v);
+    }
+  }
+  return out;
+}
+
+export function filterSyncIdx(a, f) {
+  let out = [];
+  for (let i = 0; i < a.length; i++) {
+    if (f(a[i], new I64(i)).val) {
+      out.push(a[i]);
+    }
+  }
+  return out;
+}
+
+export async function filterAsyncIdx(a, f) {
+  let out = [];
+  for (let i = 0; i < a.length; i++) {
+    if ((await f(a[i], new I64(i))).val) {
+      out.push(a[i]);
+    }
+  }
+  return out;
+}
+
+export function reduceSync(a, f) {
+  if (a.length === 0) {
+    return null;
+  }
+  let out = a[0];
+  for (let i = 1; i < a.length; i++) {
+    out = f(out, a[i]);
+  }
+  return out;
+}
+
+export async function reduceAsync(a, f) {
+  if (a.length === 0) {
+    return null;
+  }
+  let out = a[0];
+  for (let i = 1; i < a.length; i++) {
+    out = await f(out, a[i]);
+  }
+  return out;
+}
+
+export function reduceSyncIdx(a, f) {
+  if (a.length === 0) {
+    return null;
+  }
+  let out = a[0];
+  for (let i = 1; i < a.length; i++) {
+    out = f(out, a[i], new I64(i));
+  }
+  return out;
+}
+
+export async function reduceAsyncIdx(a, f) {
+  if (a.length === 0) {
+    return null;
+  }
+  let out = a[0];
+  for (let i = 1; i < a.length; i++) {
+    out = await f(out, a[i], new I64(i));
+  }
+  return out;
+}
+
+export function reduceSyncInit(a, i, f) {
+  let out = i;
+  for (let idx = 0; idx < a.length; idx++) {
+    out = f(out, a[idx]);
+  }
+  return out;
+}
+
+export async function reduceAsyncInit(a, i, f) {
+  let out = i;
+  for (let idx = 0; idx < a.length; idx++) {
+    out = await f(out, a[idx]);
+  }
+  return out;
+}
+
+export function reduceSyncInitIdx(a, i, f) {
+  let out = i;
+  for (let idx = 0; idx < a.length; idx++) {
+    out = f(out, a[idx], new I64(idx));
+  }
+  return out;
+}
+
+export async function reduceAsyncInitIdx(a, i, f) {
+  let out = i;
+  for (let idx = 0; idx < a.length; idx++) {
+    out = await f(out, a[idx], new I64(idx));
+  }
+  return out;
+}
+
+export function hasSync(a, f) {
+  for (let v of a) {
+    if (f(v).val) {
+      return new Bool(true);
+    }
+  }
+  return new Bool(false);
+}
+
+export async function hasAsync(a, f) {
+  for (let v of a) {
+    if ((await f(v)).val) {
+      return new Bool(true);
+    }
+  }
+  return new Bool(false);
+}
+
+export function findSync(a, f) {
+  for (let v of a) {
+    if (f(v).val) {
+      return v;
+    }
+  }
+  return null;
+}
+
+export async function findAsync(a, f) {
+  for (let v of a) {
+    if ((await f(v)).val) {
+      return v;
+    }
+  }
+  return null;
+}
+
+export function everySync(a, f) {
+  for (let v of a) {
+    if (!f(v).val) {
+      return new Bool(false);
+    }
+  }
+  return new Bool(true);
+}
+
+export async function everyAsync(a, f) {
+  for (let v of a) {
+    if (!(await f(v)).val) {
+      return new Bool(false);
+    }
+  }
+  return new Bool(true);
+}
+
+export function someSync(a, f) {
+  for (let v of a) {
+    if (f(v).val) {
+      return new Bool(true);
+    }
+  }
+  return new Bool(false);
+}
+
+export async function someAsync(a, f) {
+  for (let v of a) {
+    if ((await f(v)).val) {
+      return new Bool(true);
+    }
+  }
+  return new Bool(false);
+}
+
+export function whileSync(c, l) {
+  while (c().val) {
+    l();
+  }
+}
+
+export async function whileAsync(c, l) {
+  while ((await c()).val) {
+    await l();
   }
 }
 

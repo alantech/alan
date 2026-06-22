@@ -31,6 +31,140 @@ pub struct Scope<'a> {
     // Should we include something for documentation?
 }
 
+fn is_function_head(typen: Arc<CType>) -> bool {
+    let mut t = typen.degroup();
+    while matches!(&*t, CType::Type(..) | CType::Group(_) | CType::Promise(_)) {
+        t = match &*t {
+            CType::Type(_, inner) | CType::Group(inner) | CType::Promise(inner) => {
+                inner.clone().degroup()
+            }
+            _ => unreachable!(),
+        };
+    }
+    matches!(&*t, CType::Function(..))
+}
+
+fn degroup_type_group(typen: Arc<CType>) -> Arc<CType> {
+    let mut t = typen.degroup();
+    while matches!(&*t, CType::Type(..) | CType::Group(_)) {
+        t = match &*t {
+            CType::Type(_, inner) | CType::Group(inner) => inner.clone().degroup(),
+            _ => unreachable!(),
+        };
+    }
+    t
+}
+
+fn is_promise_head_for_dispatch(typen: Arc<CType>) -> bool {
+    let mut t = degroup_type_group(typen);
+    while matches!(&*t, CType::Type(..) | CType::Group(_)) {
+        t = match &*t {
+            CType::Type(_, inner) | CType::Group(inner) => inner.clone().degroup(),
+            _ => unreachable!(),
+        };
+    }
+    matches!(&*t, CType::Promise(_))
+}
+
+fn function_return_dispatch_accepts(expected: Arc<CType>, actual: Arc<CType>) -> bool {
+    if Program::is_target_lang_rs() {
+        return expected.accepts(actual);
+    }
+    if degroup_type_group(expected.clone()).to_strict_string(false)
+        == degroup_type_group(actual.clone()).to_strict_string(false)
+    {
+        return true;
+    }
+    let expected_is_promise = is_promise_head_for_dispatch(expected.clone());
+    let actual_is_promise = is_promise_head_for_dispatch(actual.clone());
+    if expected_is_promise != actual_is_promise {
+        return false;
+    }
+    expected.accepts(actual)
+}
+
+fn function_dispatch_accepts(expected: Arc<CType>, actual: Arc<CType>) -> bool {
+    if !Program::is_target_lang_rs() {
+        let expected_head = degroup_type_group(expected.clone());
+        let actual_head = degroup_type_group(actual.clone());
+        if let (CType::Function(ei, eo), CType::Function(ai, ao)) = (&*expected_head, &*actual_head)
+        {
+            return function_dispatch_accepts(ei.clone(), ai.clone())
+                && function_return_dispatch_accepts(eo.clone(), ao.clone());
+        }
+    }
+    if is_function_head(expected.clone()) {
+        let mut stack = vec![actual];
+        while let Some(candidate) = stack.pop() {
+            let candidate = candidate.degroup();
+            match &*candidate {
+                CType::Type(_, inner) | CType::Group(inner) | CType::Promise(inner) => {
+                    stack.push(inner.clone());
+                    continue;
+                }
+                CType::AnyOf(ts) | CType::Either(ts, _) => {
+                    for t in ts {
+                        stack.push(t.clone());
+                    }
+                    continue;
+                }
+                _ => {}
+            }
+            if !Program::is_target_lang_rs() {
+                let expected_head = degroup_type_group(expected.clone());
+                let candidate_head = degroup_type_group(candidate.clone());
+                if let (CType::Function(ei, eo), CType::Function(ai, ao)) =
+                    (&*expected_head, &*candidate_head)
+                {
+                    if function_dispatch_accepts(ei.clone(), ai.clone())
+                        && function_return_dispatch_accepts(eo.clone(), ao.clone())
+                    {
+                        return true;
+                    }
+                    continue;
+                }
+            }
+            if expected.clone().accepts(candidate.clone()) {
+                return true;
+            }
+            if let CType::Generic(_, _, inner) = &*candidate {
+                stack.push(inner.clone());
+            }
+        }
+        return false;
+    }
+    expected.accepts(actual)
+}
+
+fn degroup_type_group_promise(typen: Arc<CType>) -> Arc<CType> {
+    let mut t = typen.degroup();
+    while matches!(&*t, CType::Type(..) | CType::Group(_) | CType::Promise(_)) {
+        t = match &*t {
+            CType::Type(_, inner) | CType::Group(inner) | CType::Promise(inner) => {
+                inner.clone().degroup()
+            }
+            _ => unreachable!(),
+        };
+    }
+    t
+}
+
+fn function_type_lookup_match(expected: Arc<CType>, candidate: Arc<CType>) -> bool {
+    let expected = degroup_type_group(expected);
+    let candidate = degroup_type_group(candidate);
+    if expected.clone().to_strict_string(false) == candidate.clone().to_strict_string(false) {
+        return true;
+    }
+    match (&*expected, &*candidate) {
+        (CType::Function(ei, eo), CType::Function(ci, co)) => {
+            ei.clone().to_strict_string(false) == ci.clone().to_strict_string(false)
+                && degroup_type_group_promise(eo.clone()).to_strict_string(false)
+                    == degroup_type_group_promise(co.clone()).to_strict_string(false)
+        }
+        _ => false,
+    }
+}
+
 impl<'a> Scope<'a> {
     pub fn load_scope(
         mut s: Scope<'a>,
@@ -89,7 +223,7 @@ impl<'a> Scope<'a> {
                         }
                         g @ ("Int" | "Float" | "Bool" | "String" | "Group" | "Unwrap" | "Infix"
                         | "Prefix" | "Method" | "Property" | "Cast" | "Own" | "Deref" | "Mut"
-                        | "Rust" | "Nodejs" | "From" | "Shared" | "Array" | "Fail" | "Neg"
+                        | "Rust" | "Nodejs" | "From" | "Shared" | "Promise" | "Array" | "Fail" | "Neg"
                         | "Len" | "Size" | "FileStr" | "Env" | "EnvExists" | "Not") => {
                             s = CType::from_generic(s, g, 1)
                         }
@@ -472,13 +606,15 @@ impl<'a> Scope<'a> {
     ) -> Option<Arc<Function>> {
         // Iterates through every function with the same name visible from the provided scope and
         // returns the one that matches the provided function type, if any
-        let fn_type_str = fn_type.degroup().to_strict_string(false);
+        let fn_type_str = fn_type.clone().degroup().to_strict_string(false);
         let mut scope_to_check: Option<&Scope> = Some(self);
         while scope_to_check.is_some() {
             if let Some(s) = scope_to_check {
                 if let Some(funcs) = s.functions.get(function) {
                     for f in funcs {
-                        if f.typen.clone().to_strict_string(false) == fn_type_str {
+                        if f.typen.clone().to_strict_string(false) == fn_type_str
+                            || function_type_lookup_match(fn_type.clone(), f.typen.clone())
+                        {
                             return Some(f.clone());
                         }
                     }
@@ -579,24 +715,20 @@ impl<'a> Scope<'a> {
                 }
             }
         }
-        let mut match_index = None;
         for (idx, possible_args) in possible_args_vec.iter().enumerate() {
             let mut args_match = true;
             for (i, arg) in args.iter().enumerate() {
                 let fnarg = possible_args[i].2.clone();
                 let callarg = arg.clone();
-                if !fnarg.clone().accepts(callarg.clone()) {
+                if !function_dispatch_accepts(fnarg, callarg) {
                     args_match = false;
                     break;
                 }
             }
-            if args_match {
-                match_index = Some(idx);
-                break;
+            if !args_match {
+                continue;
             }
-        }
-        if let Some(i) = match_index {
-            let generic_f = generic_fs.get(i).unwrap();
+            let generic_f = generic_fs.get(idx).unwrap();
             for arg in args {
                 match &**arg {
                     CType::Generic(n, _, t) if matches!(&**t, CType::Function(..)) => {
@@ -799,7 +931,7 @@ impl<'a> Scope<'a> {
                     // actual args are the same type as the function's arg.
                     let mut args_match = true;
                     for arg in args.iter() {
-                        if !f.args()[0].2.clone().accepts(arg.clone()) {
+                        if !function_dispatch_accepts(f.args()[0].2.clone(), arg.clone()) {
                             args_match = false;
                             break;
                         }
@@ -825,7 +957,7 @@ impl<'a> Scope<'a> {
                         // This is pretty cheap, but for now, a "non-strict" string representation
                         // of the CTypes is how we'll match the args against each other. TODO: Do
                         // this without constructing a string to compare against each other.
-                        if !f.args()[i].2.clone().accepts(arg.clone()) {
+                        if !function_dispatch_accepts(f.args()[i].2.clone(), arg.clone()) {
                             args_match = false;
                             break;
                         }
@@ -843,8 +975,76 @@ impl<'a> Scope<'a> {
                     if args.len() != f.args().len() {
                         continue;
                     }
-                    if let Ok(gs) = CType::infer_generics(self, g, &f.args(), args) {
-                        return Some(gs);
+                    let fargs = f.args();
+                    let candidate_matches = |gs: &[Arc<CType>]| {
+                        let possible_args = fargs
+                            .iter()
+                            .map(|(_, _, argtype)| {
+                                let mut a = argtype.clone();
+                                for ((_, o), n) in g.iter().zip(gs.iter()) {
+                                    a = a.swap_subtype(o.clone(), n.clone());
+                                }
+                                a
+                            })
+                            .collect::<Vec<Arc<CType>>>();
+                        possible_args
+                            .iter()
+                            .zip(args.iter())
+                            .all(|(fnarg, callarg)| {
+                                function_dispatch_accepts(fnarg.clone(), callarg.clone())
+                            })
+                    };
+
+                    if let Ok(gs) = CType::infer_generics(self, g, &fargs, args) {
+                        if candidate_matches(&gs) {
+                            return Some(gs);
+                        }
+                    }
+
+                    // Fallback: if a function-typed generic argument receives an overloaded
+                    // function value (not structurally a plain Function head), infer from the
+                    // other arguments first. This preserves first-arg generic HOF resolution such
+                    // as `batchCompare(eq, vals1, vals2)`.
+                    let mut reduced_fn_args: Vec<(String, ArgKind, Arc<CType>)> = Vec::new();
+                    let mut reduced_call_args: Vec<Arc<CType>> = Vec::new();
+                    for (i, (_, kind, expected)) in fargs.iter().enumerate() {
+                        let actual = args[i].clone();
+                        if is_function_head(expected.clone()) && !is_function_head(actual.clone()) {
+                            continue;
+                        }
+                        reduced_fn_args.push((format!("arg{i}"), kind.clone(), expected.clone()));
+                        reduced_call_args.push(actual);
+                    }
+                    if reduced_fn_args.len() < fargs.len() {
+                        if let Ok(gs) =
+                            CType::infer_generics(self, g, &reduced_fn_args, &reduced_call_args)
+                        {
+                            if candidate_matches(&gs) {
+                                return Some(gs);
+                            }
+                        }
+                    }
+
+                    // Second fallback: infer only from non-function parameters. This keeps
+                    // generic inference working when higher-order arguments carry unresolved
+                    // overload sets or generic function aliases.
+                    let mut value_fn_args: Vec<(String, ArgKind, Arc<CType>)> = Vec::new();
+                    let mut value_call_args: Vec<Arc<CType>> = Vec::new();
+                    for (i, (_, kind, expected)) in fargs.iter().enumerate() {
+                        if is_function_head(expected.clone()) {
+                            continue;
+                        }
+                        value_fn_args.push((format!("arg{i}"), kind.clone(), expected.clone()));
+                        value_call_args.push(args[i].clone());
+                    }
+                    if !value_fn_args.is_empty() && value_fn_args.len() < fargs.len() {
+                        if let Ok(gs) =
+                            CType::infer_generics(self, g, &value_fn_args, &value_call_args)
+                        {
+                            if candidate_matches(&gs) {
+                                return Some(gs);
+                            }
+                        }
                     }
                 }
             }
@@ -907,7 +1107,7 @@ impl<'a> Scope<'a> {
                     // actual args are the same type as the function's arg.
                     let mut args_match = true;
                     for arg in args.iter() {
-                        if !f.args()[0].2.clone().accepts(arg.clone()) {
+                        if !function_dispatch_accepts(f.args()[0].2.clone(), arg.clone()) {
                             args_match = false;
                             break;
                         }
@@ -931,7 +1131,7 @@ impl<'a> Scope<'a> {
                         // This is pretty cheap, but for now, a "non-strict" string representation
                         // of the CTypes is how we'll match the args against each other. TODO: Do
                         // this without constructing a string to compare against each other.
-                        if !f.args()[i].2.clone().accepts(arg.clone()) {
+                        if !function_dispatch_accepts(f.args()[i].2.clone(), arg.clone()) {
                             args_match = false;
                             break;
                         }

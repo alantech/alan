@@ -524,7 +524,7 @@ test!(print_function => r#"export fn main() {
     stdout "Hello, World\n";
     status 0;
 );
-test!(duration_print => r#"export fn main() -> void {
+test!(duration_print => r#"export fn main() {
   const i = now();
   wait(110); // Increased from 10ms to 110ms because the node.js event loop seems less
   // capable of guaranteeing staying below 20ms in the delay here. Adding an extra
@@ -887,6 +887,18 @@ export fn{Mac || Js} main {
 }
 "#;
     stdout "0.33, 1.00, 1.00, 1.00, 2.00, 1.67, 1.67, 3.00, 2.33\n";
+);
+
+test!(map_i32_function_value_sync_dispatch => r#"fn conv(idx: Buffer{i64, 3}) -> Buffer{i32, 3} {
+  return idx.map(i32);
+}
+
+export fn main {
+  let out = conv({i64[3]}(1, 2, 3));
+  out.len.string.print;
+}
+"#;
+    stdout "3\n";
 );
 
 // Functions and Custom Operators

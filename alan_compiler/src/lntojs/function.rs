@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use nom::combinator::all_consuming;
@@ -62,6 +63,67 @@ fn box_native_value(typen: &CType, representation: &str) -> Option<String> {
     }
 }
 
+fn is_promise_head(typen: Arc<CType>) -> bool {
+    let mut t = typen.degroup();
+    while matches!(&*t, CType::Type(..) | CType::Group(_)) {
+        t = match &*t {
+            CType::Type(_, inner) | CType::Group(inner) => inner.clone().degroup(),
+            _ => unreachable!(),
+        };
+    }
+    matches!(&*t, CType::Promise(_))
+}
+
+fn function_codegen_is_async(function: Arc<Function>) -> bool {
+    fn microstatement_awaits_for_codegen(ms: &Microstatement, seen: &mut HashSet<usize>) -> bool {
+        match ms {
+            Microstatement::Assignment { value, .. } => {
+                microstatement_awaits_for_codegen(value, seen)
+            }
+            Microstatement::FnCall { function, args } => {
+                function_codegen_is_async_inner(function.clone(), seen)
+                    || args
+                        .iter()
+                        .any(|a| microstatement_awaits_for_codegen(a, seen))
+            }
+            Microstatement::VarCall { typen, args, .. } => {
+                is_promise_head(typen.clone())
+                    || args
+                        .iter()
+                        .any(|a| microstatement_awaits_for_codegen(a, seen))
+            }
+            Microstatement::Array { vals, .. } => vals
+                .iter()
+                .any(|v| microstatement_awaits_for_codegen(v, seen)),
+            Microstatement::Return { value } => value
+                .as_deref()
+                .is_some_and(|v| microstatement_awaits_for_codegen(v, seen)),
+            Microstatement::NativeCall { args, .. } => args
+                .iter()
+                .any(|a| microstatement_awaits_for_codegen(a, seen)),
+            Microstatement::Closure { function } => {
+                function_codegen_is_async_inner(function.clone(), seen)
+            }
+            Microstatement::Arg { .. } | Microstatement::Value { .. } => false,
+        }
+    }
+
+    fn function_codegen_is_async_inner(function: Arc<Function>, seen: &mut HashSet<usize>) -> bool {
+        let ptr = Arc::as_ptr(&function) as usize;
+        if !seen.insert(ptr) {
+            return false;
+        }
+        is_promise_head(function.rettype())
+            || function
+                .microstatements
+                .iter()
+                .any(|ms| microstatement_awaits_for_codegen(ms, seen))
+    }
+
+    let mut seen = HashSet::new();
+    function_codegen_is_async_inner(function, &mut seen)
+}
+
 #[allow(clippy::type_complexity)]
 pub fn from_microstatement(
     microstatement: &Microstatement,
@@ -111,18 +173,31 @@ pub fn from_microstatement(
                 .into_iter()
                 .map(|(n, _, _)| n)
                 .collect::<Vec<String>>();
+            let async_prefix = if function_codegen_is_async(function.clone()) {
+                "async "
+            } else {
+                ""
+            };
             let mut inner_statements = Vec::new();
             for ms in &function.microstatements {
                 let (val, o, d) = from_microstatement(ms, parent_fn, scope, out, deps)?;
                 out = o;
                 deps = d;
-                inner_statements.push(val);
+                if !val.trim().is_empty() {
+                    inner_statements.push(val);
+                }
             }
+            let body = if inner_statements.is_empty() {
+                "".to_string()
+            } else {
+                format!("\n        {};\n    ", inner_statements.join(";\n        "))
+            };
             Ok((
                 format!(
-                    "async function ({}) {{\n        {};\n    }}",
+                    "{}function ({}) {{{}}}",
+                    async_prefix,
                     arg_names.join(", "),
-                    inner_statements.join(";\n        "),
+                    body,
                 ),
                 out,
                 deps,
@@ -387,8 +462,13 @@ pub fn from_microstatement(
                     if let FnKind::External(d) = &function.kind {
                         super::register_nodejs_dependency(d, &mut deps);
                     }
+                    let call = format!("{}({})", jsname, argstrs.join(", "));
                     Ok((
-                        format!("(await {}({}))", jsname, argstrs.join(", ")).to_string(),
+                        if function_codegen_is_async(function.clone()) {
+                            format!("(await {call})")
+                        } else {
+                            format!("({call})")
+                        },
                         out,
                         deps,
                     ))
@@ -408,8 +488,13 @@ pub fn from_microstatement(
                     if let FnKind::ExternalBind(_, d) = &function.kind {
                         super::register_nodejs_dependency(d, &mut deps);
                     }
+                    let call = format!("{}({})", jsname, argstrs.join(", "));
                     Ok((
-                        format!("(await {}({}))", jsname, argstrs.join(", ")).to_string(),
+                        if function_codegen_is_async(function.clone()) {
+                            format!("(await {call})")
+                        } else {
+                            format!("({call})")
+                        },
                         out,
                         deps,
                     ))
@@ -865,9 +950,10 @@ pub fn from_microstatement(
                         }
                     } else if function.name == ret_name {
                         let mut inner_ret_type = ret_type.clone();
-                        while matches!(&*inner_ret_type, CType::Type(..)) {
+                        while matches!(&*inner_ret_type, CType::Type(..) | CType::Promise(_)) {
                             inner_ret_type = match &*inner_ret_type {
                                 CType::Type(_, t) => t.clone(),
+                                CType::Promise(t) => t.clone(),
                                 _ => inner_ret_type,
                             };
                         }
@@ -893,7 +979,7 @@ pub fn from_microstatement(
                             CType::Array(_) => {
                                 return Ok((format!("[{}]", argstrs.join(", ")), out, deps));
                             }
-                            CType::Shared(_) => {
+                            CType::Shared(_) | CType::Promise(_) => {
                                 return Ok((argstrs[0].clone(), out, deps));
                             }
                             CType::Either(ts, _) => {
@@ -1527,6 +1613,7 @@ pub fn from_microstatement(
                                 child_type = match &*child_type {
                                     CType::Type(_, t) => t.clone(),
                                     CType::Group(t) => t.clone(),
+                                    CType::Promise(t) => t.clone(),
                                     _ => break,
                                 };
                             }
@@ -1625,13 +1712,14 @@ pub fn from_microstatement(
                     // Fallback: Check if return type is Shared for constructor generation
                     // when function name doesn't match (e.g., inferred generic constructors)
                     let mut fallback_ret = ret_type.clone();
-                    while matches!(&*fallback_ret, CType::Type(..)) {
+                    while matches!(&*fallback_ret, CType::Type(..) | CType::Promise(_)) {
                         fallback_ret = match &*fallback_ret {
                             CType::Type(_, t) => t.clone(),
+                            CType::Promise(t) => t.clone(),
                             _ => fallback_ret,
                         };
                     }
-                    if let CType::Shared(_) = &*fallback_ret {
+                    if matches!(&*fallback_ret, CType::Shared(_) | CType::Promise(_)) {
                         return Ok((argstrs[0].clone(), out, deps));
                     }
                     Err(format!(
@@ -1642,7 +1730,7 @@ pub fn from_microstatement(
                 }
             }
         }
-        Microstatement::VarCall { name, args, .. } => {
+        Microstatement::VarCall { name, typen, args } => {
             let mut argstrs = Vec::new();
             for arg in args {
                 let (a, o, d) = from_microstatement(arg, parent_fn, scope, out, deps)?;
@@ -1650,8 +1738,13 @@ pub fn from_microstatement(
                 deps = d;
                 argstrs.push(a);
             }
+            let call = format!("{}({})", name, argstrs.join(", "));
             Ok((
-                format!("(await {}({}))", name, argstrs.join(", ")).to_string(),
+                if is_promise_head(typen.clone()) {
+                    format!("(await {call})")
+                } else {
+                    format!("({call})")
+                },
                 out,
                 deps,
             ))
@@ -1708,9 +1801,15 @@ pub fn generate(
     // a shared library). LLVM *probably* doesn't deduplicate this redundancy, so this will need to
     // be revisited, but it eliminates a whole host of generation problems that I can come back to
     // later.
+    let fn_async = if function_codegen_is_async(Arc::new(function.clone())) {
+        "async "
+    } else {
+        ""
+    };
     fn_string = format!(
-        "{}async function {}({}) {{\n",
+        "{}{}function {}({}) {{\n",
         fn_string,
+        fn_async,
         jsname.clone(),
         arg_strs.join(", "),
     )
@@ -1719,6 +1818,9 @@ pub fn generate(
         let (stmt, o, d) = from_microstatement(microstatement, function, scope, out, deps)?;
         out = o;
         deps = d;
+        if stmt.trim().is_empty() {
+            continue;
+        }
         fn_string = format!("{fn_string}    {stmt};\n");
     }
     fn_string = format!("{fn_string}}}");

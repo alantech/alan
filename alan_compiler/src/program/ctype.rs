@@ -63,6 +63,7 @@ pub enum CType {
     Generic(String, Vec<String>, Arc<CType>),
     Binds(Arc<CType>, Vec<Arc<CType>>),
     Shared(Arc<CType>),
+    Promise(Arc<CType>),
     IntrinsicGeneric(String, usize),
     IntCast(Arc<CType>),
     Int(i128),
@@ -264,6 +265,11 @@ impl CType {
                 }
                 CType::Shared(t) => {
                     str_parts.push("Shared{");
+                    ctype_stack.push(close_brace);
+                    ctype_stack.push(t);
+                }
+                CType::Promise(t) => {
+                    str_parts.push("Promise{");
                     ctype_stack.push(close_brace);
                     ctype_stack.push(t);
                 }
@@ -770,6 +776,11 @@ impl CType {
                 }
                 CType::Shared(t) => {
                     str_parts.push("Shared{");
+                    ctype_stack.push(close_brace);
+                    ctype_stack.push(t);
+                }
+                CType::Promise(t) => {
+                    str_parts.push("Promise{");
                     ctype_stack.push(close_brace);
                     ctype_stack.push(t);
                 }
@@ -1328,6 +1339,7 @@ impl CType {
                     resolved.to_callable_string()
                 }
             }
+            CType::Promise(_) => self.clone().to_functional_string(),
             _ => self.clone().to_functional_string(),
         }
         .chars()
@@ -1380,6 +1392,7 @@ impl CType {
             | CType::Array(t)
             | CType::Field(_, t)
             | CType::Shared(t)
+            | CType::Promise(t)
             | CType::Neg(t)
             | CType::Len(t)
             | CType::Size(t)
@@ -1437,6 +1450,7 @@ impl CType {
                     .collect::<Vec<Arc<CType>>>(),
             )),
             CType::Shared(t) => Arc::new(CType::Shared(t.clone().degroup())),
+            CType::Promise(t) => Arc::new(CType::Promise(t.clone().degroup())),
             CType::IntrinsicGeneric(..) => self,
             CType::IntCast(t) => Arc::new(CType::IntCast(t.clone().degroup())),
             CType::Int(_) => self,
@@ -1680,6 +1694,19 @@ impl CType {
                         input.push(Arc::new(other.clone()));
                     }
                     (other, CType::Shared(b2)) if !matches!(other, CType::Mut(..)) => {
+                        arg.push(Arc::new(other.clone()));
+                        input.push(b2.clone());
+                    }
+                    (CType::Promise(a2), CType::Promise(b2)) => {
+                        arg.push(a2.clone());
+                        input.push(b2.clone());
+                    }
+                    // Transparent Promise: unwrap when only one side is Promise
+                    (CType::Promise(a2), other) => {
+                        arg.push(a2.clone());
+                        input.push(Arc::new(other.clone()));
+                    }
+                    (other, CType::Promise(b2)) => {
                         arg.push(Arc::new(other.clone()));
                         input.push(b2.clone());
                     }
@@ -2852,6 +2879,10 @@ impl CType {
             (CType::Shared(a), CType::Shared(b)) => a.clone().accepts(b.clone()),
             (CType::Shared(a), other) => a.clone().accepts(Arc::new(other.clone())),
             (self_type, CType::Shared(b)) => Arc::new(self_type.clone()).accepts(b.clone()),
+            // Promise{T} is transparent on the argument side: Promise{T} accepts T, and T accepts Promise{T}
+            (CType::Promise(a), CType::Promise(b)) => a.clone().accepts(b.clone()),
+            (CType::Promise(a), other) => a.clone().accepts(Arc::new(other.clone())),
+            (self_type, CType::Promise(b)) => Arc::new(self_type.clone()).accepts(b.clone()),
             (_a, CType::AnyOf(ts)) => {
                 for t in ts {
                     if self.clone().accepts(t.clone()) {
@@ -2859,6 +2890,9 @@ impl CType {
                     }
                 }
                 false
+            }
+            (CType::Function(i1, o1), CType::Function(i2, o2)) => {
+                i1.clone().accepts(i2.clone()) && o1.clone().accepts(o2.clone())
             }
             (CType::Function(i1, _), CType::Generic(_, _, t))
                 if matches!(&**t, CType::Function(..)) =>
@@ -3966,6 +4000,9 @@ impl CType {
                     .collect::<Vec<Arc<CType>>>(),
             )),
             CType::Shared(t) => Arc::new(CType::Shared(t.clone().swap_subtype(old_type, new_type))),
+            CType::Promise(t) => {
+                Arc::new(CType::Promise(t.clone().swap_subtype(old_type, new_type)))
+            }
             CType::IntCast(i) => CType::intcast(i.clone().swap_subtype(old_type, new_type)),
             CType::FloatCast(f) => CType::floatcast(f.clone().swap_subtype(old_type, new_type)),
             CType::BoolCast(b) => CType::boolcast(b.clone().swap_subtype(old_type, new_type)),
@@ -4277,6 +4314,21 @@ impl CType {
                 CType::Type(_, t) | CType::Group(t) | CType::Unwrap(t) => t.clone(),
                 _ => arg,
             }
+        }
+    }
+
+    pub fn promise(arg: Arc<CType>) -> Arc<CType> {
+        let mut t = arg.clone();
+        while matches!(&*t, CType::Type(..) | CType::Group(_)) {
+            t = match &*t {
+                CType::Type(_, inner) | CType::Group(inner) => inner.clone(),
+                _ => unreachable!(),
+            };
+        }
+        if matches!(&*t, CType::Promise(_)) {
+            arg
+        } else {
+            Arc::new(CType::Promise(arg))
         }
     }
 
@@ -5885,6 +5937,7 @@ pub fn typebaselist_to_ctype(
                                     match name.as_str() {
                                         "Binds" => CType::binds(args),
                                         "Shared" => Arc::new(CType::Shared(args[0].clone())),
+                                        "Promise" => CType::promise(args[0].clone()),
                                         "Int" => CType::intcast(args[0].clone()),
                                         "Float" => CType::floatcast(args[0].clone()),
                                         "Bool" => CType::boolcast(args[0].clone()),
