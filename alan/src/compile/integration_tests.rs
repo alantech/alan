@@ -658,6 +658,98 @@ test_gpgpu!(gpu_if => r#"export fn main {
     stdout "[0, 1, 6, 1]\n";
 );
 
+// Closure-form GPU `if`: deferred arms emit a real `if (c) { ... } else { ... }` wgsl block
+// (vs. the value form above, which lowers to a branchless `select`). Both arms derive from a
+// shared upstream value (`doubled`); the rewrite splits each arm's statements into the shared
+// prefix (hoisted once, before the block) and the branch-local remainder (emitted inside the
+// matching brace). `shaderOf` mirrors `map`'s lowering but returns the generated wgsl so we can
+// assert statement placement; the `map` call then confirms the shader actually compiles and runs.
+// For input [1,2,3,4]: doubled = [2,4,6,8]; `val > 2` selects [-, -, +, +] -> [1, 3, 7, 9].
+test_gpgpu!(gpu_if_block => r#"fn shaderOf{G, G2}(
+  gb: GBuffer{G},
+  f: Prop{WgpuTypeMap, String{G}} -> Prop{WgpuTypeMap, String{G2}}
+) {
+  let idx = gFor(gb.cpulen);
+  let val = gb[idx];
+  let out = GBuffer{G2}(gb.cpulen)!!;
+  let compute = out[idx].store(f(val));
+  return compute.build.shader;
+}
+export fn main {
+  let b = GBuffer([1.i32, 2.i32, 3.i32, 4.i32])!!;
+  b.shaderOf(fn(val: gi32) {
+    let doubled = val * 2.gi32;
+    return if(val > 2.gi32, fn = doubled + 1.gi32, fn = doubled - 1.gi32);
+  }).print;
+  b.map(fn(val: gi32) {
+    let doubled = val * 2.gi32;
+    return if(val > 2.gi32, fn = doubled + 1.gi32, fn = doubled - 1.gi32);
+  }).read.print;
+}
+"#;
+    // Shared upstream (`doubled`) hoisted to top level (2-space indent), declared once:
+    stdout_contains "  var mul_i32_";
+    // A real branch, not a `select`:
+    stdout_contains "  if (";
+    stdout_contains "  } else {";
+    // Each arm's local var lands inside its brace (4-space indent):
+    stdout_contains "    var add_i32_";
+    stdout_contains "    var sub_i32_";
+    // The result `var` is declared before the block (top level):
+    stdout_contains "  var if_i32_";
+    // ...and the shader compiles and runs with correct per-branch results:
+    stdout_contains "[1, 3, 7, 9]";
+);
+
+// The same guarded GPU branch written with block (`if cond { ... } else { ... }`) syntax instead of
+// the functional `if(cond, fn = ..., fn = ...)` form. The Phase 1 conditional lowering routes the
+// `gbool` condition through the same closure-form `if`, so it must produce the identical real
+// `if`/`else` wgsl block (not a `select`) and the identical result -- this guards against the block
+// syntax silently regressing to the value form or failing to dispatch for `gbool`.
+test_gpgpu!(gpu_if_block_syntax => r#"fn shaderOf{G, G2}(
+  gb: GBuffer{G},
+  f: Prop{WgpuTypeMap, String{G}} -> Prop{WgpuTypeMap, String{G2}}
+) {
+  let idx = gFor(gb.cpulen);
+  let val = gb[idx];
+  let out = GBuffer{G2}(gb.cpulen)!!;
+  let compute = out[idx].store(f(val));
+  return compute.build.shader;
+}
+export fn main {
+  let b = GBuffer([1.i32, 2.i32, 3.i32, 4.i32])!!;
+  b.shaderOf(fn(val: gi32) {
+    let doubled = val * 2.gi32;
+    if val > 2.gi32 {
+      return doubled + 1.gi32;
+    } else {
+      return doubled - 1.gi32;
+    }
+  }).print;
+  b.map(fn(val: gi32) {
+    let doubled = val * 2.gi32;
+    if val > 2.gi32 {
+      return doubled + 1.gi32;
+    } else {
+      return doubled - 1.gi32;
+    }
+  }).read.print;
+}
+"#;
+    // Shared upstream (`doubled`) hoisted to top level (2-space indent), declared once:
+    stdout_contains "  var mul_i32_";
+    // A real branch, not a `select`:
+    stdout_contains "  if (";
+    stdout_contains "  } else {";
+    // Each arm's local var lands inside its brace (4-space indent):
+    stdout_contains "    var add_i32_";
+    stdout_contains "    var sub_i32_";
+    // The result `var` is declared before the block (top level):
+    stdout_contains "  var if_i32_";
+    // ...and the shader compiles and runs with correct per-branch results:
+    stdout_contains "[1, 3, 7, 9]";
+);
+
 test_gpgpu!(gpu_replace => r#"export fn main {
   let b = GBuffer([1.i32, 2.i32, 3.i32, 4.i32])!!;
   b.map(fn(val: gi32) = val + 2).read.print;

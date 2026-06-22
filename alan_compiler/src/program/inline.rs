@@ -535,10 +535,20 @@ pub fn build_inline_substitution(
         if !param_is_inlinable(&[expr], pname, kind, ptypen) {
             return None;
         }
-        // A parameter feeding a native-call position must be substituted by a
-        // conversion-free argument (rendered raw there, so a literal would lose
-        // its call-site coercion / be type-ambiguous).
-        if param_used_as_native_arg(expr, pname) && !arg_is_conversion_free(arg) {
+        // A parameter feeding a native-call position is rendered raw there,
+        // bypassing the conversions the call boundary would apply. Two cases are
+        // unsafe to inline and must fall back to a real call:
+        //   * a non-conversion-free argument (e.g. a literal) would lose its
+        //     call-site coercion / be type-ambiguous, and
+        //   * a *borrowed* (`Ref`/`Deref`) parameter expects a reference at that
+        //     position, but a raw argument expression renders as an owned value
+        //     (e.g. a tuple projection like `kv.0`, or an owned local) -- the
+        //     borrow the real call boundary inserts via `render_arg` is lost,
+        //     producing e.g. `map.contains_key(owned_string)` where `&K` is
+        //     required. The real call borrows correctly, so defer to it.
+        if param_used_as_native_arg(expr, pname)
+            && (!arg_is_conversion_free(arg) || matches!(kind, ArgKind::Ref | ArgKind::Deref))
+        {
             return None;
         }
         let uses = count_var_uses(expr, pname);
