@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use super::ctype::{withtypeoperatorslist_to_ctype, CType};
-use super::microstatement::{statement_to_microstatements, Microstatement};
+use super::microstatement::{statements_to_microstatements, Microstatement};
 use super::scope::merge;
 use super::ArgKind;
 
@@ -172,6 +172,32 @@ fn is_promise_head(t: Arc<CType>) -> bool {
         };
     }
     matches!(&*t, CType::Promise(_))
+}
+
+/// Peel a leading `Promise{..}` (looking through transparent `Type`/`Group` wrappers) and return
+/// its inner type; returns the input unchanged when there is no leading `Promise`.
+fn strip_leading_promise(t: &Arc<CType>) -> Arc<CType> {
+    let mut cur = t.clone();
+    loop {
+        let d = cur.degroup();
+        match &*d {
+            CType::Promise(inner) => return inner.clone().degroup(),
+            CType::Type(_, inner) => cur = inner.clone(),
+            _ => return t.clone(),
+        }
+    }
+}
+
+/// Whether a *declared* return type matches an *actual* (inferred) return type, treating
+/// `Promise{T}` as equivalent to `T`. This is the Promise transparency of pure-Alan code: a
+/// function/closure body that awaits has an actual return type of `Promise{T}`, but Alan
+/// auto-awaits, so a declared `T` (the common case) is accepted. Native bindings declare their own
+/// types and never reach this check, so their async-ness stays authoritative; codegen async-ness
+/// is detected structurally and is unaffected by this comparison.
+pub fn rettypes_match(declared: &Arc<CType>, actual: &Arc<CType>) -> bool {
+    declared.clone().to_strict_string(false) == actual.clone().to_strict_string(false)
+        || strip_leading_promise(declared).to_strict_string(false)
+            == strip_leading_promise(actual).to_strict_string(false)
 }
 
 fn microstatement_awaits(ms: &Microstatement) -> bool {
@@ -611,14 +637,12 @@ impl Function {
             // We can't generate the rest of the microstatements while the generic function is
             // still generic, and we skip it entirely for deferred (lazy) root functions.
             if function_ast.optgenerics.is_none() && !defer {
-                for statement in &statements {
-                    // The construction of microstatements in non-generic functions will never
-                    // actually use the provided function for scope resolution, so we just give it
-                    // a dummy function to work with.
-                    let res = statement_to_microstatements(statement, None, scope, ms)?;
-                    scope = res.0;
-                    ms = res.1;
-                }
+                // The construction of microstatements in non-generic functions will never
+                // actually use the provided function for scope resolution, so we just give it
+                // a dummy function to work with.
+                let res = statements_to_microstatements(&statements, None, scope, ms)?;
+                scope = res.0;
+                ms = res.1;
             }
             ms
         };
@@ -646,9 +670,7 @@ impl Function {
                         _ => Arc::new(CType::Void),
                     };
                     typen = Arc::new(CType::Function(input_type, actual_rettype));
-                } else if current_rettype.clone().to_strict_string(false)
-                    != actual_rettype.clone().to_strict_string(false)
-                {
+                } else if !rettypes_match(&current_rettype, &actual_rettype) {
                     CType::fail(&format!(
                         "Function {} specified to return {} but actually returns {}",
                         name,
@@ -756,11 +778,9 @@ impl Function {
         let result = (|| {
             let mut typen = func.typen.clone();
             let mut ms = func.microstatements.clone();
-            for statement in statements {
-                let res = statement_to_microstatements(statement, None, scope, ms)?;
-                scope = res.0;
-                ms = res.1;
-            }
+            let res = statements_to_microstatements(statements, None, scope, ms)?;
+            scope = res.0;
+            ms = res.1;
             // Determine the actual return type of the function and check it against any declared
             // return type (or infer it if it was left to be inferred).
             if let Some(last) = ms.last() {
@@ -781,9 +801,7 @@ impl Function {
                             _ => Arc::new(CType::Void),
                         };
                         typen = Arc::new(CType::Function(input_type, actual_rettype));
-                    } else if current_rettype.clone().to_strict_string(false)
-                        != actual_rettype.clone().to_strict_string(false)
-                    {
+                    } else if !rettypes_match(&current_rettype, &actual_rettype) {
                         CType::fail(&format!(
                             "Function {} specified to return {} but actually returns {}",
                             func.name,
@@ -918,9 +936,7 @@ impl Function {
                         }
                         if let CType::Infer(..) = &*rettype {
                             rettype = actual_rettype;
-                        } else if rettype.clone().to_strict_string(false)
-                            != actual_rettype.clone().to_strict_string(false)
-                        {
+                        } else if !rettypes_match(&rettype, &actual_rettype) {
                             CType::fail(&format!(
                                 "Function {} specified to return {} but actually returns {}",
                                 generic_function.name,
@@ -1025,16 +1041,14 @@ impl Function {
                             typen: typen.clone(),
                         });
                     }
-                    for statement in statements {
-                        let res = statement_to_microstatements(
-                            statement,
-                            Some(generic_function),
-                            scope,
-                            ms,
-                        )?;
-                        scope = res.0;
-                        ms = res.1;
-                    }
+                    let res = statements_to_microstatements(
+                        statements,
+                        Some(generic_function),
+                        scope,
+                        ms,
+                    )?;
+                    scope = res.0;
+                    ms = res.1;
                     ms
                 };
                 // Determine the actual return type of the function and check if it matches the specified
@@ -1053,9 +1067,7 @@ impl Function {
                         }
                         if let CType::Infer(..) = &*rettype {
                             rettype = actual_rettype;
-                        } else if rettype.clone().to_strict_string(false)
-                            != actual_rettype.clone().to_strict_string(false)
-                        {
+                        } else if !rettypes_match(&rettype, &actual_rettype) {
                             CType::fail(&format!(
                                 "Function {} specified to return {} but actually returns {}",
                                 generic_function.name,

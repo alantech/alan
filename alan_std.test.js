@@ -40,9 +40,6 @@ assert.strictEqual(new alanStd.U64(0n).val, 0n, "clampU64 0n");
 assert.strictEqual(new alanStd.U64(20_000_000_000_000_000_000n).val, 18_446_744_073_709_551_615n, "clampU64 20Q");
 assert.strictEqual(new alanStd.U64(-10_000_000_000_000_000_000n).val, 0n, "clampU64 -10Q");
 
-assert.strictEqual(alanStd.ifbool(true, () => true, () => false), true, "ifbool true");
-assert.strictEqual(alanStd.ifbool(false, () => true, () => false), false, "ifbool false");
-
 assert.strictEqual(new alanStd.I8(1).wrappingAdd(new alanStd.I8(2)).val, 3, "wrappingAddI8 1 + 2 = 3");
 assert.strictEqual(new alanStd.I8(127).wrappingAdd(new alanStd.I8(1)).val, -128, "wrappingAddI8 127 + 1 = -128");
 

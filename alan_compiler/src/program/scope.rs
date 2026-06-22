@@ -66,7 +66,11 @@ fn is_promise_head_for_dispatch(typen: Arc<CType>) -> bool {
     matches!(&*t, CType::Promise(_))
 }
 
-fn function_return_dispatch_accepts(expected: Arc<CType>, actual: Arc<CType>) -> bool {
+fn function_return_dispatch_accepts(
+    expected: Arc<CType>,
+    actual: Arc<CType>,
+    promise_transparent: bool,
+) -> bool {
     if Program::is_target_lang_rs() {
         return expected.accepts(actual);
     }
@@ -74,6 +78,16 @@ fn function_return_dispatch_accepts(expected: Arc<CType>, actual: Arc<CType>) ->
         == degroup_type_group(actual.clone()).to_strict_string(false)
     {
         return true;
+    }
+    // For pure-Alan (compiler-provided) dispatch, `Promise{T}` is transparent: compare the two
+    // return types with any leading `Promise` peeled from both sides, rather than requiring their
+    // promise-ness to match. Native bindings (the only place an explicit `Promise` parameter is a
+    // load-bearing async-vs-sync overload discriminator, e.g. `map`/`filter`) pass `false` here
+    // and keep the strict behavior.
+    if promise_transparent {
+        return degroup_type_group_promise(expected.clone()).to_strict_string(false)
+            == degroup_type_group_promise(actual.clone()).to_strict_string(false)
+            || degroup_type_group_promise(expected).accepts(degroup_type_group_promise(actual));
     }
     let expected_is_promise = is_promise_head_for_dispatch(expected.clone());
     let actual_is_promise = is_promise_head_for_dispatch(actual.clone());
@@ -83,14 +97,18 @@ fn function_return_dispatch_accepts(expected: Arc<CType>, actual: Arc<CType>) ->
     expected.accepts(actual)
 }
 
-fn function_dispatch_accepts(expected: Arc<CType>, actual: Arc<CType>) -> bool {
+fn function_dispatch_accepts(
+    expected: Arc<CType>,
+    actual: Arc<CType>,
+    promise_transparent: bool,
+) -> bool {
     if !Program::is_target_lang_rs() {
         let expected_head = degroup_type_group(expected.clone());
         let actual_head = degroup_type_group(actual.clone());
         if let (CType::Function(ei, eo), CType::Function(ai, ao)) = (&*expected_head, &*actual_head)
         {
-            return function_dispatch_accepts(ei.clone(), ai.clone())
-                && function_return_dispatch_accepts(eo.clone(), ao.clone());
+            return function_dispatch_accepts(ei.clone(), ai.clone(), promise_transparent)
+                && function_return_dispatch_accepts(eo.clone(), ao.clone(), promise_transparent);
         }
     }
     if is_function_head(expected.clone()) {
@@ -116,8 +134,12 @@ fn function_dispatch_accepts(expected: Arc<CType>, actual: Arc<CType>) -> bool {
                 if let (CType::Function(ei, eo), CType::Function(ai, ao)) =
                     (&*expected_head, &*candidate_head)
                 {
-                    if function_dispatch_accepts(ei.clone(), ai.clone())
-                        && function_return_dispatch_accepts(eo.clone(), ao.clone())
+                    if function_dispatch_accepts(ei.clone(), ai.clone(), promise_transparent)
+                        && function_return_dispatch_accepts(
+                            eo.clone(),
+                            ao.clone(),
+                            promise_transparent,
+                        )
                     {
                         return true;
                     }
@@ -284,7 +306,11 @@ impl<'a> Scope<'a> {
                     }
                     let ctype = withtypeoperatorslist_to_ctype(&c.typesignature, &temp_scope)?;
                     let (input_type, rettype) = match &*ctype {
-                        CType::Function(i, o) => (i.clone(), o.clone()),
+                        // Degroup the input so a parenthesized multi-arg signature like
+                        // `(bool, () -> T, () -> T)` is the underlying `Tuple` rather than a
+                        // `Group` wrapper -- otherwise `type_to_args` treats the whole group as a
+                        // single argument and arity-based dispatch breaks.
+                        CType::Function(i, o) => (i.clone().degroup(), o.clone()),
                         _ => {
                             return Err(format!(
                                 "cfn {} must have a function type signature",
@@ -299,6 +325,15 @@ impl<'a> Scope<'a> {
                                 FnKind::Cfn(CfnKind::Clone, generics)
                             } else {
                                 FnKind::CfnRealized(CfnKind::Clone)
+                            }
+                        }
+                        "if" => {
+                            // Single generic signature `(bool, () -> T, () -> T) -> T`, so no
+                            // arity disambiguation is needed.
+                            if is_generic {
+                                FnKind::Cfn(CfnKind::IfElse, generics)
+                            } else {
+                                FnKind::CfnRealized(CfnKind::IfElse)
                             }
                         }
                         unknown => {
@@ -321,8 +356,12 @@ impl<'a> Scope<'a> {
                     } else {
                         format!("{}_{}", function.name, type_to_args(function.typen.clone()).iter().map(|a| a.2.clone().to_callable_string()).collect::<Vec<_>>().join("_"))
                     };
+                    // Prepend (newest-first), matching how `Function::from_ast` registers regular
+                    // `fn`s, so dispatch follows Alan's documented "most-recent definition wins"
+                    // tie-break (a `cfn` placed furthest down the source overrides earlier
+                    // same-name/same-arity definitions).
                     if let Some(v) = s.functions.get_mut(&key) {
-                        v.push(function);
+                        v.insert(0, function);
                     } else {
                         s.functions.insert(key, vec![function]);
                     }
@@ -716,11 +755,15 @@ impl<'a> Scope<'a> {
             }
         }
         for (idx, possible_args) in possible_args_vec.iter().enumerate() {
+            // Compiler-provided (`cfn`) functions dispatch with `Promise{T}` transparency so a
+            // pure-Alan closure that awaits (`() -> Promise{T}`) binds to an `() -> T` parameter.
+            let promise_transparent =
+                matches!(generic_fs.get(idx).map(|f| &f.kind), Some(FnKind::Cfn(..)));
             let mut args_match = true;
             for (i, arg) in args.iter().enumerate() {
                 let fnarg = possible_args[i].2.clone();
                 let callarg = arg.clone();
-                if !function_dispatch_accepts(fnarg, callarg) {
+                if !function_dispatch_accepts(fnarg, callarg, promise_transparent) {
                     args_match = false;
                     break;
                 }
@@ -931,7 +974,7 @@ impl<'a> Scope<'a> {
                     // actual args are the same type as the function's arg.
                     let mut args_match = true;
                     for arg in args.iter() {
-                        if !function_dispatch_accepts(f.args()[0].2.clone(), arg.clone()) {
+                        if !function_dispatch_accepts(f.args()[0].2.clone(), arg.clone(), false) {
                             args_match = false;
                             break;
                         }
@@ -952,12 +995,17 @@ impl<'a> Scope<'a> {
                     if args.len() != f.args().len() {
                         continue;
                     }
+                    let promise_transparent = matches!(f.kind, FnKind::CfnRealized(_));
                     let mut args_match = true;
                     for (i, arg) in args.iter().enumerate() {
                         // This is pretty cheap, but for now, a "non-strict" string representation
                         // of the CTypes is how we'll match the args against each other. TODO: Do
                         // this without constructing a string to compare against each other.
-                        if !function_dispatch_accepts(f.args()[i].2.clone(), arg.clone()) {
+                        if !function_dispatch_accepts(
+                            f.args()[i].2.clone(),
+                            arg.clone(),
+                            promise_transparent,
+                        ) {
                             args_match = false;
                             break;
                         }
@@ -976,6 +1024,11 @@ impl<'a> Scope<'a> {
                         continue;
                     }
                     let fargs = f.args();
+                    // Compiler-provided (`cfn`) functions dispatch with `Promise{T}` transparency
+                    // so a pure-Alan closure that awaits binds to an `() -> T` parameter; native
+                    // bindings stay strict (their explicit `Promise` params are async/sync
+                    // overload discriminators).
+                    let promise_transparent = matches!(f.kind, FnKind::Cfn(..));
                     let candidate_matches = |gs: &[Arc<CType>]| {
                         let possible_args = fargs
                             .iter()
@@ -991,7 +1044,11 @@ impl<'a> Scope<'a> {
                             .iter()
                             .zip(args.iter())
                             .all(|(fnarg, callarg)| {
-                                function_dispatch_accepts(fnarg.clone(), callarg.clone())
+                                function_dispatch_accepts(
+                                    fnarg.clone(),
+                                    callarg.clone(),
+                                    promise_transparent,
+                                )
                             })
                     };
 
@@ -1107,7 +1164,7 @@ impl<'a> Scope<'a> {
                     // actual args are the same type as the function's arg.
                     let mut args_match = true;
                     for arg in args.iter() {
-                        if !function_dispatch_accepts(f.args()[0].2.clone(), arg.clone()) {
+                        if !function_dispatch_accepts(f.args()[0].2.clone(), arg.clone(), false) {
                             args_match = false;
                             break;
                         }
@@ -1126,12 +1183,19 @@ impl<'a> Scope<'a> {
                     if args.len() != f.args().len() {
                         continue;
                     }
+                    // A realized `cfn` (compiler-provided) dispatches with `Promise{T}`
+                    // transparency, like its generic form; native bindings stay strict.
+                    let promise_transparent = matches!(f.kind, FnKind::CfnRealized(_));
                     let mut args_match = true;
                     for (i, arg) in args.iter().enumerate() {
                         // This is pretty cheap, but for now, a "non-strict" string representation
                         // of the CTypes is how we'll match the args against each other. TODO: Do
                         // this without constructing a string to compare against each other.
-                        if !function_dispatch_accepts(f.args()[i].2.clone(), arg.clone()) {
+                        if !function_dispatch_accepts(
+                            f.args()[i].2.clone(),
+                            arg.clone(),
+                            promise_transparent,
+                        ) {
                             args_match = false;
                             break;
                         }

@@ -9,6 +9,9 @@ use super::CType;
 #[derive(Clone, Debug)]
 pub enum CfnKind {
     Clone,
+    /// Block-level / value `if`/`else` conditional. Realized as `if{T}(bool, () -> T, () -> T) -> T`
+    /// where `T = ()` is the void/side-effect form. Codegen renders native control flow.
+    IfElse,
 }
 
 #[derive(Clone, Debug)]

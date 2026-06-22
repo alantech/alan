@@ -815,18 +815,17 @@ fn{Rs} eq Infix{"=="} :: (bool, bool) -> bool;
 fn{Js} eq "((a, b) => new alan_std.Bool(a.val == b.val))" :: (bool, bool) -> bool;
 fn{Rs} neq Infix{"!="} :: (bool, bool) -> bool;
 fn{Js} neq "((a, b) => new alan_std.Bool(a.val != b.val))" :: (bool, bool) -> bool;
+// The value/single-closure sugar desugars into the compiler-provided `if` cfn declared below it.
 fn if{T}(c: bool, t: T) = if(c, fn() = Maybe{T}(t), fn() = Maybe{T}());
 fn if{T}(c: bool, t: T, f: T) = if(c, fn() = t, fn() = f);
 fn if{T}(c: bool, t: () -> T) = if(c, fn() = Maybe{T}(t()), fn() = Maybe{T}());
-fn{Rs} if{T} "alan_std::ifbool" <- RootBacking :: (bool, () -> T, () -> T) -> T;
-fn{Js} if{T} "alan_std.ifbool" <- RootBacking :: (bool, () -> T, () -> T) -> T;
-fn{Js} if(c: bool, t: () -> ()) {
-  if(c, t, fn {
-    0;
-  });
-}
-fn{Rs} if "ifstatementhack" :: (bool, () -> ()) -> ();
-fn{Rs} if "ifelsestatementhack" :: (bool, () -> (), () -> ()) -> ();
+// The compiler-provided `if` cfn renders native control flow (the void case is just `T = ()`).
+// Per Alan's "most-recent definition wins" dispatch, it is declared *after* the sugar above so
+// that an `if` call whose branch arguments are closures (`() -> T`) resolves here rather than to
+// the `(bool, T, T)` value sugar (which would otherwise match with `T` bound to a closure type and
+// recurse). A value-argument `if` skips this cfn -- its `() -> T` params reject plain values -- and
+// falls through to the sugar as usual.
+cfn if{T} (bool, () -> T, () -> T) -> T;
 /// Float-related functions
 fn{Rs} add Infix{"+"} :: (f32, f32) -> f32;
 fn{Js} add "((a, b) => new alan_std.F32(a.val + b.val))" <- RootBacking :: (f32, f32) -> f32;

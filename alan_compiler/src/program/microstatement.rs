@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use super::ctype::{withtypeoperatorslist_to_ctype, CType};
-use super::function::{type_to_args, type_to_rettype};
+use super::function::{rettypes_match, type_to_args, type_to_rettype};
 use super::scope::merge;
 use super::ArgKind;
 use super::FnKind;
@@ -10,6 +10,7 @@ use super::OperatorMapping;
 use super::Program;
 use super::Scope;
 use crate::parse;
+use crate::render::Render;
 
 /// Microstatements are a reduced syntax that doesn't have operators, methods, or reassigning to
 /// the same variable. (We'll rely on LLVM to dedupe variables that are never used again.) This
@@ -625,24 +626,27 @@ pub fn baseassignablelist_to_microstatements<'a>(
                 for (name, kind, typen) in type_to_args(typen.clone()) {
                     microstatements.push(Microstatement::Arg { name, kind, typen });
                 }
-                for statement in &statements {
-                    let res = statement_to_microstatements(
-                        statement,
-                        parent_fn,
-                        inner_scope,
-                        microstatements,
-                    )?;
-                    inner_scope = res.0;
-                    microstatements = res.1;
-                }
+                // Route the closure body through the tail-aware driver so that any
+                // block-level conditionals inside it are handled (and consume their tails).
+                let res = statements_to_microstatements(
+                    &statements,
+                    parent_fn,
+                    inner_scope,
+                    microstatements,
+                )?;
+                inner_scope = res.0;
+                microstatements = res.1;
                 let ms = microstatements.split_off(original_len);
-                if let Some(m) = ms.last() {
-                    if let Microstatement::Arg { .. } = m {
-                        // Don't do anything in this path, this is probably a derived function
-                    } else {
+                match ms.last() {
+                    // Don't do anything in this path, this is probably a derived function
+                    Some(Microstatement::Arg { .. }) => {}
+                    last => {
                         let current_rettype = type_to_rettype(typen.clone());
-                        let actual_rettype = match m {
-                            Microstatement::Return { value: Some(v) } => v.get_type(),
+                        // A trailing `return <expr>` defines the return type. Anything else --
+                        // including an empty body (`None`, e.g. the synthesized `fn() {}` else
+                        // arm of a void conditional) -- is a void return.
+                        let actual_rettype = match last {
+                            Some(Microstatement::Return { value: Some(v) }) => v.get_type(),
                             _ => Arc::new(CType::Void),
                         };
                         if let CType::Infer(..) = &*current_rettype {
@@ -652,9 +656,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                 _ => Arc::new(CType::Void),
                             };
                             typen = Arc::new(CType::Function(input_type, actual_rettype));
-                        } else if current_rettype.clone().to_strict_string(false)
-                            != actual_rettype.clone().to_strict_string(false)
-                        {
+                        } else if !rettypes_match(&current_rettype, &actual_rettype) {
                             CType::fail(&format!(
                                 "Function {} specified to return {} but actually returns {}",
                                 match &f.optname {
@@ -1681,6 +1683,217 @@ pub fn statement_to_microstatements<'a>(
             scope,
             microstatements,
         )?),
-        parse::Statement::Conditional(_condtitional) => Err("Implement me".into()),
+        // Conditionals are tail-aware and must be driven by `statements_to_microstatements`,
+        // which hands them the remaining statements of the enclosing block. Reaching this arm
+        // directly means a block loop wasn't routed through the driver.
+        parse::Statement::Conditional(_) => {
+            Err("Conditional statements must be processed via statements_to_microstatements".into())
+        }
     }
+}
+
+/// Tail-aware block driver. Processes a slice of statements, and on hitting a `Conditional` hands
+/// the conditional the remaining statements (the *tail*) and stops -- the conditional consumes the
+/// rest of the block by folding the tail into its branch closures.
+pub fn statements_to_microstatements<'a>(
+    statements: &[parse::Statement],
+    parent_fn: Option<&Function>,
+    mut scope: Scope<'a>,
+    mut microstatements: Vec<Microstatement>,
+) -> Result<(Scope<'a>, Vec<Microstatement>), Box<dyn std::error::Error>> {
+    for (i, statement) in statements.iter().enumerate() {
+        if let parse::Statement::Conditional(conditional) = statement {
+            let tail = &statements[i + 1..];
+            return conditional_to_microstatements(
+                conditional,
+                tail,
+                parent_fn,
+                scope,
+                microstatements,
+            );
+        }
+        let res = statement_to_microstatements(statement, parent_fn, scope, microstatements)?;
+        scope = res.0;
+        microstatements = res.1;
+    }
+    Ok((scope, microstatements))
+}
+
+/// Extract the statement list from a `Blocklike`. Only the `{ ... }` (FunctionBody) form is
+/// supported as a conditional branch body; the bare-function form is not.
+fn blocklike_statements(blocklike: &parse::Blocklike) -> Option<Vec<parse::Statement>> {
+    match blocklike {
+        parse::Blocklike::FunctionBody(body) => Some(body.statements.clone()),
+        parse::Blocklike::Functions(_) => None,
+    }
+}
+
+/// The last statement in a block that isn't pure whitespace.
+fn last_meaningful(stmts: &[parse::Statement]) -> Option<&parse::Statement> {
+    stmts
+        .iter()
+        .rev()
+        .find(|s| !matches!(s, parse::Statement::A(_)))
+}
+
+/// Does every control-flow path through this block end in a `return`? True when the last
+/// meaningful statement is a `Returns`, or a `Conditional` with an else where both arms return.
+fn block_returns(stmts: &[parse::Statement]) -> bool {
+    match last_meaningful(stmts) {
+        Some(parse::Statement::Returns(_)) => true,
+        Some(parse::Statement::Conditional(c)) => conditional_returns(c, false),
+        _ => false,
+    }
+}
+
+/// Like `block_returns`, but additionally requires the terminal returns to carry a *value* (so the
+/// conditional is value-producing, and the synthesized call should be wrapped in `return`).
+fn block_returns_value(stmts: &[parse::Statement]) -> bool {
+    match last_meaningful(stmts) {
+        Some(parse::Statement::Returns(r)) => r.retval.is_some(),
+        Some(parse::Statement::Conditional(c)) => conditional_returns(c, true),
+        _ => false,
+    }
+}
+
+/// Whether a conditional returns on all paths: it must have an else, and both the then-arm and the
+/// else-arm (recursively, for `else if`) must return. When `value` is set, the returns must also
+/// carry values.
+fn conditional_returns(c: &parse::Conditional, value: bool) -> bool {
+    let then_stmts = match blocklike_statements(&c.blocklike) {
+        Some(s) => s,
+        None => return false,
+    };
+    let then_ok = if value {
+        block_returns_value(&then_stmts)
+    } else {
+        block_returns(&then_stmts)
+    };
+    if !then_ok {
+        return false;
+    }
+    match &c.optelsebranch {
+        None => false,
+        Some(eb) => match &*eb.condorblock {
+            parse::CondOrBlock::Conditional(inner) => conditional_returns(inner, value),
+            parse::CondOrBlock::Blocklike(b) => match blocklike_statements(b) {
+                Some(s) => {
+                    if value {
+                        block_returns_value(&s)
+                    } else {
+                        block_returns(&s)
+                    }
+                }
+                None => false,
+            },
+        },
+    }
+}
+
+/// Append a block's tail to a branch body. If the branch already returns on all paths the tail is
+/// unreachable from it and the body is returned unchanged; otherwise the tail is concatenated. Any
+/// nested trailing conditional in the body is handled naturally when the resulting (re-parsed)
+/// branch closure is itself driven through `statements_to_microstatements`, which stops at that
+/// conditional and hands it the concatenated tail.
+fn append_tail(
+    mut block: Vec<parse::Statement>,
+    tail: &[parse::Statement],
+) -> Vec<parse::Statement> {
+    if block_returns(&block) {
+        return block;
+    }
+    block.extend(tail.iter().cloned());
+    block
+}
+
+/// Transform of a block-level `if`/`else` conditional (plus the enclosing block's tail) into a
+/// synthesized `if(<cond>, fn() = {then}, fn() = {else})` call that runs through the normal
+/// resolution machinery, landing on the realized `cfn if{T}`.
+fn conditional_to_microstatements<'a>(
+    conditional: &parse::Conditional,
+    tail: &[parse::Statement],
+    parent_fn: Option<&Function>,
+    scope: Scope<'a>,
+    microstatements: Vec<Microstatement>,
+) -> Result<(Scope<'a>, Vec<Microstatement>), Box<dyn std::error::Error>> {
+    let cond_src = conditional.assignables.render();
+    let then_stmts = match blocklike_statements(&conditional.blocklike) {
+        Some(s) => s,
+        None => {
+            return Err("Only `{ ... }` block bodies are supported for conditional branches".into())
+        }
+    };
+    // Normalize the else branch: an `else if` becomes a single-statement else block holding the
+    // inner conditional. A plain else block contributes its statements. No else stays `None`.
+    let else_stmts: Option<Vec<parse::Statement>> = match &conditional.optelsebranch {
+        None => None,
+        Some(eb) => match &*eb.condorblock {
+            parse::CondOrBlock::Conditional(inner) => {
+                Some(vec![parse::Statement::Conditional(inner.clone())])
+            }
+            parse::CondOrBlock::Blocklike(b) => match blocklike_statements(b) {
+                Some(s) => Some(s),
+                None => {
+                    return Err(
+                        "Only `{ ... }` block bodies are supported for conditional branches".into(),
+                    )
+                }
+            },
+        },
+    };
+
+    let has_explicit_else = else_stmts.is_some();
+    let then_returns = block_returns(&then_stmts);
+    let else_returns = else_stmts.as_ref().is_some_and(|s| block_returns(s));
+    let tail_nonempty = last_meaningful(tail).is_some();
+
+    // Build the final then/else branch bodies, folding in the tail.
+    let mut final_then = then_stmts;
+    let mut final_else = else_stmts;
+    if tail_nonempty {
+        if has_explicit_else && then_returns && else_returns {
+            return Err(
+                "Unreachable statements after a conditional in which both branches return".into(),
+            );
+        }
+        if !then_returns {
+            final_then = append_tail(final_then, tail);
+        }
+        match final_else {
+            Some(e) => {
+                if !else_returns {
+                    final_else = Some(append_tail(e, tail));
+                } else {
+                    final_else = Some(e);
+                }
+            }
+            // No explicit else: synthesize one from the tail so the condition-false path still
+            // runs the rest of the block (the accepted duplication).
+            None => final_else = Some(tail.to_vec()),
+        }
+    }
+
+    // The conditional is value-producing (and so wrapped in `return`) when both arms terminally
+    // return a value. A void conditional is emitted as a bare statement.
+    let value_producing = block_returns_value(&final_then)
+        && final_else.as_ref().is_some_and(|s| block_returns_value(s));
+
+    let then_src = final_then.render();
+    let else_src = final_else.as_ref().map(|s| s.render()).unwrap_or_default();
+    let call_src = format!("if({cond_src}, fn() {{{then_src}}}, fn() {{{else_src}}})");
+    let stmt_src = if value_producing {
+        format!("return {call_src};")
+    } else {
+        format!("{call_src};")
+    };
+
+    let parsed = match parse::statement(&stmt_src) {
+        Ok((rem, stmt)) if rem.trim().is_empty() => stmt,
+        _ => {
+            return Err(
+                format!("Failed to synthesize a valid conditional from:\n{stmt_src}").into(),
+            )
+        }
+    };
+    statement_to_microstatements(&parsed, parent_fn, scope, microstatements)
 }

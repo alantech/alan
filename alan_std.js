@@ -15,14 +15,6 @@ export function nanToError(n) {
   }
 }
 
-export function ifbool(b, t, f) {
-  if (b?.val ?? b) {
-    return t();
-  } else {
-    return f();
-  }
-}
-
 export class FuzzySet {
   constructor(map) {
     this.map = map ?? {};
