@@ -527,7 +527,16 @@ impl Formatter {
                     self.finish_wrapped_gncall(&gc.closecurly);
                 } else {
                     self.write(&gc.opencurly);
+                    // When the generic arguments span multiple lines, indent the continuation
+                    // lines one level past the call so they don't fall back to column 0.
+                    let multiline = typecalllist_multiline(&gc.typecalllist);
+                    if multiline {
+                        self.indent += 1;
+                    }
                     self.fmt_gncall_types(&gc.typecalllist);
+                    if multiline {
+                        self.indent -= 1;
+                    }
                     self.write(&gc.closecurly);
                 }
             }
@@ -1089,7 +1098,13 @@ impl Formatter {
     }
 
     fn fmt_returns(&mut self, r: &Returns) {
-        self.write("return ");
+        // Only emit the space after `return` when there's an actual value, so a bare `return;`
+        // doesn't become `return ;`.
+        if r.retval.is_some() {
+            self.write("return ");
+        } else {
+            self.write("return");
+        }
         self.fmt_retval(&r.retval);
         self.write(";");
     }
@@ -1631,6 +1646,15 @@ fn should_shunt_comment(col: usize, comment: &str) -> bool {
     comment.starts_with("/*") || col + 2 + comment.len() > LINE_WIDTH
 }
 
+/// Whether a generic call's argument list spans multiple lines (a newline appears in the
+/// whitespace around one of its type operators, e.g. after a separating comma).
+fn typecalllist_multiline(list: &[WithTypeOperators]) -> bool {
+    list.iter().any(|wt| match wt {
+        WithTypeOperators::Operators(o) => o.a.contains('\n') || o.b.contains('\n'),
+        WithTypeOperators::TypeBaseList(_) => false,
+    })
+}
+
 pub fn fmt(ln: &Ln) -> String {
     let mut formatter = Formatter::new();
     formatter.fmt_ln(ln);
@@ -1942,6 +1966,33 @@ mod tests {
             "fn normalize (arr: f32[]) {\n  let mag = magnitude(arr);\n  /*\n   * this is a very long trailing comment that definitely exceeds one hundred columns so it must be\n   * shunted\n   */\n  let arr1 = arr.clone;\n  return arr1;\n}\n"
         );
         assert_eq!(canonical_fmt(&long), long);
+    }
+
+    #[test]
+    fn test_bare_return_no_trailing_space() {
+        // A bare `return;` must not gain a space before the semicolon, while a value return keeps
+        // its single space after `return`.
+        let out = canonical_fmt(
+            "fn f(n: i64) {\n  if n > 0 {\n    return;\n  }\n  return;\n}\nfn g(n: i64) -> i64 {\n  return n;\n}\n",
+        );
+        assert_eq!(
+            out,
+            "fn f(n: i64) {\n  if n > 0 {\n    return;\n  }\n  return;\n}\nfn g(n: i64) -> i64 {\n  return n;\n}\n"
+        );
+        assert_eq!(canonical_fmt(&out), out);
+    }
+
+    #[test]
+    fn test_multiline_generic_type_indents() {
+        // Continuation lines of a multi-line generic type call are indented one level past the
+        // call rather than falling back to column 0.
+        let out =
+            canonical_fmt("type Vec{T, L} = If{\n  L < 5,\n  T[L],\n  Fail{\"too long\"}};\n");
+        assert_eq!(
+            out,
+            "type Vec{T, L} = If{L < 5,\n  T[L],\n  Fail{\"too long\"}};\n"
+        );
+        assert_eq!(canonical_fmt(&out), out);
     }
 
     #[test]
