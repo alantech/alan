@@ -181,7 +181,9 @@ pub fn ctype_to_jtype(
             }
             Ok(("".to_string(), deps))
         }
-        CType::AnyOf(_) => Ok(("".to_string(), deps)), // Does this make any sense?
+        // A numeric literal whose `AnyOf` type was never narrowed by context resolves to its FUI
+        // default (the last candidate) for codegen. `AnyOf` is otherwise a compile-time-only set.
+        CType::AnyOf(_) => ctype_to_jtype(ctype.clone().collapse_anyof_default(), deps),
         CType::Buffer(t, _) => {
             let res = ctype_to_jtype(t.clone(), deps)?;
             deps = res.1;

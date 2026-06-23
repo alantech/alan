@@ -820,6 +820,15 @@ impl<'a> Scope<'a> {
         function: &String,
         args: &[Arc<CType>],
     ) -> Option<(Scope<'a>, Arc<Function>)> {
+        // Collapse any `AnyOf`-typed arguments (e.g. a numeric literal that was not narrowed by an
+        // explicit annotation or accessor) to their FUI default before dispatch, so they match a
+        // single concrete overload (`print(5)` -> `print(i64)`) rather than failing to resolve
+        // against the whole candidate set. See `docs/int-float-constant-selection-plan.md`.
+        let collapsed_args: Vec<Arc<CType>> = args
+            .iter()
+            .map(|a| a.clone().collapse_anyof_default())
+            .collect();
+        let args = &collapsed_args[..];
         // We should prefer the "normal" function, if it matches, use it, otherwise try to go with
         // a generic function, if possible.
         // TODO: This boolean *shouldn't* be necessary, but I can't convince the borrow checker

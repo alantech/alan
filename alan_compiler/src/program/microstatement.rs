@@ -12,6 +12,124 @@ use super::Scope;
 use crate::parse;
 use crate::render::Render;
 
+/// FUI ordering (Floats, Unsigned ints, signed Ints, ascending bit width) of the
+/// numeric types an integer literal may resolve to. The *last* surviving entry is
+/// the highest-priority default chosen when the literal's `AnyOf` type is never
+/// narrowed by context ("pick last in FUI order"), which keeps the historical
+/// `i64`/`f64` defaults while allowing e.g. an above-`i64::MAX` literal to land on
+/// `u64`.
+pub const FUI_INT_TYPES: [&str; 10] = [
+    "f32", "f64", "u8", "u16", "u32", "u64", "i8", "i16", "i32", "i64",
+];
+pub const FUI_FLOAT_TYPES: [&str; 2] = ["f32", "f64"];
+
+/// Parse an integer literal's source text (honoring `0b`/`0o`/`0x` prefixes, `_`
+/// digit separators, and a leading `-`) into an `i128` for range checks. Returns
+/// `None` for forms we can't represent in `i128` (e.g. an above-`u64` literal),
+/// in which case the caller falls back to the historical `i64` typing.
+fn parse_int_literal(s: &str) -> Option<i128> {
+    let s = s.replace('_', "");
+    let (neg, rest) = match s.strip_prefix('-') {
+        Some(r) => (true, r.to_string()),
+        None => (false, s.clone()),
+    };
+    let (radix, digits) = if let Some(r) = rest.strip_prefix("0x") {
+        (16, r.to_string())
+    } else if let Some(r) = rest.strip_prefix("0b") {
+        (2, r.to_string())
+    } else if let Some(r) = rest.strip_prefix("0o") {
+        (8, r.to_string())
+    } else {
+        (10, rest.clone())
+    };
+    let v = i128::from_str_radix(&digits, radix).ok()?;
+    Some(if neg { -v } else { v })
+}
+
+/// Returns true if the integer value `v` fits in the numeric type named `name`.
+/// Float types are always considered capable of holding an integer literal
+/// (possibly with precision loss), matching the issue #215 design where a small
+/// integer constant keeps `f32`/`f64` as candidates.
+fn int_fits_type(v: i128, name: &str) -> bool {
+    match name {
+        "f32" | "f64" => true,
+        "u8" => (0..=u8::MAX as i128).contains(&v),
+        "u16" => (0..=u16::MAX as i128).contains(&v),
+        "u32" => (0..=u32::MAX as i128).contains(&v),
+        "u64" => (0..=u64::MAX as i128).contains(&v),
+        "i8" => ((i8::MIN as i128)..=(i8::MAX as i128)).contains(&v),
+        "i16" => ((i16::MIN as i128)..=(i16::MAX as i128)).contains(&v),
+        "i32" => ((i32::MIN as i128)..=(i32::MAX as i128)).contains(&v),
+        "i64" => ((i64::MIN as i128)..=(i64::MAX as i128)).contains(&v),
+        _ => false,
+    }
+}
+
+/// The FUI-ordered list of numeric type names a numeric literal may resolve to,
+/// with candidates pruned by the literal's parsed value/sign. Integers that can't
+/// be parsed into `i128` fall back to `i64` so behavior is no worse than before.
+fn numeric_literal_type_names(repr: &str, is_float: bool) -> Vec<&'static str> {
+    if is_float {
+        return FUI_FLOAT_TYPES.to_vec();
+    }
+    match parse_int_literal(repr) {
+        Some(v) => FUI_INT_TYPES
+            .iter()
+            .copied()
+            .filter(|n| int_fits_type(v, n))
+            .collect(),
+        None => vec!["i64"],
+    }
+}
+
+/// Returns true if the type (after unwrapping `Type`/`Group`) is a bound `f32`/`f64`.
+fn ctype_is_float(t: &CType) -> bool {
+    match t {
+        CType::Binds(inner, _) => {
+            matches!(&**inner, CType::TString(s) if s == "f32" || s == "f64")
+        }
+        CType::Type(_, inner) | CType::Group(inner) => ctype_is_float(inner),
+        _ => false,
+    }
+}
+
+/// If `value` is a numeric literal whose `AnyOf` candidate set contains `target`, narrow its type
+/// to `target`. When narrowing an integer-form literal to a floating-point type, the textual
+/// representation is given a `.0` suffix, since Rust rejects an integer literal in a float position.
+fn narrow_numeric_literal(value: Microstatement, target: Arc<CType>) -> Microstatement {
+    if let Microstatement::Value {
+        typen,
+        representation,
+    } = &value
+    {
+        if let CType::AnyOf(ts) = &**typen {
+            let target_str = target.clone().degroup().to_strict_string(false);
+            // Narrow to the matching *candidate member* (the concrete numeric type, e.g. `i64`)
+            // rather than to `target` itself: the annotation may be a type alias (e.g.
+            // `type DupeI64 = i64 | i64`) that dedups to a numeric type, and downstream codegen
+            // (notably JS literal boxing) keys off the concrete numeric type, not the alias name.
+            let matched = ts
+                .iter()
+                .find(|t| (*t).clone().degroup().to_strict_string(false) == target_str)
+                .cloned();
+            if let Some(matched) = matched {
+                let representation = if ctype_is_float(&matched.clone().degroup())
+                    && !representation.contains(|c| c == '.' || c == 'e' || c == 'E')
+                {
+                    format!("{representation}.0")
+                } else {
+                    representation.clone()
+                };
+                return Microstatement::Value {
+                    typen: matched,
+                    representation,
+                };
+            }
+        }
+    }
+    value
+}
+
 /// Microstatements are a reduced syntax that doesn't have operators, methods, or reassigning to
 /// the same variable. (We'll rely on LLVM to dedupe variables that are never used again.) This
 /// syntax reduction will make generating the final output easier and also simplifies the work
@@ -340,26 +458,36 @@ pub fn baseassignablelist_to_microstatements<'a>(
                             },
                         });
                     }
-                    parse::Constants::Num(n) => match n {
-                        parse::Number::RealNum(r) => {
-                            let float64 = scope.resolve_type("f64").unwrap().clone();
-                            prior_value = Some(Microstatement::Value {
-                                // TODO: Replace this with the `CType::Float` and have built-ins
-                                // that accept them
-                                typen: float64,
-                                representation: r.clone(),
-                            });
+                    parse::Constants::Num(n) => {
+                        // A numeric literal is typed as an `AnyOf` over the numeric types that can
+                        // hold its value (in FUI order), or that single type if only one survives.
+                        // Context (function args, `let`/return annotations) narrows it later; any
+                        // still-ambiguous literal collapses to the last (FUI) candidate before
+                        // codegen. See `docs/int-float-constant-selection-plan.md`.
+                        let (repr, is_float) = match n {
+                            parse::Number::RealNum(r) => (r.clone(), true),
+                            parse::Number::IntNum(i) => (i.clone(), false),
+                        };
+                        let names = numeric_literal_type_names(&repr, is_float);
+                        let mut candidates: Vec<Arc<CType>> = Vec::new();
+                        for nm in &names {
+                            if let Some(t) = scope.resolve_type(nm) {
+                                candidates.push(t.clone());
+                            }
                         }
-                        parse::Number::IntNum(i) => {
-                            let int64 = scope.resolve_type("i64").unwrap().clone();
-                            prior_value = Some(Microstatement::Value {
-                                // TODO: Replace this with `CType::Int` and have built-ins that
-                                // accept them
-                                typen: int64,
-                                representation: i.clone(),
-                            });
-                        }
-                    },
+                        let typen = match candidates.len() {
+                            0 => scope
+                                .resolve_type(if is_float { "f64" } else { "i64" })
+                                .unwrap()
+                                .clone(),
+                            1 => candidates.into_iter().next().unwrap(),
+                            _ => Arc::new(CType::AnyOf(candidates)),
+                        };
+                        prior_value = Some(Microstatement::Value {
+                            typen,
+                            representation: repr,
+                        });
+                    }
                 }
             }
             BaseChunk::Variable(v) => {
@@ -492,7 +620,10 @@ pub fn baseassignablelist_to_microstatements<'a>(
                 }
                 // TODO: Currently assuming all array values are the same type, should check that
                 // better
-                let inner_type = array_vals[0].get_type();
+                // Collapse an `AnyOf` element type (e.g. from numeric literals like `[1, 2, 3]`) to
+                // its FUI default so the array's element type is a concrete, name-able type rather
+                // than the whole candidate set.
+                let inner_type = array_vals[0].get_type().collapse_anyof_default();
                 let inner_type_str = inner_type.clone().to_callable_string();
                 let array_type_name = format!("Array_{inner_type_str}_");
                 let array_type = Arc::new(CType::Array(inner_type));
@@ -763,9 +894,12 @@ pub fn baseassignablelist_to_microstatements<'a>(
                     let constant_accessor_microstatements = vec![prior.clone()];
                     let mut arg_types = Vec::new();
                     for m in &constant_accessor_microstatements {
-                        arg_types.push(m.get_type());
+                        // Collapse an `AnyOf` literal type to its FUI default so the accessor (e.g.
+                        // `5.u64`) dispatches against, and registers, a concrete type rather than
+                        // the whole candidate set.
+                        let t = m.get_type().collapse_anyof_default();
+                        arg_types.push(t.clone());
                         // In case the type constructor has not already been created
-                        let t = m.get_type();
                         temp_scope =
                             CType::from_ctype(temp_scope, t.clone().to_callable_string(), t);
                     }
@@ -1067,7 +1201,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                 f,
                                 arg_types
                                     .iter()
-                                    .map(|a| a.clone().to_string())
+                                    .map(|a| a.clone().collapse_anyof_default().to_string())
                                     .collect::<Vec<String>>()
                                     .join(", ")
                             )
@@ -1582,21 +1716,31 @@ pub fn declarations_to_microstatements<'a>(
     mut scope: Scope<'a>,
     mut microstatements: Vec<Microstatement>,
 ) -> Result<(Scope<'a>, Vec<Microstatement>), Box<dyn std::error::Error>> {
-    let (name, assignables, mutable) = match &declarations {
-        parse::Declarations::Const(c) => (c.variable.clone(), &c.assignables, false),
-        parse::Declarations::Let(l) => (l.variable.clone(), &l.assignables, true),
+    let (name, assignables, mutable, typedec) = match &declarations {
+        parse::Declarations::Const(c) => (c.variable.clone(), &c.assignables, false, &c.typedec),
+        parse::Declarations::Let(l) => (l.variable.clone(), &l.assignables, true, &l.typedec),
     };
     // Get all of the assignable microstatements generated
     let res = withoperatorslist_to_microstatements(assignables, parent_fn, scope, microstatements)?;
     scope = res.0;
     microstatements = res.1;
-    let value = match microstatements.pop() {
+    let mut value = match microstatements.pop() {
         None => Err("An assignment without a value should be impossible."),
-        Some(v) => Ok(Box::new(v)),
+        Some(v) => Ok(v),
     }?;
+    // If the declaration carries an explicit type annotation (`let x: u64 = ...`) and the value is
+    // a numeric literal whose `AnyOf` candidate set includes that type, narrow the literal to it.
+    // This makes e.g. `let big: u64 = 18446744073709551615` produce a `u64` constant directly
+    // (no `i64` intermediate, no runtime cast) and is what lets above-`i64::MAX` constants compile.
+    if let Some(td) = typedec {
+        let target_name = td.fulltypename.to_string();
+        if let Some(target) = scope.resolve_type(&target_name) {
+            value = narrow_numeric_literal(value, target);
+        }
+    }
     microstatements.push(Microstatement::Assignment {
         name,
-        value,
+        value: Box::new(value),
         mutable,
     });
     Ok((scope, microstatements))

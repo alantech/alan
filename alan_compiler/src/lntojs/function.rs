@@ -23,6 +23,13 @@ use crate::program::{
 /// may receive a substituted literal as a method receiver/argument once inlining
 /// is enabled) produce identical, valid output.
 fn box_native_value(typen: &CType, representation: &str) -> Option<String> {
+    // A numeric literal whose type was never narrowed by context is an `AnyOf` candidate set;
+    // box it as its FUI default (the last candidate), matching the type codegen renders for it.
+    if let CType::AnyOf(ts) = typen {
+        return ts
+            .last()
+            .and_then(|t| box_native_value(&t.clone().degroup(), representation));
+    }
     match typen {
         CType::Type(n, _) if n == "string" => {
             if representation.starts_with('"') {
@@ -362,7 +369,11 @@ pub fn from_microstatement(
         Microstatement::Value {
             typen,
             representation,
-        } => match &**typen {
+        } => {
+          // A numeric literal whose type was never narrowed by context is an `AnyOf`; collapse it
+          // to its FUI default so it boxes (`new alan_std.I64(..)`) like a concrete literal.
+          let typen = &typen.clone().collapse_anyof_default();
+          match &**typen {
             CType::Type(n, _)
                 if n == "string" || n == "i64" || n == "u64" || n == "f64" || n == "bool" =>
             {
@@ -468,7 +479,8 @@ pub fn from_microstatement(
                     Ok((representation.clone(), out, deps))
                 }
             }
-        },
+          }
+        }
         Microstatement::Array { vals, .. } => {
             let mut val_representations = Vec::new();
             for val in vals {
