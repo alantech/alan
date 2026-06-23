@@ -4568,6 +4568,19 @@ impl CType {
         }
         Arc::new(CType::AnyOf(out_vec))
     }
+    /// Strip the value-position wrappers (`Type`/`Group` aliases plus `Deref`/`Mut`/`Own`/`Shared`)
+    /// from a type to expose the underlying "core" type. Used when matching a numeric-literal
+    /// candidate against a function parameter type (which may be e.g. `Deref{i64}`).
+    pub fn strip_value_wrappers(self: Arc<CType>) -> Arc<CType> {
+        let t = self.degroup();
+        match &*t {
+            CType::Deref(inner)
+            | CType::Mut(inner)
+            | CType::Own(inner)
+            | CType::Shared(inner) => inner.clone().strip_value_wrappers(),
+            _ => t,
+        }
+    }
     /// Collapse an `AnyOf` to its single default type by picking the *last*
     /// candidate (the highest-priority entry under the FUI ordering used when
     /// typing numeric literals: Floats, Unsigned ints, signed Ints, ascending bit

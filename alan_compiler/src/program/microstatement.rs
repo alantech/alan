@@ -93,9 +93,23 @@ fn ctype_is_float(t: &CType) -> bool {
     }
 }
 
-/// If `value` is a numeric literal whose `AnyOf` candidate set contains `target`, narrow its type
-/// to `target`. When narrowing an integer-form literal to a floating-point type, the textual
+/// Returns true if `s` is the textual form of a numeric literal (rather than a variable name).
+/// Variable identifiers can't begin with a digit, `-`, or `.`, so this distinguishes a literal
+/// argument (which may be safely retyped) from a reference to a variable (whose storage type is
+/// already fixed at its declaration and must not be retyped here).
+fn is_numeric_literal_repr(s: &str) -> bool {
+    matches!(s.chars().next(), Some(c) if c.is_ascii_digit() || c == '-' || c == '.')
+}
+
+/// If `value` is a numeric *literal* whose `AnyOf` candidate set contains the (wrapper-stripped)
+/// `target` type, narrow its type to the matching candidate member and return it; otherwise return
+/// `value` unchanged. When narrowing an integer-form literal to a floating-point type, the textual
 /// representation is given a `.0` suffix, since Rust rejects an integer literal in a float position.
+///
+/// We narrow to the matching *candidate member* (the concrete numeric type, e.g. `i64`) rather than
+/// to `target` itself, because `target` may be a type alias (e.g. `type DupeI64 = i64 | i64`) that
+/// dedups to a numeric type, and downstream codegen (notably JS literal boxing) keys off the
+/// concrete numeric type, not the alias name.
 fn narrow_numeric_literal(value: Microstatement, target: Arc<CType>) -> Microstatement {
     if let Microstatement::Value {
         typen,
@@ -103,31 +117,47 @@ fn narrow_numeric_literal(value: Microstatement, target: Arc<CType>) -> Microsta
     } = &value
     {
         if let CType::AnyOf(ts) = &**typen {
-            let target_str = target.clone().degroup().to_strict_string(false);
-            // Narrow to the matching *candidate member* (the concrete numeric type, e.g. `i64`)
-            // rather than to `target` itself: the annotation may be a type alias (e.g.
-            // `type DupeI64 = i64 | i64`) that dedups to a numeric type, and downstream codegen
-            // (notably JS literal boxing) keys off the concrete numeric type, not the alias name.
-            let matched = ts
-                .iter()
-                .find(|t| (*t).clone().degroup().to_strict_string(false) == target_str)
-                .cloned();
-            if let Some(matched) = matched {
-                let representation = if ctype_is_float(&matched.clone().degroup())
-                    && !representation.contains(|c| c == '.' || c == 'e' || c == 'E')
-                {
-                    format!("{representation}.0")
-                } else {
-                    representation.clone()
-                };
-                return Microstatement::Value {
-                    typen: matched,
-                    representation,
-                };
+            if is_numeric_literal_repr(representation) {
+                let target_str = target.strip_value_wrappers().to_strict_string(false);
+                let matched = ts
+                    .iter()
+                    .find(|t| (*t).clone().degroup().to_strict_string(false) == target_str)
+                    .cloned();
+                if let Some(matched) = matched {
+                    let representation = if ctype_is_float(&matched.clone().degroup())
+                        && !representation.contains(|c| c == '.' || c == 'e' || c == 'E')
+                    {
+                        format!("{representation}.0")
+                    } else {
+                        representation.clone()
+                    };
+                    return Microstatement::Value {
+                        typen: matched,
+                        representation,
+                    };
+                }
             }
         }
     }
     value
+}
+
+/// Narrow each numeric-literal argument of a resolved call to the concrete parameter type the
+/// function expects, recording the choice made during dispatch so codegen emits a correctly-typed
+/// constant (rather than the global FUI default). Non-literal arguments (e.g. variable references
+/// or nested calls) are left untouched.
+fn narrow_call_arg_literals(f: &Arc<Function>, args: Vec<Microstatement>) -> Vec<Microstatement> {
+    let fargs = f.args();
+    args.into_iter()
+        .enumerate()
+        .map(|(i, a)| {
+            if i < fargs.len() {
+                narrow_numeric_literal(a, fargs[i].2.clone())
+            } else {
+                a
+            }
+        })
+        .collect()
 }
 
 /// Microstatements are a reduced syntax that doesn't have operators, methods, or reassigning to
@@ -867,8 +897,8 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                 .insert("get".to_string(), vec![f.clone()]);
                             merge!(scope, temp_scope);
                             prior_value = Some(Microstatement::FnCall {
+                                args: narrow_call_arg_literals(&f, array_accessor_microstatements),
                                 function: f,
-                                args: array_accessor_microstatements,
                             })
                         }
                         None => {
@@ -909,8 +939,8 @@ pub fn baseassignablelist_to_microstatements<'a>(
                             temp_scope.functions.insert(c.to_string(), vec![f.clone()]);
                             merge!(scope, temp_scope);
                             prior_value = Some(Microstatement::FnCall {
+                                args: narrow_call_arg_literals(&f, constant_accessor_microstatements),
                                 function: f,
-                                args: constant_accessor_microstatements,
                             })
                         }
                         None => {
@@ -982,8 +1012,8 @@ pub fn baseassignablelist_to_microstatements<'a>(
                         temp_scope.functions.insert(name.clone(), vec![f.clone()]);
                         merge!(scope, temp_scope);
                         prior_value = Some(Microstatement::FnCall {
+                            args: narrow_call_arg_literals(&f, arg_microstatements),
                             function: f.clone(),
-                            args: arg_microstatements,
                         })
                     }
                     None => {
@@ -1083,8 +1113,8 @@ pub fn baseassignablelist_to_microstatements<'a>(
                 }
                 if let Some(func) = closure_fn {
                     prior_value = Some(Microstatement::FnCall {
+                        args: narrow_call_arg_literals(&func, arg_microstatements),
                         function: func,
-                        args: arg_microstatements,
                     });
                 } else if let Some((name, typen)) = var_fn {
                     prior_value = Some(Microstatement::VarCall {
@@ -1191,8 +1221,8 @@ pub fn baseassignablelist_to_microstatements<'a>(
                             merge!(scope, temp_scope);
 
                             prior_value = Some(Microstatement::FnCall {
+                                args: narrow_call_arg_literals(&fun, arg_microstatements.clone()),
                                 function: fun.clone(), // TODO: Drop the clone
-                                args: arg_microstatements.clone(),
                             });
                         }
                         None => {
@@ -1275,8 +1305,8 @@ pub fn baseassignablelist_to_microstatements<'a>(
                     (_, Some((temp_scope, func))) => {
                         merge!(scope, temp_scope);
                         prior_value = Some(Microstatement::FnCall {
+                            args: narrow_call_arg_literals(&func, arg_microstatements),
                             function: func.clone(), // TODO: Drop the clone
-                            args: arg_microstatements,
                         });
                     }
                     (Some(_), None) => {
@@ -1335,8 +1365,8 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                                                                        // duplicate
                                 scope = res.0;
                                 prior_value = Some(Microstatement::FnCall {
+                                    args: narrow_call_arg_literals(&func, arg_microstatements),
                                     function: func.clone(), // TODO: Drop the clone?
-                                    args: arg_microstatements,
                                 })
                             }
                             None => {
@@ -1737,6 +1767,17 @@ pub fn declarations_to_microstatements<'a>(
         if let Some(target) = scope.resolve_type(&target_name) {
             value = narrow_numeric_literal(value, target);
         }
+    } else if let Microstatement::Value { typen, .. } = &value {
+        // No annotation: pin an unconstrained numeric-literal `AnyOf` to its global FUI default now,
+        // so the bound variable has a single concrete type. A later reference to this variable must
+        // not be re-narrowed (its storage type is fixed here), so we collapse rather than leave the
+        // `AnyOf` open. (A direct literal *argument* is handled separately, at the call site.)
+        if matches!(&**typen, CType::AnyOf(_)) {
+            let collapsed = typen.clone().collapse_anyof_default();
+            if !matches!(&*collapsed, CType::AnyOf(_)) {
+                value = narrow_numeric_literal(value, collapsed);
+            }
+        }
     }
     microstatements.push(Microstatement::Assignment {
         name,
@@ -1810,8 +1851,8 @@ pub fn statement_to_microstatements<'a>(
                 }?
             };
             ms.push(Microstatement::FnCall {
+                args: narrow_call_arg_literals(&store_fn, args),
                 function: store_fn,
-                args,
             });
             Ok((scope, ms))
         }

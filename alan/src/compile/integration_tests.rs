@@ -573,6 +573,26 @@ test!(numeric_const_int_literal_as_float => r#"export fn main {
     stdout "5\n";
     status 0;
 );
+test!(numeric_const_implicit_param => r#"fn foo(x: u8) = print(x);
+export fn main {
+  // A bare literal argument is narrowed to the parameter's concrete type (u8) -- no annotation
+  // or cast needed.
+  foo(200);
+}
+"#;
+    stdout "200\n";
+    status 0;
+);
+test!(numeric_const_implicit_param_pruned => r#"fn foo(x: u8) = print(x);
+fn foo(x: i32) = print(x);
+export fn main {
+  // 300 does not fit u8, so only the i32 overload is viable and is selected.
+  foo(300);
+}
+"#;
+    stdout "300\n";
+    status 0;
+);
 test!(duration_print => r#"export fn main() {
   const i = now();
   wait(110); // Increased from 10ms to 110ms because the node.js event loop seems less

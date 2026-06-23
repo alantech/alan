@@ -815,18 +815,85 @@ impl<'a> Scope<'a> {
         None
     }
 
+    /// For a numeric-literal `AnyOf` argument at position `argpos` of a call to `function` (with
+    /// `arity` arguments), return the FUI-last candidate that some same-arity overload demands at
+    /// that position, or `None` if no overload constrains it to a concrete numeric type (e.g. a
+    /// generic parameter). `candidates` are the literal's viable types in FUI order. This drives
+    /// implicit narrowing of literals to a function's concrete parameter types.
+    fn context_numeric_collapse(
+        &'a self,
+        function: &str,
+        argpos: usize,
+        arity: usize,
+        candidates: &[Arc<CType>],
+    ) -> Option<Arc<CType>> {
+        // Collect the (wrapper-stripped) parameter types demanded at `argpos` by same-arity
+        // overloads visible from this scope.
+        let mut demanded: Vec<String> = Vec::new();
+        let mut scope_to_check: Option<&Scope> = Some(self);
+        while let Some(s) = scope_to_check {
+            if let Some(funcs) = s.functions.get(function) {
+                for f in funcs {
+                    let fargs = f.args();
+                    if fargs.len() == arity && argpos < fargs.len() {
+                        demanded.push(
+                            fargs[argpos]
+                                .2
+                                .clone()
+                                .strip_value_wrappers()
+                                .to_strict_string(false),
+                        );
+                    }
+                }
+            }
+            scope_to_check = match &s.parent {
+                Some(p) => Some(*p),
+                None => None,
+            };
+        }
+        // Keep the candidates (already in FUI order) demanded by some overload and pick the last
+        // (highest-priority) one.
+        candidates
+            .iter()
+            .filter(|c| {
+                let cs = (*c).clone().degroup().to_strict_string(false);
+                demanded.iter().any(|d| *d == cs)
+            })
+            .next_back()
+            .cloned()
+    }
+
     pub fn resolve_function(
         mut self,
         function: &String,
         args: &[Arc<CType>],
     ) -> Option<(Scope<'a>, Arc<Function>)> {
-        // Collapse any `AnyOf`-typed arguments (e.g. a numeric literal that was not narrowed by an
-        // explicit annotation or accessor) to their FUI default before dispatch, so they match a
-        // single concrete overload (`print(5)` -> `print(i64)`) rather than failing to resolve
-        // against the whole candidate set. See `docs/int-float-constant-selection-plan.md`.
+        // Narrow any numeric-literal `AnyOf` argument to a single concrete type before dispatch.
+        // For each such argument we prefer the candidate that some overload of `function` actually
+        // demands at that position (so `foo(5)` resolves to `foo(u8)` when `u8` is the only
+        // overload, and `5 + 5` -- where every integer overload is viable -- resolves to the FUI
+        // default `i64`); if nothing constrains the position (e.g. a generic parameter) we fall
+        // back to the global FUI default. Function-typed `AnyOf`s (overload sets / operator-return
+        // merges) are left intact so higher-order dispatch can narrow them by signature. See
+        // `docs/int-float-constant-selection-plan.md`.
+        let arity = args.len();
         let collapsed_args: Vec<Arc<CType>> = args
             .iter()
-            .map(|a| a.clone().collapse_anyof_default())
+            .enumerate()
+            .map(|(i, a)| {
+                if let CType::AnyOf(ts) = &**a {
+                    let default = a.clone().collapse_anyof_default();
+                    if matches!(&*default, CType::AnyOf(_)) {
+                        // A function-like `AnyOf` (collapse left it intact): keep it for inference.
+                        a.clone()
+                    } else {
+                        self.context_numeric_collapse(function, i, arity, ts)
+                            .unwrap_or(default)
+                    }
+                } else {
+                    a.clone()
+                }
+            })
             .collect();
         let args = &collapsed_args[..];
         // We should prefer the "normal" function, if it matches, use it, otherwise try to go with
