@@ -1918,17 +1918,29 @@ fn{Js} get{T, S}
   :: (T[S], i64) -> T?;
 fn{Rs} map{T, S, U} "alan_std::mapbuffer_onearg" <- RootBacking :: (T[S], T -> U) -> (U[S]);
 fn{Js} map{T, S, U} (a: T[S], f: T -> U) =
-  {"((a, f) => { let out = []; for (let v of a) { out.push(f(v)); } return out; })" :: (Buffer{T, S}, T -> U) -> Buffer{U, S}}(a, f);
+  {
+    "((a, f) => { let out = []; for (let v of a) { out.push(f(v)); } return out; })"
+    :: (Buffer{T, S}, T -> U) -> Buffer{U, S}
+  }(a, f);
 fn{Js} map{T, S, U} (a: T[S], f: T -> Promise{U}) =
-  {"(async (a, f) => { let out = []; for (let v of a) { out.push(await f(v)); } return out; })" :: (Buffer{T, S}, T -> Promise{U}) -> Promise{Buffer{U, S}}}(a, f);
+  {
+    "(async (a, f) => { let out = []; for (let v of a) { out.push(await f(v)); } return out; })"
+    :: (Buffer{T, S}, T -> Promise{U}) -> Promise{Buffer{U, S}}
+  }(a, f);
 fn{Rs} map{T, S, U}
   "alan_std::mapbuffer_twoarg"
   <- RootBacking
   :: (Buffer{T, S}, (T, i64) -> U) -> Buffer{U, S};
 fn{Js} map{T, S, U} (a: T[S], f: (T, i64) -> U) =
-  {"((a, f) => { let out = []; for (let i = 0; i < a.length; i++) { out.push(f(a[i], new alan_std.I64(i))); } return out; })" :: (Buffer{T, S}, (T, i64) -> U) -> Buffer{U, S}}(a, f);
+  {
+    "((a, f) => { let out = []; for (let i = 0; i < a.length; i++) { out.push(f(a[i], new alan_std.I64(i))); } return out; })"
+    :: (Buffer{T, S}, (T, i64) -> U) -> Buffer{U, S}
+  }(a, f);
 fn{Js} map{T, S, U} (a: T[S], f: (T, i64) -> Promise{U}) =
-  {"(async (a, f) => { let out = []; for (let i = 0; i < a.length; i++) { out.push(await f(a[i], new alan_std.I64(i))); } return out; })" :: (Buffer{T, S}, (T, i64) -> Promise{U}) -> Promise{Buffer{U, S}}}(a, f);
+  {
+    "(async (a, f) => { let out = []; for (let i = 0; i < a.length; i++) { out.push(await f(a[i], new alan_std.I64(i))); } return out; })"
+    :: (Buffer{T, S}, (T, i64) -> Promise{U}) -> Promise{Buffer{U, S}}
+  }(a, f);
 fn{Rs} reduce{T, S} "alan_std::reducebuffer_sametype" <- RootBacking :: (T[S], (T, T) -> T) -> T?;
 fn{Js} reduce{T, S} (a: T[S], f: (T, T) -> T) =
   {
@@ -2582,7 +2594,10 @@ fn{Js} read{T}(gb: GBuffer{T}) =
 fn{Rs} replace{T}(gb: GBuffer{T}, vals: T[]) =
   {"alan_std::replace_buffer" <- RootBacking :: (GBufferRaw, T[]) -> ()!}(gb.rawBuffer, vals);
 fn{Js} replace{T}(gb: GBuffer{T}, vals: T[]) {
-  return {"alan_std.replaceBuffer" <- RootBacking :: (GBufferRaw, T[]) -> Promise{()!}}(gb.rawBuffer, vals);
+  return {"alan_std.replaceBuffer" <- RootBacking :: (GBufferRaw, T[]) -> Promise{()!}}(
+    gb.rawBuffer,
+    vals
+  );
 }
 /// Ergonomic GPGPU-related types and functions
 // The WgpuType provides a mechanism to build up the logic for a compute shader with normal-looking
@@ -5500,13 +5515,13 @@ fn gte(a: gvec4i, b: gvec4i) = gInfix{gvec4i, gvec4i, gvec4b}('>=', 'gte', a, b)
 fn gte(a: gvec4f, b: gvec4f) = gInfix{gvec4f, gvec4f, gvec4b}('>=', 'gte', a, b);
 /// GPGPU Conditional functions
 // Two GPU `if` forms with deliberately different wgsl lowerings:
-//   * The *value* form (`T` arms) receives both arms already evaluated, so there is nothing left to
-//     guard -- it lowers to a branchless `select(false_val, true_val, cond)`.
-//   * The *closure* form (`() -> T` arms) defers evaluation, so it emits a real
-//     `if (c) { ... } else { ... }` block and each arm's statements only run on its branch.
+// * The *value* form (`T` arms) receives both arms already evaluated, so there is nothing left to
+// guard -- it lowers to a branchless `select(false_val, true_val, cond)`.
+// * The *closure* form (`() -> T` arms) defers evaluation, so it emits a real
+// `if (c) { ... } else { ... }` block and each arm's statements only run on its branch.
 // Pick the closure form when an arm has work that must not run on the other branch; pick the value
 // form for cheap, pure expressions.
-//
+// 
 // Ordering matters, exactly as it does for the CPU `if` cfn: a closure-argument call *also* matches
 // the value form (binding `T` to the closure type `() -> T`), which would then try to read
 // `.varName` off a closure and fail. Per "most-recent definition wins", the closure form is
@@ -5547,10 +5562,14 @@ fn if{T}(c: gbool, t: () -> T, f: () -> T) {
     .concat(uuid().string.replace('-', '_'));
   let declaration = "var ".concat(resultVar).concat(": ").concat(typename);
   let tBody = tDelta.Array.map(fn(kv: (string, string)) {
-    return if(kv.1.index("\n").exists, fn = kv.1.concat("\n"), fn = "    ".concat(kv.1).concat(";\n"));
+    return if(kv.1.index("\n").exists, fn = kv.1.concat("\n"), fn {
+      return "    ".concat(kv.1).concat(";\n");
+    });
   }).join("");
   let fBody = fDelta.Array.map(fn(kv: (string, string)) {
-    return if(kv.1.index("\n").exists, fn = kv.1.concat("\n"), fn = "    ".concat(kv.1).concat(";\n"));
+    return if(kv.1.index("\n").exists, fn = kv.1.concat("\n"), fn {
+      return "    ".concat(kv.1).concat(";\n");
+    });
   }).join("");
   let block = "  if ("
     .concat(c.varName)
