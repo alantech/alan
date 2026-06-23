@@ -920,8 +920,19 @@ pub fn baseassignablelist_to_microstatements<'a>(
             }
             BaseChunk::ConstantAccessor(c) => {
                 if let Some(prior) = &prior_value {
+                    // If the accessor names a numeric type that is one of a numeric literal's
+                    // candidate types (e.g. `5.u64`), narrow the literal to that type directly. This
+                    // turns the accessor into a zero-cost type ascription -- the identity conversion,
+                    // with no runtime `as` cast -- for in-range literals. A variable, a non-numeric
+                    // accessor, or an out-of-range literal (e.g. `300.u8`, where `u8` was pruned from
+                    // the candidate set) is left alone and still goes through the normal
+                    // conversion/cast function.
+                    let prior = match scope.resolve_type(&c.to_string()) {
+                        Some(target) => narrow_numeric_literal(prior.clone(), target),
+                        None => prior.clone(),
+                    };
                     let mut temp_scope = scope.child();
-                    let constant_accessor_microstatements = vec![prior.clone()];
+                    let constant_accessor_microstatements = vec![prior];
                     let mut arg_types = Vec::new();
                     for m in &constant_accessor_microstatements {
                         // Collapse an `AnyOf` literal type to its FUI default so the accessor (e.g.
@@ -1051,6 +1062,18 @@ pub fn baseassignablelist_to_microstatements<'a>(
                             microstatements = res.1;
                             arg_microstatements.push(microstatements.pop().unwrap());
                         }
+                    }
+                }
+                // If this call names a numeric type (e.g. `5.u64` or `u64(5)`) and its first
+                // argument is a numeric literal whose candidate set includes that type, narrow the
+                // literal directly so the *identity* conversion is selected -- a zero-cost type
+                // ascription rather than a runtime `as` cast. A variable argument or an out-of-range
+                // literal (where the type was pruned from the candidate set) is left alone and still
+                // goes through the normal conversion/cast function.
+                if !arg_microstatements.is_empty() {
+                    if let Some(target) = scope.resolve_type(f) {
+                        arg_microstatements[0] =
+                            narrow_numeric_literal(arg_microstatements[0].clone(), target);
                     }
                 }
                 let mut arg_types = Vec::new();
