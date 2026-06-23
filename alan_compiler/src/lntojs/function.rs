@@ -124,13 +124,21 @@ fn function_codegen_is_async(function: Arc<Function>) -> bool {
     function_codegen_is_async_inner(function, &mut seen)
 }
 
-/// Render a conditional branch closure's body as a sequence of JS statements (with any `return`s
-/// kept intact), suitable for inlining inside a native `if (...) { ... } else { ... }` block.
+/// Render a conditional branch closure's body as a sequence of JS statements for inlining inside a
+/// native `if (...) { ... } else { ... }` block.
+///
+/// When `discard` is set, the conditional's *value* is thrown away (the `if` call sits in a
+/// discarded statement position), so the branch's terminal value-`return X` must become a bare
+/// `X;` -- otherwise the inlined `return` would erroneously return from the *enclosing* function.
+/// When `discard` is unset (value or return position), terminal `return`s are kept intact. A void
+/// `if` is never rendered with `discard` (its branches' `return`s are genuine early-returns from
+/// the enclosing function, e.g. from the `if`/`else` syntax rewrite), so those stay untouched.
 #[allow(clippy::type_complexity)]
 fn render_js_branch_body(
     microstatement: &Microstatement,
     parent_fn: &Function,
     scope: &Scope,
+    discard: bool,
     mut out: OrderedHashMap<String, String>,
     mut deps: OrderedHashMap<String, String>,
 ) -> Result<
@@ -142,8 +150,23 @@ fn render_js_branch_body(
     Box<dyn std::error::Error>,
 > {
     if let Microstatement::Closure { function } = microstatement {
+        let mss = &function.microstatements;
         let mut parts = Vec::new();
-        for ms in &function.microstatements {
+        for (i, ms) in mss.iter().enumerate() {
+            let is_last = i + 1 == mss.len();
+            // In discard position, strip the closure's terminal value-`return` to a bare
+            // expression so the conditional doesn't return out of the enclosing function.
+            if is_last && discard {
+                if let Microstatement::Return { value: Some(v) } = ms {
+                    let (val, o, d) = from_microstatement(v, parent_fn, scope, out, deps)?;
+                    out = o;
+                    deps = d;
+                    if !val.trim().is_empty() {
+                        parts.push(val);
+                    }
+                    continue;
+                }
+            }
             let (val, o, d) = from_microstatement(ms, parent_fn, scope, out, deps)?;
             out = o;
             deps = d;
@@ -153,19 +176,62 @@ fn render_js_branch_body(
         }
         return Ok((parts.join(";\n        "), out, deps));
     }
+    // A branch that is a closure-typed *value* (e.g. a `() -> T` parameter forwarded through a
+    // delegating `if`, rather than a literal closure) is invoked here. In value/return position its
+    // result is `return`ed (a void branch's returned `undefined` is harmless); in discard position
+    // it is called purely for side effects. If the closure is async (its return type is
+    // `Promise{T}`), the call is awaited.
+    if branch_value_is_function(microstatement) {
+        let (val, o, d) = from_microstatement(microstatement, parent_fn, scope, out, deps)?;
+        out = o;
+        deps = d;
+        let awaited = if branch_value_is_async(microstatement) {
+            format!("await {val}()")
+        } else {
+            format!("{val}()")
+        };
+        return Ok((
+            if discard {
+                awaited
+            } else {
+                format!("return {awaited}")
+            },
+            out,
+            deps,
+        ));
+    }
     // Fallback: render normally (e.g. a non-closure expression).
     from_microstatement(microstatement, parent_fn, scope, out, deps)
+}
+
+/// Whether a branch microstatement is a closure-typed *value* (a `() -> T` function passed by
+/// reference, not a literal `Closure`) -- the shape produced when a user-defined `if` overload
+/// forwards its branch parameters directly to the underlying `if` cfn.
+fn branch_value_is_function(ms: &Microstatement) -> bool {
+    !matches!(ms, Microstatement::Closure { .. })
+        && matches!(&*ms.get_type().degroup(), CType::Function(..))
+}
+
+/// Whether invoking a closure-typed value branch yields a `Promise` (i.e. the closure is async).
+fn branch_value_is_async(ms: &Microstatement) -> bool {
+    if let CType::Function(_, o) = &*ms.get_type().degroup() {
+        is_promise_head(o.clone())
+    } else {
+        false
+    }
 }
 
 /// Render a realized `if{T}` cfn call (`args[0]` condition, `args[1]`/`args[2]` branch closures) as
 /// a native `if (cond) { ... } else { ... }` block, inlining each branch closure's body. Used in
 /// statement positions (return / discarded-statement) where the closure overhead can be dropped
-/// entirely so V8 sees a native conditional.
+/// entirely so V8 sees a native conditional. `discard` is set when the conditional's value is
+/// thrown away (see `render_js_branch_body`).
 #[allow(clippy::type_complexity)]
 fn render_js_native_ifelse(
     args: &[Microstatement],
     parent_fn: &Function,
     scope: &Scope,
+    discard: bool,
     mut out: OrderedHashMap<String, String>,
     mut deps: OrderedHashMap<String, String>,
 ) -> Result<
@@ -182,10 +248,10 @@ fn render_js_native_ifelse(
     // The condition is a boxed `alan_std.Bool`; a bare object is always truthy in JS, so unwrap
     // its `.val` (falling back to the value itself if it is already a primitive).
     let cond = format!("({cond})?.val ?? ({cond})");
-    let (then_body, o, d) = render_js_branch_body(&args[1], parent_fn, scope, out, deps)?;
+    let (then_body, o, d) = render_js_branch_body(&args[1], parent_fn, scope, discard, out, deps)?;
     out = o;
     deps = d;
-    let (else_body, o, d) = render_js_branch_body(&args[2], parent_fn, scope, out, deps)?;
+    let (else_body, o, d) = render_js_branch_body(&args[2], parent_fn, scope, discard, out, deps)?;
     out = o;
     deps = d;
     let then_block = if then_body.trim().is_empty() {
@@ -666,18 +732,19 @@ pub fn from_microstatement(
                     // conditional becomes a plain sync IIFE with no `await`, while an awaiting
                     // branch produces an awaited async IIFE. Statement positions (return /
                     // discarded) are special-cased elsewhere to drop the IIFE entirely.
-                    let (inner, o, d) = render_js_native_ifelse(args, parent_fn, scope, out, deps)?;
+                    let (inner, o, d) =
+                        render_js_native_ifelse(args, parent_fn, scope, false, out, deps)?;
                     out = o;
                     deps = d;
-                    let is_async = if let Microstatement::Closure { function } = &args[1] {
-                        function_codegen_is_async(function.clone())
-                    } else {
-                        false
-                    } || if let Microstatement::Closure { function } = &args[2] {
-                        function_codegen_is_async(function.clone())
-                    } else {
-                        false
+                    let branch_async = |ms: &Microstatement| match ms {
+                        Microstatement::Closure { function } => {
+                            function_codegen_is_async(function.clone())
+                        }
+                        // A forwarded closure-typed value branch: async iff calling it yields a
+                        // `Promise` (its return type is `Promise{T}`).
+                        _ => branch_value_is_async(ms),
                     };
+                    let is_async = branch_async(&args[1]) || branch_async(&args[2]);
                     if is_async {
                         Ok((format!("(await (async () => {{ {inner} }})())"), out, deps))
                     } else {
@@ -1870,7 +1937,7 @@ pub fn from_microstatement(
                 // `return`s intact -- no `return ...;` wrapper, no closure/IIFE overhead.
                 if let Microstatement::FnCall { function, args } = &**val {
                     if matches!(&function.kind, FnKind::CfnRealized(CfnKind::IfElse)) {
-                        return render_js_native_ifelse(args, parent_fn, scope, out, deps);
+                        return render_js_native_ifelse(args, parent_fn, scope, false, out, deps);
                     }
                 }
                 let (retval, o, d) = from_microstatement(val, parent_fn, scope, out, deps)?;
@@ -1937,11 +2004,14 @@ pub fn generate(
     )
     .to_string();
     for microstatement in &function.microstatements {
-        // Discarded statement position: a top-level void cfn-`if` emits the native `if/else`
-        // form directly rather than a pointless IIFE statement.
+        // Discarded statement position: a top-level cfn-`if` emits the native `if/else` form
+        // directly rather than a pointless IIFE statement. The conditional's value is thrown away
+        // here (`discard`), so a branch closure's terminal *value*-`return X` becomes a bare `X;`
+        // rather than returning from this enclosing function. A bare `return;` (a genuine void
+        // early-return synthesized by the `if`/`else` rewrite) is kept by `render_js_branch_body`.
         if is_ifelse_call(microstatement) {
             if let Microstatement::FnCall { args, .. } = microstatement {
-                let (stmt, o, d) = render_js_native_ifelse(args, function, scope, out, deps)?;
+                let (stmt, o, d) = render_js_native_ifelse(args, function, scope, true, out, deps)?;
                 out = o;
                 deps = d;
                 fn_string = format!("{fn_string}    {stmt}\n");
