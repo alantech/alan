@@ -1163,6 +1163,51 @@ test!(conditional_void_async_branch => r#"export fn main {
 "#;
     stdout "waited\ndone\n";
 );
+// A user-defined `if` overload that forwards its branch closures *directly* to the underlying `if`
+// cfn (`if(cond, t, f)`, not re-wrapped as `fn() = t()`). This is the idiomatic way to opt into
+// "DWIM" truthiness for a new condition type -- here `i64` (0 is false) and `string` (empty is
+// false). The branch closures arrive at the cfn as closure-typed *values* rather than literal
+// closures, so codegen must *call* them (`{ t() }` in Rust, `return t()` in JS) rather than emit
+// the bare reference. Covers value-producing (`describe`) and void (`if name`) positions.
+test!(conditional_forwarded_branch_closures => r#"fn if{T}(c: i64, t: () -> T, f: () -> T) = if(c != 0, t, f);
+fn if{T}(c: string, t: () -> T, f: () -> T) = if(c.len > 0, t, f);
+fn describe(n: i64) -> string {
+  if n {
+    return 'nonzero';
+  }
+  return 'zero';
+}
+export fn main {
+  print(describe(0));
+  print(describe(42));
+  let name = '';
+  if name {
+    print('named');
+  } else {
+    print('anonymous');
+  }
+}
+"#;
+    stdout "zero\nnonzero\nanonymous\n";
+);
+// A *value-producing* `if` function call used as a discarded statement (its result is thrown
+// away), followed by more statements. The branch closures' terminal value-`return`s must NOT
+// return from the enclosing function -- otherwise `mid`/`end` would never run. This is the shape
+// the built-in test harness's `it` uses (`if(cond, fn = arr.pop, fn = Maybe{string}(""))`), which
+// previously miscompiled on the JS backend into an early return.
+test!(conditional_discarded_value_if_statement => r#"fn run(n: i64) -> string {
+  let acc = ['start'];
+  if(n > 0, fn = acc.push('pos'), fn = acc.push('neg'));
+  acc.push('end');
+  return acc.join(' ');
+}
+export fn main {
+  print(run(1));
+  print(run(0 - 1));
+}
+"#;
+    stdout "start pos end\nstart neg end\n";
+);
 // Both branches return *and* there is a trailing statement after the conditional: the tail is
 // unreachable, which is a compile error.
 test_compile_error!(conditional_both_arms_return_with_tail => r#"fn f(n: i64) -> string {

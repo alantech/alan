@@ -758,6 +758,15 @@ fn render_inline_block(
             ));
         }
     }
+    // A closure-typed *value* branch (a `() -> T` parameter forwarded through a delegating `if`,
+    // rather than a literal closure) is invoked for its side effects here.
+    if matches!(&*microstatement.get_type().degroup(), CType::Function(..)) {
+        let (val, o, d) =
+            from_microstatement(microstatement, parent_fn, shared_vars, scope, out, deps)?;
+        out = o;
+        deps = d;
+        return Ok((format!("{{\n        {val}();\n    }}"), out, deps));
+    }
     // Fallback: render normally and strip the closure prefix textually.
     let (val, o, d) =
         from_microstatement(microstatement, parent_fn, shared_vars, scope, out, deps)?;
@@ -825,6 +834,17 @@ fn render_branch_block(
                 deps,
             ));
         }
+    }
+    // A branch that is a closure-typed *value* (e.g. a `() -> T` function parameter threaded
+    // through a delegating `if`, rather than a literal closure) is invoked here: its call result
+    // becomes the block's tail expression. This lets user-defined `if` overloads forward the
+    // branch closures directly (`if(cond, t, f)`) without re-wrapping them.
+    if matches!(&*microstatement.get_type().degroup(), CType::Function(..)) {
+        let (val, o, d) =
+            from_microstatement(microstatement, parent_fn, shared_vars, scope, out, deps)?;
+        out = o;
+        deps = d;
+        return Ok((format!("{{\n        {val}()\n    }}"), out, deps));
     }
     // Fallback: render normally and strip the closure prefix textually.
     let (val, o, d) =
