@@ -207,9 +207,7 @@ jobs:
     - name: Check and set Rust version
       run: ./scripts/check_rust_version.sh
     - name: Install pnpm
-      run: |
-        corepack enable
-        corepack prepare pnpm@latest --activate
+      run: brew install pnpm
     - name: Node deps
       run: yarn && yarn playwright install
     - name: Start web server
