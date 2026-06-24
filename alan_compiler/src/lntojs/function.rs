@@ -41,20 +41,41 @@ fn box_native_value(typen: &CType, representation: &str) -> Option<String> {
                 None
             }
         }
+        // 64-bit integers wrap a `BigInt` (the `Int` base calls `BigInt(val)`), so the literal needs
+        // an `n` suffix: `new alan_std.I64(1n)`.
         CType::Type(n, _) if n == "i64" || n == "u64" => {
             if all_consuming(integer).parse(representation).is_ok() {
-                if n == "i64" {
-                    Some(format!("new alan_std.I64({representation}n)"))
-                } else {
-                    Some(format!("new alan_std.U64({representation}n)"))
-                }
+                Some(format!(
+                    "new alan_std.{}({representation}n)",
+                    n.to_uppercase()
+                ))
             } else {
                 None
             }
         }
-        CType::Type(n, _) if n == "f64" => {
-            if all_consuming(real).parse(representation).is_ok() {
-                Some(format!("new alan_std.F64({representation})"))
+        // Sub-64-bit integers wrap a plain `Number`. These can now appear as bare literals (e.g.
+        // `5.u8` or `let x: u8 = 5`) since numeric literals adopt the narrowed type directly, so they
+        // must be boxed into their `alan_std` wrapper just like the 64-bit ones.
+        CType::Type(n, _) if matches!(n.as_str(), "i8" | "i16" | "i32" | "u8" | "u16" | "u32") => {
+            if all_consuming(integer).parse(representation).is_ok() {
+                Some(format!(
+                    "new alan_std.{}({representation})",
+                    n.to_uppercase()
+                ))
+            } else {
+                None
+            }
+        }
+        // Both float widths wrap a `Number`. A literal narrowed to a float may be in integer form
+        // (e.g. `5.f32`), so accept either spelling.
+        CType::Type(n, _) if n == "f32" || n == "f64" => {
+            if all_consuming(real).parse(representation).is_ok()
+                || all_consuming(integer).parse(representation).is_ok()
+            {
+                Some(format!(
+                    "new alan_std.{}({representation})",
+                    n.to_uppercase()
+                ))
             } else {
                 None
             }
@@ -375,7 +396,21 @@ pub fn from_microstatement(
             let typen = &typen.clone().collapse_anyof_default();
             match &**typen {
                 CType::Type(n, _)
-                    if n == "string" || n == "i64" || n == "u64" || n == "f64" || n == "bool" =>
+                    if matches!(
+                        n.as_str(),
+                        "string"
+                            | "bool"
+                            | "i8"
+                            | "i16"
+                            | "i32"
+                            | "i64"
+                            | "u8"
+                            | "u16"
+                            | "u32"
+                            | "u64"
+                            | "f32"
+                            | "f64"
+                    ) =>
                 {
                     Ok((
                         box_native_value(typen, representation)
