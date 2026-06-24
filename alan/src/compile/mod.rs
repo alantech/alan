@@ -748,6 +748,8 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
     }?;
     let has_yarn =
         matches!(Command::new(find_process).arg("yarn").output(), Ok(a) if !a.stdout.is_empty());
+    let has_pnpm =
+        matches!(Command::new(find_process).arg("pnpm").output(), Ok(a) if !a.stdout.is_empty());
     let config_dir = match config_dir() {
         Some(c) => Ok(c),
         None => Err("Somehow no configuration directory exists on this operating system"),
@@ -760,7 +762,7 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
     };
     let lockfile_path = {
         let mut l = alan_config.clone();
-        l.push(".lockfile");
+        l.push(".web_lockfile");
         l
     };
     let project_dir = {
@@ -851,11 +853,10 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
             ))
         }
     }?;
-    // Update the npm lockfile, if necessary
+    // Clean stale lockfiles from other package managers; keep node_modules for caching
     match Command::new("rm")
         .current_dir(project_dir.clone())
-        .arg("-r")
-        .arg("node_modules/")
+        .arg("-f")
         .arg("package-lock.json")
         .arg("yarn.lock")
         .stdout(Stdio::null())
@@ -870,6 +871,8 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
     }?;
     match Command::new(if cfg!(windows) {
         "npm.cmd"
+    } else if has_pnpm {
+        "pnpm"
     } else if has_yarn {
         "yarn"
     } else {
