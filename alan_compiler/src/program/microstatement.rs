@@ -2017,6 +2017,96 @@ fn append_tail(
     block
 }
 
+/// If `src` is a simple reassignment `<ident> = <rhs>` (where the `=` is the store operator, not a
+/// `==`/`=>`/`<=`/`>=`/`!=` comparison -- the leading-identifier rule already rules out the latter
+/// three), return the identifier and the right-hand-side source. Used to recognize the pure
+/// conditional-assignment shape that can be lowered as a value `if` rather than a tail fold.
+fn split_simple_assignment(src: &str) -> Option<(String, String)> {
+    let s = src.trim();
+    let b = s.as_bytes();
+    let mut i = 0;
+    if i >= b.len() || !(b[i].is_ascii_alphabetic() || b[i] == b'_') {
+        return None;
+    }
+    while i < b.len() && (b[i].is_ascii_alphanumeric() || b[i] == b'_') {
+        i += 1;
+    }
+    let ident = s[0..i].to_string();
+    while i < b.len() && b[i].is_ascii_whitespace() {
+        i += 1;
+    }
+    if i >= b.len() || b[i] != b'=' {
+        return None;
+    }
+    if i + 1 < b.len() && (b[i + 1] == b'=' || b[i + 1] == b'>') {
+        return None;
+    }
+    let rhs = s[i + 1..].trim().to_string();
+    if rhs.is_empty() {
+        return None;
+    }
+    Some((ident, rhs))
+}
+
+/// If `stmts` is exactly one meaningful statement of the form `<ident> = <rhs>;`, return the
+/// identifier and the rhs source.
+fn block_single_assignment(stmts: &[parse::Statement]) -> Option<(String, String)> {
+    let mut meaningful = stmts
+        .iter()
+        .filter(|s| !matches!(s, parse::Statement::A(_)));
+    let first = meaningful.next()?;
+    if meaningful.next().is_some() {
+        return None;
+    }
+    match first {
+        parse::Statement::Assignables(a) => split_simple_assignment(&a.assignables.render()),
+        _ => None,
+    }
+}
+
+/// Detect a *pure conditional assignment chain*: a conditional whose then-branch (and, recursively,
+/// every `else if`/`else` branch) is a single reassignment to the *same* variable. Returns that
+/// variable's name and a synthesized nested value-`if` expression assigning it. A missing final
+/// `else` defaults to the variable's existing value, so the condition-false path is a no-op.
+///
+/// This lets natural imperative conditional mutation work in *GPU* code: rewritten as
+/// `let <var> = if(<cond>, fn() = <then>, fn() = <else>)` it lowers through the GPU closure-`if`,
+/// which emits a real `var <var>; if (c) { <var> = ...; } else { ... }` WGSL block. The naive
+/// tail-folding lowering (see `conditional_to_microstatements`) instead makes each arm return the
+/// whole `GPGPU[]` shader, which the GPU `if` cannot combine. On the CPU this lowers to the same
+/// native control flow as before, just without duplicating the block tail across both arms.
+fn conditional_assignment_chain(c: &parse::Conditional) -> Option<(String, String)> {
+    let then_stmts = blocklike_statements(&c.blocklike)?;
+    let (var, then_rhs) = block_single_assignment(&then_stmts)?;
+    let cond_src = c.assignables.render();
+    let else_expr = match &c.optelsebranch {
+        // No final `else`: the condition-false path leaves the variable unchanged. Clone it (rather
+        // than moving the captured binding) so the synthesized branch closure stays a reusable `Fn`.
+        None => format!("{var}.clone()"),
+        Some(eb) => match &*eb.condorblock {
+            parse::CondOrBlock::Conditional(inner) => {
+                let (inner_var, inner_expr) = conditional_assignment_chain(inner)?;
+                if inner_var != var {
+                    return None;
+                }
+                inner_expr
+            }
+            parse::CondOrBlock::Blocklike(b) => {
+                let else_stmts = blocklike_statements(b)?;
+                let (else_var, else_rhs) = block_single_assignment(&else_stmts)?;
+                if else_var != var {
+                    return None;
+                }
+                else_rhs
+            }
+        },
+    };
+    Some((
+        var,
+        format!("if({cond_src}, fn() {{ return {then_rhs}; }}, fn() {{ return {else_expr}; }})"),
+    ))
+}
+
 /// Transform of a block-level `if`/`else` conditional (plus the enclosing block's tail) into a
 /// synthesized `if(<cond>, fn() = {then}, fn() = {else})` call that runs through the normal
 /// resolution machinery, landing on the realized `cfn if{T}`.
@@ -2027,6 +2117,31 @@ fn conditional_to_microstatements<'a>(
     scope: Scope<'a>,
     microstatements: Vec<Microstatement>,
 ) -> Result<(Scope<'a>, Vec<Microstatement>), Box<dyn std::error::Error>> {
+    // A pure conditional-assignment chain (every branch just reassigns the same variable) is
+    // lowered as a value-producing `let <var> = if(...)` that shadows the prior binding, rather
+    // than by folding the block tail into both arms. This is what makes natural conditional
+    // mutation work in GPU shaders (see `conditional_assignment_chain`); on the CPU it is
+    // equivalent to the fold but avoids duplicating the tail.
+    if let Some((var_name, if_expr)) = conditional_assignment_chain(conditional) {
+        // Re-bind the target variable to the conditional value with a shadowing `let`, rather than
+        // folding the block tail into both arms. The fresh binding's value carries the conditional
+        // logic (on GPU, the closure-`if`'s `var x; if (c) { x = ...; }` block), so the un-folded
+        // tail simply reads the new binding. Rust shadows natively; the JS backend renders a
+        // re-declaration of an existing name as a plain reassignment (see `from_microstatement`).
+        let decl_src = format!("let {var_name} = {if_expr};");
+        let parsed = match parse::statement(&decl_src) {
+            Ok((rem, stmt)) if rem.trim().is_empty() => stmt,
+            _ => {
+                return Err(format!(
+                    "Failed to synthesize a conditional assignment from:\n{decl_src}"
+                )
+                .into())
+            }
+        };
+        let res = statement_to_microstatements(&parsed, parent_fn, scope, microstatements)?;
+        return statements_to_microstatements(tail, parent_fn, res.0, res.1);
+    }
+
     let cond_src = conditional.assignables.render();
     let then_stmts = match blocklike_statements(&conditional.blocklike) {
         Some(s) => s,

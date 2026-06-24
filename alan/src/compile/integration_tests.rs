@@ -911,6 +911,30 @@ export fn main {
     stdout_contains "[1, 3, 7, 9]";
 );
 
+// Imperative conditional *mutation* of an outer-scope variable inside a GPU shader. Unlike the
+// value-producing `if`s above (whose arms `return`), here the arms reassign `out`, with the block
+// tail (`return out`) following the conditional. The conditional-assignment lowering rewrites this
+// to a shadowing `let out = if(...)`, so the GPU closure-`if` emits a real `var out; if (c) { out =
+// ...; }` block and the tail reads the mutated variable -- rather than folding the tail (returning
+// `gi32[]`) into both arms, which the GPU `if` cannot combine. The `else if` chain exercises the
+// nested case (and the hoisting of the `@builtin(global_invocation_id)` metadata out of a single
+// arm). For input [1,2,3,4]: 1 -> default 0, 2 -> 50 (== 2), 3 & 4 -> 100 (> 2).
+test_gpgpu!(gpu_if_block_mutation => r#"export fn main {
+  let b = GBuffer([1.i32, 2.i32, 3.i32, 4.i32])!!;
+  b.map(fn(val: gi32) {
+    let out = 0.gi32;
+    if val > 2.gi32 {
+      out = 100.gi32;
+    } else if val == 2.gi32 {
+      out = 50.gi32;
+    }
+    return out;
+  }).read.print;
+}
+"#;
+    stdout "[0, 50, 100, 100]\n";
+);
+
 test_gpgpu!(gpu_replace => r#"export fn main {
   let b = GBuffer([1.i32, 2.i32, 3.i32, 4.i32])!!;
   b.map(fn(val: gi32) = val + 2).read.print;

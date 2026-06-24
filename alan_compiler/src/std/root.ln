@@ -5547,10 +5547,19 @@ fn if{T}(c: gbool, t: () -> T, f: () -> T) {
   let tv = t();
   let fv = f();
   let typename = {T.typeName}();
+  // The `@builtin(global_invocation_id) id: vec3u` entry is not a real statement: its value encodes
+  // the max global id and `build` both skips rendering it and reads the dispatch size from it. It
+  // must live at the top level, so hoist it out of either branch (rather than letting it render as
+  // a bogus `4,1,1;`-style statement inside a brace when only one arm references `id`).
+  let builtinKey = '@builtin(global_invocation_id) id: vec3u';
+  let builtinVal = tv.statements[builtinKey].getOr(fv.statements[builtinKey].getOr(''));
+  let builtinDict = if(builtinVal.eq(''),
+    fn() = Dict{string, string}(),
+    fn() = Dict{string, string}(builtinKey, builtinVal));
   let fStmtsCopy = fv.statements.concat(Dict{string, string}());
   let shared = tv.statements.intersection(fStmtsCopy);
-  let tDelta = tv.statements.difference(shared);
-  let fDelta = fv.statements.difference(shared);
+  let tDelta = tv.statements.difference(shared).difference(builtinDict);
+  let fDelta = fv.statements.difference(shared).difference(builtinDict);
   let resultVar = "if_"
     .concat(typename)
     .concat('_')
@@ -5582,6 +5591,7 @@ fn if{T}(c: gbool, t: () -> T, f: () -> T) {
     .concat(fv.varName)
     .concat(";\n  }");
   let statements = c.statements
+    .concat(builtinDict)
     .concat(shared)
     .concat(Dict{string, string}(resultVar, declaration))
     .concat(Dict{string, string}(resultVar.concat("_block"), block));
