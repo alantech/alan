@@ -28,6 +28,11 @@ macro_rules! test {
                 let js_filename = filename.clone();
                 let rs_handle = std::thread::spawn(move || -> Result<(), String> {
                     alan_compiler::program::Program::set_target_lang_rs();
+                    {
+                        let mut program = alan_compiler::program::Program::get_program();
+                        program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
+                        alan_compiler::program::Program::return_program(program);
+                    }
                     match crate::compile::build(rs_filename, "release") {
                         Ok(_) => Ok(()),
                         Err(e) => Err(format!("Failed to compile to Rust {:?}", e)),
@@ -35,6 +40,11 @@ macro_rules! test {
                 });
                 let js_handle = std::thread::spawn(move || -> Result<(), String> {
                     alan_compiler::program::Program::set_target_lang_js();
+                    {
+                        let mut program = alan_compiler::program::Program::get_program();
+                        program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
+                        alan_compiler::program::Program::return_program(program);
+                    }
                     match crate::compile::web(js_filename) {
                         Ok(_) => Ok(()),
                         Err(e) => Err(format!("Failed to compile to Javascript {:?}", e)),
@@ -108,6 +118,11 @@ macro_rules! test {
                 let js_entry = rs_entry.clone();
                 let rs_handle = std::thread::spawn(move || -> Result<(), String> {
                     alan_compiler::program::Program::set_target_lang_rs();
+                    {
+                        let mut program = alan_compiler::program::Program::get_program();
+                        program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
+                        alan_compiler::program::Program::return_program(program);
+                    }
                     match crate::compile::build(rs_entry, "release") {
                         Ok(_) => Ok(()),
                         Err(e) => Err(format!("Failed to compile to Rust {:?}", e)),
@@ -115,6 +130,11 @@ macro_rules! test {
                 });
                 let js_handle = std::thread::spawn(move || -> Result<(), String> {
                     alan_compiler::program::Program::set_target_lang_js();
+                    {
+                        let mut program = alan_compiler::program::Program::get_program();
+                        program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
+                        alan_compiler::program::Program::return_program(program);
+                    }
                     match crate::compile::web(js_entry) {
                         Ok(_) => Ok(()),
                         Err(e) => Err(format!("Failed to compile to Javascript {:?}", e)),
@@ -190,6 +210,11 @@ macro_rules! test_gpgpu {
                 let rs_filename = filename.clone();
                 let rs_handle = std::thread::spawn(move || -> Result<(), String> {
                     alan_compiler::program::Program::set_target_lang_rs();
+                    {
+                        let mut program = alan_compiler::program::Program::get_program();
+                        program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
+                        alan_compiler::program::Program::return_program(program);
+                    }
                     match crate::compile::build(rs_filename, "release") {
                         Ok(_) => Ok(()),
                         Err(e) => Err(format!("Failed to compile to Rust {:?}", e)),
@@ -199,6 +224,11 @@ macro_rules! test_gpgpu {
                     let js_filename = filename.clone();
                     let js_handle = std::thread::spawn(move || -> Result<(), String> {
                         alan_compiler::program::Program::set_target_lang_js();
+                        {
+                            let mut program = alan_compiler::program::Program::get_program();
+                            program.env.insert("ALAN_TARGET".to_string(), "test".to_string());
+                            alan_compiler::program::Program::return_program(program);
+                        }
                         match crate::compile::web(js_filename) {
                             Ok(_) => Ok(()),
                             Err(e) => Err(format!("Failed to compile to Javascript {:?}", e)),
