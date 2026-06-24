@@ -855,11 +855,10 @@ impl<'a> Scope<'a> {
         // (highest-priority) one.
         candidates
             .iter()
-            .filter(|c| {
+            .rfind(|c| {
                 let cs = (*c).clone().degroup().to_strict_string(false);
                 demanded.contains(&cs)
             })
-            .next_back()
             .cloned()
     }
 
