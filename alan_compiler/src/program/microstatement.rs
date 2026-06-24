@@ -125,7 +125,7 @@ fn narrow_numeric_literal(value: Microstatement, target: Arc<CType>) -> Microsta
                     .cloned();
                 if let Some(matched) = matched {
                     let representation = if ctype_is_float(&matched.clone().degroup())
-                        && !representation.contains(|c| c == '.' || c == 'e' || c == 'E')
+                        && !representation.contains(['.', 'e', 'E'])
                     {
                         format!("{representation}.0")
                     } else {
@@ -950,7 +950,10 @@ pub fn baseassignablelist_to_microstatements<'a>(
                             temp_scope.functions.insert(c.to_string(), vec![f.clone()]);
                             merge!(scope, temp_scope);
                             prior_value = Some(Microstatement::FnCall {
-                                args: narrow_call_arg_literals(&f, constant_accessor_microstatements),
+                                args: narrow_call_arg_literals(
+                                    &f,
+                                    constant_accessor_microstatements,
+                                ),
                                 function: f,
                             })
                         }

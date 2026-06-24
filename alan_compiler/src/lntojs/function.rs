@@ -370,116 +370,117 @@ pub fn from_microstatement(
             typen,
             representation,
         } => {
-          // A numeric literal whose type was never narrowed by context is an `AnyOf`; collapse it
-          // to its FUI default so it boxes (`new alan_std.I64(..)`) like a concrete literal.
-          let typen = &typen.clone().collapse_anyof_default();
-          match &**typen {
-            CType::Type(n, _)
-                if n == "string" || n == "i64" || n == "u64" || n == "f64" || n == "bool" =>
-            {
-                Ok((
-                    box_native_value(typen, representation)
-                        .unwrap_or_else(|| representation.clone()),
-                    out,
-                    deps,
-                ))
-            }
-            CType::Binds(n, _) => match &**n {
-                CType::TString(_) => Ok((representation.clone(), out, deps)),
-                CType::Import(n, d) => {
-                    super::register_nodejs_dependency(d, &mut deps);
-                    match &**n {
-                        CType::TString(_) => { /* Do nothing */ }
-                        _ => CType::fail("Native import names must be strings"),
-                    }
-                    Ok((representation.clone(), out, deps))
+            // A numeric literal whose type was never narrowed by context is an `AnyOf`; collapse it
+            // to its FUI default so it boxes (`new alan_std.I64(..)`) like a concrete literal.
+            let typen = &typen.clone().collapse_anyof_default();
+            match &**typen {
+                CType::Type(n, _)
+                    if n == "string" || n == "i64" || n == "u64" || n == "f64" || n == "bool" =>
+                {
+                    Ok((
+                        box_native_value(typen, representation)
+                            .unwrap_or_else(|| representation.clone()),
+                        out,
+                        deps,
+                    ))
                 }
-                otherwise => CType::fail(&format!(
-                    "Bound types must be strings or node.js imports: {otherwise:?}"
-                )),
-            },
-            CType::Function(..) => {
-                let f = scope.resolve_function_by_type(representation, typen.clone());
-                let f = match f {
-                    None => {
-                        // If the current scope isn't the original scope for the parent function, maybe the
-                        // function we're looking for is in the original scope
-                        if parent_fn.origin_scope_path != scope.path {
-                            let program = Program::get_program();
-                            let out = match program.scope_by_file(&parent_fn.origin_scope_path) {
-                                Ok(original_scope) => original_scope
-                                    .resolve_function_by_type(representation, typen.clone()),
-                                Err(_) => None,
-                            };
-                            Program::return_program(program);
-                            out
-                        } else {
-                            None
+                CType::Binds(n, _) => match &**n {
+                    CType::TString(_) => Ok((representation.clone(), out, deps)),
+                    CType::Import(n, d) => {
+                        super::register_nodejs_dependency(d, &mut deps);
+                        match &**n {
+                            CType::TString(_) => { /* Do nothing */ }
+                            _ => CType::fail("Native import names must be strings"),
                         }
+                        Ok((representation.clone(), out, deps))
                     }
-                    f => f,
-                };
-                match &f {
-                    None => {
-                        let args = parent_fn.args();
-                        for (name, _, typen) in args {
-                            if &name == representation {
-                                if let CType::Function(_, _) = &*typen {
-                                    // TODO: Do we need better matching? The upper stage should
-                                    // have taken care of this
-                                    return Ok((representation.clone(), out, deps));
-                                }
+                    otherwise => CType::fail(&format!(
+                        "Bound types must be strings or node.js imports: {otherwise:?}"
+                    )),
+                },
+                CType::Function(..) => {
+                    let f = scope.resolve_function_by_type(representation, typen.clone());
+                    let f = match f {
+                        None => {
+                            // If the current scope isn't the original scope for the parent function, maybe the
+                            // function we're looking for is in the original scope
+                            if parent_fn.origin_scope_path != scope.path {
+                                let program = Program::get_program();
+                                let out = match program.scope_by_file(&parent_fn.origin_scope_path)
+                                {
+                                    Ok(original_scope) => original_scope
+                                        .resolve_function_by_type(representation, typen.clone()),
+                                    Err(_) => None,
+                                };
+                                Program::return_program(program);
+                                out
+                            } else {
+                                None
                             }
                         }
-                        Err(format!(
+                        f => f,
+                    };
+                    match &f {
+                        None => {
+                            let args = parent_fn.args();
+                            for (name, _, typen) in args {
+                                if &name == representation {
+                                    if let CType::Function(_, _) = &*typen {
+                                        // TODO: Do we need better matching? The upper stage should
+                                        // have taken care of this
+                                        return Ok((representation.clone(), out, deps));
+                                    }
+                                }
+                            }
+                            Err(format!(
                             "Somehow can't find a definition for function {representation}, {typen:?}"
                         )
                         .into())
+                        }
+                        Some(fun) => match &fun.kind {
+                            FnKind::Normal
+                            | FnKind::External(_)
+                            | FnKind::Generic(..)
+                            | FnKind::Derived
+                            | FnKind::DerivedVariadic
+                            | FnKind::Static
+                            | FnKind::Cfn(..)
+                            | FnKind::CfnRealized(_) => {
+                                let mut arg_strs = Vec::new();
+                                for arg in &fun.args() {
+                                    arg_strs.push(arg.2.clone().to_callable_string());
+                                }
+                                let jsname = format!("{}_{}", fun.name, arg_strs.join("_"));
+                                let (o, d) = generate(jsname.clone(), fun, scope, out, deps)?;
+                                out = o;
+                                deps = d;
+                                if let FnKind::External(d) = &fun.kind {
+                                    super::register_nodejs_dependency(d, &mut deps);
+                                }
+                                Ok((jsname, out, deps))
+                            }
+                            FnKind::Bind(jsname)
+                            | FnKind::BoundGeneric(_, jsname)
+                            | FnKind::ExternalBind(jsname, _)
+                            | FnKind::ExternalGeneric(_, jsname, _) => {
+                                if let FnKind::ExternalGeneric(_, _, d)
+                                | FnKind::ExternalBind(_, d) = &fun.kind
+                                {
+                                    super::register_nodejs_dependency(d, &mut deps);
+                                }
+                                Ok((jsname.clone(), out, deps))
+                            }
+                        },
                     }
-                    Some(fun) => match &fun.kind {
-                        FnKind::Normal
-                        | FnKind::External(_)
-                        | FnKind::Generic(..)
-                        | FnKind::Derived
-                        | FnKind::DerivedVariadic
-                        | FnKind::Static
-                        | FnKind::Cfn(..)
-                        | FnKind::CfnRealized(_) => {
-                            let mut arg_strs = Vec::new();
-                            for arg in &fun.args() {
-                                arg_strs.push(arg.2.clone().to_callable_string());
-                            }
-                            let jsname = format!("{}_{}", fun.name, arg_strs.join("_"));
-                            let (o, d) = generate(jsname.clone(), fun, scope, out, deps)?;
-                            out = o;
-                            deps = d;
-                            if let FnKind::External(d) = &fun.kind {
-                                super::register_nodejs_dependency(d, &mut deps);
-                            }
-                            Ok((jsname, out, deps))
-                        }
-                        FnKind::Bind(jsname)
-                        | FnKind::BoundGeneric(_, jsname)
-                        | FnKind::ExternalBind(jsname, _)
-                        | FnKind::ExternalGeneric(_, jsname, _) => {
-                            if let FnKind::ExternalGeneric(_, _, d) | FnKind::ExternalBind(_, d) =
-                                &fun.kind
-                            {
-                                super::register_nodejs_dependency(d, &mut deps);
-                            }
-                            Ok((jsname.clone(), out, deps))
-                        }
-                    },
+                }
+                _ => {
+                    if representation.as_str() == "var" {
+                        Ok(("__var__".to_string(), out, deps))
+                    } else {
+                        Ok((representation.clone(), out, deps))
+                    }
                 }
             }
-            _ => {
-                if representation.as_str() == "var" {
-                    Ok(("__var__".to_string(), out, deps))
-                } else {
-                    Ok((representation.clone(), out, deps))
-                }
-            }
-          }
         }
         Microstatement::Array { vals, .. } => {
             let mut val_representations = Vec::new();

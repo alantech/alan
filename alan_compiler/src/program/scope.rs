@@ -857,7 +857,7 @@ impl<'a> Scope<'a> {
             .iter()
             .filter(|c| {
                 let cs = (*c).clone().degroup().to_strict_string(false);
-                demanded.iter().any(|d| *d == cs)
+                demanded.contains(&cs)
             })
             .next_back()
             .cloned()

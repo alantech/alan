@@ -4574,10 +4574,9 @@ impl CType {
     pub fn strip_value_wrappers(self: Arc<CType>) -> Arc<CType> {
         let t = self.degroup();
         match &*t {
-            CType::Deref(inner)
-            | CType::Mut(inner)
-            | CType::Own(inner)
-            | CType::Shared(inner) => inner.clone().strip_value_wrappers(),
+            CType::Deref(inner) | CType::Mut(inner) | CType::Own(inner) | CType::Shared(inner) => {
+                inner.clone().strip_value_wrappers()
+            }
             _ => t,
         }
     }
