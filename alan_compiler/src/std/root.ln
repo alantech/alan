@@ -5544,90 +5544,86 @@ fn if{T}(c: gbool, t: T, f: T) {
   return {T}(varName, statements, buffers);
 }
 fn if{T}(c: gbool, t: () -> T, f: () -> T) {
-  // Evaluate both arms. Each arm's `statements` is the full ordered chain needed to compute its
-  // result, which shares a common prefix with the other arm (the work done before the branch).
   let tv = t();
   let fv = f();
   let typename = {T.typeName}();
-  // Split each arm into the prefix shared by both arms (emitted once, before the block) and the
-  // branch-local remainder (emitted inside the matching brace so it only runs on that branch).
-  // `intersection` captures its second argument in a reduce closure, so it is taken by value (and
-  // thus consumed); pass a fresh copy of the false arm's statements (`concat` with an empty dict
-  // returns a new dictionary) so the original survives for `fDelta`.
-  let fStmtsCopy = fv.statements.concat(Dict{string, string}());
-  let shared = tv.statements.intersection(fStmtsCopy);
-  let tDelta = tv.statements.difference(shared);
-  let fDelta = fv.statements.difference(shared);
-  // A result `var` declared before the block; each arm assigns its own value into it.
-  let resultVar = "if_"
-    .concat(typename)
-    .concat('_')
-    .concat(uuid().string.replace('-', '_'));
-  let declaration = "var ".concat(resultVar).concat(": ").concat(typename);
-  let tBody = tDelta.Array.map(fn(kv: (string, string)) {
-    return if(kv.1.index("\n").exists, fn = kv.1.concat("\n"), fn {
-      return "    ".concat(kv.1).concat(";\n");
-    });
-  }).join("");
-  let fBody = fDelta.Array.map(fn(kv: (string, string)) {
-    return if(kv.1.index("\n").exists, fn = kv.1.concat("\n"), fn {
-      return "    ".concat(kv.1).concat(";\n");
-    });
-  }).join("");
-  let block = "  if ("
-    .concat(c.varName)
-    .concat(") {\n")
-    .concat(tBody)
-    .concat("    ")
-    .concat(resultVar)
-    .concat(" = ")
-    .concat(tv.varName)
-    .concat(";\n  } else {\n")
-    .concat(fBody)
-    .concat("    ")
-    .concat(resultVar)
-    .concat(" = ")
-    .concat(fv.varName)
-    .concat(";\n  }");
-  let statements = c.statements
-    .concat(shared)
-    .concat(Dict{string, string}(resultVar, declaration))
-    .concat(Dict{string, string}(resultVar.concat("_block"), block));
-  let buffers = c.buffers.union(tv.buffers).union(fv.buffers);
-  return {T}(resultVar, statements, buffers);
+  if typename.eq("void") {
+    let tBody = tv.statements.Array.map(fn(kv: (string, string)) {
+      return if(kv.1.index("\n").exists, fn = kv.1.concat("\n"), fn {
+        return "    ".concat(kv.1).concat(";\n");
+      });
+    }).join("");
+    let fBody = fv.statements.Array.map(fn(kv: (string, string)) {
+      return if(kv.1.index("\n").exists, fn = kv.1.concat("\n"), fn {
+        return "    ".concat(kv.1).concat(";\n");
+      });
+    }).join("");
+    let block = "  if ("
+      .concat(c.varName)
+      .concat(") {\n")
+      .concat(tBody)
+      .concat("  } else {\n")
+      .concat(fBody)
+      .concat("  }");
+    let statements = c.statements
+      .concat(tv.statements)
+      .concat(fv.statements)
+      .concat(Dict{string, string}("if_void_block", block));
+    let buffers = c.buffers.union(tv.buffers).union(fv.buffers);
+    return {gbool}(c.varName, statements, buffers);
+  } else {
+    // Evaluate both arms. Each arm's `statements` is the full ordered chain needed to compute its
+    // result, which shares a common prefix with the other arm (the work done before the branch).
+    // `intersection` captures its second argument in a reduce closure, so it is taken by value (and
+    // thus consumed); pass a fresh copy of the false arm's statements (`concat` with an empty dict
+    // returns a new dictionary) so the original survives for `fDelta`.
+    let fStmtsCopy = fv.statements.concat(Dict{string, string}());
+    let shared = tv.statements.intersection(fStmtsCopy);
+    let tDelta = tv.statements.difference(shared);
+    let fDelta = fv.statements.difference(shared);
+    // A result `var` declared before the block; each arm assigns its own value into it.
+    let resultVar = "if_"
+      .concat(typename)
+      .concat('_')
+      .concat(uuid().string.replace('-', '_'));
+    let declaration = "var ".concat(resultVar).concat(": ").concat(typename);
+    let tBody = tDelta.Array.map(fn(kv: (string, string)) {
+      return if(kv.1.index("\n").exists, fn = kv.1.concat("\n"), fn {
+        return "    ".concat(kv.1).concat(";\n");
+      });
+    }).join("");
+    let fBody = fDelta.Array.map(fn(kv: (string, string)) {
+      return if(kv.1.index("\n").exists, fn = kv.1.concat("\n"), fn {
+        return "    ".concat(kv.1).concat(";\n");
+      });
+    }).join("");
+    let block = "  if ("
+      .concat(c.varName)
+      .concat(") {\n")
+      .concat(tBody)
+      .concat("    ")
+      .concat(resultVar)
+      .concat(" = ")
+      .concat(tv.varName)
+      .concat(";\n  } else {\n")
+      .concat(fBody)
+      .concat("    ")
+      .concat(resultVar)
+      .concat(" = ")
+      .concat(fv.varName)
+      .concat(";\n  }");
+    let statements = c.statements
+      .concat(shared)
+      .concat(Dict{string, string}(resultVar, declaration))
+      .concat(Dict{string, string}(resultVar.concat("_block"), block));
+    let buffers = c.buffers.union(tv.buffers).union(fv.buffers);
+    return {T}(resultVar, statements, buffers);
+  }
 }
 fn if(c: gbool, t: f64, f: f64) = if(c, t.gf32, f.gf32);
 fn if(c: gbool, t: i64, f: i64) = if(c, t.gi32, f.gi32);
 fn if(c: gbool, t: u64, f: u64) = if(c, t.gu32, f.gu32);
 fn if(c: gbool, t: bool, f: bool) = if(c, t.gbool, f.gbool);
-fn if(c: gbool, t, f) {
-  let tv = t();
-  let fv = f();
-  let tBody = tv.statements.Array.map(fn(kv: (string, string)) {
-    return if(kv.1.index("\n").exists, fn = kv.1.concat("\n"), fn {
-      return "    ".concat(kv.1).concat(";\n");
-    });
-  }).join("");
-  let fBody = fv.statements.Array.map(fn(kv: (string, string)) {
-    return if(kv.1.index("\n").exists, fn = kv.1.concat("\n"), fn {
-      return "    ".concat(kv.1).concat(";\n");
-    });
-  }).join("");
-  let block = "  if ("
-    .concat(c.varName)
-    .concat(") {\n")
-    .concat(tBody)
-    .concat("  } else {\n")
-    .concat(fBody)
-    .concat("  }");
-  let statements = c.statements
-    .concat(tv.statements)
-    .concat(fv.statements)
-    .concat(Dict{string, string}("if_void_block", block));
-  let buffers = c.buffers.union(tv.buffers).union(fv.buffers);
-  return {gbool}(c.varName, statements, buffers);
-}
-fn if(c: gbool, t) = if(c, t, fn() = true.gbool);
 /// GPU Boolean and Bitwise methods
 fn not(a: gu32) = gPrefix('!', 'not', a);
 fn not(a: gi32) = gPrefix('!', 'not', a);
