@@ -1317,16 +1317,16 @@ impl AlanWindowContext {
         self.transparent = false;
     }
 
-    pub fn mouse_left(&mut self) -> bool {
-        self.mouse_left
+    pub fn mouse_left(&mut self) -> u32 {
+        self.mouse_left as u32
     }
 
-    pub fn mouse_right(&mut self) -> bool {
-        self.mouse_right
+    pub fn mouse_right(&mut self) -> u32 {
+        self.mouse_right as u32
     }
 
-    pub fn mouse_middle(&mut self) -> bool {
-        self.mouse_middle
+    pub fn mouse_middle(&mut self) -> u32 {
+        self.mouse_middle as u32
     }
 
     pub fn mouse_wheel_x(&mut self) -> f32 {

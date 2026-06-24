@@ -1358,15 +1358,15 @@ export function contextOpaque(context) {
 }
 
 export function contextMouseLeft(context) {
-  return new Bool(context.mouseLeft);
+  return new U32(context.mouseLeft ? 1 : 0);
 }
 
 export function contextMouseRight(context) {
-  return new Bool(context.mouseRight);
+  return new U32(context.mouseRight ? 1 : 0);
 }
 
 export function contextMouseMiddle(context) {
-  return new Bool(context.mouseMiddle);
+  return new U32(context.mouseMiddle ? 1 : 0);
 }
 
 export function contextMouseWheelX(context) {

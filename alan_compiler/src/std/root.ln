@@ -259,8 +259,8 @@ type arm_32 = Env{"ALAN_ARCH"} == "arm_32";
 type arm_64 = Env{"ALAN_ARCH"} == "arm_64";
 type Browser = Env{"ALAN_PLATFORM"} == "browser"; // Technically not necessary, always also Js
 // Importing the Root Scope backing implementation and supporting 3rd party libraries
-type{Rs} RootBacking = Rust{"alan_std" @ "https://github.com/alantech/alan.git"};
-type{Js} RootBacking = Nodejs{"alan_std" @ "https://github.com/alantech/alan.git"};
+type{Rs} RootBacking = Rust{"alan_std" @ "https://github.com/alantech/alan.git#more-mouse-inputs"};
+type{Js} RootBacking = Nodejs{"alan_std" @ "https://github.com/alantech/alan.git#more-mouse-inputs"};
 // Defining derived types
 type void = ();
 type Self{T} = T;
@@ -695,6 +695,9 @@ fn{Js} bool "((f) => new alan_std.Bool(f.val != 0.0))" <- RootBacking :: f64 -> 
 fn{Rs} bool(s: string) = {Infix{"=="} :: (string, string) -> bool}(s, "true");
 fn{Js} bool "((s) => new alan_std.Bool(s.val == 'true'))" <- RootBacking :: string -> bool;
 fn bool(b: bool) = b;
+
+fn{Rs} u32 Cast{"u32"} :: Deref{bool} -> u32;
+fn{Js} u32 "((b) => new alan_std.U32(b.val ? 1 : 0))" <- RootBacking :: bool -> u32;
 /// Bitcasting functions (TODO: Is there a better naming scheme possible?)
 fn asU8(v: u8) = v;
 fn{Rs} asU8(v: i8) =
@@ -5593,6 +5596,10 @@ fn if{T}(c: gbool, t: () -> T, f: () -> T) {
   let buffers = c.buffers.union(tv.buffers).union(fv.buffers);
   return {T}(resultVar, statements, buffers);
 }
+fn if(c: gbool, t: f64, f: f64) = if(c, t.gf32, f.gf32);
+fn if(c: gbool, t: i64, f: i64) = if(c, t.gi32, f.gi32);
+fn if(c: gbool, t: u64, f: u64) = if(c, t.gu32, f.gu32);
+fn if(c: gbool, t: bool, f: bool) = if(c, t.gbool, f.gbool);
 /// GPU Boolean and Bitwise methods
 fn not(a: gu32) = gPrefix('!', 'not', a);
 fn not(a: gi32) = gPrefix('!', 'not', a);
@@ -5714,6 +5721,9 @@ fn asI32(v: gf32) = gbitcast{gf32, gi32}(v);
 fn asF32(v: gu32) = gbitcast{gu32, gf32}(v);
 fn asF32(v: gi32) = gbitcast{gi32, gf32}(v);
 fn asF32(v: gf32) = v;
+fn asBool(v: gu32) = gPrimitiveConvert{gu32, gbool}(v);
+fn asBool(v: gi32) = gPrimitiveConvert{gi32, gbool}(v);
+fn asBool(v: gbool) = v;
 fn asVec2u(v: gvec2u) = v;
 fn asVec2u(v: gvec2i) = gbitcast{gvec2i, gvec2u}(v);
 fn asVec2u(v: gvec2f) = gbitcast{gvec2f, gvec2u}(v);
@@ -5892,12 +5902,12 @@ fn{Rs} mouseX Method{"mouse_x"} :: Mut{Window} -> u32;
 fn{Js} mouseX "alan_std.contextMouseX" <- RootBacking :: Window -> u32;
 fn{Rs} mouseY Method{"mouse_y"} :: Mut{Window} -> u32;
 fn{Js} mouseY "alan_std.contextMouseY" <- RootBacking :: Window -> u32;
-fn{Rs} mouseLeft Method{"mouse_left"} :: Mut{Window} -> bool;
-fn{Js} mouseLeft "alan_std.contextMouseLeft" <- RootBacking :: Window -> bool;
-fn{Rs} mouseRight Method{"mouse_right"} :: Mut{Window} -> bool;
-fn{Js} mouseRight "alan_std.contextMouseRight" <- RootBacking :: Window -> bool;
-fn{Rs} mouseMiddle Method{"mouse_middle"} :: Mut{Window} -> bool;
-fn{Js} mouseMiddle "alan_std.contextMouseMiddle" <- RootBacking :: Window -> bool;
+fn{Rs} mouseLeft Method{"mouse_left"} :: Mut{Window} -> u32;
+fn{Js} mouseLeft "alan_std.contextMouseLeft" <- RootBacking :: Window -> u32;
+fn{Rs} mouseRight Method{"mouse_right"} :: Mut{Window} -> u32;
+fn{Js} mouseRight "alan_std.contextMouseRight" <- RootBacking :: Window -> u32;
+fn{Rs} mouseMiddle Method{"mouse_middle"} :: Mut{Window} -> u32;
+fn{Js} mouseMiddle "alan_std.contextMouseMiddle" <- RootBacking :: Window -> u32;
 fn{Rs} mouseWheelX Method{"mouse_wheel_x"} :: Mut{Window} -> f32;
 fn{Js} mouseWheelX "alan_std.contextMouseWheelX" <- RootBacking :: Window -> f32;
 fn{Rs} mouseWheelY Method{"mouse_wheel_y"} :: Mut{Window} -> f32;
