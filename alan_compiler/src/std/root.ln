@@ -5600,7 +5600,7 @@ fn if(c: gbool, t: f64, f: f64) = if(c, t.gf32, f.gf32);
 fn if(c: gbool, t: i64, f: i64) = if(c, t.gi32, f.gi32);
 fn if(c: gbool, t: u64, f: u64) = if(c, t.gu32, f.gu32);
 fn if(c: gbool, t: bool, f: bool) = if(c, t.gbool, f.gbool);
-fn if(c: gbool, t: () -> ()) = if(c, t, fn = ());
+fn if(c: gbool, t: () -> ()) = if(c, t, fn() = ());
 fn if(c: gbool, t: () -> (), f: () -> ()) {
   let tv = t();
   let fv = f();
