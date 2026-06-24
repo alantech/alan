@@ -5600,6 +5600,34 @@ fn if(c: gbool, t: f64, f: f64) = if(c, t.gf32, f.gf32);
 fn if(c: gbool, t: i64, f: i64) = if(c, t.gi32, f.gi32);
 fn if(c: gbool, t: u64, f: u64) = if(c, t.gu32, f.gu32);
 fn if(c: gbool, t: bool, f: bool) = if(c, t.gbool, f.gbool);
+fn if(c: gbool, t: () -> ()) = if(c, t, fn = ());
+fn if(c: gbool, t: () -> (), f: () -> ()) {
+  let tv = t();
+  let fv = f();
+  let tBody = tv.statements.Array.map(fn(kv: (string, string)) {
+    return if(kv.1.index("\n").exists, fn = kv.1.concat("\n"), fn {
+      return "    ".concat(kv.1).concat(";\n");
+    });
+  }).join("");
+  let fBody = fv.statements.Array.map(fn(kv: (string, string)) {
+    return if(kv.1.index("\n").exists, fn = kv.1.concat("\n"), fn {
+      return "    ".concat(kv.1).concat(";\n");
+    });
+  }).join("");
+  let block = "  if ("
+    .concat(c.varName)
+    .concat(") {\n")
+    .concat(tBody)
+    .concat("  } else {\n")
+    .concat(fBody)
+    .concat("  }");
+  let statements = c.statements
+    .concat(tv.statements)
+    .concat(fv.statements)
+    .concat(Dict{string, string}("if_void_block", block));
+  let buffers = c.buffers.union(tv.buffers).union(fv.buffers);
+  return {()}(c.varName, statements, buffers);
+}
 /// GPU Boolean and Bitwise methods
 fn not(a: gu32) = gPrefix('!', 'not', a);
 fn not(a: gi32) = gPrefix('!', 'not', a);
