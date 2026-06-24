@@ -935,6 +935,30 @@ test_gpgpu!(gpu_if_block_mutation => r#"export fn main {
     stdout "[0, 50, 100, 100]\n";
 );
 
+// Multiple distinct variables mutated per branch. Each gets its own per-variable phi
+// (`let lo = if(...); let hi = if(...)`), so the GPU `if` lowering handles them independently
+// rather than folding the tail (which would silently drop the plain reassignments). `hi`'s arm
+// also reads `lo`, exercising that bindings are emitted in assignment order so the cross-reference
+// sees the updated value. For [1,2,3,4]: <=2 -> lo=30,hi=lo+10=40 -> 70; >2 -> lo=10,hi=20 -> 30.
+test_gpgpu!(gpu_if_block_multivar => r#"export fn main {
+  let b = GBuffer([1.i32, 2.i32, 3.i32, 4.i32])!!;
+  b.map(fn(val: gi32) {
+    let lo = 0.gi32;
+    let hi = 0.gi32;
+    if val > 2.gi32 {
+      lo = 10.gi32;
+      hi = 20.gi32;
+    } else {
+      lo = 30.gi32;
+      hi = lo + 10.gi32;
+    }
+    return lo + hi;
+  }).read.print;
+}
+"#;
+    stdout "[70, 70, 30, 30]\n";
+);
+
 test_gpgpu!(gpu_replace => r#"export fn main {
   let b = GBuffer([1.i32, 2.i32, 3.i32, 4.i32])!!;
   b.map(fn(val: gi32) = val + 2).read.print;

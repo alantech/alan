@@ -2048,63 +2048,110 @@ fn split_simple_assignment(src: &str) -> Option<(String, String)> {
     Some((ident, rhs))
 }
 
-/// If `stmts` is exactly one meaningful statement of the form `<ident> = <rhs>;`, return the
-/// identifier and the rhs source.
-fn block_single_assignment(stmts: &[parse::Statement]) -> Option<(String, String)> {
-    let mut meaningful = stmts
-        .iter()
-        .filter(|s| !matches!(s, parse::Statement::A(_)));
-    let first = meaningful.next()?;
-    if meaningful.next().is_some() {
-        return None;
+/// If every meaningful statement in `stmts` is a simple reassignment `<ident> = <rhs>` and no
+/// identifier is assigned more than once, return them in order. Returns `None` for any branch that
+/// does something else (a `let`, a `return`, a nested conditional, a bare call, or a repeated
+/// assignment to the same variable), so such branches fall back to the tail-folding lowering.
+fn collect_branch_assignments(stmts: &[parse::Statement]) -> Option<Vec<(String, String)>> {
+    let mut out: Vec<(String, String)> = Vec::new();
+    for s in stmts {
+        match s {
+            parse::Statement::A(_) => continue,
+            parse::Statement::Assignables(a) => {
+                let (var, rhs) = split_simple_assignment(&a.assignables.render())?;
+                if out.iter().any(|(v, _)| v == &var) {
+                    // A variable reassigned twice in one branch can't be captured by a single
+                    // per-variable phi; leave it to the fold.
+                    return None;
+                }
+                out.push((var, rhs));
+            }
+            _ => return None,
+        }
     }
-    match first {
-        parse::Statement::Assignables(a) => split_simple_assignment(&a.assignables.render()),
-        _ => None,
+    if out.is_empty() {
+        None
+    } else {
+        Some(out)
     }
 }
 
-/// Detect a *pure conditional assignment chain*: a conditional whose then-branch (and, recursively,
-/// every `else if`/`else` branch) is a single reassignment to the *same* variable. Returns that
-/// variable's name and a synthesized nested value-`if` expression assigning it. A missing final
-/// `else` defaults to the variable's existing value, so the condition-false path is a no-op.
+/// Detect a *pure conditional assignment* conditional: one whose then-branch (and, recursively,
+/// every `else if`/`else` branch) consists solely of simple reassignments to already-bound
+/// variables (each at most once per branch). Returns, for every variable assigned anywhere in the
+/// chain (in first-assignment order), a synthesized nested value-`if` expression for its post-
+/// conditional value. A branch that doesn't assign a given variable -- including a missing final
+/// `else` -- leaves it unchanged (the arm yields the variable's prior value).
 ///
-/// This lets natural imperative conditional mutation work in *GPU* code: rewritten as
-/// `let <var> = if(<cond>, fn() = <then>, fn() = <else>)` it lowers through the GPU closure-`if`,
-/// which emits a real `var <var>; if (c) { <var> = ...; } else { ... }` WGSL block. The naive
-/// tail-folding lowering (see `conditional_to_microstatements`) instead makes each arm return the
-/// whole `GPGPU[]` shader, which the GPU `if` cannot combine. On the CPU this lowers to the same
-/// native control flow as before, just without duplicating the block tail across both arms.
-fn conditional_assignment_chain(c: &parse::Conditional) -> Option<(String, String)> {
+/// Each variable is then re-bound by `conditional_to_microstatements` with a shadowing
+/// `let <var> = <if-expr>`, rather than folding the block tail into both arms. This is what makes
+/// natural imperative conditional mutation work in *GPU* code: each `let <var> = if(...)` lowers
+/// through the GPU closure-`if` into a real `var <var>; if (c) { <var> = ...; } else { ... }` WGSL
+/// block, so the un-folded tail simply reads the new bindings. The fold instead makes each arm
+/// return the whole `GPGPU[]` shader (which the GPU `if` cannot combine) and, for plain
+/// reassignments, silently drops them (the GPU scalar `store` has no assignable lvalue). On the CPU
+/// it lowers to the same native control flow, just without duplicating the tail.
+fn conditional_assignments(c: &parse::Conditional) -> Option<Vec<(String, String)>> {
     let then_stmts = blocklike_statements(&c.blocklike)?;
-    let (var, then_rhs) = block_single_assignment(&then_stmts)?;
+    let then_assigns = collect_branch_assignments(&then_stmts)?;
     let cond_src = c.assignables.render();
-    let else_expr = match &c.optelsebranch {
-        // No final `else`: the condition-false path leaves the variable unchanged. Clone it (rather
-        // than moving the captured binding) so the synthesized branch closure stays a reusable `Fn`.
-        None => format!("{var}.clone()"),
+    // Each entry is a variable's *already-synthesized* arm expression for the else side: a nested
+    // `if(...)` (for `else if`), a plain rhs (for a final `else`), or absent (no `else`).
+    let else_assigns: Vec<(String, String)> = match &c.optelsebranch {
+        None => Vec::new(),
         Some(eb) => match &*eb.condorblock {
-            parse::CondOrBlock::Conditional(inner) => {
-                let (inner_var, inner_expr) = conditional_assignment_chain(inner)?;
-                if inner_var != var {
-                    return None;
-                }
-                inner_expr
-            }
+            parse::CondOrBlock::Conditional(inner) => conditional_assignments(inner)?,
             parse::CondOrBlock::Blocklike(b) => {
                 let else_stmts = blocklike_statements(b)?;
-                let (else_var, else_rhs) = block_single_assignment(&else_stmts)?;
-                if else_var != var {
-                    return None;
-                }
-                else_rhs
+                collect_branch_assignments(&else_stmts)?
             }
         },
     };
-    Some((
-        var,
-        format!("if({cond_src}, fn() {{ return {then_rhs}; }}, fn() {{ return {else_expr}; }})"),
-    ))
+    // Union of all assigned variables, preserving first-assignment order (then-branch first). A
+    // variable's arm defaults to its own prior value when an arm doesn't assign it.
+    let mut vars: Vec<String> = Vec::new();
+    for (v, _) in then_assigns.iter().chain(else_assigns.iter()) {
+        if !vars.iter().any(|x| x == v) {
+            vars.push(v.clone());
+        }
+    }
+    let arm = |assigns: &[(String, String)], var: &str| -> Option<String> {
+        assigns
+            .iter()
+            .find(|(v, _)| v == var)
+            .map(|(_, e)| e.clone())
+    };
+    let mut result = Vec::new();
+    for var in &vars {
+        let then_e = clone_if_bare_ident(arm(&then_assigns, var).unwrap_or_else(|| var.clone()));
+        let else_e = clone_if_bare_ident(arm(&else_assigns, var).unwrap_or_else(|| var.clone()));
+        result.push((
+            var.clone(),
+            format!("if({cond_src}, fn() {{ return {then_e}; }}, fn() {{ return {else_e}; }})"),
+        ));
+    }
+    Some(result)
+}
+
+/// A branch arm that is just a bare variable reference (`<ident>`) -- which happens for a variable
+/// an arm leaves unchanged (it yields its prior value) or a plain `a = b` copy -- must `.clone()`
+/// the binding: the synthesized arm closure is a reusable `Fn`, so returning the captured variable
+/// directly would move out of it. Non-trivial expressions build fresh values and are left alone.
+fn clone_if_bare_ident(expr: String) -> String {
+    let t = expr.trim();
+    let is_bare_ident = !t.is_empty()
+        && t.bytes().enumerate().all(|(i, b)| {
+            if i == 0 {
+                b.is_ascii_alphabetic() || b == b'_'
+            } else {
+                b.is_ascii_alphanumeric() || b == b'_'
+            }
+        });
+    if is_bare_ident {
+        format!("{t}.clone()")
+    } else {
+        expr
+    }
 }
 
 /// Transform of a block-level `if`/`else` conditional (plus the enclosing block's tail) into a
@@ -2117,29 +2164,37 @@ fn conditional_to_microstatements<'a>(
     scope: Scope<'a>,
     microstatements: Vec<Microstatement>,
 ) -> Result<(Scope<'a>, Vec<Microstatement>), Box<dyn std::error::Error>> {
-    // A pure conditional-assignment chain (every branch just reassigns the same variable) is
-    // lowered as a value-producing `let <var> = if(...)` that shadows the prior binding, rather
-    // than by folding the block tail into both arms. This is what makes natural conditional
-    // mutation work in GPU shaders (see `conditional_assignment_chain`); on the CPU it is
-    // equivalent to the fold but avoids duplicating the tail.
-    if let Some((var_name, if_expr)) = conditional_assignment_chain(conditional) {
-        // Re-bind the target variable to the conditional value with a shadowing `let`, rather than
-        // folding the block tail into both arms. The fresh binding's value carries the conditional
-        // logic (on GPU, the closure-`if`'s `var x; if (c) { x = ...; }` block), so the un-folded
-        // tail simply reads the new binding. Rust shadows natively; the JS backend renders a
-        // re-declaration of an existing name as a plain reassignment (see `from_microstatement`).
-        let decl_src = format!("let {var_name} = {if_expr};");
-        let parsed = match parse::statement(&decl_src) {
-            Ok((rem, stmt)) if rem.trim().is_empty() => stmt,
-            _ => {
-                return Err(format!(
-                    "Failed to synthesize a conditional assignment from:\n{decl_src}"
-                )
-                .into())
-            }
-        };
-        let res = statement_to_microstatements(&parsed, parent_fn, scope, microstatements)?;
-        return statements_to_microstatements(tail, parent_fn, res.0, res.1);
+    // A pure conditional-assignment conditional (every branch only reassigns already-bound
+    // variables) is lowered as one value-producing `let <var> = if(...)` per assigned variable,
+    // each shadowing its prior binding, rather than by folding the block tail into both arms. This
+    // is what makes natural conditional mutation work in GPU shaders (see `conditional_assignments`);
+    // on the CPU it is equivalent to the fold but avoids duplicating the tail.
+    if let Some(assignments) = conditional_assignments(conditional) {
+        // Re-bind each conditionally-assigned variable to its post-conditional value with a
+        // shadowing `let`, rather than folding the block tail into both arms. Each fresh binding's
+        // value carries the conditional logic (on GPU, the closure-`if`'s `var x; if (c) { x = ...;
+        // }` block), so the un-folded tail simply reads the new bindings. Bindings are emitted in
+        // first-assignment order so an arm referencing an earlier-assigned variable sees its
+        // updated value. Rust shadows natively; the JS backend renders a re-declaration of an
+        // existing name as a plain reassignment (see `from_microstatement`).
+        let mut scope = scope;
+        let mut microstatements = microstatements;
+        for (var_name, if_expr) in assignments {
+            let decl_src = format!("let {var_name} = {if_expr};");
+            let parsed = match parse::statement(&decl_src) {
+                Ok((rem, stmt)) if rem.trim().is_empty() => stmt,
+                _ => {
+                    return Err(format!(
+                        "Failed to synthesize a conditional assignment from:\n{decl_src}"
+                    )
+                    .into())
+                }
+            };
+            let res = statement_to_microstatements(&parsed, parent_fn, scope, microstatements)?;
+            scope = res.0;
+            microstatements = res.1;
+        }
+        return statements_to_microstatements(tail, parent_fn, scope, microstatements);
     }
 
     let cond_src = conditional.assignables.render();
