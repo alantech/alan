@@ -17,7 +17,6 @@ macro_rules! test {
         mod $rule {
             #[test]
             fn $rule() -> Result<(), Box<dyn std::error::Error>> {
-                alan_compiler::program::Program::set_target_lang_rs();
                 let filename = format!("{}.ln", stringify!($rule));
                 match std::fs::write(&filename, $code) {
                     Ok(_) => { /* Do nothing */ }
@@ -25,50 +24,71 @@ macro_rules! test {
                         return Err(format!("Unable to write {} to disk. {:?}", filename, e).into());
                     }
                 };
-                match crate::compile::build(filename.to_string(), "release") {
-                    Ok(_) => { /* Do nothing */ }
-                    Err(e) => {
-                        std::fs::remove_file(&filename)?;
-                        return Err(format!("Failed to compile to Rust {:?}", e).into());
+                let rs_filename = filename.clone();
+                let js_filename = filename.clone();
+                let rs_handle = std::thread::spawn(move || -> Result<(), String> {
+                    alan_compiler::program::Program::set_target_lang_rs();
+                    match crate::compile::build(rs_filename, "release") {
+                        Ok(_) => Ok(()),
+                        Err(e) => Err(format!("Failed to compile to Rust {:?}", e)),
                     }
-                };
-                let cmd = if cfg!(windows) {
-                    format!(".\\{}.exe", stringify!($rule))
-                } else {
-                    format!("./{}", stringify!($rule))
-                };
-                let run = match std::process::Command::new(cmd.clone()).output() {
-                    Ok(a) => Ok(a),
-                    Err(e) => Err(format!("Could not run the test binary {:?}", e)),
-                }?;
-                $( $type!($test_val, true, &run); )+
-                match std::fs::remove_file(&cmd) {
-                    Ok(a) => Ok(a),
-                    Err(e) => Err(format!("Could not remove the test binary {:?}", e)),
-                }?;
-                alan_compiler::program::Program::set_target_lang_js();
-                match crate::compile::web(filename.to_string()) {
-                    Ok(_) => { /* Do nothing */ }
-                    Err(e) => {
-                        std::fs::remove_file(&filename)?;
-                        return Err(format!("Failed to compile to Javascript {:?}", e).into());
+                });
+                let js_handle = std::thread::spawn(move || -> Result<(), String> {
+                    alan_compiler::program::Program::set_target_lang_js();
+                    match crate::compile::web(js_filename) {
+                        Ok(_) => Ok(()),
+                        Err(e) => Err(format!("Failed to compile to Javascript {:?}", e)),
                     }
+                });
+                let (rs_ok, rs_err) = match rs_handle.join() {
+                    Ok(Ok(())) => (true, None),
+                    Ok(Err(e)) => (false, Some(e)),
+                    Err(e) => (false, Some(format!("Rust compilation thread panicked: {:?}", e))),
                 };
-                let cmd = if cfg!(windows) {
-                    format!(".\\{}.js", stringify!($rule))
-                } else {
-                    format!("./{}.js", stringify!($rule))
+                let (js_ok, js_err) = match js_handle.join() {
+                    Ok(Ok(())) => (true, None),
+                    Ok(Err(e)) => (false, Some(e)),
+                    Err(e) => (false, Some(format!("Javascript compilation thread panicked: {:?}", e))),
                 };
-                let run = match std::process::Command::new("node").arg(cmd.to_string()).output() {
-                    Ok(a) => Ok(a),
-                    Err(e) => Err(format!("Could not run the test JS code {:?}", e)),
-                }?;
-                $( $type!($test_val, false, &run); )+
-                match std::fs::remove_file(&cmd) {
-                    Ok(a) => Ok(a),
-                    Err(e) => Err(format!("Could not remove the generated JS file {:?}", e)),
-                }?;
+                if rs_ok {
+                    let rs_cmd = if cfg!(windows) {
+                        format!(".\\{}.exe", stringify!($rule))
+                    } else {
+                        format!("./{}", stringify!($rule))
+                    };
+                    let rs_run = match std::process::Command::new(rs_cmd.clone()).output() {
+                        Ok(a) => Ok(a),
+                        Err(e) => Err(format!("Could not run the test binary {:?}", e)),
+                    }?;
+                    $( $type!($test_val, true, &rs_run); )+
+                    match std::fs::remove_file(&rs_cmd) {
+                        Ok(a) => Ok(a),
+                        Err(e) => Err(format!("Could not remove the test binary {:?}", e)),
+                    }?;
+                }
+                if js_ok {
+                    let js_cmd = if cfg!(windows) {
+                        format!(".\\{}.js", stringify!($rule))
+                    } else {
+                        format!("./{}.js", stringify!($rule))
+                    };
+                    let js_run = match std::process::Command::new("node").arg(js_cmd.to_string()).output() {
+                        Ok(a) => Ok(a),
+                        Err(e) => Err(format!("Could not run the test JS code {:?}", e)),
+                    }?;
+                    $( $type!($test_val, false, &js_run); )+
+                    match std::fs::remove_file(&js_cmd) {
+                        Ok(a) => Ok(a),
+                        Err(e) => Err(format!("Could not remove the generated JS file {:?}", e)),
+                    }?;
+                }
                 std::fs::remove_file(&filename)?;
+                if let Some(e) = rs_err {
+                    return Err(e.into());
+                }
+                if let Some(e) = js_err {
+                    return Err(e.into());
+                }
                 Ok(())
             }
         }
@@ -78,57 +98,77 @@ macro_rules! test {
         mod $rule {
             #[test]
             fn $rule() -> Result<(), Box<dyn std::error::Error>> {
-                alan_compiler::program::Program::set_target_lang_rs();
                 $( match std::fs::write($filename, $code) {
                     Ok(_) => { /* Do nothing */ }
                     Err(e) => {
                         return Err(format!("Unable to write {} to disk. {:?}", $filename, e).into());
                     }
                 })+
-                match crate::compile::build(format!("{}.ln", $entryfile), "release") {
-                    Ok(_) => { /* Do nothing */ }
-                    Err(e) => {
-                        $( std::fs::remove_file($filename)?; )+
-                        return Err(format!("Failed to compile to Rust {:?}", e).into());
+                let rs_entry = format!("{}.ln", $entryfile);
+                let js_entry = rs_entry.clone();
+                let rs_handle = std::thread::spawn(move || -> Result<(), String> {
+                    alan_compiler::program::Program::set_target_lang_rs();
+                    match crate::compile::build(rs_entry, "release") {
+                        Ok(_) => Ok(()),
+                        Err(e) => Err(format!("Failed to compile to Rust {:?}", e)),
                     }
-                };
-                let cmd = if cfg!(windows) {
-                    format!(".\\{}.exe", $entryfile)
-                } else {
-                    format!("./{}", $entryfile)
-                };
-                let run = match std::process::Command::new(cmd.clone()).output() {
-                    Ok(a) => Ok(a),
-                    Err(e) => Err(format!("Could not run the test binary {:?}", e)),
-                }?;
-                $( $type!($test_val, true, &run); )+
-                match std::fs::remove_file(&cmd) {
-                    Ok(a) => Ok(a),
-                    Err(e) => Err(format!("Could not remove the test binary {:?}", e)),
-                }?;
-                alan_compiler::program::Program::set_target_lang_js();
-                match crate::compile::web(format!("{}.ln", $entryfile)) {
-                    Ok(_) => { /* Do nothing */ }
-                    Err(e) => {
-                        $( std::fs::remove_file($filename)?; )+
-                        return Err(format!("Failed to compile to Javascript {:?}", e).into());
+                });
+                let js_handle = std::thread::spawn(move || -> Result<(), String> {
+                    alan_compiler::program::Program::set_target_lang_js();
+                    match crate::compile::web(js_entry) {
+                        Ok(_) => Ok(()),
+                        Err(e) => Err(format!("Failed to compile to Javascript {:?}", e)),
                     }
+                });
+                let (rs_ok, rs_err) = match rs_handle.join() {
+                    Ok(Ok(())) => (true, None),
+                    Ok(Err(e)) => (false, Some(e)),
+                    Err(e) => (false, Some(format!("Rust compilation thread panicked: {:?}", e))),
                 };
-                let cmd = if cfg!(windows) {
-                    format!(".\\{}.js", $entryfile)
-                } else {
-                    format!("./{}.js", $entryfile)
+                let (js_ok, js_err) = match js_handle.join() {
+                    Ok(Ok(())) => (true, None),
+                    Ok(Err(e)) => (false, Some(e)),
+                    Err(e) => (false, Some(format!("Javascript compilation thread panicked: {:?}", e))),
                 };
-                let run = match std::process::Command::new("node").arg(cmd.to_string()).output() {
-                    Ok(a) => Ok(a),
-                    Err(e) => Err(format!("Could not run the test JS code {:?}", e)),
-                }?;
-                $( $type!($test_val, false, &run); )+
-                match std::fs::remove_file(&cmd) {
-                    Ok(a) => Ok(a),
-                    Err(e) => Err(format!("Could not remove the generated JS file {:?}", e)),
-                }?;
+                if rs_ok {
+                    let rs_cmd = if cfg!(windows) {
+                        format!(".\\{}.exe", $entryfile)
+                    } else {
+                        format!("./{}", $entryfile)
+                    };
+                    let rs_run = match std::process::Command::new(rs_cmd.clone()).output() {
+                        Ok(a) => Ok(a),
+                        Err(e) => Err(format!("Could not run the test binary {:?}", e)),
+                    }?;
+                    $( $type!($test_val, true, &rs_run); )+
+                    match std::fs::remove_file(&rs_cmd) {
+                        Ok(a) => Ok(a),
+                        Err(e) => Err(format!("Could not remove the test binary {:?}", e)),
+                    }?;
+                }
+                if js_ok {
+                    let js_cmd = if cfg!(windows) {
+                        format!(".\\{}.js", $entryfile)
+                    } else {
+                        format!("./{}.js", $entryfile)
+                    };
+                    let js_run = match std::process::Command::new("node").arg(js_cmd.to_string()).output() {
+                        Ok(a) => Ok(a),
+                        Err(e) => Err(format!("Could not run the test JS code {:?}", e)),
+                    }?;
+                    $( $type!($test_val, false, &js_run); )+
+                    match std::fs::remove_file(&js_cmd) {
+                        Ok(a) => Ok(a),
+                        Err(e) => Err(format!("Could not remove the generated JS file {:?}", e)),
+                    }?;
+                }
                 $( std::fs::remove_file($filename)?; )+
+                if let Some(e) = rs_err {
+                    return Err(e.into());
+                }
+                if let Some(e) = js_err {
+                    return Err(e.into());
+                }
                 Ok(())
             }
         }
@@ -140,7 +180,6 @@ macro_rules! test_gpgpu {
         mod $rule {
             #[test]
             fn $rule() -> Result<(), Box<dyn std::error::Error>> {
-                alan_compiler::program::Program::set_target_lang_rs();
                 let filename = format!("{}.ln", stringify!($rule));
                 match std::fs::write(&filename, $code) {
                     Ok(_) => { /* Do nothing */ }
@@ -148,48 +187,60 @@ macro_rules! test_gpgpu {
                         return Err(format!("Unable to write {} to disk. {:?}", filename, e).into());
                     }
                 };
-                match crate::compile::build(filename.to_string(), "release") {
-                    Ok(_) => { /* Do nothing */ }
-                    Err(e) => {
-                        std::fs::remove_file(&filename)?;
-                        return Err(format!("Failed to compile to Rust {:?}", e).into());
+                let rs_filename = filename.clone();
+                let rs_handle = std::thread::spawn(move || -> Result<(), String> {
+                    alan_compiler::program::Program::set_target_lang_rs();
+                    match crate::compile::build(rs_filename, "release") {
+                        Ok(_) => Ok(()),
+                        Err(e) => Err(format!("Failed to compile to Rust {:?}", e)),
                     }
-                };
-                let cmd = if cfg!(windows) {
-                    format!(".\\{}.exe", stringify!($rule))
+                });
+                let (js_ok, js_err) = if cfg!(all(target_os = "macos", target_arch = "aarch64")) {
+                    let js_filename = filename.clone();
+                    let js_handle = std::thread::spawn(move || -> Result<(), String> {
+                        alan_compiler::program::Program::set_target_lang_js();
+                        match crate::compile::web(js_filename) {
+                            Ok(_) => Ok(()),
+                            Err(e) => Err(format!("Failed to compile to Javascript {:?}", e)),
+                        }
+                    });
+                    match js_handle.join() {
+                        Ok(Ok(())) => (true, None),
+                        Ok(Err(e)) => (false, Some(e)),
+                        Err(e) => (false, Some(format!("Javascript compilation thread panicked: {:?}", e))),
+                    }
                 } else {
-                    format!("./{}", stringify!($rule))
+                    (true, None)
                 };
-                let run = match std::process::Command::new(cmd.clone()).output() {
-                    Ok(a) => Ok(a),
-                    Err(e) => Err(format!("Could not run the test binary {:?}", e)),
-                }?;
+                let (rs_ok, rs_err) = match rs_handle.join() {
+                    Ok(Ok(())) => (true, None),
+                    Ok(Err(e)) => (false, Some(e)),
+                    Err(e) => (false, Some(format!("Rust compilation thread panicked: {:?}", e))),
+                };
+                if rs_ok {
+                    let rs_cmd = if cfg!(windows) {
+                        format!(".\\{}.exe", stringify!($rule))
+                    } else {
+                        format!("./{}", stringify!($rule))
+                    };
+                    let rs_run = match std::process::Command::new(rs_cmd.clone()).output() {
+                        Ok(a) => Ok(a),
+                        Err(e) => Err(format!("Could not run the test binary {:?}", e)),
+                    }?;
 
-                $( $type!($test_val, true, &run); )+
-                match std::fs::remove_file(&cmd) {
-                    Ok(a) => Ok(a),
-                    Err(e) => Err(format!("Could not remove the test binary {:?}", e)),
-                }?;
+                    $( $type!($test_val, true, &rs_run); )+
+                    match std::fs::remove_file(&rs_cmd) {
+                        Ok(a) => Ok(a),
+                        Err(e) => Err(format!("Could not remove the test binary {:?}", e)),
+                    }?;
+                }
                 // TODO: For now, Chromium only allows WebGPU on these two platforms (unless you're
                 // willing to muck about with CLI arguments *and* config flags simultaneously to
                 // enable it for Linux, which Playwright doesn't even support...
                 // My playwright scripts only work on Linux and MacOS, though, so that reduces it
                 // to just MacOS to test this on.
                 // if cfg!(windows) || cfg!(macos) {
-                if cfg!(all(target_os = "macos", target_arch = "aarch64")) {
-                    alan_compiler::program::Program::set_target_lang_js();
-                    match crate::compile::web(filename.to_string()) {
-                        Ok(_) => { /* Do nothing */ }
-                        Err(e) => {
-                            std::fs::remove_file(&filename)?;
-                            return Err(format!("Failed to compile to Javascript {:?}", e).into());
-                        }
-                    };
-                    let jsfile = if cfg!(windows) {
-                        format!(".\\{}.js", stringify!($rule))
-                    } else {
-                        format!("./{}.js", stringify!($rule))
-                    };
+                if cfg!(all(target_os = "macos", target_arch = "aarch64")) && js_ok {
                     // We need to create an HTML file that will run the generated code and a node
                     // script to fire up Playwright and grab the console.log output and shove it
                     // into stdout for the rest of the test suite to grab. Because the outermost
@@ -197,6 +248,11 @@ macro_rules! test_gpgpu {
                     // taking advantage of that to have the latter parts pre-written, but we can't
                     // do that for the HTML file because the script it loads is different for each
                     // test.
+                    let jsfile = if cfg!(windows) {
+                        format!(".\\{}.js", stringify!($rule))
+                    } else {
+                        format!("./{}.js", stringify!($rule))
+                    };
                     let htmlfile = if cfg!(windows) {
                         format!(".\\{}.html", stringify!($rule))
                     } else {
@@ -238,6 +294,12 @@ macro_rules! test_gpgpu {
                     }?;
                 }
                 std::fs::remove_file(&filename)?;
+                if let Some(e) = rs_err {
+                    return Err(e.into());
+                }
+                if let Some(e) = js_err {
+                    return Err(e.into());
+                }
                 Ok(())
             }
         }
