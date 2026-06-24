@@ -5600,7 +5600,7 @@ fn if(c: gbool, t: f64, f: f64) = if(c, t.gf32, f.gf32);
 fn if(c: gbool, t: i64, f: i64) = if(c, t.gi32, f.gi32);
 fn if(c: gbool, t: u64, f: u64) = if(c, t.gu32, f.gu32);
 fn if(c: gbool, t: bool, f: bool) = if(c, t.gbool, f.gbool);
-fn if(c: gbool, t: () -> ()) = if(c, t, fn() = ());
+fn if(c: gbool, t: () -> ()) = if(c, t, fn() = true.gbool);
 fn if(c: gbool, t: () -> (), f: () -> ()) {
   let tv = t();
   let fv = f();
@@ -5626,7 +5626,7 @@ fn if(c: gbool, t: () -> (), f: () -> ()) {
     .concat(fv.statements)
     .concat(Dict{string, string}("if_void_block", block));
   let buffers = c.buffers.union(tv.buffers).union(fv.buffers);
-  return {()}(c.varName, statements, buffers);
+  return {gbool}(c.varName, statements, buffers);
 }
 /// GPU Boolean and Bitwise methods
 fn not(a: gu32) = gPrefix('!', 'not', a);
