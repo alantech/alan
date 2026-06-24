@@ -4551,6 +4551,10 @@ impl CType {
         }
     }
     pub fn anyof(args: Vec<Arc<CType>>) -> Arc<CType> {
+        // `AnyOf{...}` is a type-position construct meaning "resolves to exactly one of these,
+        // chosen by context" (see `CType::AnyOf`). It must produce the `AnyOf` variant -- not
+        // `Either` (a tagged union that physically holds one variant at runtime). Nested `AnyOf`s
+        // are flattened into a single set.
         let mut out_vec = Vec::new();
         for arg in args {
             match &*arg {
@@ -4562,7 +4566,49 @@ impl CType {
                 _other => out_vec.push(arg),
             }
         }
-        Arc::new(CType::Either(out_vec, Vec::new()))
+        Arc::new(CType::AnyOf(out_vec))
+    }
+    /// Strip the value-position wrappers (`Type`/`Group` aliases plus `Deref`/`Mut`/`Own`/`Shared`)
+    /// from a type to expose the underlying "core" type. Used when matching a numeric-literal
+    /// candidate against a function parameter type (which may be e.g. `Deref{i64}`).
+    pub fn strip_value_wrappers(self: Arc<CType>) -> Arc<CType> {
+        let t = self.degroup();
+        match &*t {
+            CType::Deref(inner) | CType::Mut(inner) | CType::Own(inner) | CType::Shared(inner) => {
+                inner.clone().strip_value_wrappers()
+            }
+            _ => t,
+        }
+    }
+    /// Collapse an `AnyOf` to its single default type by picking the *last*
+    /// candidate (the highest-priority entry under the FUI ordering used when
+    /// typing numeric literals: Floats, Unsigned ints, signed Ints, ascending bit
+    /// width). This is the "pick last in FUI order" rule that resolves a numeric
+    /// literal whose type was never narrowed by context. Non-`AnyOf` types are
+    /// returned unchanged.
+    pub fn collapse_anyof_default(self: Arc<CType>) -> Arc<CType> {
+        match &*self {
+            CType::AnyOf(ts) => {
+                // Only collapse "value" `AnyOf`s such as numeric-literal candidate sets. `AnyOf`s
+                // whose members are function types come from overload resolution / operator-return
+                // merging and must be left intact so higher-order dispatch can narrow them.
+                fn is_function_like(t: &Arc<CType>) -> bool {
+                    match &*t.clone().degroup() {
+                        CType::Function(..) => true,
+                        CType::Generic(_, _, inner) => is_function_like(inner),
+                        _ => false,
+                    }
+                }
+                if ts.iter().any(is_function_like) {
+                    return self;
+                }
+                match ts.last() {
+                    Some(t) => t.clone().collapse_anyof_default(),
+                    None => self,
+                }
+            }
+            _ => self,
+        }
     }
     pub fn field(mut args: Vec<Arc<CType>>) -> Arc<CType> {
         if args.len() != 2 {

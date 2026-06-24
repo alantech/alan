@@ -382,7 +382,9 @@ pub fn ctype_to_rtype(
                 Ok((Arc::new(CType::Either(ts.clone(), Vec::new())).to_callable_string(), deps))
             }
         }
-        CType::AnyOf(_) => Ok(("".to_string(), deps)), // Does this make any sense in Rust?
+        // A numeric literal whose `AnyOf` type was never narrowed by context resolves to its FUI
+        // default (the last candidate) for codegen. `AnyOf` is otherwise a compile-time-only set.
+        CType::AnyOf(_) => ctype_to_rtype(ctype.clone().collapse_anyof_default(), deps),
         CType::Buffer(t, s) => {
             let res = ctype_to_rtype(t.clone(), deps)?;
             let t = res.0;

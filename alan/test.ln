@@ -568,7 +568,6 @@ export fn{Test} main {
         .assert(eq, 3.u32.ftb, 0.u32)
         .assert(eq, 2_147_483_648.u32.ftb, 31.u32));
 
-  // TODO: u64 representation
   test.describe("Basic math tests u64")
     .it("add")
     .assert(eq, 1.u64 + 2.u64, 3.u64)
@@ -591,26 +590,25 @@ export fn{Test} main {
         .assert(eq, 0.u64.clz, 64.u64)
         .assert(eq, 1.u64.clz, 63.u64)
         .assert(eq, 2.u64.clz, 62.u64)
-        .assert(eq, -9_223_372_036_854_775_808.asU64.clz, 0.u64)) // TODO: Fix u64 representation
+        .assert(eq, 9_223_372_036_854_775_808.u64.clz, 0.u64))
     .it("ones", fn(test: Mut{Testing}) =
       test
         .assert(eq, 1.u64.ones, 1.u64)
         .assert(eq, 2.u64.ones, 1.u64)
         .assert(eq, 3.u64.ones, 2.u64)
-        .assert(eq, -1.asU64.ones, 64.u64)) // TODO: Same u64 representation issue
+        .assert(eq, 18_446_744_073_709_551_615.u64.ones, 64.u64))
     .it("ctz", fn(test: Mut{Testing}) =
       test
         .assert(eq, 0.u64.ctz, 64.u64)
         .assert(eq, 1.u64.ctz, 0.u64)
         .assert(eq, 2.u64.ctz, 1.u64)
-        .assert(eq, -9_223_372_036_854_775_808.asU64.ctz, 63.u64)) // TODO: Same u64 representation
+        .assert(eq, 9_223_372_036_854_775_808.u64.ctz, 63.u64))
     .it('reverseBits', fn(test: Mut{Testing}) =
       test
         .assert(eq, 0.u64.reverseBits, 0.u64)
-        .assert(eq, 1.u64.reverseBits, -9_223_372_036_854_775_808.asU64)        // TODO: u64 representation
-
+        .assert(eq, 1.u64.reverseBits, 9_223_372_036_854_775_808.u64)
         .assert(eq, 2.u64.reverseBits, 4_611_686_018_427_387_904.u64)
-        .assert(eq, -9_223_372_036_854_775_808.asU64.reverseBits, 1.u64))    // TODO: u64 representation
+        .assert(eq, 9_223_372_036_854_775_808.u64.reverseBits, 1.u64))
 
     .it('extractBits', fn(test: Mut{Testing}) =
       test
@@ -638,17 +636,17 @@ export fn{Test} main {
     )
     .it("flb", fn(test: Mut{Testing}) =
       test
-        .assert(eq, 0.u64.flb, -9_223_372_036_854_775_808.asU64) // TODO: Same u64 representation
+        .assert(eq, 0.u64.flb, 9_223_372_036_854_775_808.u64)
         .assert(eq, 1.u64.flb, 0.u64)
         .assert(eq, 2.u64.flb, 1.u64)
-        .assert(eq, -9_223_372_036_854_775_808.asU64.flb, 63.u64)) // TODO: Same u64 representation
+        .assert(eq, 9_223_372_036_854_775_808.u64.flb, 63.u64))
     .it("ftb", fn(test: Mut{Testing}) =
       test
-        .assert(eq, 0.u64.ftb, -9_223_372_036_854_775_808.asU64) // TODO: u64 representation
+        .assert(eq, 0.u64.ftb, 9_223_372_036_854_775_808.u64)
         .assert(eq, 1.u64.ftb, 0.u64)
         .assert(eq, 2.u64.ftb, 1.u64)
         .assert(eq, 3.u64.ftb, 0.u64)
-        .assert(eq, -9_223_372_036_854_775_808.asU64.ftb, 63.u64));
+        .assert(eq, 9_223_372_036_854_775_808.u64.ftb, 63.u64));
 
   test.describe("Basic math tests f32")
     .it("add")
@@ -769,7 +767,6 @@ export fn{Test} main {
     .it("string max")
     .assert(eq, max(3.string, 5.string), "5");
 
-  // TODO: u64 numeric constants
   test.describe("Bitwise math test")
     .it("i8")
     .assert(eq, 1.i8 & 2.i8, 0.i8)
@@ -831,10 +828,10 @@ export fn{Test} main {
     .assert(eq, 1.u64 & 2.u64, 0.u64)
     .assert(eq, 1.u64 | 3.u64, 3.u64)
     .assert(eq, 5.u64 ^ 3.u64, 6.u64)
-    .assert(eq, !(0.u64), -1.asU64) // TODO: Fix u64 numeric constants
-    .assert(eq, 1.u64 !& 2.u64, -1.asU64) // TODO: u64 numeric constants
-    .assert(eq, 1.u64 !| 2.u64, -4.asU64) // TODO: u64 numeric constants
-    .assert(eq, 5.u64 !^ 3.u64, -7.asU64);
+    .assert(eq, !(0.u64), 18_446_744_073_709_551_615.u64)
+    .assert(eq, 1.u64 !& 2.u64, 18_446_744_073_709_551_615.u64)
+    .assert(eq, 1.u64 !| 2.u64, 18_446_744_073_709_551_612.u64)
+    .assert(eq, 5.u64 !^ 3.u64, 18_446_744_073_709_551_609.u64);
 
   test.describe("Cross Product").it("")
     .assert(

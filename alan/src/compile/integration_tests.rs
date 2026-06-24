@@ -524,6 +524,75 @@ test!(print_function => r#"export fn main() {
     stdout "Hello, World\n";
     status 0;
 );
+// Numeric constant type selection (issue #215): a numeric literal is typed as an `AnyOf` of the
+// numeric types that can hold its value and is narrowed by context (annotation/accessor) or, when
+// unconstrained, collapses to the last candidate in FUI order (Floats, Unsigned, Ints, ascending
+// bit width). See `docs/int-float-constant-selection-plan.md`.
+test!(numeric_const_u64_annotation => r#"export fn main {
+  let big: u64 = 18446744073709551615;
+  print(big);
+}
+"#;
+    stdout "18446744073709551615\n";
+    status 0;
+);
+test!(numeric_const_u64_default => r#"export fn main {
+  // No annotation: above i64::MAX, so the only viable integer type is u64, which (being last in
+  // FUI order among the survivors) becomes the default.
+  let big = 18446744073709551615;
+  print(big);
+}
+"#;
+    stdout "18446744073709551615\n";
+    status 0;
+);
+test!(numeric_const_u64_cast => r#"export fn main {
+  // The original issue #215 repro: casting a literal larger than i64::MAX used to overflow the
+  // intermediate i64. The literal now resolves directly to u64.
+  let big = 18446744073709551615.u64;
+  print(big);
+}
+"#;
+    stdout "18446744073709551615\n";
+    status 0;
+);
+test!(numeric_const_small_unsigned => r#"export fn main {
+  let x: u8 = 200;
+  print(x);
+}
+"#;
+    stdout "200\n";
+    status 0;
+);
+test!(numeric_const_int_literal_as_float => r#"export fn main {
+  // An integer-form literal narrowed to a float type renders as a float literal.
+  let x: f32 = 5;
+  print(x);
+}
+"#;
+    stdout "5\n";
+    status 0;
+);
+test!(numeric_const_implicit_param => r#"fn foo(x: u8) = print(x);
+export fn main {
+  // A bare literal argument is narrowed to the parameter's concrete type (u8) -- no annotation
+  // or cast needed.
+  foo(200);
+}
+"#;
+    stdout "200\n";
+    status 0;
+);
+test!(numeric_const_implicit_param_pruned => r#"fn foo(x: u8) = print(x);
+fn foo(x: i32) = print(x);
+export fn main {
+  // 300 does not fit u8, so only the i32 overload is viable and is selected.
+  foo(300);
+}
+"#;
+    stdout "300\n";
+    status 0;
+);
 test!(duration_print => r#"export fn main() {
   const i = now();
   wait(110); // Increased from 10ms to 110ms because the node.js event loop seems less
