@@ -1357,6 +1357,30 @@ export function contextOpaque(context) {
   context.transparent = false;
 }
 
+export function contextMouseLeft(context) {
+  return new U32(context.mouseLeft ? 1 : 0);
+}
+
+export function contextMouseRight(context) {
+  return new U32(context.mouseRight ? 1 : 0);
+}
+
+export function contextMouseMiddle(context) {
+  return new U32(context.mouseMiddle ? 1 : 0);
+}
+
+export function contextMouseWheelX(context) {
+  let v = context.mouseWheelX;
+  context.mouseWheelX = 0;
+  return new F32(v);
+}
+
+export function contextMouseWheelY(context) {
+  let v = context.mouseWheelY;
+  context.mouseWheelY = 0;
+  return new F32(v);
+}
+
 export function contextRuntime(context) {
   return f32AsU32(new F32((performance.now() - context.start) / 1000.0));
 }
@@ -1392,6 +1416,11 @@ export async function runWindow(initialContextFn, contextFn, gpgpuShaderFn) {
     bufferWidth: undefined,
     mouseX: undefined,
     mouseY: undefined,
+    mouseLeft: false,
+    mouseRight: false,
+    mouseMiddle: false,
+    mouseWheelX: 0,
+    mouseWheelY: 0,
     cursorVisible: true,
     transparent: false,
   };
@@ -1425,6 +1454,20 @@ export async function runWindow(initialContextFn, contextFn, gpgpuShaderFn) {
       context.mouseY = new U32(event.offsetY);
     }
   });
+  context.canvas.addEventListener("mousedown", (event) => {
+    if (event.button === 0) context.mouseLeft = true;
+    else if (event.button === 1) context.mouseMiddle = true;
+    else if (event.button === 2) context.mouseRight = true;
+  });
+  context.canvas.addEventListener("mouseup", (event) => {
+    if (event.button === 0) context.mouseLeft = false;
+    else if (event.button === 1) context.mouseMiddle = false;
+    else if (event.button === 2) context.mouseRight = false;
+  });
+  context.canvas.addEventListener("wheel", (event) => {
+    context.mouseWheelX += event.deltaX;
+    context.mouseWheelY += event.deltaY;
+  }, { passive: true });
   let surface = context.canvas.getContext('webgpu');
   let adapter = await navigator.gpu.requestAdapter();
   let device = await adapter.requestDevice();

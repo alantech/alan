@@ -1,3 +1,4 @@
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use super::ctype::{withtypeoperatorslist_to_ctype, CType};
@@ -2017,6 +2018,219 @@ fn append_tail(
     block
 }
 
+/// If `src` is a simple reassignment `<ident> = <rhs>` (where the `=` is the store operator, not a
+/// `==`/`=>`/`<=`/`>=`/`!=` comparison -- the leading-identifier rule already rules out the latter
+/// three), return the identifier and the right-hand-side source. Used to recognize the pure
+/// conditional-assignment shape that can be lowered as a value `if` rather than a tail fold.
+fn split_simple_assignment(src: &str) -> Option<(String, String)> {
+    let s = src.trim();
+    let b = s.as_bytes();
+    let mut i = 0;
+    if i >= b.len() || !(b[i].is_ascii_alphabetic() || b[i] == b'_') {
+        return None;
+    }
+    while i < b.len() && (b[i].is_ascii_alphanumeric() || b[i] == b'_') {
+        i += 1;
+    }
+    let ident = s[0..i].to_string();
+    while i < b.len() && b[i].is_ascii_whitespace() {
+        i += 1;
+    }
+    if i >= b.len() || b[i] != b'=' {
+        return None;
+    }
+    if i + 1 < b.len() && (b[i + 1] == b'=' || b[i + 1] == b'>') {
+        return None;
+    }
+    let rhs = s[i + 1..].trim().to_string();
+    if rhs.is_empty() {
+        return None;
+    }
+    Some((ident, rhs))
+}
+
+/// Is `s` a single identifier (`[A-Za-z_][A-Za-z0-9_]*`), ignoring surrounding whitespace?
+fn is_bare_ident(s: &str) -> bool {
+    let t = s.trim();
+    !t.is_empty()
+        && t.bytes().enumerate().all(|(i, b)| {
+            if i == 0 {
+                b.is_ascii_alphabetic() || b == b'_'
+            } else {
+                b.is_ascii_alphanumeric() || b == b'_'
+            }
+        })
+}
+
+/// Substitute, in a single left-to-right pass, every whole-word identifier in `expr` that appears in
+/// `subs` with its mapped expression. Used to SSA-ify a conditional branch: as we walk a branch's
+/// statements we fold each reassignment / local `let` into a running expression per variable, so a
+/// branch like `acc = acc + 10; acc = acc + 100` collapses to `(acc + 10) + 100` and
+/// `let b = val + 1; acc = b * 2` collapses to `(val + 1) * 2`. A replacement that is itself a bare
+/// identifier is spliced without parentheses (so a final whole-arm reference like `acc` is still
+/// recognized by `clone_if_bare_ident`); anything else is wrapped in parentheses to preserve
+/// evaluation order. The single pass (replacements are not re-scanned) keeps a variable that refers
+/// to its own prior value -- `acc = acc + 10` -> `subs[acc] = acc + 10` -- from expanding forever.
+fn substitute_vars(expr: &str, subs: &HashMap<String, String>) -> String {
+    let b = expr.as_bytes();
+    let mut out = String::with_capacity(expr.len());
+    let mut i = 0;
+    while i < b.len() {
+        if b[i].is_ascii_alphabetic() || b[i] == b'_' {
+            let start = i;
+            i += 1;
+            while i < b.len() && (b[i].is_ascii_alphanumeric() || b[i] == b'_') {
+                i += 1;
+            }
+            let ident = &expr[start..i];
+            match subs.get(ident) {
+                Some(rep) if is_bare_ident(rep) => out.push_str(rep),
+                Some(rep) => {
+                    out.push('(');
+                    out.push_str(rep);
+                    out.push(')');
+                }
+                None => out.push_str(ident),
+            }
+        } else {
+            out.push(b[i] as char);
+            i += 1;
+        }
+    }
+    out
+}
+
+/// SSA-ify a conditional branch into one composed expression per *outer* variable it reassigns.
+/// Walking the branch in order, each `let`/`const` introduces a branch-local binding (inlined into
+/// later statements, never escaping) and each `<ident> = <rhs>` updates that variable's running
+/// expression (with prior bindings substituted in). The returned list -- outer variables in
+/// first-assignment order, paired with their final composed right-hand side -- feeds the per-variable
+/// phi in `conditional_assignments`. This handles branches with repeated assignment to one variable,
+/// branch-local `let`s, and cross-references between assigned variables, which a naive
+/// one-assignment-per-variable scan could not. Returns `None` for a branch that does something the
+/// fold must still own: a nested conditional, a `return`, or a bare call.
+fn collect_branch_assignments(stmts: &[parse::Statement]) -> Option<Vec<(String, String)>> {
+    let mut subs: HashMap<String, String> = HashMap::new();
+    let mut locals: HashSet<String> = HashSet::new();
+    let mut outer_order: Vec<String> = Vec::new();
+    for s in stmts {
+        match s {
+            parse::Statement::A(_) => continue,
+            parse::Statement::Declarations(d) => {
+                // A branch-local binding. Inline its (substituted) value; it does not escape the
+                // branch, so it never becomes a phi variable.
+                let (name, assignables) = match d {
+                    parse::Declarations::Const(c) => (c.variable.clone(), &c.assignables),
+                    parse::Declarations::Let(l) => (l.variable.clone(), &l.assignables),
+                };
+                let e = substitute_vars(&assignables.render(), &subs);
+                subs.insert(name.clone(), e);
+                locals.insert(name);
+            }
+            parse::Statement::Assignables(a) => {
+                let (var, rhs) = split_simple_assignment(&a.assignables.render())?;
+                let e = substitute_vars(&rhs, &subs);
+                // A reassignment of a not-yet-seen, non-local variable is an outer variable that
+                // escapes the branch (it gets a phi binding). A reassignment of a branch-local `let`
+                // just updates that local's running expression.
+                if !locals.contains(&var) && !outer_order.iter().any(|v| v == &var) {
+                    outer_order.push(var.clone());
+                }
+                subs.insert(var, e);
+            }
+            _ => return None,
+        }
+    }
+    if outer_order.is_empty() {
+        None
+    } else {
+        Some(
+            outer_order
+                .into_iter()
+                .map(|v| {
+                    let e = subs.get(&v).cloned().unwrap_or_else(|| v.clone());
+                    (v, e)
+                })
+                .collect(),
+        )
+    }
+}
+
+/// Detect a *pure conditional assignment* conditional: one whose then-branch (and, recursively,
+/// every `else if`/`else` branch) consists solely of simple reassignments to already-bound
+/// variables (each at most once per branch). Returns, for every variable assigned anywhere in the
+/// chain (in first-assignment order), a synthesized nested value-`if` expression for its post-
+/// conditional value. A branch that doesn't assign a given variable -- including a missing final
+/// `else` -- leaves it unchanged (the arm yields the variable's prior value).
+///
+/// Each variable is then re-bound by `conditional_to_microstatements` with a shadowing
+/// `let <var> = <if-expr>`, rather than folding the block tail into both arms. This is what makes
+/// natural imperative conditional mutation work in *GPU* code: each `let <var> = if(...)` lowers
+/// through the GPU closure-`if` into a real `var <var>; if (c) { <var> = ...; } else { ... }` WGSL
+/// block, so the un-folded tail simply reads the new bindings. The fold instead makes each arm
+/// return the whole `GPGPU[]` shader (which the GPU `if` cannot combine) and, for plain
+/// reassignments, silently drops them (the GPU scalar `store` has no assignable lvalue). On the CPU
+/// it lowers to the same native control flow, just without duplicating the tail.
+fn conditional_assignments(c: &parse::Conditional) -> Option<Vec<(String, String)>> {
+    let then_stmts = blocklike_statements(&c.blocklike)?;
+    let then_assigns = collect_branch_assignments(&then_stmts)?;
+    let cond_src = c.assignables.render();
+    // Each entry is a variable's *already-synthesized* arm expression for the else side: a nested
+    // `if(...)` (for `else if`), a plain rhs (for a final `else`), or absent (no `else`).
+    let else_assigns: Vec<(String, String)> = match &c.optelsebranch {
+        None => Vec::new(),
+        Some(eb) => match &*eb.condorblock {
+            parse::CondOrBlock::Conditional(inner) => conditional_assignments(inner)?,
+            parse::CondOrBlock::Blocklike(b) => {
+                let else_stmts = blocklike_statements(b)?;
+                collect_branch_assignments(&else_stmts)?
+            }
+        },
+    };
+    // Union of all assigned variables, preserving first-assignment order (then-branch first). A
+    // variable's arm defaults to its own prior value when an arm doesn't assign it.
+    let mut vars: Vec<String> = Vec::new();
+    for (v, _) in then_assigns.iter().chain(else_assigns.iter()) {
+        if !vars.iter().any(|x| x == v) {
+            vars.push(v.clone());
+        }
+    }
+    let arm = |assigns: &[(String, String)], var: &str| -> Option<String> {
+        assigns
+            .iter()
+            .find(|(v, _)| v == var)
+            .map(|(_, e)| e.clone())
+    };
+    let mut result = Vec::new();
+    for var in &vars {
+        let then_e = clone_if_bare_ident(arm(&then_assigns, var).unwrap_or_else(|| var.clone()));
+        let else_e = clone_if_bare_ident(arm(&else_assigns, var).unwrap_or_else(|| var.clone()));
+        result.push((
+            var.clone(),
+            format!("if({cond_src}, fn() {{ return {then_e}; }}, fn() {{ return {else_e}; }})"),
+        ));
+    }
+    Some(result)
+}
+
+/// A branch arm that is just a bare variable reference (`<ident>`) -- which happens for a variable
+/// an arm leaves unchanged (it yields its prior value) or a plain `a = b` copy -- must `.clone()`
+/// the binding: the synthesized arm closure is a reusable `Fn`, so returning the captured variable
+/// directly would move out of it. Non-trivial expressions build fresh values and are left alone.
+fn clone_if_bare_ident(expr: String) -> String {
+    // Peel balanced surrounding parentheses so a substituted whole-arm reference like `(acc)` (which
+    // the SSA-ifier may produce) is still recognized as a bare reference that must be cloned.
+    let mut t = expr.trim();
+    while t.starts_with('(') && t.ends_with(')') && is_bare_ident(&t[1..t.len() - 1]) {
+        t = t[1..t.len() - 1].trim();
+    }
+    if is_bare_ident(t) {
+        format!("{t}.clone()")
+    } else {
+        expr
+    }
+}
+
 /// Transform of a block-level `if`/`else` conditional (plus the enclosing block's tail) into a
 /// synthesized `if(<cond>, fn() = {then}, fn() = {else})` call that runs through the normal
 /// resolution machinery, landing on the realized `cfn if{T}`.
@@ -2027,6 +2241,39 @@ fn conditional_to_microstatements<'a>(
     scope: Scope<'a>,
     microstatements: Vec<Microstatement>,
 ) -> Result<(Scope<'a>, Vec<Microstatement>), Box<dyn std::error::Error>> {
+    // A pure conditional-assignment conditional (every branch only reassigns already-bound
+    // variables) is lowered as one value-producing `let <var> = if(...)` per assigned variable,
+    // each shadowing its prior binding, rather than by folding the block tail into both arms. This
+    // is what makes natural conditional mutation work in GPU shaders (see `conditional_assignments`);
+    // on the CPU it is equivalent to the fold but avoids duplicating the tail.
+    if let Some(assignments) = conditional_assignments(conditional) {
+        // Re-bind each conditionally-assigned variable to its post-conditional value with a
+        // shadowing `let`, rather than folding the block tail into both arms. Each fresh binding's
+        // value carries the conditional logic (on GPU, the closure-`if`'s `var x; if (c) { x = ...;
+        // }` block), so the un-folded tail simply reads the new bindings. Bindings are emitted in
+        // first-assignment order so an arm referencing an earlier-assigned variable sees its
+        // updated value. Rust shadows natively; the JS backend renders a re-declaration of an
+        // existing name as a plain reassignment (see `from_microstatement`).
+        let mut scope = scope;
+        let mut microstatements = microstatements;
+        for (var_name, if_expr) in assignments {
+            let decl_src = format!("let {var_name} = {if_expr};");
+            let parsed = match parse::statement(&decl_src) {
+                Ok((rem, stmt)) if rem.trim().is_empty() => stmt,
+                _ => {
+                    return Err(format!(
+                        "Failed to synthesize a conditional assignment from:\n{decl_src}"
+                    )
+                    .into())
+                }
+            };
+            let res = statement_to_microstatements(&parsed, parent_fn, scope, microstatements)?;
+            scope = res.0;
+            microstatements = res.1;
+        }
+        return statements_to_microstatements(tail, parent_fn, scope, microstatements);
+    }
+
     let cond_src = conditional.assignables.render();
     let then_stmts = match blocklike_statements(&conditional.blocklike) {
         Some(s) => s,

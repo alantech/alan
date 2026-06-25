@@ -911,6 +911,132 @@ export fn main {
     stdout_contains "[1, 3, 7, 9]";
 );
 
+// Imperative conditional *mutation* of an outer-scope variable inside a GPU shader. Unlike the
+// value-producing `if`s above (whose arms `return`), here the arms reassign `out`, with the block
+// tail (`return out`) following the conditional. The conditional-assignment lowering rewrites this
+// to a shadowing `let out = if(...)`, so the GPU closure-`if` emits a real `var out; if (c) { out =
+// ...; }` block and the tail reads the mutated variable -- rather than folding the tail (returning
+// `gi32[]`) into both arms, which the GPU `if` cannot combine. The `else if` chain exercises the
+// nested case (and the hoisting of the `@builtin(global_invocation_id)` metadata out of a single
+// arm). For input [1,2,3,4]: 1 -> default 0, 2 -> 50 (== 2), 3 & 4 -> 100 (> 2).
+test_gpgpu!(gpu_if_block_mutation => r#"export fn main {
+  let b = GBuffer([1.i32, 2.i32, 3.i32, 4.i32])!!;
+  b.map(fn(val: gi32) {
+    let out = 0.gi32;
+    if val > 2.gi32 {
+      out = 100.gi32;
+    } else if val == 2.gi32 {
+      out = 50.gi32;
+    }
+    return out;
+  }).read.print;
+}
+"#;
+    stdout "[0, 50, 100, 100]\n";
+);
+
+// Multiple distinct variables mutated per branch. Each gets its own per-variable phi
+// (`let lo = if(...); let hi = if(...)`), so the GPU `if` lowering handles them independently
+// rather than folding the tail (which would silently drop the plain reassignments). `hi`'s arm
+// also reads `lo`, exercising that bindings are emitted in assignment order so the cross-reference
+// sees the updated value. For [1,2,3,4]: <=2 -> lo=30,hi=lo+10=40 -> 70; >2 -> lo=10,hi=20 -> 30.
+test_gpgpu!(gpu_if_block_multivar => r#"export fn main {
+  let b = GBuffer([1.i32, 2.i32, 3.i32, 4.i32])!!;
+  b.map(fn(val: gi32) {
+    let lo = 0.gi32;
+    let hi = 0.gi32;
+    if val > 2.gi32 {
+      lo = 10.gi32;
+      hi = 20.gi32;
+    } else {
+      lo = 30.gi32;
+      hi = lo + 10.gi32;
+    }
+    return lo + hi;
+  }).read.print;
+}
+"#;
+    stdout "[70, 70, 30, 30]\n";
+);
+
+// A branch that reassigns the same variable more than once. The per-variable phi can only bind a
+// variable once, so the conditional lowering first SSA-ifies the branch -- composing the sequential
+// assignments into a single expression (`acc = acc + 10; acc = acc + 100` -> `(acc + 10) + 100`) --
+// before the phi rewrite. For [1,2,3,4], `val > 2` (3,4) -> (0+10)+100 = 110, else 0.
+test_gpgpu!(gpu_if_block_compose => r#"export fn main {
+  let b = GBuffer([1.i32, 2.i32, 3.i32, 4.i32])!!;
+  b.map(fn(val: gi32) {
+    let acc = 0.gi32;
+    if val > 2.gi32 {
+      acc = acc + 10.gi32;
+      acc = acc + 100.gi32;
+    }
+    return acc;
+  }).read.print;
+}
+"#;
+    stdout "[0, 0, 110, 110]\n";
+);
+
+// A branch with a branch-local `let`. The SSA-ifier inlines the local into the outer-variable
+// assignment (`let bump = val + 1; acc = bump * 2` -> `acc = (val + 1) * 2`), so the local never
+// escapes and the outer `acc` gets a single composed phi binding. For [1,2,3,4], `val > 2` (3,4) ->
+// (3+1)*2 = 8 and (4+1)*2 = 10, else 0.
+test_gpgpu!(gpu_if_block_local_let => r#"export fn main {
+  let b = GBuffer([1.i32, 2.i32, 3.i32, 4.i32])!!;
+  b.map(fn(val: gi32) {
+    let acc = 0.gi32;
+    if val > 2.gi32 {
+      let bump = val + 1.gi32;
+      acc = bump * 2.gi32;
+    }
+    return acc;
+  }).read.print;
+}
+"#;
+    stdout "[0, 0, 8, 10]\n";
+);
+
+// Straight-line (no conditional) reassignment of a scalar GPU builder. `acc` starts as a plain
+// value (`0.gi32`) with no assignable WGSL location, so the first `acc = ...` *promotes* it on
+// demand to a mutable `var m_<uuid>: i32` initialized to its prior value, then assigns into it; the
+// second reuses that same `var` (the `@lvalue` marker makes the store idempotent). The reassignment
+// works through the `Mut`-form GPU `store` (which mutates the builder in place), with the Rust
+// backend's argument-hoisting handling the `store(&mut acc, acc + ...)` self-reference. `shaderOf`
+// asserts the structure; `map` confirms it runs: for [1,2,3,4], acc = (0 + val) * 2 -> [2,4,6,8].
+test_gpgpu!(gpu_straightline_mutation => r#"fn shaderOf{G, G2}(
+  gb: GBuffer{G},
+  f: Prop{WgpuTypeMap, String{G}} -> Prop{WgpuTypeMap, String{G2}}
+) {
+  let idx = gFor(gb.cpulen);
+  let val = gb[idx];
+  let out = GBuffer{G2}(gb.cpulen)!!;
+  let compute = out[idx].store(f(val));
+  return compute.build.shader;
+}
+export fn main {
+  let b = GBuffer([1.i32, 2.i32, 3.i32, 4.i32])!!;
+  b.shaderOf(fn(val: gi32) {
+    let acc = 0.gi32;
+    acc = acc + val;
+    acc = acc * 2.gi32;
+    return acc;
+  }).print;
+  b.map(fn(val: gi32) {
+    let acc = 0.gi32;
+    acc = acc + val;
+    acc = acc * 2.gi32;
+    return acc;
+  }).read.print;
+}
+"#;
+    // The scalar is promoted once to a typed mutable `var`, initialized to its prior value (`0`):
+    stdout_contains "  var m_";
+    stdout_contains ": i32 = 0";
+    // ...and the shader compiles and runs with the reassignments applied in order:
+    stdout_contains "[2, 4, 6, 8]";
+);
+
 test_gpgpu!(gpu_replace => r#"export fn main {
   let b = GBuffer([1.i32, 2.i32, 3.i32, 4.i32])!!;
   b.map(fn(val: gi32) = val + 2).read.print;
@@ -1226,6 +1352,22 @@ export fn main {
     stdout "3\n5\n";
 );
 
+// A self-referential reassignment (`x = x + 1`) where the right-hand side reads the same variable
+// being reassigned. This lowers to `store(&mut x, x + 1)`; rendered as a single nested call the
+// explicit `&mut x` would overlap the rhs's `&x` read and fail to compile (E0502) on the Rust
+// backend. The codegen hoists the by-value rhs into a `let` temporary evaluated before the `&mut`
+// borrow, so it compiles and runs (and matches the JS backend). Guards that the value used is the
+// pre-update one: 5 -> 5+1 -> 6*2 -> 12.
+test!(self_referential_reassignment => r#"export fn main {
+  let x = 5;
+  x = x + 1;
+  x = x * 2;
+  x.print;
+}
+"#;
+    stdout "12\n";
+);
+
 test!(complex_cloning => r#"type struct = b: bool, d: Dict{string, Set{i64}};
 
 export fn main {
@@ -1308,6 +1450,27 @@ test!(conditional_void_no_else => r#"export fn main {
 }
 "#;
     stdout "five\nafter\n";
+);
+// Conditional mutation where a branch reassigns one variable multiple times and uses a branch-local
+// `let`. The lowering SSA-ifies the branch (composing `acc = acc + 10; acc = acc + 100` and inlining
+// `let bump = ...`) into one phi binding per outer variable, on both backends. For n=3 the branch
+// runs: acc = (0+10)+100 = 110, then doubled via the local to 220; n=1 skips it (acc stays 0).
+test!(conditional_compose_and_local_let => r#"fn run(n: i64) -> i64 {
+  let acc = 0;
+  if n > 2 {
+    acc = acc + 10;
+    acc = acc + 100;
+    let bump = acc;
+    acc = bump * 2;
+  }
+  return acc;
+}
+export fn main {
+  print(run(3));
+  print(run(1));
+}
+"#;
+    stdout "220\n0\n";
 );
 // A void conditional whose taken branch awaits (`wait` is async on the JS backend). The enclosing
 // function must be colored correctly so the awaited work completes before the following statement.

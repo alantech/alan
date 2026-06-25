@@ -9,7 +9,7 @@ pub use ordered_hash_map::OrderedHashMap;
 pub use uuid::Uuid;
 pub use wgpu::BufferUsages;
 use winit::application::ApplicationHandler;
-use winit::event::WindowEvent;
+use winit::event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::window::{Window, WindowAttributes, WindowId};
 
@@ -1246,6 +1246,11 @@ pub struct AlanWindowContext {
     buffer_width: Option<u32>,
     mouse_x: Option<u32>,
     mouse_y: Option<u32>,
+    mouse_left: bool,
+    mouse_right: bool,
+    mouse_middle: bool,
+    mouse_wheel_dx: f32,
+    mouse_wheel_dy: f32,
     cursor_visible: bool,
     transparent: bool,
 }
@@ -1309,7 +1314,31 @@ impl AlanWindowContext {
     }
 
     pub fn opaque(&mut self) {
-        self.transparent = true;
+        self.transparent = false;
+    }
+
+    pub fn mouse_left(&mut self) -> u32 {
+        self.mouse_left as u32
+    }
+
+    pub fn mouse_right(&mut self) -> u32 {
+        self.mouse_right as u32
+    }
+
+    pub fn mouse_middle(&mut self) -> u32 {
+        self.mouse_middle as u32
+    }
+
+    pub fn mouse_wheel_x(&mut self) -> f32 {
+        let v = self.mouse_wheel_dx;
+        self.mouse_wheel_dx = 0.0;
+        v
+    }
+
+    pub fn mouse_wheel_y(&mut self) -> f32 {
+        let v = self.mouse_wheel_dy;
+        self.mouse_wheel_dy = 0.0;
+        v
     }
 }
 
@@ -1669,6 +1698,25 @@ where
                     self.context.mouse_y = Some(position.y as u32);
                 }
             }
+            WindowEvent::MouseInput { state, button, .. } => {
+                let pressed = state == ElementState::Pressed;
+                match button {
+                    MouseButton::Left => self.context.mouse_left = pressed,
+                    MouseButton::Right => self.context.mouse_right = pressed,
+                    MouseButton::Middle => self.context.mouse_middle = pressed,
+                    _ => {}
+                }
+            }
+            WindowEvent::MouseWheel { delta, .. } => match delta {
+                MouseScrollDelta::LineDelta(x, y) => {
+                    self.context.mouse_wheel_dx += x;
+                    self.context.mouse_wheel_dy += y;
+                }
+                MouseScrollDelta::PixelDelta(pos) => {
+                    self.context.mouse_wheel_dx += pos.x as f32;
+                    self.context.mouse_wheel_dy += pos.y as f32;
+                }
+            },
             _ => {} // Ignore all other events
         }
     }
@@ -1689,6 +1737,11 @@ where
         buffer_width: None,
         mouse_x: None,
         mouse_y: None,
+        mouse_left: false,
+        mouse_right: false,
+        mouse_middle: false,
+        mouse_wheel_dx: 0.0,
+        mouse_wheel_dy: 0.0,
         cursor_visible: true,
         transparent: false,
     };

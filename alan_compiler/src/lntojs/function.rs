@@ -299,6 +299,35 @@ fn render_js_native_ifelse(
     ))
 }
 
+/// JS has no block-scoped `let` redeclaration, but Alan permits shadowing (and the
+/// conditional-assignment lowering in `microstatement.rs` emits a shadowing `let <var> = if(...)`).
+/// Within a single rendered function body, the first time a name is bound it keeps its
+/// `let`/`const` declaration; any later binding of the same name renders as a plain reassignment
+/// (`<name> = ...`). `declared` tracks the names already bound in the current body and should be
+/// seeded with the function's argument names.
+fn js_dedup_declaration(
+    stmt: String,
+    ms: &Microstatement,
+    declared: &mut std::collections::HashSet<String>,
+) -> String {
+    if let Microstatement::Assignment { name, .. } = ms {
+        let n = if name == "var" {
+            "__var__".to_string()
+        } else {
+            name.clone()
+        };
+        if !declared.insert(n) {
+            if let Some(rest) = stmt.strip_prefix("let ") {
+                return rest.to_string();
+            }
+            if let Some(rest) = stmt.strip_prefix("const ") {
+                return rest.to_string();
+            }
+        }
+    }
+    stmt
+}
+
 /// Whether a microstatement is a realized `if{T}` cfn call.
 fn is_ifelse_call(ms: &Microstatement) -> bool {
     matches!(
@@ -363,10 +392,13 @@ pub fn from_microstatement(
                 ""
             };
             let mut inner_statements = Vec::new();
+            let mut declared: std::collections::HashSet<String> =
+                arg_names.iter().cloned().collect();
             for ms in &function.microstatements {
                 let (val, o, d) = from_microstatement(ms, parent_fn, scope, out, deps)?;
                 out = o;
                 deps = d;
+                let val = js_dedup_declaration(val, ms, &mut declared);
                 if !val.trim().is_empty() {
                     inner_statements.push(val);
                 }
@@ -2051,6 +2083,7 @@ pub fn generate(
         arg_strs.join(", "),
     )
     .to_string();
+    let mut declared: std::collections::HashSet<String> = arg_strs.iter().cloned().collect();
     for microstatement in &function.microstatements {
         // Discarded statement position: a top-level cfn-`if` emits the native `if/else` form
         // directly rather than a pointless IIFE statement. The conditional's value is thrown away
@@ -2069,6 +2102,7 @@ pub fn generate(
         let (stmt, o, d) = from_microstatement(microstatement, function, scope, out, deps)?;
         out = o;
         deps = d;
+        let stmt = js_dedup_declaration(stmt, microstatement, &mut declared);
         if stmt.trim().is_empty() {
             continue;
         }

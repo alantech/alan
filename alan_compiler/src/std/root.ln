@@ -259,8 +259,8 @@ type arm_32 = Env{"ALAN_ARCH"} == "arm_32";
 type arm_64 = Env{"ALAN_ARCH"} == "arm_64";
 type Browser = Env{"ALAN_PLATFORM"} == "browser"; // Technically not necessary, always also Js
 // Importing the Root Scope backing implementation and supporting 3rd party libraries
-type{Rs} RootBacking = Rust{"alan_std" @ "https://github.com/alantech/alan.git"};
-type{Js} RootBacking = Nodejs{"alan_std" @ "https://github.com/alantech/alan.git"};
+type{Rs} RootBacking = Rust{"alan_std" @ "https://github.com/alantech/alan.git#more-mouse-inputs"};
+type{Js} RootBacking = Nodejs{"alan_std" @ "https://github.com/alantech/alan.git#more-mouse-inputs"};
 // Defining derived types
 type void = ();
 type Self{T} = T;
@@ -695,6 +695,9 @@ fn{Js} bool "((f) => new alan_std.Bool(f.val != 0.0))" <- RootBacking :: f64 -> 
 fn{Rs} bool(s: string) = {Infix{"=="} :: (string, string) -> bool}(s, "true");
 fn{Js} bool "((s) => new alan_std.Bool(s.val == 'true'))" <- RootBacking :: string -> bool;
 fn bool(b: bool) = b;
+
+fn{Rs} u32 Cast{"u32"} :: Deref{bool} -> u32;
+fn{Js} u32 "((b) => new alan_std.U32(b.val ? 1 : 0))" <- RootBacking :: bool -> u32;
 /// Bitcasting functions (TODO: Is there a better naming scheme possible?)
 fn asU8(v: u8) = v;
 fn{Rs} asU8(v: i8) =
@@ -2608,6 +2611,15 @@ type WgpuType{N} =
   varName: string, // Key to the next field
   statements: Dict{string, string},
   buffers: Set{GBufferTagged};
+// A statement-dict key is *metadata* when it carries no rendered WGSL output. Two kinds exist:
+// * `@builtin(global_invocation_id) id: vec3u` -- the dispatch-size marker. `build` reads it to
+//   size the work, but it is never emitted as a statement.
+// * `@lvalue <name>` -- an lvalue marker. `GBuffer`-element reads (`get`) and promoted mutable
+//   `var`s carry one so `store` can tell a value already has an assignable WGSL location (and must
+//   not be promoted again); it renders nothing.
+// Effect-statement keys (`@effect <uuid>`) are deliberately NOT metadata: they hold real
+// assignments (`<lvalue> = <expr>`) that must render, in order, exactly once.
+fn gIsMetaKey(key: string) = key.index('@builtin').exists || key.index('@lvalue ').exists;
 // TODO: Better constraining on the input types allowed. It will still fail to compile, but the
 // error message isn't great at the moment.
 fn build{N}(ret: N) {
@@ -2648,7 +2660,7 @@ fn build{N}(ret: N) {
     .concat(localZ.string)
     .concat(")\nfn main(@builtin(global_invocation_id) id: vec3u) {\n");
   let wgslFunctionBody = ret.statements.Array.map(fn(kv: (string, string)) {
-    return if(kv.0.eq("@builtin(global_invocation_id) id: vec3u"), fn() = "", fn() {
+    return if(gIsMetaKey(kv.0), fn() = "", fn() {
       // A block-shaped statement (e.g. an emitted `if (c) { ... } else { ... }`) is multi-line and
       // already carries its own indentation, so render it verbatim. Scalar statements are single
       // lines that still need the per-statement leading indent and trailing `;`.
@@ -4647,28 +4659,87 @@ fn agbr(v: gvec4b) = v.wyzx;
 fn abrg(v: gvec4b) = v.wzxy;
 fn abgr(v: gvec4b) = v.wzyx;
 
+// A `GBuffer` element access is an assignable WGSL location (`buffer[idx]`), so tag it with an
+// `@lvalue <varName>` marker. `store` reads that marker to assign in place rather than promoting the
+// value to a fresh mutable `var` (see `store{N}`). The marker is metadata (`gIsMetaKey`), so it
+// renders nothing; it just records that this value already has a home.
 fn get{T}(gb: GBuffer{T}, i: gu32) {
   let varName = gb.id.concat('[').concat(i.varName).concat(']');
   let buffers = i.buffers.union(Set(GBufferTagged(gb)));
-  return {Prop{WgpuTypeMap, String{T}}}(varName, i.statements, buffers);
+  let statements = i.statements.concat(Dict('@lvalue '.concat(varName), varName));
+  return {Prop{WgpuTypeMap, String{T}}}(varName, statements, buffers);
 }
 fn get{T}(gb: GBuffer{T}, i: gi32) {
   let varName = gb.id.concat('[').concat(i.varName).concat(']');
   let buffers = i.buffers.union(Set(GBufferTagged(gb)));
-  return {Prop{WgpuTypeMap, String{T}}}(varName, i.statements, buffers);
+  let statements = i.statements.concat(Dict('@lvalue '.concat(varName), varName));
+  return {Prop{WgpuTypeMap, String{T}}}(varName, statements, buffers);
 }
 fn get{T}(gb: GBuffer{T}, i: i64) {
   let varName = gb.id.concat('[').concat(i.string).concat(']');
-  let statements = Dict{string, string}();
+  let statements = Dict('@lvalue '.concat(varName), varName);
   let buffers = Set(GBufferTagged(gb));
   return {Prop{WgpuTypeMap, String{T}}}(varName, statements, buffers);
 }
 
-fn store{N}(a: WgpuType{N}, b: WgpuType{N}) {
-  let statement = a.varName.concat(" = ").concat(b.varName);
-  let statements = a.statements.concat(b.statements).concat(Dict(statement, statement));
-  let buffers = a.buffers.union(b.buffers);
-  return WgpuType{N}(statement, statements, buffers);
+// Compute the builder that results from assigning `b` into `a`, branching on whether `a` already
+// names a WGSL lvalue:
+// * `a` is an lvalue (a `GBuffer` element, or a previously-promoted mutable `var` -- both carry an
+//   `@lvalue <varName>` marker): emit the ordered effect statement `a = b` and keep `a`'s name.
+// * `a` is a bare value (a literal like `3.0`, or a computed `var x = ...` with no assignable home):
+//   *promote* it on demand -- declare a fresh mutable `var m_<uuid>: <ty>` initialized to `a`'s
+//   current value, mark it `@lvalue`, then assign `b` into it, and adopt the new name.
+// Effect statements are keyed by a fresh `@effect <uuid>` so they are never deduplicated against
+// each other or reordered relative to reads -- ordering is program order via insertion order.
+fn gStoreResult{N}(a: WgpuType{N}, b: WgpuType{N}) {
+  let effectKey = '@effect '.concat(uuid().string.replace('-', '_'));
+  return if(a.statements['@lvalue '.concat(a.varName)].exists, fn() {
+    let statement = a.varName.concat(" = ").concat(b.varName);
+    let statements = a.statements.concat(b.statements).concat(Dict(effectKey, statement));
+    return WgpuType{N}(a.varName, statements, a.buffers.union(b.buffers));
+  }, fn() {
+    let typename = {WgpuType{N}.typeName}();
+    let varName = 'm_'.concat(uuid().string.replace('-', '_'));
+    let declaration = "var "
+      .concat(varName)
+      .concat(": ")
+      .concat(typename)
+      .concat(" = ")
+      .concat(a.varName);
+    let statement = varName.concat(" = ").concat(b.varName);
+    let statements = a.statements
+      .concat(b.statements)
+      .concat(Dict(varName, declaration))
+      .concat(Dict('@lvalue '.concat(varName), varName))
+      .concat(Dict(effectKey, statement));
+    return WgpuType{N}(varName, statements, a.buffers.union(b.buffers));
+  });
+}
+// Reassigning a GPU builder. The `=`/`store` infix lowers to `store(a, b)` whose result is normally
+// discarded, so -- exactly like the generic `store{T}(Mut{T}, T)` for every other type -- the target
+// is a `Mut` reference whose record is updated in place. Here that means: compute the assignment (or
+// on-demand promotion) via `gStoreResult` and write it back through `a`, so later reads of the
+// variable see the mutation. The mutated value is also returned, which is what `buffer[i].store(v)`
+// captures (its target is a temporary `GBuffer` element with no enclosing variable). Defining `store`
+// as the sole (`Mut`) form -- rather than adding it alongside a by-value form -- is deliberate: a
+// temporary `buffer[i]` still binds `Mut`, while a second by-value overload would hijack resolution.
+fn{Rs} store{N}(a: Mut{WgpuType{N}}, b: WgpuType{N}) -> WgpuType{N} {
+  let result = gStoreResult(a.clone, b);
+  {"std::mem::replace" :: (Mut{WgpuType{N}}, Own{WgpuType{N}}) -> WgpuType{N}}(a, result.clone);
+  return result;
+}
+// The JS form takes `a` by value rather than `Mut`, because an *rvalue* receiver
+// (`buffer[i].store(...)`) does not resolve against a `Mut` parameter on the JS path the way it does
+// on the Rust path. JS objects are reference types, though, so we still get in-place mutation: we
+// copy the computed result's fields onto `a` (the very object the caller passed) and return it.
+// A reassignment `x = ...` therefore updates `x` in place (its discarded return is harmless), and a
+// temporary `buffer[i]` target works because the mutated object is also the returned value that
+// `buffer[i].store(v)` captures. `gStoreResult` runs on a clone so its promotion reads `a`'s prior
+// state. The native's parameters must be ArgKind-wrapped (`Own{...}`); a bare `WgpuType{N}` there
+// does not resolve.
+fn{Js} store{N}(a: WgpuType{N}, b: WgpuType{N}) -> WgpuType{N} {
+  let result = gStoreResult(a.clone, b);
+  return {"((x, y) => { Object.keys(y).forEach((k) => x[k] = y[k]); return x; })" :: (Own{WgpuType{N}}, Own{WgpuType{N}}) -> WgpuType{N}}(a, result);
 }
 /// GPGPU Math functions
 fn neg(v: gi32) = gPrefix("-", "neg", v);
@@ -5541,34 +5612,42 @@ fn if{T}(c: gbool, t: T, f: T) {
   return {T}(varName, statements, buffers);
 }
 fn if{T}(c: gbool, t: () -> T, f: () -> T) {
-  // Evaluate both arms. Each arm's `statements` is the full ordered chain needed to compute its
-  // result, which shares a common prefix with the other arm (the work done before the branch).
   let tv = t();
   let fv = f();
   let typename = {T.typeName}();
-  // Split each arm into the prefix shared by both arms (emitted once, before the block) and the
-  // branch-local remainder (emitted inside the matching brace so it only runs on that branch).
-  // `intersection` captures its second argument in a reduce closure, so it is taken by value (and
-  // thus consumed); pass a fresh copy of the false arm's statements (`concat` with an empty dict
-  // returns a new dictionary) so the original survives for `fDelta`.
+  // The `@builtin(global_invocation_id) id: vec3u` entry is not a real statement: its value encodes
+  // the max global id and `build` both skips rendering it and reads the dispatch size from it. It
+  // must live at the top level, so hoist it out of either branch (rather than letting it render as
+  // a bogus `4,1,1;`-style statement inside a brace when only one arm references `id`).
+  let builtinKey = '@builtin(global_invocation_id) id: vec3u';
+  let builtinVal = tv.statements[builtinKey].getOr(fv.statements[builtinKey].getOr(''));
+  let builtinDict = if(builtinVal.eq(''),
+    fn() = Dict{string, string}(),
+    fn() = Dict{string, string}(builtinKey, builtinVal));
   let fStmtsCopy = fv.statements.concat(Dict{string, string}());
   let shared = tv.statements.intersection(fStmtsCopy);
-  let tDelta = tv.statements.difference(shared);
-  let fDelta = fv.statements.difference(shared);
-  // A result `var` declared before the block; each arm assigns its own value into it.
+  let tDelta = tv.statements.difference(shared).difference(builtinDict);
+  let fDelta = fv.statements.difference(shared).difference(builtinDict);
   let resultVar = "if_"
     .concat(typename)
     .concat('_')
     .concat(uuid().string.replace('-', '_'));
   let declaration = "var ".concat(resultVar).concat(": ").concat(typename);
+  // Metadata keys (`@builtin...`, `@lvalue <name>`) carry no rendered output -- e.g. a
+  // `GBuffer`-read lvalue marker whose value is `buffer[idx]` would otherwise emit a bogus
+  // `buffer[idx];` inside the brace. Skip them here exactly as `build` does at the top level.
   let tBody = tDelta.Array.map(fn(kv: (string, string)) {
-    return if(kv.1.index("\n").exists, fn = kv.1.concat("\n"), fn {
-      return "    ".concat(kv.1).concat(";\n");
+    return if(gIsMetaKey(kv.0), fn = "", fn {
+      return if(kv.1.index("\n").exists, fn = kv.1.concat("\n"), fn {
+        return "    ".concat(kv.1).concat(";\n");
+      });
     });
   }).join("");
   let fBody = fDelta.Array.map(fn(kv: (string, string)) {
-    return if(kv.1.index("\n").exists, fn = kv.1.concat("\n"), fn {
-      return "    ".concat(kv.1).concat(";\n");
+    return if(gIsMetaKey(kv.0), fn = "", fn {
+      return if(kv.1.index("\n").exists, fn = kv.1.concat("\n"), fn {
+        return "    ".concat(kv.1).concat(";\n");
+      });
     });
   }).join("");
   let block = "  if ("
@@ -5587,12 +5666,17 @@ fn if{T}(c: gbool, t: () -> T, f: () -> T) {
     .concat(fv.varName)
     .concat(";\n  }");
   let statements = c.statements
+    .concat(builtinDict)
     .concat(shared)
     .concat(Dict{string, string}(resultVar, declaration))
     .concat(Dict{string, string}(resultVar.concat("_block"), block));
   let buffers = c.buffers.union(tv.buffers).union(fv.buffers);
   return {T}(resultVar, statements, buffers);
 }
+fn if(c: gbool, t: f64, f: f64) = if(c, t.gf32, f.gf32);
+fn if(c: gbool, t: i64, f: i64) = if(c, t.gi32, f.gi32);
+fn if(c: gbool, t: u64, f: u64) = if(c, t.gu32, f.gu32);
+fn if(c: gbool, t: bool, f: bool) = if(c, t.gbool, f.gbool);
 /// GPU Boolean and Bitwise methods
 fn not(a: gu32) = gPrefix('!', 'not', a);
 fn not(a: gi32) = gPrefix('!', 'not', a);
@@ -5714,6 +5798,9 @@ fn asI32(v: gf32) = gbitcast{gf32, gi32}(v);
 fn asF32(v: gu32) = gbitcast{gu32, gf32}(v);
 fn asF32(v: gi32) = gbitcast{gi32, gf32}(v);
 fn asF32(v: gf32) = v;
+fn asBool(v: gu32) = gPrimitiveConvert{gu32, gbool}(v);
+fn asBool(v: gi32) = gPrimitiveConvert{gi32, gbool}(v);
+fn asBool(v: gbool) = v;
 fn asVec2u(v: gvec2u) = v;
 fn asVec2u(v: gvec2i) = gbitcast{gvec2i, gvec2u}(v);
 fn asVec2u(v: gvec2f) = gbitcast{gvec2f, gvec2u}(v);
@@ -5892,6 +5979,16 @@ fn{Rs} mouseX Method{"mouse_x"} :: Mut{Window} -> u32;
 fn{Js} mouseX "alan_std.contextMouseX" <- RootBacking :: Window -> u32;
 fn{Rs} mouseY Method{"mouse_y"} :: Mut{Window} -> u32;
 fn{Js} mouseY "alan_std.contextMouseY" <- RootBacking :: Window -> u32;
+fn{Rs} mouseLeft Method{"mouse_left"} :: Mut{Window} -> u32;
+fn{Js} mouseLeft "alan_std.contextMouseLeft" <- RootBacking :: Window -> u32;
+fn{Rs} mouseRight Method{"mouse_right"} :: Mut{Window} -> u32;
+fn{Js} mouseRight "alan_std.contextMouseRight" <- RootBacking :: Window -> u32;
+fn{Rs} mouseMiddle Method{"mouse_middle"} :: Mut{Window} -> u32;
+fn{Js} mouseMiddle "alan_std.contextMouseMiddle" <- RootBacking :: Window -> u32;
+fn{Rs} mouseWheelX Method{"mouse_wheel_x"} :: Mut{Window} -> f32;
+fn{Js} mouseWheelX "alan_std.contextMouseWheelX" <- RootBacking :: Window -> f32;
+fn{Rs} mouseWheelY Method{"mouse_wheel_y"} :: Mut{Window} -> f32;
+fn{Js} mouseWheelY "alan_std.contextMouseWheelY" <- RootBacking :: Window -> f32;
 fn{Rs} cursorVisible Method{"cursor_visible"} :: Mut{Window} -> ();
 fn{Js} cursorVisible "alan_std.contextCursorVisible" <- RootBacking :: Window -> ();
 fn{Rs} cursorInvisible Method{"cursor_invisible"} :: Mut{Window} -> ();
