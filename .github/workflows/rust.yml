@@ -51,7 +51,6 @@ jobs:
         nvm install 23
         nvm use 23
         npm install -g pnpm
-        rm -rf ~/.config/alan # Temporary fix for failing CI
         cargo test --release --verbose
     - if: ${{ github.ref_name != 'main' }}
       name: Run tests with Node 22
