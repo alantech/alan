@@ -1,3 +1,4 @@
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use super::ctype::{withtypeoperatorslist_to_ctype, CType};
@@ -2048,31 +2049,110 @@ fn split_simple_assignment(src: &str) -> Option<(String, String)> {
     Some((ident, rhs))
 }
 
-/// If every meaningful statement in `stmts` is a simple reassignment `<ident> = <rhs>` and no
-/// identifier is assigned more than once, return them in order. Returns `None` for any branch that
-/// does something else (a `let`, a `return`, a nested conditional, a bare call, or a repeated
-/// assignment to the same variable), so such branches fall back to the tail-folding lowering.
+/// Is `s` a single identifier (`[A-Za-z_][A-Za-z0-9_]*`), ignoring surrounding whitespace?
+fn is_bare_ident(s: &str) -> bool {
+    let t = s.trim();
+    !t.is_empty()
+        && t.bytes().enumerate().all(|(i, b)| {
+            if i == 0 {
+                b.is_ascii_alphabetic() || b == b'_'
+            } else {
+                b.is_ascii_alphanumeric() || b == b'_'
+            }
+        })
+}
+
+/// Substitute, in a single left-to-right pass, every whole-word identifier in `expr` that appears in
+/// `subs` with its mapped expression. Used to SSA-ify a conditional branch: as we walk a branch's
+/// statements we fold each reassignment / local `let` into a running expression per variable, so a
+/// branch like `acc = acc + 10; acc = acc + 100` collapses to `(acc + 10) + 100` and
+/// `let b = val + 1; acc = b * 2` collapses to `(val + 1) * 2`. A replacement that is itself a bare
+/// identifier is spliced without parentheses (so a final whole-arm reference like `acc` is still
+/// recognized by `clone_if_bare_ident`); anything else is wrapped in parentheses to preserve
+/// evaluation order. The single pass (replacements are not re-scanned) keeps a variable that refers
+/// to its own prior value -- `acc = acc + 10` -> `subs[acc] = acc + 10` -- from expanding forever.
+fn substitute_vars(expr: &str, subs: &HashMap<String, String>) -> String {
+    let b = expr.as_bytes();
+    let mut out = String::with_capacity(expr.len());
+    let mut i = 0;
+    while i < b.len() {
+        if b[i].is_ascii_alphabetic() || b[i] == b'_' {
+            let start = i;
+            i += 1;
+            while i < b.len() && (b[i].is_ascii_alphanumeric() || b[i] == b'_') {
+                i += 1;
+            }
+            let ident = &expr[start..i];
+            match subs.get(ident) {
+                Some(rep) if is_bare_ident(rep) => out.push_str(rep),
+                Some(rep) => {
+                    out.push('(');
+                    out.push_str(rep);
+                    out.push(')');
+                }
+                None => out.push_str(ident),
+            }
+        } else {
+            out.push(b[i] as char);
+            i += 1;
+        }
+    }
+    out
+}
+
+/// SSA-ify a conditional branch into one composed expression per *outer* variable it reassigns.
+/// Walking the branch in order, each `let`/`const` introduces a branch-local binding (inlined into
+/// later statements, never escaping) and each `<ident> = <rhs>` updates that variable's running
+/// expression (with prior bindings substituted in). The returned list -- outer variables in
+/// first-assignment order, paired with their final composed right-hand side -- feeds the per-variable
+/// phi in `conditional_assignments`. This handles branches with repeated assignment to one variable,
+/// branch-local `let`s, and cross-references between assigned variables, which a naive
+/// one-assignment-per-variable scan could not. Returns `None` for a branch that does something the
+/// fold must still own: a nested conditional, a `return`, or a bare call.
 fn collect_branch_assignments(stmts: &[parse::Statement]) -> Option<Vec<(String, String)>> {
-    let mut out: Vec<(String, String)> = Vec::new();
+    let mut subs: HashMap<String, String> = HashMap::new();
+    let mut locals: HashSet<String> = HashSet::new();
+    let mut outer_order: Vec<String> = Vec::new();
     for s in stmts {
         match s {
             parse::Statement::A(_) => continue,
+            parse::Statement::Declarations(d) => {
+                // A branch-local binding. Inline its (substituted) value; it does not escape the
+                // branch, so it never becomes a phi variable.
+                let (name, assignables) = match d {
+                    parse::Declarations::Const(c) => (c.variable.clone(), &c.assignables),
+                    parse::Declarations::Let(l) => (l.variable.clone(), &l.assignables),
+                };
+                let e = substitute_vars(&assignables.render(), &subs);
+                subs.insert(name.clone(), e);
+                locals.insert(name);
+            }
             parse::Statement::Assignables(a) => {
                 let (var, rhs) = split_simple_assignment(&a.assignables.render())?;
-                if out.iter().any(|(v, _)| v == &var) {
-                    // A variable reassigned twice in one branch can't be captured by a single
-                    // per-variable phi; leave it to the fold.
-                    return None;
+                let e = substitute_vars(&rhs, &subs);
+                // A reassignment of a not-yet-seen, non-local variable is an outer variable that
+                // escapes the branch (it gets a phi binding). A reassignment of a branch-local `let`
+                // just updates that local's running expression.
+                if !locals.contains(&var) && !outer_order.iter().any(|v| v == &var) {
+                    outer_order.push(var.clone());
                 }
-                out.push((var, rhs));
+                subs.insert(var, e);
             }
             _ => return None,
         }
     }
-    if out.is_empty() {
+    if outer_order.is_empty() {
         None
     } else {
-        Some(out)
+        Some(
+            outer_order
+                .into_iter()
+                .map(|v| {
+                    let e = subs.get(&v).cloned().unwrap_or_else(|| v.clone());
+                    (v, e)
+                })
+                .collect(),
+        )
     }
 }
 
@@ -2138,16 +2218,13 @@ fn conditional_assignments(c: &parse::Conditional) -> Option<Vec<(String, String
 /// the binding: the synthesized arm closure is a reusable `Fn`, so returning the captured variable
 /// directly would move out of it. Non-trivial expressions build fresh values and are left alone.
 fn clone_if_bare_ident(expr: String) -> String {
-    let t = expr.trim();
-    let is_bare_ident = !t.is_empty()
-        && t.bytes().enumerate().all(|(i, b)| {
-            if i == 0 {
-                b.is_ascii_alphabetic() || b == b'_'
-            } else {
-                b.is_ascii_alphanumeric() || b == b'_'
-            }
-        });
-    if is_bare_ident {
+    // Peel balanced surrounding parentheses so a substituted whole-arm reference like `(acc)` (which
+    // the SSA-ifier may produce) is still recognized as a bare reference that must be cloned.
+    let mut t = expr.trim();
+    while t.starts_with('(') && t.ends_with(')') && is_bare_ident(&t[1..t.len() - 1]) {
+        t = t[1..t.len() - 1].trim();
+    }
+    if is_bare_ident(t) {
         format!("{t}.clone()")
     } else {
         expr

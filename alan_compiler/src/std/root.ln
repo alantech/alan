@@ -2611,6 +2611,15 @@ type WgpuType{N} =
   varName: string, // Key to the next field
   statements: Dict{string, string},
   buffers: Set{GBufferTagged};
+// A statement-dict key is *metadata* when it carries no rendered WGSL output. Two kinds exist:
+// * `@builtin(global_invocation_id) id: vec3u` -- the dispatch-size marker. `build` reads it to
+//   size the work, but it is never emitted as a statement.
+// * `@lvalue <name>` -- an lvalue marker. `GBuffer`-element reads (`get`) and promoted mutable
+//   `var`s carry one so `store` can tell a value already has an assignable WGSL location (and must
+//   not be promoted again); it renders nothing.
+// Effect-statement keys (`@effect <uuid>`) are deliberately NOT metadata: they hold real
+// assignments (`<lvalue> = <expr>`) that must render, in order, exactly once.
+fn gIsMetaKey(key: string) = key.index('@builtin').exists || key.index('@lvalue ').exists;
 // TODO: Better constraining on the input types allowed. It will still fail to compile, but the
 // error message isn't great at the moment.
 fn build{N}(ret: N) {
@@ -2651,7 +2660,7 @@ fn build{N}(ret: N) {
     .concat(localZ.string)
     .concat(")\nfn main(@builtin(global_invocation_id) id: vec3u) {\n");
   let wgslFunctionBody = ret.statements.Array.map(fn(kv: (string, string)) {
-    return if(kv.0.eq("@builtin(global_invocation_id) id: vec3u"), fn() = "", fn() {
+    return if(gIsMetaKey(kv.0), fn() = "", fn() {
       // A block-shaped statement (e.g. an emitted `if (c) { ... } else { ... }`) is multi-line and
       // already carries its own indentation, so render it verbatim. Scalar statements are single
       // lines that still need the per-statement leading indent and trailing `;`.
@@ -4650,28 +4659,80 @@ fn agbr(v: gvec4b) = v.wyzx;
 fn abrg(v: gvec4b) = v.wzxy;
 fn abgr(v: gvec4b) = v.wzyx;
 
+// A `GBuffer` element access is an assignable WGSL location (`buffer[idx]`), so tag it with an
+// `@lvalue <varName>` marker. `store` reads that marker to assign in place rather than promoting the
+// value to a fresh mutable `var` (see `store{N}`). The marker is metadata (`gIsMetaKey`), so it
+// renders nothing; it just records that this value already has a home.
 fn get{T}(gb: GBuffer{T}, i: gu32) {
   let varName = gb.id.concat('[').concat(i.varName).concat(']');
   let buffers = i.buffers.union(Set(GBufferTagged(gb)));
-  return {Prop{WgpuTypeMap, String{T}}}(varName, i.statements, buffers);
+  let statements = i.statements.concat(Dict('@lvalue '.concat(varName), varName));
+  return {Prop{WgpuTypeMap, String{T}}}(varName, statements, buffers);
 }
 fn get{T}(gb: GBuffer{T}, i: gi32) {
   let varName = gb.id.concat('[').concat(i.varName).concat(']');
   let buffers = i.buffers.union(Set(GBufferTagged(gb)));
-  return {Prop{WgpuTypeMap, String{T}}}(varName, i.statements, buffers);
+  let statements = i.statements.concat(Dict('@lvalue '.concat(varName), varName));
+  return {Prop{WgpuTypeMap, String{T}}}(varName, statements, buffers);
 }
 fn get{T}(gb: GBuffer{T}, i: i64) {
   let varName = gb.id.concat('[').concat(i.string).concat(']');
-  let statements = Dict{string, string}();
+  let statements = Dict('@lvalue '.concat(varName), varName);
   let buffers = Set(GBufferTagged(gb));
   return {Prop{WgpuTypeMap, String{T}}}(varName, statements, buffers);
 }
 
-fn store{N}(a: WgpuType{N}, b: WgpuType{N}) {
-  let statement = a.varName.concat(" = ").concat(b.varName);
-  let statements = a.statements.concat(b.statements).concat(Dict(statement, statement));
-  let buffers = a.buffers.union(b.buffers);
-  return WgpuType{N}(statement, statements, buffers);
+// Compute the builder that results from assigning `b` into `a`, branching on whether `a` already
+// names a WGSL lvalue:
+// * `a` is an lvalue (a `GBuffer` element, or a previously-promoted mutable `var` -- both carry an
+//   `@lvalue <varName>` marker): emit the ordered effect statement `a = b` and keep `a`'s name.
+// * `a` is a bare value (a literal like `3.0`, or a computed `var x = ...` with no assignable home):
+//   *promote* it on demand -- declare a fresh mutable `var m_<uuid>: <ty>` initialized to `a`'s
+//   current value, mark it `@lvalue`, then assign `b` into it, and adopt the new name.
+// Effect statements are keyed by a fresh `@effect <uuid>` so they are never deduplicated against
+// each other or reordered relative to reads -- ordering is program order via insertion order.
+fn gStoreResult{N}(a: WgpuType{N}, b: WgpuType{N}) {
+  let effectKey = '@effect '.concat(uuid().string.replace('-', '_'));
+  return if(a.statements['@lvalue '.concat(a.varName)].exists, fn() {
+    let statement = a.varName.concat(" = ").concat(b.varName);
+    let statements = a.statements.concat(b.statements).concat(Dict(effectKey, statement));
+    return WgpuType{N}(a.varName, statements, a.buffers.union(b.buffers));
+  }, fn() {
+    let typename = {WgpuType{N}.typeName}();
+    let varName = 'm_'.concat(uuid().string.replace('-', '_'));
+    let declaration = "var "
+      .concat(varName)
+      .concat(": ")
+      .concat(typename)
+      .concat(" = ")
+      .concat(a.varName);
+    let statement = varName.concat(" = ").concat(b.varName);
+    let statements = a.statements
+      .concat(b.statements)
+      .concat(Dict(varName, declaration))
+      .concat(Dict('@lvalue '.concat(varName), varName))
+      .concat(Dict(effectKey, statement));
+    return WgpuType{N}(varName, statements, a.buffers.union(b.buffers));
+  });
+}
+// Reassigning a GPU builder. The `=`/`store` infix lowers to `store(a, b)` whose result is normally
+// discarded, so -- exactly like the generic `store{T}(Mut{T}, T)` for every other type -- the target
+// is a `Mut` reference whose record is updated in place. Here that means: compute the assignment (or
+// on-demand promotion) via `gStoreResult` and write it back through `a`, so later reads of the
+// variable see the mutation. The mutated value is also returned, which is what `buffer[i].store(v)`
+// captures (its target is a temporary `GBuffer` element with no enclosing variable). Defining `store`
+// as the sole (`Mut`) form -- rather than adding it alongside a by-value form -- is deliberate: a
+// temporary `buffer[i]` still binds `Mut`, while a second by-value overload would hijack resolution.
+fn{Rs} store{N}(a: Mut{WgpuType{N}}, b: WgpuType{N}) -> WgpuType{N} {
+  let result = gStoreResult(a.clone, b);
+  {"std::mem::replace" :: (Mut{WgpuType{N}}, Own{WgpuType{N}}) -> WgpuType{N}}(a, result.clone);
+  return result;
+}
+fn{Js} store{N}(a: Mut{WgpuType{N}}, b: WgpuType{N}) -> WgpuType{N} {
+  let result = gStoreResult(a.clone, b);
+  {"((a, b) => { Object.keys(b).forEach((k) => a[k] = b[k]); return a; })"
+    :: (Mut{WgpuType{N}}, WgpuType{N}) -> WgpuType{N}}(a, result.clone);
+  return result;
 }
 /// GPGPU Math functions
 fn neg(v: gi32) = gPrefix("-", "neg", v);
@@ -5565,14 +5626,21 @@ fn if{T}(c: gbool, t: () -> T, f: () -> T) {
     .concat('_')
     .concat(uuid().string.replace('-', '_'));
   let declaration = "var ".concat(resultVar).concat(": ").concat(typename);
+  // Metadata keys (`@builtin...`, `@lvalue <name>`) carry no rendered output -- e.g. a
+  // `GBuffer`-read lvalue marker whose value is `buffer[idx]` would otherwise emit a bogus
+  // `buffer[idx];` inside the brace. Skip them here exactly as `build` does at the top level.
   let tBody = tDelta.Array.map(fn(kv: (string, string)) {
-    return if(kv.1.index("\n").exists, fn = kv.1.concat("\n"), fn {
-      return "    ".concat(kv.1).concat(";\n");
+    return if(gIsMetaKey(kv.0), fn = "", fn {
+      return if(kv.1.index("\n").exists, fn = kv.1.concat("\n"), fn {
+        return "    ".concat(kv.1).concat(";\n");
+      });
     });
   }).join("");
   let fBody = fDelta.Array.map(fn(kv: (string, string)) {
-    return if(kv.1.index("\n").exists, fn = kv.1.concat("\n"), fn {
-      return "    ".concat(kv.1).concat(";\n");
+    return if(gIsMetaKey(kv.0), fn = "", fn {
+      return if(kv.1.index("\n").exists, fn = kv.1.concat("\n"), fn {
+        return "    ".concat(kv.1).concat(";\n");
+      });
     });
   }).join("");
   let block = "  if ("

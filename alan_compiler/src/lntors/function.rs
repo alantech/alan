@@ -1386,6 +1386,34 @@ pub fn from_microstatement(
                     out = res.0;
                     deps = res.1;
                     let mut argstrs = Vec::new();
+                    // Borrow-hazard guard. When one argument is a `&mut x` (an `ArgKind::Mut`
+                    // parameter whose argument is the plain variable `x`) and another, by-value,
+                    // argument's expression also reads `x`, rendering this as a single nested call
+                    // `f(&mut x, g(&x))` fails to compile (E0502): the explicitly-written `&mut x`
+                    // is not a two-phase borrow, so the `&x` read overlaps it. This is exactly how a
+                    // self-referential reassignment lowers -- `x = x + 1` -> `store(&mut x, x + 1)`.
+                    // When detected, hoist the by-value arguments into `let` temporaries evaluated
+                    // before the call (inside a block expression), so the right-hand side is read
+                    // before the `&mut` borrow is taken -- which is also the correct evaluation
+                    // order for `=`.
+                    let mut_vars: Vec<String> = args
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(i, arg)| match arg {
+                            Microstatement::Value { representation, .. }
+                                if matches!(function.args()[i].1, ArgKind::Mut) =>
+                            {
+                                Some(representation.clone())
+                            }
+                            _ => None,
+                        })
+                        .collect();
+                    let needs_hoist = !mut_vars.is_empty()
+                        && args.iter().enumerate().any(|(i, arg)| {
+                            !matches!(function.args()[i].1, ArgKind::Mut)
+                                && mut_vars.iter().any(|v| references_var(arg, v))
+                        });
+                    let mut hoist_prelude: Vec<String> = Vec::new();
                     for (i, arg) in args.iter().enumerate() {
                         let (a, o, d) =
                             from_microstatement(arg, parent_fn, shared_vars, scope, out, deps)?;
@@ -1448,7 +1476,47 @@ pub fn from_microstatement(
                                     // movable variable: pass/move it directly.
                                     _ => a.to_string(),
                                 };
-                                argstrs.push(owned);
+                                // Hoist this owned argument before the `&mut` borrow (see the
+                                // borrow-hazard guard above): bind the owned value to a `let` so it
+                                // is evaluated before the `&mut` is taken.
+                                if needs_hoist {
+                                    let tmp = format!("alan_hoist_arg{i}");
+                                    hoist_prelude.push(format!("let {tmp} = {owned};"));
+                                    argstrs.push(tmp);
+                                } else {
+                                    argstrs.push(owned);
+                                }
+                            }
+                            // Reference (`&T`) parameters. When hoisting (see the borrow-hazard
+                            // guard) and this is not the `&mut` target itself, bind the *owned*
+                            // underlying value to a temporary first and borrow that (`&tmp`) instead
+                            // of re-reading the source variable: `&add(&x, ...)` keeps `x` borrowed
+                            // across the call's `&mut x`, but `let t = add(&x, ...); ...; &t` reads
+                            // `x` and releases it before the `&mut` is taken. A bare known variable
+                            // is cloned so the source stays available.
+                            _ if needs_hoist
+                                && !arg_is_shared
+                                && !needs_deref
+                                && !matches!(function.args()[i].1, ArgKind::Mut) =>
+                            {
+                                let owned = match arg {
+                                    Microstatement::Value { representation, .. }
+                                        if is_known_variable(parent_fn, representation)
+                                            && !caller_can_move(parent_fn, representation) =>
+                                    {
+                                        format!("{a}.clone()")
+                                    }
+                                    _ => a.to_string(),
+                                };
+                                let tmp = format!("alan_hoist_arg{i}");
+                                hoist_prelude.push(format!("let {tmp} = {owned};"));
+                                argstrs.push(render_arg(
+                                    &tmp,
+                                    false,
+                                    false,
+                                    &function.args()[i].1,
+                                    parent_fn,
+                                ));
                             }
                             _ => argstrs.push(render_arg(
                                 &a,
@@ -1462,11 +1530,13 @@ pub fn from_microstatement(
                     if let FnKind::External(d) = &function.kind {
                         super::register_rust_dependency(d, &mut deps);
                     }
-                    Ok((
-                        format!("{}({})", rustname, argstrs.join(", ")).to_string(),
-                        out,
-                        deps,
-                    ))
+                    let call = format!("{}({})", rustname, argstrs.join(", "));
+                    let rendered = if hoist_prelude.is_empty() {
+                        call
+                    } else {
+                        format!("{{ {} {} }}", hoist_prelude.join(" "), call)
+                    };
+                    Ok((rendered, out, deps))
                 }
                 FnKind::Bind(rustname) | FnKind::ExternalBind(rustname, _) => {
                     let mut argstrs = Vec::new();
