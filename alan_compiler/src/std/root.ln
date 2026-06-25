@@ -4728,11 +4728,18 @@ fn{Rs} store{N}(a: Mut{WgpuType{N}}, b: WgpuType{N}) -> WgpuType{N} {
   {"std::mem::replace" :: (Mut{WgpuType{N}}, Own{WgpuType{N}}) -> WgpuType{N}}(a, result.clone);
   return result;
 }
-fn{Js} store{N}(a: Mut{WgpuType{N}}, b: WgpuType{N}) -> WgpuType{N} {
+// The JS form takes `a` by value rather than `Mut`, because an *rvalue* receiver
+// (`buffer[i].store(...)`) does not resolve against a `Mut` parameter on the JS path the way it does
+// on the Rust path. JS objects are reference types, though, so we still get in-place mutation: we
+// copy the computed result's fields onto `a` (the very object the caller passed) and return it.
+// A reassignment `x = ...` therefore updates `x` in place (its discarded return is harmless), and a
+// temporary `buffer[i]` target works because the mutated object is also the returned value that
+// `buffer[i].store(v)` captures. `gStoreResult` runs on a clone so its promotion reads `a`'s prior
+// state. The native's parameters must be ArgKind-wrapped (`Own{...}`); a bare `WgpuType{N}` there
+// does not resolve.
+fn{Js} store{N}(a: WgpuType{N}, b: WgpuType{N}) -> WgpuType{N} {
   let result = gStoreResult(a.clone, b);
-  {"((a, b) => { Object.keys(b).forEach((k) => a[k] = b[k]); return a; })"
-    :: (Mut{WgpuType{N}}, WgpuType{N}) -> WgpuType{N}}(a, result.clone);
-  return result;
+  return {"((x, y) => { Object.keys(y).forEach((k) => x[k] = y[k]); return x; })" :: (Own{WgpuType{N}}, Own{WgpuType{N}}) -> WgpuType{N}}(a, result);
 }
 /// GPGPU Math functions
 fn neg(v: gi32) = gPrefix("-", "neg", v);
