@@ -259,8 +259,8 @@ type arm_32 = Env{"ALAN_ARCH"} == "arm_32";
 type arm_64 = Env{"ALAN_ARCH"} == "arm_64";
 type Browser = Env{"ALAN_PLATFORM"} == "browser"; // Technically not necessary, always also Js
 // Importing the Root Scope backing implementation and supporting 3rd party libraries
-type{Rs} RootBacking = Rust{"alan_std" @ "https://github.com/alantech/alan.git#more-mouse-inputs"};
-type{Js} RootBacking = Nodejs{"alan_std" @ "https://github.com/alantech/alan.git#more-mouse-inputs"};
+type{Rs} RootBacking = Rust{"alan_std" @ "https://github.com/alantech/alan.git"};
+type{Js} RootBacking = Nodejs{"alan_std" @ "https://github.com/alantech/alan.git"};
 // Defining derived types
 type void = ();
 type Self{T} = T;
