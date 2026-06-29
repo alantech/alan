@@ -41,11 +41,13 @@ jobs:
     - if: ${{ github.ref_name == 'main' }}
       name: Run tests
       run: |
+        rm -rf ~/.config/alan
         npm install -g pnpm
         cargo test --release --verbose -- --include-ignored
     - if: ${{ github.ref_name != 'main' }}
       name: Run tests with Node 23
       run: |
+        rm -rf ~/.config/alan
         export NVM_DIR="$HOME/.nvm"
         [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
         nvm install 23
@@ -55,6 +57,7 @@ jobs:
     - if: ${{ github.ref_name != 'main' }}
       name: Run tests with Node 22
       run: |
+        rm -rf ~/.config/alan
         export NVM_DIR="$HOME/.nvm"
         [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
         nvm install 22
@@ -64,6 +67,7 @@ jobs:
     - if: ${{ github.ref_name != 'main' }}
       name: Run tests with Node 20
       run: |
+        rm -rf ~/.config/alan
         export NVM_DIR="$HOME/.nvm"
         [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
         nvm install 20
@@ -73,6 +77,7 @@ jobs:
     - if: ${{ github.ref_name != 'main' }}
       name: Run tests with Node 18
       run: |
+        rm -rf ~/.config/alan
         export NVM_DIR="$HOME/.nvm"
         [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
         nvm install 18
@@ -83,6 +88,7 @@ jobs:
       run: cargo run --release -- test alan/test.ln
     - name: Run js tests with Node 23
       run: |
+        rm -rf ~/.config/alan
         export NVM_DIR="$HOME/.nvm"
         [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
         nvm install 23
@@ -91,6 +97,7 @@ jobs:
         cargo run --release -- test --js alan/test.ln
     - name: Run js tests with Node 22
       run: |
+        rm -rf ~/.config/alan
         export NVM_DIR="$HOME/.nvm"
         [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
         nvm install 22
@@ -99,6 +106,7 @@ jobs:
         cargo run --release -- test --js alan/test.ln
     - name: Run js tests with Node 20
       run: |
+        rm -rf ~/.config/alan
         export NVM_DIR="$HOME/.nvm"
         [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
         nvm install 20
@@ -107,6 +115,7 @@ jobs:
         cargo run --release -- test --js alan/test.ln
     - name: Run js tests with Node 18
       run: |
+        rm -rf ~/.config/alan
         export NVM_DIR="$HOME/.nvm"
         [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
         nvm install 18
