@@ -26,6 +26,7 @@ pub use function::Function;
 pub use microstatement::Microstatement;
 pub use microstatement::NativeCallKind;
 pub use operatormapping::OperatorMapping;
+pub use program::ParsedFile;
 pub use program::Program;
 pub use scope::Scope;
 pub use typeoperatormapping::TypeOperatorMapping;

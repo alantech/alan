@@ -6,7 +6,7 @@ use std::process;
 use clap::{Parser, Subcommand};
 
 use alan_compiler::fmt::fmt;
-use alan_compiler::parse::get_ast;
+use alan_compiler::parse::{get_ast, ParseError};
 
 pub mod compile;
 
@@ -105,17 +105,32 @@ enum Commands {
     },
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() {
+    if let Err(e) = run() {
+        eprint_compile_error(&*e);
+        process::exit(1);
+    }
+}
+
+fn eprint_compile_error(e: &(dyn std::error::Error + 'static)) {
+    if let Some(pe) = e.downcast_ref::<ParseError>() {
+        eprint!("{pe}");
+    } else {
+        eprintln!("error: {e}");
+    }
+}
+
+fn run() -> Result<(), Box<dyn std::error::Error>> {
     let args = Cli::parse();
     if let Some(file) = args.file {
         compile::interp(file)
     } else {
         match &args.commands {
-            Some(Commands::Bundle { file }) => Ok(compile::bundle(file.to_string())?),
-            Some(Commands::Compile { file }) => Ok(compile::compile(file.to_string())?),
-            Some(Commands::Test { file, js }) => Ok(compile::test(file.to_string(), *js)?),
-            Some(Commands::ToRs { file }) => Ok(compile::to_rs(file.to_string())?),
-            Some(Commands::ToJs { file }) => Ok(compile::to_js(file.to_string())?),
+            Some(Commands::Bundle { file }) => compile::bundle(file.to_string()),
+            Some(Commands::Compile { file }) => compile::compile(file.to_string()),
+            Some(Commands::Test { file, js }) => compile::test(file.to_string(), *js),
+            Some(Commands::ToRs { file }) => compile::to_rs(file.to_string()),
+            Some(Commands::ToJs { file }) => compile::to_js(file.to_string()),
             Some(Commands::Fmt { files, check }) => fmt_command(files, *check),
             _ => Err("Command not yet supported".into()),
         }
@@ -158,7 +173,7 @@ fn fmt_command(files: &[String], check: bool) -> Result<(), Box<dyn std::error::
         let ast = match get_ast(&src) {
             Ok(a) => a,
             Err(e) => {
-                eprintln!("Parse error in {}: {}", file_path, e);
+                eprint!("{}", e.with_file(file_path));
                 had_diff = true;
                 continue;
             }

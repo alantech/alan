@@ -1,9 +1,11 @@
 use std::sync::{Arc, OnceLock};
+use std::time::SystemTime;
 
 use ordered_hash_map::OrderedHashMap;
 
 use super::ctype::withtypeoperatorslist_to_ctype;
 use super::function::type_to_args;
+use super::ParsedFile;
 use super::ArgKind;
 use super::CType;
 use super::CfnKind;
@@ -193,7 +195,7 @@ impl<'a> Scope<'a> {
         ast: &parse::Ln,
         is_root: bool,
     ) -> Result<Scope<'a>, Box<dyn std::error::Error>> {
-        for (i, element) in ast.body.iter().enumerate() {
+        for element in ast.body.iter() {
             match element {
                 parse::RootElements::Types(t) => {
                     let res = CType::from_ast(s, t, false)?;
@@ -221,7 +223,13 @@ impl<'a> Scope<'a> {
                         let res = CType::from_ast(s, t, true)?;
                         s = res.0;
                     }
-                    e => eprintln!("TODO: Not yet supported export syntax: {:?}\nLast good parsed lines:\n{:?}\n{:?}", e, ast.body[i - 2], ast.body[i - 1]),
+                    e => {
+                        return Err(format!(
+                            "{}: unsupported export syntax: {:?}",
+                            s.path, e
+                        )
+                        .into());
+                    }
                 },
                 parse::RootElements::Whitespace(_) => { /* Do nothing */ }
                 parse::RootElements::CTypes(c) => {
@@ -367,7 +375,7 @@ impl<'a> Scope<'a> {
                     }
                 }
                 parse::RootElements::Interfaces(_) => {
-                    panic!("Interfaces not yet implemented");
+                    return Err(format!("{}: interfaces are not yet implemented", s.path).into());
                 }
             }
         }
@@ -400,11 +408,14 @@ impl<'a> Scope<'a> {
             ROOT_SCOPE_JS.get_or_init(resolver)
         }
     }
-    pub fn from_src(path: &str, src: String) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn from_src(
+        path: &str,
+        src: String,
+        mtime: Option<SystemTime>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let ast = parse::get_ast(&src)
+            .map_err(|e| -> Box<dyn std::error::Error> { Box::new(e.with_file(path)) })?;
         let txt = Box::pin(src);
-        let txt_ptr: *const str = &**txt;
-        // *How* would this move, anyways? But TODO: See if there's a way to handle this safely
-        let ast = unsafe { parse::get_ast(&*txt_ptr)? };
         let mut s = Scope {
             path: path.to_string(),
             parent: Some(Scope::root()),
@@ -417,9 +428,16 @@ impl<'a> Scope<'a> {
         };
         s = Scope::load_scope(s, &ast, false)?;
         let mut program = Program::get_program();
-        program
-            .scopes_by_file
-            .insert(path.to_string(), (txt, ast, s));
+        program.scopes_by_file.insert(
+            path.to_string(),
+            ParsedFile {
+                src: txt,
+                ast,
+                scope: s,
+                path: path.to_string(),
+                mtime,
+            },
+        );
         Program::return_program(program);
         Ok(())
     }

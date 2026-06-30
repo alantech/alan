@@ -14,6 +14,19 @@ use alan_compiler::program::Program;
 
 mod integration_tests;
 
+/// Defense-in-depth backstop for unexpected panics during compilation (e.g. path parsing bugs).
+/// This does *not* recover from stack overflow in the parser; that is handled by the parse-depth
+/// cap in `alan_compiler::parse`.
+fn catch_compile_panics<F, T>(f: F) -> Result<T, Box<dyn std::error::Error>>
+where
+    F: FnOnce() -> Result<T, Box<dyn std::error::Error>> + std::panic::UnwindSafe,
+{
+    match std::panic::catch_unwind(f) {
+        Ok(result) => result,
+        Err(_) => Err("Internal compiler error: unexpected panic during compilation".into()),
+    }
+}
+
 /// Acquire an exclusive lock on a file with timeout and retry logic
 fn acquire_file_lock(
     lockfile_path: &PathBuf,
@@ -249,6 +262,10 @@ fn cargo_command(bindir: &Option<PathBuf>, project_dir: &Path) -> Command {
 /// of a single source file, plus a Cargo.toml file including the 3rd party dependencies in the
 /// standard library and user source code.
 pub fn build(source_file: String, profile: &str) -> Result<String, Box<dyn std::error::Error>> {
+    catch_compile_panics(|| build_inner(source_file, profile))
+}
+
+fn build_inner(source_file: String, profile: &str) -> Result<String, Box<dyn std::error::Error>> {
     let find_process = if cfg!(windows) { "where" } else { "which" };
     // Fail if rustc is not present
     match Command::new(find_process).arg("rustc").output() {
@@ -635,6 +652,10 @@ codegen-units = 256
 /// The `compile` function is a thin wrapper on top of `build` that builds an executable in release
 /// mode and exits, printing the time it took to run on success.
 pub fn compile(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
+    catch_compile_panics(|| compile_inner(source_file))
+}
+
+fn compile_inner(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
     let start_time = Instant::now();
     Program::set_target_lang_rs();
     let mut program = Program::get_program();
@@ -650,6 +671,10 @@ pub fn compile(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
 /// The `interp` function builds the source file with minimal optimizations (like an interpreter),
 /// runs it, and deletes the binary.
 pub fn interp(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
+    catch_compile_panics(|| interp_inner(source_file))
+}
+
+fn interp_inner(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
     Program::set_target_lang_rs();
     let mut program = Program::get_program();
     program
@@ -678,6 +703,10 @@ pub fn interp(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
 /// The `test` function is a thin wrapper on top of `compile` that compiles the specified file in
 /// test mode, then immediately invokes it, and deletes the binary when done.
 pub fn test(source_file: String, js: bool) -> Result<(), Box<dyn std::error::Error>> {
+    catch_compile_panics(|| test_inner(source_file, js))
+}
+
+fn test_inner(source_file: String, js: bool) -> Result<(), Box<dyn std::error::Error>> {
     if js {
         Program::set_target_lang_js();
     } else {
@@ -731,6 +760,10 @@ pub fn test(source_file: String, js: bool) -> Result<(), Box<dyn std::error::Err
 /// of a single source file, plus a package.json file including third party dependencies in the
 /// standard library and user source code.
 pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
+    catch_compile_panics(|| web_inner(source_file))
+}
+
+fn web_inner(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
     let find_process = if cfg!(windows) { "where" } else { "which" };
     // Fail if node is not present
     match Command::new(find_process).arg("node").output() {
@@ -975,6 +1008,10 @@ pub fn web(source_file: String) -> Result<String, Box<dyn std::error::Error>> {
 /// The `bundle` function is a thin wrapper on top of `web` that builds an executable in release
 /// mode and exits, printing the time it took to run on success.
 pub fn bundle(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
+    catch_compile_panics(|| bundle_inner(source_file))
+}
+
+fn bundle_inner(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
     let start_time = Instant::now();
     Program::set_target_lang_js();
     let mut program = Program::get_program();
@@ -990,6 +1027,10 @@ pub fn bundle(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
 /// The `to_rs` function is an thin wrapper on top of `lntors` that shoves the output into a `.rs`
 /// file.
 pub fn to_rs(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
+    catch_compile_panics(|| to_rs_inner(source_file))
+}
+
+fn to_rs_inner(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
     Program::set_target_lang_rs();
     let mut program = Program::get_program();
     program
@@ -1038,6 +1079,10 @@ pub fn to_rs(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
 /// The `to_js` function is an thin wrapper on top of `lntojs` that shoves the output into a `.js`
 /// file.
 pub fn to_js(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
+    catch_compile_panics(|| to_js_inner(source_file))
+}
+
+fn to_js_inner(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
     Program::set_target_lang_js();
     let mut program = Program::get_program();
     program

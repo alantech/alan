@@ -63,7 +63,22 @@ If you wish to contribute to Alan, you'll need a development environment to buil
 * Node.js >=18.0.0
 * A complete C toolchain (gcc, clang, msvc)
 
-Once those are installed, simply follow the install instructions above, replacing `cargo install --path .` with a simple `cargo build` to compile and `cargo test` to run the test suite.
+Once those are installed, clone the repo and work from the monorepo root (the directory that contains `alan/`, `alan_compiler/`, etc.):
+
+```bash
+git clone https://github.com/alantech/alan
+cd alan
+cargo install --path alan   # install the `alan` CLI binary
+```
+
+To build without installing, or to run tests during development:
+
+```bash
+cargo build -p alan
+cargo test --release
+```
+
+Use `--release` for tests: debug builds have much larger stack frames and can false-positive stack overflow in parser depth-limit tests.
 
 **Unit and Integration Tests:**
 

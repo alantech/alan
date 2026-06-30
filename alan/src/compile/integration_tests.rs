@@ -2102,12 +2102,70 @@ test_compile_error!(undefined_function_call => r#"
     }"#;
     error "Could not find a function with a call signature of i64str(i64)";
 );
-test_ignore!(totally_broken_statement => r#"
+test_compile_error!(totally_broken_statement => r#"
     on app.start {
       app.oops
     }"#;
-    stderr "what";
 );
+
+// Malformed-input regression tests: parse errors must return cleanly, never abort.
+
+#[cfg(test)]
+mod malformed_input {
+    fn write_and_compile(code: &str, name: &str) -> Result<(), Box<dyn std::error::Error>> {
+        let filename = format!("{name}.ln");
+        std::fs::write(&filename, code)?;
+        let res = crate::compile::compile(filename.clone());
+        std::fs::remove_file(&filename)?;
+        match res {
+            Ok(_) => Err("Unexpectedly succeeded!".into()),
+            Err(_) => Ok(()),
+        }
+    }
+
+    #[test]
+    fn deep_paren_nesting() -> Result<(), Box<dyn std::error::Error>> {
+        let depth = 1000;
+        let code = format!(
+            "export fn main {{ let x = {}5{}; }}",
+            "(".repeat(depth),
+            ")".repeat(depth)
+        );
+        write_and_compile(&code, "deep_paren_nesting")
+    }
+
+    #[test]
+    fn deep_array_nesting() -> Result<(), Box<dyn std::error::Error>> {
+        let depth = 1000;
+        let code = format!(
+            "export fn main {{ let x = {}5{}; }}",
+            "[".repeat(depth),
+            "]".repeat(depth)
+        );
+        write_and_compile(&code, "deep_array_nesting")
+    }
+
+    #[test]
+    fn deep_type_generic_nesting() -> Result<(), Box<dyn std::error::Error>> {
+        let depth = 1000;
+        let mut inner = "int64".to_string();
+        for _ in 0..depth {
+            inner = format!("Foo{{{inner}}}");
+        }
+        let code = format!("type Bar = {inner};\nexport fn main {{}}");
+        write_and_compile(&code, "deep_type_generic_nesting")
+    }
+
+    #[test]
+    fn truncated_input() -> Result<(), Box<dyn std::error::Error>> {
+        write_and_compile("export fn main { print(", "truncated_input")
+    }
+
+    #[test]
+    fn garbage_input() -> Result<(), Box<dyn std::error::Error>> {
+        write_and_compile("@@@ not alan @@@", "garbage_input")
+    }
+}
 
 // Module-level constants
 
