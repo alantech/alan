@@ -22,6 +22,34 @@ thread_local! {
     static PARSE_DEPTH: Cell<usize> = const { Cell::new(0) };
 }
 
+// Per-thread override used by color display tests (see `DiagnosticColorOverrideGuard`).
+thread_local! {
+    static DIAGNOSTIC_COLOR_OVERRIDE: Cell<Option<bool>> = const { Cell::new(None) };
+}
+
+/// RAII guard that forces diagnostic color on/off for the current test thread only.
+#[cfg(test)]
+struct DiagnosticColorOverrideGuard(Option<bool>);
+
+#[cfg(test)]
+impl DiagnosticColorOverrideGuard {
+    fn set(enabled: bool) -> Self {
+        let prev = DIAGNOSTIC_COLOR_OVERRIDE.with(|c| {
+            let prev = c.get();
+            c.set(Some(enabled));
+            prev
+        });
+        Self(prev)
+    }
+}
+
+#[cfg(test)]
+impl Drop for DiagnosticColorOverrideGuard {
+    fn drop(&mut self) {
+        DIAGNOSTIC_COLOR_OVERRIDE.with(|c| c.set(self.0));
+    }
+}
+
 /// Reset the thread-local parse depth counter (defense against a leaked counter after a panic).
 pub fn reset_parse_depth() {
     PARSE_DEPTH.with(|d| d.set(0));
@@ -1646,18 +1674,26 @@ impl DiagnosticStyle {
 }
 
 fn diagnostic_color_enabled() -> bool {
+    if let Some(enabled) = DIAGNOSTIC_COLOR_OVERRIDE.with(|c| c.get()) {
+        return enabled;
+    }
     if std::env::var_os("NO_COLOR").is_some_and(|v| !v.is_empty()) {
         return false;
     }
-    if std::env::var_os("CLICOLOR_FORCE")
-        .is_some_and(|v| !v.is_empty() && v.as_os_str() != std::ffi::OsStr::new("0"))
-    {
+    if env_var_truthy("CLICOLOR_FORCE") || env_var_truthy("FORCE_COLOR") {
         return true;
     }
     if std::env::var("TERM").as_deref() == Ok("dumb") {
         return false;
     }
+    // Shell-agnostic: asks the OS whether stderr is a TTY (`isatty`), not which shell is in use.
     std::io::stderr().is_terminal()
+}
+
+fn env_var_truthy(key: &str) -> bool {
+    std::env::var_os(key).is_some_and(|v| {
+        !v.is_empty() && v.as_os_str() != std::ffi::OsStr::new("0")
+    })
 }
 
 impl fmt::Display for ParseError {
@@ -1753,18 +1789,11 @@ mod parse_error_tests {
 
     #[test]
     fn parse_error_display_uses_color_when_forced() {
-        // SAFETY: test-only env mutation; other tests in this module don't depend on these vars.
-        unsafe {
-            std::env::set_var("CLICOLOR_FORCE", "1");
-            std::env::remove_var("NO_COLOR");
-        }
+        let _guard = DiagnosticColorOverrideGuard::set(true);
         let err = get_ast("on app.start {")
             .unwrap_err()
             .with_file("totally_broken.ln");
         let msg = err.to_string();
-        unsafe {
-            std::env::remove_var("CLICOLOR_FORCE");
-        }
         assert!(
             msg.contains("\x1b["),
             "expected ANSI color codes in: {msg:?}"
@@ -1773,18 +1802,12 @@ mod parse_error_tests {
 
     #[test]
     fn parse_error_display_has_no_color_when_disabled() {
-        unsafe {
-            std::env::set_var("NO_COLOR", "1");
-            std::env::remove_var("CLICOLOR_FORCE");
-        }
+        let _guard = DiagnosticColorOverrideGuard::set(false);
         let err = get_ast("on app.start {")
             .unwrap_err()
             .with_file("totally_broken.ln");
         let msg = err.to_string();
-        unsafe {
-            std::env::remove_var("NO_COLOR");
-        }
-        assert!(!msg.contains("\x1b["));
+        assert!(!msg.contains("\x1b["), "unexpected ANSI color codes in: {msg:?}");
         assert!(msg.contains("error: "));
         assert!(msg.contains("--> totally_broken.ln:1:1"));
     }
