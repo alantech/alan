@@ -1,4 +1,4 @@
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::fs::read_to_string;
 use std::pin::Pin;
 use std::time::SystemTime;
@@ -25,63 +25,114 @@ pub struct ParsedFile<'a> {
 pub struct Program<'a> {
     #[allow(clippy::box_collection)]
     pub scopes_by_file: OrderedHashMap<String, ParsedFile<'a>>,
+    /// Deprecated: compile-time env is stored in [`COMPILE_ENV`]. Kept for API compatibility.
     pub env: OrderedHashMap<String, String>,
 }
 
-thread_local!(pub static PROGRAM_RS: Cell<Program<'static>> = Cell::new(
-Program {
-    scopes_by_file: OrderedHashMap::new(),
-    env: {
-        let mut env = OrderedHashMap::new();
-        for (k, v) in std::env::vars() {
-            env.insert(k.to_string(), v.to_string());
-        }
-        env.insert("ALAN_OUTPUT_LANG".to_string(), "rs".to_string());
-        env.insert("ALAN_PLATFORM".to_string(), if cfg!(target_os="windows") {
-            "windows".to_string()
-        } else if cfg!(target_os="macos") {
-            "macos".to_string()
-        } else if cfg!(target_os="linux") {
-            "linux".to_string()
-        } else {
-            "what".to_string()
-        });
-        env.insert("ALAN_ARCH".to_string(), if cfg!(target_arch="x86_64") {
-            "x86_64".to_string()
-        } else if cfg!(target_arch="x86") {
-            "x86_32".to_string()
-        } else if cfg!(target_arch="aarch64") {
-            "arm_64".to_string()
-        } else if cfg!(target_arch="arm") {
-            "arm_32".to_string()
-        } else {
-            "what".to_string()
-        });
-        env
-    },
-}));
-thread_local!(pub static PROGRAM_JS: Cell<Program<'static>> = Cell::new(
-Program {
-    scopes_by_file: OrderedHashMap::new(),
-    env: {
-        let mut env = OrderedHashMap::new();
-        if !cfg!(target_family="wasm") {
-            for (k, v) in std::env::vars() {
-                env.insert(k.to_string(), v.to_string());
-            }
-        } else {
-            env.insert("ALAN_TARGET".to_string(), "release".to_string());
-        }
-        env.insert("ALAN_OUTPUT_LANG".to_string(), "js".to_string());
-        env.insert("ALAN_ARCH".to_string(), "what".to_string());
-        env.insert("ALAN_PLATFORM".to_string(), "browser".to_string());
-        env
-    },
-}));
+thread_local! {
+    /// Compile-time environment (`Env{"KEY"}` in Alan). Separate from [`Program`] so nested
+    /// `get_program`/`return_program` calls do not observe an empty env.
+    static COMPILE_ENV: RefCell<Option<OrderedHashMap<String, String>>> = const { RefCell::new(None) };
+}
+
+thread_local!(pub static PROGRAM_RS: Cell<Program<'static>> = Cell::new(Program::default()));
+thread_local!(pub static PROGRAM_JS: Cell<Program<'static>> = Cell::new(Program::default()));
 
 thread_local!(static TARGET_LANG_RS: Cell<bool> = const { Cell::new(true) });
 
+fn platform_env() -> String {
+    if cfg!(target_os = "windows") {
+        "windows".to_string()
+    } else if cfg!(target_os = "macos") {
+        "macos".to_string()
+    } else if cfg!(target_os = "linux") {
+        "linux".to_string()
+    } else {
+        "what".to_string()
+    }
+}
+
+fn arch_env() -> String {
+    if cfg!(target_arch = "x86_64") {
+        "x86_64".to_string()
+    } else if cfg!(target_arch = "x86") {
+        "x86_32".to_string()
+    } else if cfg!(target_arch = "aarch64") {
+        "arm_64".to_string()
+    } else if cfg!(target_arch = "arm") {
+        "arm_32".to_string()
+    } else {
+        "what".to_string()
+    }
+}
+
 impl<'a> Program<'a> {
+    fn ensure_compile_env() {
+        COMPILE_ENV.with(|cell| {
+            if cell.borrow().is_some() {
+                return;
+            }
+            let mut env = OrderedHashMap::new();
+            if !cfg!(target_family = "wasm") {
+                for (k, v) in std::env::vars() {
+                    env.insert(k, v);
+                }
+            }
+            if TARGET_LANG_RS.get() {
+                env.insert("ALAN_OUTPUT_LANG".to_string(), "rs".to_string());
+                env.insert("ALAN_PLATFORM".to_string(), platform_env());
+                env.insert("ALAN_ARCH".to_string(), arch_env());
+            } else {
+                if cfg!(target_family = "wasm") {
+                    env.insert("ALAN_TARGET".to_string(), "release".to_string());
+                }
+                env.insert("ALAN_OUTPUT_LANG".to_string(), "js".to_string());
+                env.insert("ALAN_PLATFORM".to_string(), "browser".to_string());
+                env.insert("ALAN_ARCH".to_string(), "what".to_string());
+            }
+            if !env.contains_key("ALAN_TARGET") {
+                env.insert("ALAN_TARGET".to_string(), "release".to_string());
+            }
+            *cell.borrow_mut() = Some(env);
+        });
+    }
+
+    /// Set a compile-time environment variable (visible to `Env{"KEY"}` in Alan source).
+    pub fn set_compile_env(key: impl Into<String>, value: impl Into<String>) {
+        let key = key.into();
+        Self::ensure_compile_env();
+        COMPILE_ENV.with(|cell| {
+            cell.borrow_mut()
+                .as_mut()
+                .expect("compile env initialized")
+                .insert(key.clone(), value.into());
+        });
+        if key == "ALAN_TARGET" {
+            Scope::clear_root_scope_cache();
+        }
+    }
+
+    pub(crate) fn compile_env_get(key: &str) -> Option<String> {
+        Self::ensure_compile_env();
+        COMPILE_ENV.with(|cell| {
+            cell.borrow()
+                .as_ref()
+                .expect("compile env initialized")
+                .get(key)
+                .cloned()
+        })
+    }
+
+    pub(crate) fn compile_env_contains(key: &str) -> bool {
+        Self::ensure_compile_env();
+        COMPILE_ENV.with(|cell| {
+            cell.borrow()
+                .as_ref()
+                .expect("compile env initialized")
+                .contains_key(key)
+        })
+    }
+
     pub fn load(path: String) -> Result<(), Box<dyn std::error::Error>> {
         let program = Program::get_program();
         if program.scopes_by_file.contains_key(&path) {
@@ -132,14 +183,24 @@ impl<'a> Program<'a> {
     }
 
     pub fn get_program() -> Program<'static> {
-        if TARGET_LANG_RS.get() {
+        Self::ensure_compile_env();
+        let mut program = if TARGET_LANG_RS.get() {
             PROGRAM_RS.take()
         } else {
             PROGRAM_JS.take()
-        }
+        };
+        program.env = COMPILE_ENV.with(|cell| {
+            cell.borrow()
+                .as_ref()
+                .expect("compile env initialized")
+                .clone()
+        });
+        program
     }
 
     pub fn return_program(p: Program<'static>) {
+        // COMPILE_ENV is the source of truth for compile-time env; do not mirror p.env back or
+        // nested get/return pairs can clobber values set via set_compile_env.
         if TARGET_LANG_RS.get() {
             PROGRAM_RS.set(p);
         } else {
@@ -148,11 +209,21 @@ impl<'a> Program<'a> {
     }
 
     pub fn set_target_lang_js() {
+        if !TARGET_LANG_RS.get() {
+            return;
+        }
         TARGET_LANG_RS.set(false);
+        COMPILE_ENV.with(|cell| *cell.borrow_mut() = None);
+        Scope::clear_root_scope_cache();
     }
 
     pub fn set_target_lang_rs() {
+        if TARGET_LANG_RS.get() {
+            return;
+        }
         TARGET_LANG_RS.set(true);
+        COMPILE_ENV.with(|cell| *cell.borrow_mut() = None);
+        Scope::clear_root_scope_cache();
     }
 
     pub fn is_target_lang_rs() -> bool {

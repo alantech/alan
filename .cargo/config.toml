@@ -1,3 +1,2 @@
 [env]
-ALAN_TARGET = "test" 
 BUFSIZE = "2"

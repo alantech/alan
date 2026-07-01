@@ -14,9 +14,9 @@ jobs:
   bench:
     runs-on: [self-hosted, linux, X64]
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Cache Cargo dependencies
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: |
           ~/.cargo/registry
@@ -41,9 +41,9 @@ jobs:
   bench-windows:
     runs-on: [self-hosted, windows]
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Cache Cargo dependencies
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: |
           ~/.cargo/registry
@@ -64,9 +64,9 @@ jobs:
   bench-arm-linux:
     runs-on: [self-hosted, linux, ARM64]
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Cache Cargo dependencies
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: |
           ~/.cargo/registry
@@ -87,9 +87,9 @@ jobs:
   bench-arm-macos:
     runs-on: [self-hosted, macOS, ARM64]
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Cache Cargo dependencies
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: |
           ~/.cargo/registry

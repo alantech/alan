@@ -1282,22 +1282,24 @@ impl AlanWindowContext {
     }
 
     pub fn mouse_x(&mut self) -> u32 {
-        if self.mouse_x.is_none() {
-            self.mouse_x = Some(0);
-            self.mouse_y = Some(0);
-            0
-        } else {
-            self.mouse_x.unwrap()
+        match self.mouse_x {
+            Some(x) => x,
+            None => {
+                self.mouse_x = Some(0);
+                self.mouse_y = Some(0);
+                0
+            }
         }
     }
 
     pub fn mouse_y(&mut self) -> u32 {
-        if self.mouse_y.is_none() {
-            self.mouse_x = Some(0);
-            self.mouse_y = Some(0);
-            0
-        } else {
-            self.mouse_y.unwrap()
+        match self.mouse_y {
+            Some(y) => y,
+            None => {
+                self.mouse_x = Some(0);
+                self.mouse_y = Some(0);
+                0
+            }
         }
     }
 

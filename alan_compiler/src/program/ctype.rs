@@ -5004,26 +5004,22 @@ impl CType {
         }
     }
     pub fn env(k: Arc<CType>) -> Arc<CType> {
-        let program = Program::get_program();
         let out = match &*k {
-            CType::TString(s) => match program.env.get(s) {
+            CType::TString(s) => match Program::compile_env_get(s) {
                 None => CType::fail(&format!("Failed to load environment variable {s}",)),
-                Some(s) => CType::TString(s.clone()),
+                Some(s) => CType::TString(s),
             },
             CType::Infer(..) => CType::Env(vec![k.clone()]),
             _ => CType::fail("Env{K} must be given a key as a string to load"),
         };
-        Program::return_program(program);
         Arc::new(out)
     }
     pub fn envexists(k: Arc<CType>) -> Arc<CType> {
-        let program = Program::get_program();
         let out = match &*k {
-            CType::TString(s) => CType::Bool(program.env.contains_key(s)),
+            CType::TString(s) => CType::Bool(Program::compile_env_contains(s)),
             CType::Infer(..) => CType::EnvExists(k),
             _ => CType::fail("EnvExists{K} must be given a key as a string to check"),
         };
-        Program::return_program(program);
         Arc::new(out)
     }
     #[allow(clippy::should_implement_trait)]
@@ -5191,18 +5187,16 @@ impl CType {
         }
     }
     pub fn envdefault(k: Arc<CType>, d: Arc<CType>) -> Arc<CType> {
-        let program = Program::get_program();
         let out = match (&*k, &*d) {
-            (CType::TString(s), CType::TString(def)) => match program.env.get(s) {
+            (CType::TString(s), CType::TString(def)) => match Program::compile_env_get(s) {
                 None => CType::TString(def.clone()),
-                Some(v) => CType::TString(v.clone()),
+                Some(v) => CType::TString(v),
             },
             (CType::Infer(..), CType::TString(_))
             | (CType::TString(_), CType::Infer(..))
             | (CType::Infer(..), CType::Infer(..)) => CType::Env(vec![k.clone(), d.clone()]),
             _ => CType::fail("Env{K, D} must be provided a string for each type"),
         };
-        Program::return_program(program);
         Arc::new(out)
     }
     pub fn and(a: Arc<CType>, b: Arc<CType>) -> Arc<CType> {
