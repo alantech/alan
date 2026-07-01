@@ -844,7 +844,7 @@ fn web_inner(source_file: String) -> Result<String, Box<dyn std::error::Error>> 
     match write(
         package_json_path.clone(),
         format!(
-            "{{\n  \"name\": \"alan_generated_bundle\",\n  \"main\": \"index.js\",\n  \"dependencies\": {{\n    {}\n  }},\n  \"devDependencies\": {{\n    \"rollup\": \"4.x\",\n    \"@rollup/plugin-node-resolve\": \"15.x\",\n \"@rollup/plugin-terser\": \"^0.4.4\"\n  }}\n}}",
+            "{{\n  \"name\": \"alan_generated_bundle\",\n  \"main\": \"index.js\",\n  \"dependencies\": {{\n    {}\n  }},\n  \"devDependencies\": {{\n    \"rollup\": \"4.x\",\n    \"@rollup/plugin-node-resolve\": \"15.x\",\n \"@rollup/plugin-terser\": \"^1.0.0\"\n  }}\n}}",
             deps.iter()
                 .map(|(k, v)| {
                     format!("    \"{k}\": \"{v}\"")
