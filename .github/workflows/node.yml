@@ -14,28 +14,36 @@ jobs:
         node-version: [22, 24, 26]
     steps:
     - uses: actions/checkout@v7
+    - uses: pnpm/action-setup@v4
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v6
       with:
         node-version: ${{ matrix.node-version }}
+        cache: 'pnpm'
     - name: Install deps
-      run: yarn
+      run: pnpm install --frozen-lockfile
     - name: Run tests
-      run: npm test
+      run: pnpm test
   test-js-gpgpu:
     runs-on: [self-hosted, macOS, ARM64]
     steps:
     - uses: actions/checkout@v7
+    - uses: pnpm/action-setup@v4
+    - name: Use Node.js 22
+      uses: actions/setup-node@v6
+      with:
+        node-version: 22
+        cache: 'pnpm'
     - name: Install deps
-      run: yarn
+      run: pnpm install --frozen-lockfile
     - name: Bundle stdlib
-      run: yarn bundle
+      run: pnpm bundle
     - name: Set up Playwright
-      run: yarn playwright install
+      run: pnpm exec playwright install
     - name: Start webserver
-      run: yarn start-server
+      run: pnpm start-server
     - name: Test GPGPU
-      run: yarn test-gpgpu
+      run: pnpm test-gpgpu
     - name: Stop webserver
       if: always()
-      run: yarn stop-server
+      run: pnpm stop-server
