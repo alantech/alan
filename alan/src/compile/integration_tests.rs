@@ -363,7 +363,7 @@ macro_rules! test_gpgpu {
                     // We're assuming an HTTP server is already running
                     let run = match std::process::Command::new("bash")
                         .arg("-c")
-                        .arg(format!("yarn -s chrome-console http://localhost:8080/alan/{}.html", stringify!($rule)))
+                        .arg(format!("pnpm --silent run chrome-console http://localhost:8080/alan/{}.html", stringify!($rule)))
                         .output() {
                             Ok(a) => Ok(a),
                             Err(e) => Err(format!("Could not run the test JS code {:?}", e)),

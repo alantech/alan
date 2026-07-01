@@ -60,7 +60,7 @@ If you wish to contribute to Alan, you'll need a development environment to buil
 
 * git (any recent version should work)
 * Rust >=1.92.0
-* Node.js >=22.0.0 (with a package manager; the compiler prefers `pnpm`, then `yarn`, then `npm`)
+* Node.js >=22.0.0 and [pnpm](https://pnpm.io/) (the compiler falls back to `yarn` or `npm` if pnpm is unavailable)
 * A complete C toolchain (gcc, clang, msvc)
 
 Once those are installed, clone the repo and work from the monorepo root (the directory that contains `alan/`, `alan_compiler/`, etc.):

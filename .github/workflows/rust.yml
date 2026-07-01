@@ -199,9 +199,9 @@ jobs:
     - name: Install pnpm
       run: brew install pnpm
     - name: Node deps
-      run: yarn && yarn playwright install
+      run: pnpm install --frozen-lockfile && pnpm exec playwright install
     - name: Start web server
-      run: yarn start-server
+      run: pnpm start-server
     - name: Build
       run: cargo build --release --verbose
     - name: Debug Test
@@ -217,7 +217,7 @@ jobs:
       run: cargo test --release --verbose -- --nocapture
     - if: always()
       name: Stop web server
-      run: yarn stop-server
+      run: pnpm stop-server
     - name: Run native tests
       run: cargo run --release -- test alan/test.ln
     - name: Run js tests
