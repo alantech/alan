@@ -32,13 +32,13 @@ pub struct Program<'a> {
 thread_local! {
     /// Compile-time environment (`Env{"KEY"}` in Alan). Separate from [`Program`] so nested
     /// `get_program`/`return_program` calls do not observe an empty env.
-    static COMPILE_ENV: RefCell<Option<OrderedHashMap<String, String>>> = RefCell::new(None);
+    static COMPILE_ENV: RefCell<Option<OrderedHashMap<String, String>>> = const { RefCell::new(None) };
 }
 
 thread_local!(pub static PROGRAM_RS: Cell<Program<'static>> = Cell::new(Program::default()));
 thread_local!(pub static PROGRAM_JS: Cell<Program<'static>> = Cell::new(Program::default()));
 
-thread_local!(static TARGET_LANG_RS: Cell<bool> = Cell::new(true));
+thread_local!(static TARGET_LANG_RS: Cell<bool> = const { Cell::new(true) });
 
 fn platform_env() -> String {
     if cfg!(target_os = "windows") {
