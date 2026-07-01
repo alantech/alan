@@ -197,7 +197,10 @@ jobs:
     - name: Check and set Rust version
       run: ./scripts/check_rust_version.sh
     - name: Install pnpm
-      run: brew install pnpm
+      run: |
+        brew unlink pnpm 2>/dev/null || true
+        brew install pnpm@10
+        echo "$(brew --prefix pnpm@10)/bin" >> $GITHUB_PATH
     - name: Node deps
       run: pnpm install --frozen-lockfile && pnpm exec playwright install
     - name: Start web server
