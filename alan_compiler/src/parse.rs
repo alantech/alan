@@ -1691,9 +1691,8 @@ fn diagnostic_color_enabled() -> bool {
 }
 
 fn env_var_truthy(key: &str) -> bool {
-    std::env::var_os(key).is_some_and(|v| {
-        !v.is_empty() && v.as_os_str() != std::ffi::OsStr::new("0")
-    })
+    std::env::var_os(key)
+        .is_some_and(|v| !v.is_empty() && v.as_os_str() != std::ffi::OsStr::new("0"))
 }
 
 impl fmt::Display for ParseError {
@@ -1807,7 +1806,10 @@ mod parse_error_tests {
             .unwrap_err()
             .with_file("totally_broken.ln");
         let msg = err.to_string();
-        assert!(!msg.contains("\x1b["), "unexpected ANSI color codes in: {msg:?}");
+        assert!(
+            !msg.contains("\x1b["),
+            "unexpected ANSI color codes in: {msg:?}"
+        );
         assert!(msg.contains("error: "));
         assert!(msg.contains("--> totally_broken.ln:1:1"));
     }
