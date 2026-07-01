@@ -1,4 +1,4 @@
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::SystemTime;
 
 use ordered_hash_map::OrderedHashMap;
@@ -31,6 +31,22 @@ pub struct Scope<'a> {
     // TODO: Implement these other concepts
     // interfaces: OrderedHashMap<String, Interface>,
     // Should we include something for documentation?
+}
+
+fn root_scope_cache() -> &'static Mutex<OrderedHashMap<String, &'static Scope<'static>>> {
+    static CACHE: OnceLock<Mutex<OrderedHashMap<String, &'static Scope<'static>>>> =
+        OnceLock::new();
+    CACHE.get_or_init(|| Mutex::new(OrderedHashMap::new()))
+}
+
+fn root_cache_key() -> String {
+    let lang = if Program::is_target_lang_rs() {
+        "rs"
+    } else {
+        "js"
+    };
+    let target = Program::compile_env_get("ALAN_TARGET").unwrap_or_else(|| "release".to_string());
+    format!("{lang}:{target}")
 }
 
 fn is_function_head(typen: Arc<CType>) -> bool {
@@ -383,15 +399,21 @@ impl<'a> Scope<'a> {
         }
         Ok(s)
     }
+
+    /// Drop cached root scopes so `ALAN_TARGET`-dependent definitions are re-evaluated.
+    pub(crate) fn clear_root_scope_cache() {
+        root_scope_cache().lock().unwrap().clear();
+    }
+
     pub fn root() -> &'static Scope<'static> {
-        static ROOT_SRC: &str = include_str!("../std/root.ln");
         static ROOT_AST: OnceLock<parse::Ln> = OnceLock::new();
-        static ROOT_SCOPE_RS: OnceLock<Scope> = OnceLock::new();
-        static ROOT_SCOPE_JS: OnceLock<Scope> = OnceLock::new();
+        static ROOT_SRC: &str = include_str!("../std/root.ln");
 
         let ast = ROOT_AST
             .get_or_init(|| parse::get_ast(ROOT_SRC).expect("Invalid root scope source code!"));
-        let resolver = || {
+        let key = root_cache_key();
+        let mut cache = root_scope_cache().lock().unwrap();
+        if !cache.contains_key(&key) {
             let s = Scope {
                 path: "@root".to_string(),
                 parent: None,
@@ -402,13 +424,11 @@ impl<'a> Scope<'a> {
                 typeoperatormappings: OrderedHashMap::new(),
                 exports: OrderedHashMap::new(),
             };
-            Scope::load_scope(s, ast, true).expect("Invalid root scope definition")
-        };
-        if Program::is_target_lang_rs() {
-            ROOT_SCOPE_RS.get_or_init(resolver)
-        } else {
-            ROOT_SCOPE_JS.get_or_init(resolver)
+            let scope = Scope::load_scope(s, ast, true).expect("Invalid root scope definition");
+            let leaked: &'static Scope<'static> = Box::leak(Box::new(scope));
+            cache.insert(key.clone(), leaked);
         }
+        cache[&key]
     }
     pub fn from_src(
         path: &str,

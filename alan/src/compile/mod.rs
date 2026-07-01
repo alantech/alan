@@ -658,11 +658,7 @@ pub fn compile(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
 fn compile_inner(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
     let start_time = Instant::now();
     Program::set_target_lang_rs();
-    let mut program = Program::get_program();
-    program
-        .env
-        .insert("ALAN_TARGET".to_string(), "release".to_string());
-    Program::return_program(program);
+    Program::set_compile_env("ALAN_TARGET", "release");
     build(source_file, "release")?;
     println!("Done! Took {:.2}sec", start_time.elapsed().as_secs_f32());
     Ok(())
@@ -676,11 +672,7 @@ pub fn interp(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
 
 fn interp_inner(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
     Program::set_target_lang_rs();
-    let mut program = Program::get_program();
-    program
-        .env
-        .insert("ALAN_TARGET".to_string(), "interp".to_string());
-    Program::return_program(program);
+    Program::set_compile_env("ALAN_TARGET", "interp");
     let binary = build(source_file, "interp")?;
     let mut run = Command::new(format!("./{binary}"))
         .current_dir(current_dir()?)
@@ -712,11 +704,7 @@ fn test_inner(source_file: String, js: bool) -> Result<(), Box<dyn std::error::E
     } else {
         Program::set_target_lang_rs();
     }
-    let mut program = Program::get_program();
-    program
-        .env
-        .insert("ALAN_TARGET".to_string(), "test".to_string());
-    Program::return_program(program);
+    Program::set_compile_env("ALAN_TARGET", "test");
     if js {
         let jsfile = web(source_file)?;
         let mut run = Command::new("node")
@@ -1014,11 +1002,7 @@ pub fn bundle(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
 fn bundle_inner(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
     let start_time = Instant::now();
     Program::set_target_lang_js();
-    let mut program = Program::get_program();
-    program
-        .env
-        .insert("ALAN_TARGET".to_string(), "release".to_string());
-    Program::return_program(program);
+    Program::set_compile_env("ALAN_TARGET", "release");
     web(source_file)?;
     println!("Done! Took {:.2}sec", start_time.elapsed().as_secs_f32());
     Ok(())
@@ -1032,11 +1016,7 @@ pub fn to_rs(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
 
 fn to_rs_inner(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
     Program::set_target_lang_rs();
-    let mut program = Program::get_program();
-    program
-        .env
-        .insert("ALAN_TARGET".to_string(), "release".to_string());
-    Program::return_program(program);
+    Program::set_compile_env("ALAN_TARGET", "release");
     // Generate the rust code to compile
     let (rs_str, deps) = lntors(source_file.clone())?;
     // Shove it into a temp file for rustc
@@ -1084,11 +1064,7 @@ pub fn to_js(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
 
 fn to_js_inner(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
     Program::set_target_lang_js();
-    let mut program = Program::get_program();
-    program
-        .env
-        .insert("ALAN_TARGET".to_string(), "release".to_string());
-    Program::return_program(program);
+    Program::set_compile_env("ALAN_TARGET", "release");
     // Generate the rust code to compile
     let (js_str, deps) = lntojs(source_file.clone())?;
     // Shove it into a temp file for rustc
