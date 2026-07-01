@@ -45,16 +45,6 @@ jobs:
         npm install -g pnpm
         cargo test --release --verbose -- --include-ignored
     - if: ${{ github.ref_name != 'main' }}
-      name: Run tests with Node 23
-      run: |
-        rm -rf ~/.config/alan
-        export NVM_DIR="$HOME/.nvm"
-        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-        nvm install 23
-        nvm use 23
-        npm install -g pnpm
-        cargo test --release --verbose
-    - if: ${{ github.ref_name != 'main' }}
       name: Run tests with Node 22
       run: |
         rm -rf ~/.config/alan
@@ -65,36 +55,27 @@ jobs:
         npm install -g pnpm
         cargo test --release --verbose
     - if: ${{ github.ref_name != 'main' }}
-      name: Run tests with Node 20
+      name: Run tests with Node 24
       run: |
         rm -rf ~/.config/alan
         export NVM_DIR="$HOME/.nvm"
         [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-        nvm install 20
-        nvm use 20
+        nvm install 24
+        nvm use 24
         npm install -g pnpm
         cargo test --release --verbose
     - if: ${{ github.ref_name != 'main' }}
-      name: Run tests with Node 18
+      name: Run tests with Node 26
       run: |
         rm -rf ~/.config/alan
         export NVM_DIR="$HOME/.nvm"
         [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-        nvm install 18
-        nvm use 18
+        nvm install 26
+        nvm use 26
         npm install -g pnpm
         cargo test --release --verbose
     - name: Run native tests
       run: cargo run --release -- test alan/test.ln
-    - name: Run js tests with Node 23
-      run: |
-        rm -rf ~/.config/alan
-        export NVM_DIR="$HOME/.nvm"
-        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-        nvm install 23
-        nvm use 23
-        npm install -g pnpm
-        cargo run --release -- test --js alan/test.ln
     - name: Run js tests with Node 22
       run: |
         rm -rf ~/.config/alan
@@ -104,22 +85,22 @@ jobs:
         nvm use 22
         npm install -g pnpm
         cargo run --release -- test --js alan/test.ln
-    - name: Run js tests with Node 20
+    - name: Run js tests with Node 24
       run: |
         rm -rf ~/.config/alan
         export NVM_DIR="$HOME/.nvm"
         [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-        nvm install 20
-        nvm use 20
+        nvm install 24
+        nvm use 24
         npm install -g pnpm
         cargo run --release -- test --js alan/test.ln
-    - name: Run js tests with Node 18
+    - name: Run js tests with Node 26
       run: |
         rm -rf ~/.config/alan
         export NVM_DIR="$HOME/.nvm"
         [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-        nvm install 18
-        nvm use 18
+        nvm install 26
+        nvm use 26
         npm install -g pnpm
         cargo run --release -- test --js alan/test.ln
 

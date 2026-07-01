@@ -9,8 +9,15 @@ on:
 jobs:
   test-js-stdlib:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [22, 24, 26]
     steps:
     - uses: actions/checkout@v4
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
     - name: Install deps
       run: yarn
     - name: Run tests
