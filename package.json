@@ -16,7 +16,7 @@
   "engines": {
     "node": ">=22.0.0"
   },
-  "packageManager": "pnpm@11.9.0",
+  "packageManager": "pnpm@10.34.4",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/alantech/alan.git"
