@@ -1497,7 +1497,11 @@ impl ParseError {
     }
 
     fn line_text_at(input: &str, line: usize) -> String {
-        input.lines().nth(line.saturating_sub(1)).unwrap_or("").to_string()
+        input
+            .lines()
+            .nth(line.saturating_sub(1))
+            .unwrap_or("")
+            .to_string()
     }
 
     fn snippet_at(input: &str, offset: usize) -> String {
@@ -1645,9 +1649,9 @@ fn diagnostic_color_enabled() -> bool {
     if std::env::var_os("NO_COLOR").is_some_and(|v| !v.is_empty()) {
         return false;
     }
-    if std::env::var_os("CLICOLOR_FORCE").is_some_and(|v| {
-        !v.is_empty() && v.as_os_str() != std::ffi::OsStr::new("0")
-    }) {
+    if std::env::var_os("CLICOLOR_FORCE")
+        .is_some_and(|v| !v.is_empty() && v.as_os_str() != std::ffi::OsStr::new("0"))
+    {
         return true;
     }
     if std::env::var("TERM").as_deref() == Ok("dumb") {
@@ -1761,7 +1765,10 @@ mod parse_error_tests {
         unsafe {
             std::env::remove_var("CLICOLOR_FORCE");
         }
-        assert!(msg.contains("\x1b["), "expected ANSI color codes in: {msg:?}");
+        assert!(
+            msg.contains("\x1b["),
+            "expected ANSI color codes in: {msg:?}"
+        );
     }
 
     #[test]
@@ -1785,9 +1792,7 @@ mod parse_error_tests {
     #[test]
     fn parse_error_display_is_rust_style() {
         let input = "on app.start {\n  app.oops\n}";
-        let err = get_ast(input)
-            .unwrap_err()
-            .with_file("totally_broken.ln");
+        let err = get_ast(input).unwrap_err().with_file("totally_broken.ln");
         let msg = err.to_string();
         assert!(msg.starts_with("error: "));
         assert!(msg.contains("--> totally_broken.ln:1:1"));

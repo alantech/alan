@@ -5,7 +5,6 @@ use ordered_hash_map::OrderedHashMap;
 
 use super::ctype::withtypeoperatorslist_to_ctype;
 use super::function::type_to_args;
-use super::ParsedFile;
 use super::ArgKind;
 use super::CType;
 use super::CfnKind;
@@ -14,6 +13,7 @@ use super::Export;
 use super::FnKind;
 use super::Function;
 use super::OperatorMapping;
+use super::ParsedFile;
 use super::Program;
 use super::TypeOperatorMapping;
 use crate::parse;
@@ -224,11 +224,9 @@ impl<'a> Scope<'a> {
                         s = res.0;
                     }
                     e => {
-                        return Err(format!(
-                            "{}: unsupported export syntax: {:?}",
-                            s.path, e
-                        )
-                        .into());
+                        return Err(
+                            format!("{}: unsupported export syntax: {:?}", s.path, e).into()
+                        );
                     }
                 },
                 parse::RootElements::Whitespace(_) => { /* Do nothing */ }
@@ -248,19 +246,17 @@ impl<'a> Scope<'a> {
                         return Err("ctypes can only be defined in the compiler internals".into());
                     }
                     match c.name.as_str() {
-                        "Type" | "Generic" => {
-                            /* Do nothing for the 'structural' types */
-                        }
+                        "Type" | "Generic" => { /* Do nothing for the 'structural' types */ }
                         g @ ("Int" | "Float" | "Bool" | "String" | "Group" | "Unwrap" | "Infix"
-                        | "Prefix" | "Method" | "Property" | "Cast" | "Own" | "Deref" | "Mut"
-                        | "Rust" | "Nodejs" | "From" | "Shared" | "Promise" | "Array" | "Fail" | "Neg"
-                        | "Len" | "Size" | "FileStr" | "Env" | "EnvExists" | "Not") => {
-                            s = CType::from_generic(s, g, 1)
-                        }
-                        g @ ("BindsAs" | "Function" | "Call" | "Dependency" | "Import" | "Field"
-                        | "Prop" | "Exclude" | "Buffer" | "Add" | "Sub" | "Mul" | "Div" | "Mod"
-                        | "Pow" | "Min" | "Max" | "Concat" | "And" | "Or" | "Xor" | "Nand"
-                        | "Nor" | "Xnor" | "Eq" | "Neq" | "Lt" | "Lte" | "Gt" | "Gte") => s = CType::from_generic(s, g, 2),
+                        | "Prefix" | "Method" | "Property" | "Cast" | "Own" | "Deref"
+                        | "Mut" | "Rust" | "Nodejs" | "From" | "Shared" | "Promise"
+                        | "Array" | "Fail" | "Neg" | "Len" | "Size" | "FileStr" | "Env"
+                        | "EnvExists" | "Not") => s = CType::from_generic(s, g, 1),
+                        g @ ("BindsAs" | "Function" | "Call" | "Dependency" | "Import"
+                        | "Field" | "Prop" | "Exclude" | "Buffer" | "Add" | "Sub" | "Mul"
+                        | "Div" | "Mod" | "Pow" | "Min" | "Max" | "Concat" | "And" | "Or"
+                        | "Xor" | "Nand" | "Nor" | "Xnor" | "Eq" | "Neq" | "Lt" | "Lte"
+                        | "Gt" | "Gte") => s = CType::from_generic(s, g, 2),
                         g @ ("If" | "Binds" | "Tuple" | "Either" | "AnyOf") => {
                             // Not kosher in Rust land, but 0 means "as many as we want"
                             s = CType::from_generic(s, g, 0)
@@ -278,10 +274,7 @@ impl<'a> Scope<'a> {
                     if let Some(ref g) = c.opttypegenerics {
                         let mut i = 0;
                         while i < g.typecalllist.len() {
-                            match (
-                                g.typecalllist.get(i),
-                                g.typecalllist.get(i + 1),
-                            ) {
+                            match (g.typecalllist.get(i), g.typecalllist.get(i + 1)) {
                                 (Some(t1), Some(t2)) if t2.to_string().trim() == "," => {
                                     generics.push((
                                         t1.to_string().trim().to_string(),
@@ -323,7 +316,8 @@ impl<'a> Scope<'a> {
                             return Err(format!(
                                 "cfn {} must have a function type signature",
                                 c.name
-                            ).into());
+                            )
+                            .into());
                         }
                     };
                     let is_generic = !generics.is_empty();
@@ -362,7 +356,15 @@ impl<'a> Scope<'a> {
                     let key = if is_generic {
                         function.name.clone()
                     } else {
-                        format!("{}_{}", function.name, type_to_args(function.typen.clone()).iter().map(|a| a.2.clone().to_callable_string()).collect::<Vec<_>>().join("_"))
+                        format!(
+                            "{}_{}",
+                            function.name,
+                            type_to_args(function.typen.clone())
+                                .iter()
+                                .map(|a| a.2.clone().to_callable_string())
+                                .collect::<Vec<_>>()
+                                .join("_")
+                        )
                     };
                     // Prepend (newest-first), matching how `Function::from_ast` registers regular
                     // `fn`s, so dispatch follows Alan's documented "most-recent definition wins"
