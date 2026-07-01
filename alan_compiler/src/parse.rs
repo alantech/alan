@@ -1,3 +1,7 @@
+use std::cell::Cell;
+use std::fmt;
+use std::io::IsTerminal;
+
 use nom::{
     branch::alt,
     bytes::complete::{tag, take},
@@ -7,6 +11,78 @@ use nom::{
     multi::{many0, many1, separated_list0},
     IResult, Parser,
 };
+
+/// Maximum recursive-descent depth before returning a hard parse failure. Each guarded parser
+/// entry increments the counter; effective user-facing nesting is well below this value (~130
+/// levels with typical grammar cycles). Run parser tests with `cargo test --release`: debug builds
+/// have much larger stack frames and can false-positive stack overflow before this cap fires.
+pub const MAX_PARSE_DEPTH: usize = 512;
+
+thread_local! {
+    static PARSE_DEPTH: Cell<usize> = const { Cell::new(0) };
+}
+
+// Per-thread override used by color display tests (see `DiagnosticColorOverrideGuard`).
+thread_local! {
+    static DIAGNOSTIC_COLOR_OVERRIDE: Cell<Option<bool>> = const { Cell::new(None) };
+}
+
+/// RAII guard that forces diagnostic color on/off for the current test thread only.
+#[cfg(test)]
+struct DiagnosticColorOverrideGuard(Option<bool>);
+
+#[cfg(test)]
+impl DiagnosticColorOverrideGuard {
+    fn set(enabled: bool) -> Self {
+        let prev = DIAGNOSTIC_COLOR_OVERRIDE.with(|c| {
+            let prev = c.get();
+            c.set(Some(enabled));
+            prev
+        });
+        Self(prev)
+    }
+}
+
+#[cfg(test)]
+impl Drop for DiagnosticColorOverrideGuard {
+    fn drop(&mut self) {
+        DIAGNOSTIC_COLOR_OVERRIDE.with(|c| c.set(self.0));
+    }
+}
+
+/// Reset the thread-local parse depth counter (defense against a leaked counter after a panic).
+pub fn reset_parse_depth() {
+    PARSE_DEPTH.with(|d| d.set(0));
+}
+
+struct ParseDepthGuard;
+
+impl ParseDepthGuard {
+    fn enter(input: &str) -> Result<Self, nom::Err<Error<&str>>> {
+        let overflow = PARSE_DEPTH.with(|d| {
+            let current = d.get();
+            if current >= MAX_PARSE_DEPTH {
+                return true;
+            }
+            d.set(current + 1);
+            false
+        });
+        if overflow {
+            return Err(nom::Err::Failure(Error::new(input, ErrorKind::TooLarge)));
+        }
+        Ok(ParseDepthGuard)
+    }
+}
+
+impl Drop for ParseDepthGuard {
+    fn drop(&mut self) {
+        PARSE_DEPTH.with(|d| d.set(d.get().saturating_sub(1)));
+    }
+}
+
+fn parse_depth_enter(input: &str) -> Result<ParseDepthGuard, nom::Err<Error<&str>>> {
+    ParseDepthGuard::enter(input)
+}
 
 // Macros to make building nom functions nicer (for me). For now they always make everything
 // public for easier usage of this file. Also `#[derive(Debug)]` is added to all structs and enums
@@ -113,6 +189,7 @@ macro_rules! named_and {
     }
 
     pub fn $fn_name(input: &str) -> IResult<&str, $struct_name> {
+      let _depth = parse_depth_enter(input)?;
       let mut i = input;
       let out = $struct_name {
         $( $field_name: {
@@ -139,9 +216,15 @@ macro_rules! named_or {
     }
 
     pub fn $fn_name(input: &str) -> IResult<&str, $enum_name> {
-      $(if let Ok((i, val)) = $rule.parse(input) {
-        return Ok((i, $enum_name::$option_name(val.into())));
-      })+
+      let _depth = parse_depth_enter(input)?;
+      $(
+        match $rule.parse(input) {
+          Ok((i, val)) => return Ok((i, $enum_name::$option_name(val.into()))),
+          Err(nom::Err::Failure(e)) => return Err(nom::Err::Failure(e)),
+          Err(nom::Err::Incomplete(i)) => return Err(nom::Err::Incomplete(i)),
+          Err(nom::Err::Error(_)) => {}
+        }
+      )+
       // Reaching this point is an error. For now, just return a generic one
       Err(nom::Err::Error(Error::new(input, ErrorKind::Fail)))
     }
@@ -158,14 +241,16 @@ macro_rules! named_or {
 macro_rules! left_subset {
     ( $left:expr, $right:expr $(,)? ) => {
         (|input| {
+            let _depth = parse_depth_enter(input)?;
             let left_match = $left.parse(input)?;
-            let right_match = $right.parse(left_match.1);
-            if let Ok((i, _)) = right_match {
-                if i.len() == 0 {
-                    return Err(nom::Err::Error(Error::new(input, ErrorKind::Fail)));
+            match $right.parse(left_match.1) {
+                Ok((i, _)) if i.is_empty() => {
+                    Err(nom::Err::Error(Error::new(input, ErrorKind::Fail)))
                 }
+                Ok(_) => Ok(left_match),
+                Err(nom::Err::Failure(e)) => Err(nom::Err::Failure(e)),
+                Err(_) => Ok(left_match),
             }
-            return Ok(left_match);
         })
     };
 }
@@ -176,6 +261,7 @@ macro_rules! list {
     // Special path for Strings because str/String split is annoying
     ( $fn_name:ident: String => $rule:expr, $sep:expr $(,)? ) => {
         pub fn $fn_name(input: &str) -> IResult<&str, Vec<String>> {
+            let _depth = parse_depth_enter(input)?;
             let res = separated_list1($sep, $rule)(input)?;
             Ok((res.0, res.1.iter().map(|s| s.to_string()).collect()))
         }
@@ -183,24 +269,28 @@ macro_rules! list {
     // Normal path
     ( $fn_name:ident: $type:ty => $rule:expr, $sep:expr $(,)? ) => {
         pub fn $fn_name(input: &str) -> IResult<&str, Vec<$type>> {
+            let _depth = parse_depth_enter(input)?;
             separated_list1($sep, $rule).parse(input)
         }
     };
     // Path for no separators
     ( $fn_name: ident: $type:ty => $rule:expr $(,)? ) => {
         pub fn $fn_name(input: &str) -> IResult<&str, Vec<$type>> {
+            let _depth = parse_depth_enter(input)?;
             many1($rule).parse(input)
         }
     };
     // Normal path where an empty vector is fine
     ( opt $fn_name:ident: $type:ty => $rule:expr, $sep:expr $(,)? ) => {
         pub fn $fn_name(input: &str) -> IResult<&str, Vec<$type>> {
+            let _depth = parse_depth_enter(input)?;
             separated_list0($sep, $rule).parse(input)
         }
     };
     // Path for no separators where an empty vector is fine
     ( opt $fn_name: ident: $type:ty => $rule:expr $(,)? ) => {
         pub fn $fn_name(input: &str) -> IResult<&str, Vec<$type>> {
+            let _depth = parse_depth_enter(input)?;
             many0($rule).parse(input)
         }
     };
@@ -1086,6 +1176,7 @@ impl<'a> IntoIterator for &'a AssignableList {
 }
 
 pub fn assignablelist_with_seps(input: &str) -> IResult<&str, AssignableList> {
+    let _depth = parse_depth_enter(input)?;
     let mut i = input;
     let mut elements: Vec<Vec<WithOperators>> = Vec::new();
     let mut separators: Vec<String> = Vec::new();
@@ -1094,6 +1185,7 @@ pub fn assignablelist_with_seps(input: &str) -> IResult<&str, AssignableList> {
             elements.push(element);
             i = remaining;
         }
+        Err(nom::Err::Failure(e)) => return Err(nom::Err::Failure(e)),
         Err(_) => {
             return Ok((
                 i,
@@ -1113,12 +1205,14 @@ pub fn assignablelist_with_seps(input: &str) -> IResult<&str, AssignableList> {
                     elements.push(element);
                     i = remaining;
                 }
+                Err(nom::Err::Failure(e)) => return Err(nom::Err::Failure(e)),
                 Err(_) => {
                     // Trailing separator (e.g., trailing comma) - backtrack
                     i = save;
                     break;
                 }
             },
+            Err(nom::Err::Failure(e)) => return Err(nom::Err::Failure(e)),
             Err(_) => break,
         }
     }
@@ -1387,7 +1481,238 @@ test!(ln =>
     pass "const test = 5;";
 );
 
-pub fn get_ast(input: &str) -> Result<Ln, nom::Err<nom::error::Error<&str>>> {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ParseErrorKind {
+    DepthLimit,
+    Syntax,
+    UnexpectedEof,
+    Incomplete,
+}
+
+#[derive(Clone, PartialEq, Eq)]
+pub struct ParseError {
+    pub file: Option<String>,
+    pub offset: usize,
+    pub line: usize,
+    pub column: usize,
+    /// Full source line containing the error (for rustc-style display).
+    pub line_text: String,
+    pub snippet: String,
+    pub kind: ParseErrorKind,
+}
+
+impl ParseError {
+    pub fn with_file(mut self, file: impl Into<String>) -> Self {
+        self.file = Some(file.into());
+        self
+    }
+
+    fn line_column_at(input: &str, offset: usize) -> (usize, usize) {
+        let mut line = 1usize;
+        let mut column = 1usize;
+        for (i, ch) in input.char_indices() {
+            if i >= offset {
+                break;
+            }
+            if ch == '\n' {
+                line += 1;
+                column = 1;
+            } else {
+                column += 1;
+            }
+        }
+        (line, column)
+    }
+
+    fn line_text_at(input: &str, line: usize) -> String {
+        input
+            .lines()
+            .nth(line.saturating_sub(1))
+            .unwrap_or("")
+            .to_string()
+    }
+
+    fn snippet_at(input: &str, offset: usize) -> String {
+        const CONTEXT: usize = 20;
+        let start = offset.saturating_sub(CONTEXT);
+        let end = (offset + CONTEXT).min(input.len());
+        let slice = &input[start..end];
+        if start > 0 {
+            format!("...{}", slice)
+        } else {
+            slice.to_string()
+        }
+    }
+
+    fn label(&self) -> &'static str {
+        match self.kind {
+            ParseErrorKind::DepthLimit => "nesting too deep",
+            ParseErrorKind::Syntax => "syntax error",
+            ParseErrorKind::UnexpectedEof => "unexpected end of input",
+            ParseErrorKind::Incomplete => "incomplete input",
+        }
+    }
+
+    fn write_diagnostic(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = DiagnosticStyle::new();
+        writeln!(
+            f,
+            "{red}error{reset}: {label}",
+            red = s.red,
+            reset = s.reset,
+            label = self.label()
+        )?;
+        match &self.file {
+            Some(path) => writeln!(
+                f,
+                "{blue} --> {reset}{blue}{path}:{line}:{column}{reset}",
+                blue = s.blue,
+                reset = s.reset,
+                line = self.line,
+                column = self.column
+            )?,
+            None => writeln!(
+                f,
+                "{blue} --> {reset}{blue}line {line}:{column}{reset}",
+                blue = s.blue,
+                reset = s.reset,
+                line = self.line,
+                column = self.column
+            )?,
+        }
+        writeln!(f, "{blue}  |{reset}", blue = s.blue, reset = s.reset)?;
+        if !self.line_text.is_empty() {
+            writeln!(
+                f,
+                "{blue}{line:>3} {reset}{blue}|{reset} {text}",
+                blue = s.blue,
+                reset = s.reset,
+                line = self.line,
+                text = self.line_text
+            )?;
+            let col0 = self.column.saturating_sub(1);
+            let underline_len = self.line_text.len().saturating_sub(col0).max(1);
+            writeln!(
+                f,
+                "{blue}    |{reset} {spaces}{red}{carets}{reset}",
+                blue = s.blue,
+                reset = s.reset,
+                spaces = " ".repeat(col0),
+                red = s.red,
+                carets = "^".repeat(underline_len)
+            )?;
+        }
+        Ok(())
+    }
+
+    pub fn from_nom_err(input: &str, err: nom::Err<Error<&str>>) -> Self {
+        match err {
+            nom::Err::Incomplete(_) => {
+                let line = input.lines().count().max(1);
+                let column = input
+                    .rsplit_once('\n')
+                    .map(|(_, last)| last.len() + 1)
+                    .unwrap_or(input.len() + 1);
+                ParseError {
+                    file: None,
+                    offset: input.len(),
+                    line,
+                    column,
+                    line_text: Self::line_text_at(input, line),
+                    snippet: String::new(),
+                    kind: ParseErrorKind::Incomplete,
+                }
+            }
+            nom::Err::Error(e) | nom::Err::Failure(e) => {
+                let offset = e.input.as_ptr() as usize - input.as_ptr() as usize;
+                let offset = offset.min(input.len());
+                let (line, column) = Self::line_column_at(input, offset);
+                let kind = if e.code == ErrorKind::TooLarge {
+                    ParseErrorKind::DepthLimit
+                } else if e.code == ErrorKind::Eof {
+                    ParseErrorKind::UnexpectedEof
+                } else {
+                    ParseErrorKind::Syntax
+                };
+                ParseError {
+                    file: None,
+                    offset,
+                    line,
+                    column,
+                    line_text: Self::line_text_at(input, line),
+                    snippet: Self::snippet_at(input, offset),
+                    kind,
+                }
+            }
+        }
+    }
+}
+
+/// ANSI styling for rustc-like diagnostics. Empty when color is disabled.
+struct DiagnosticStyle {
+    reset: &'static str,
+    red: &'static str,
+    blue: &'static str,
+}
+
+impl DiagnosticStyle {
+    fn new() -> Self {
+        if diagnostic_color_enabled() {
+            Self {
+                reset: "\x1b[0m",
+                red: "\x1b[1;38;5;9m",
+                blue: "\x1b[38;5;12m",
+            }
+        } else {
+            Self {
+                reset: "",
+                red: "",
+                blue: "",
+            }
+        }
+    }
+}
+
+fn diagnostic_color_enabled() -> bool {
+    if let Some(enabled) = DIAGNOSTIC_COLOR_OVERRIDE.with(|c| c.get()) {
+        return enabled;
+    }
+    if std::env::var_os("NO_COLOR").is_some_and(|v| !v.is_empty()) {
+        return false;
+    }
+    if env_var_truthy("CLICOLOR_FORCE") || env_var_truthy("FORCE_COLOR") {
+        return true;
+    }
+    if std::env::var("TERM").as_deref() == Ok("dumb") {
+        return false;
+    }
+    // Shell-agnostic: asks the OS whether stderr is a TTY (`isatty`), not which shell is in use.
+    std::io::stderr().is_terminal()
+}
+
+fn env_var_truthy(key: &str) -> bool {
+    std::env::var_os(key)
+        .is_some_and(|v| !v.is_empty() && v.as_os_str() != std::ffi::OsStr::new("0"))
+}
+
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.write_diagnostic(f)?;
+        Ok(())
+    }
+}
+
+impl fmt::Debug for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // `main` reports `Box<dyn Error>` with `{:?}`; match rustc-style output there too.
+        fmt::Display::fmt(self, f)
+    }
+}
+
+impl std::error::Error for ParseError {}
+
+pub fn get_ast(input: &str) -> Result<Ln, ParseError> {
+    reset_parse_depth();
     // Strip an optional leading "shebang" line (e.g. `#!/usr/bin/env alan`) so that an Alan source
     // file can be marked executable and run directly as a script. A shebang is only recognized at
     // the very start of the file; `#!` is unambiguous since Alan comments use `//` and `/* */`.
@@ -1406,7 +1731,7 @@ pub fn get_ast(input: &str) -> Result<Ln, nom::Err<nom::error::Error<&str>>> {
     // writing don't trip things up.
     match all_consuming(ln).parse(input) {
         Ok((_, out)) => Ok(out),
-        Err(e) => Err(e),
+        Err(e) => Err(ParseError::from_nom_err(input, e)),
     }
 }
 test!(get_ast =>
@@ -1418,3 +1743,105 @@ test!(get_ast =>
     pass "#!/usr/bin/alan\n";
     pass "#!/usr/bin/env alan";
 );
+
+#[cfg(test)]
+mod parse_error_tests {
+    use super::*;
+
+    #[test]
+    fn depth_enter_limits() {
+        reset_parse_depth();
+        let input = "";
+        let mut guards = Vec::new();
+        for _ in 0..MAX_PARSE_DEPTH {
+            guards.push(parse_depth_enter(input).unwrap());
+        }
+        assert!(matches!(
+            parse_depth_enter(input),
+            Err(nom::Err::Failure(_))
+        ));
+    }
+
+    #[test]
+    fn deep_paren_returns_depth_limit_error() {
+        let depth = 200;
+        let input = format!(
+            "export fn main {{ let x = {}5{}; }}",
+            "(".repeat(depth),
+            ")".repeat(depth)
+        );
+        let err = get_ast(&input).unwrap_err();
+        assert_eq!(err.kind, ParseErrorKind::DepthLimit);
+    }
+
+    #[test]
+    fn very_deep_nesting_returns_depth_limit_not_abort() {
+        let depth = 1000;
+        let input = format!(
+            "export fn main {{ let x = {}5{}; }}",
+            "(".repeat(depth),
+            ")".repeat(depth)
+        );
+        let err = get_ast(&input).unwrap_err();
+        assert_eq!(err.kind, ParseErrorKind::DepthLimit);
+    }
+
+    #[test]
+    fn parse_error_display_uses_color_when_forced() {
+        let _guard = DiagnosticColorOverrideGuard::set(true);
+        let err = get_ast("on app.start {")
+            .unwrap_err()
+            .with_file("totally_broken.ln");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("\x1b["),
+            "expected ANSI color codes in: {msg:?}"
+        );
+    }
+
+    #[test]
+    fn parse_error_display_has_no_color_when_disabled() {
+        let _guard = DiagnosticColorOverrideGuard::set(false);
+        let err = get_ast("on app.start {")
+            .unwrap_err()
+            .with_file("totally_broken.ln");
+        let msg = err.to_string();
+        assert!(
+            !msg.contains("\x1b["),
+            "unexpected ANSI color codes in: {msg:?}"
+        );
+        assert!(msg.contains("error: "));
+        assert!(msg.contains("--> totally_broken.ln:1:1"));
+    }
+
+    #[test]
+    fn parse_error_display_is_rust_style() {
+        let input = "on app.start {\n  app.oops\n}";
+        let err = get_ast(input).unwrap_err().with_file("totally_broken.ln");
+        let msg = err.to_string();
+        assert!(msg.starts_with("error: "));
+        assert!(msg.contains("--> totally_broken.ln:1:1"));
+        assert!(msg.contains("| on app.start {"));
+        assert!(msg.contains('^'));
+    }
+
+    #[test]
+    fn parse_error_is_owned_after_input_dropped() {
+        let input = "on app.start { app.oops }".to_string();
+        let err = get_ast(&input).unwrap_err();
+        drop(input);
+        // If `err` borrowed from `input`, this would be UB; Display must remain valid.
+        let msg = err.to_string();
+        assert!(msg.contains("error:"));
+        assert!(msg.contains("unexpected end of input") || msg.contains("syntax error"));
+    }
+
+    #[test]
+    fn malformed_input_reports_line_and_column() {
+        let input = "export fn main { let x = (;";
+        let err = get_ast(input).unwrap_err();
+        assert!(err.line >= 1);
+        assert!(err.column >= 1);
+        assert!(!err.snippet.is_empty());
+    }
+}

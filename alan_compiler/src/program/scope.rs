@@ -1,4 +1,5 @@
 use std::sync::{Arc, OnceLock};
+use std::time::SystemTime;
 
 use ordered_hash_map::OrderedHashMap;
 
@@ -12,6 +13,7 @@ use super::Export;
 use super::FnKind;
 use super::Function;
 use super::OperatorMapping;
+use super::ParsedFile;
 use super::Program;
 use super::TypeOperatorMapping;
 use crate::parse;
@@ -193,7 +195,7 @@ impl<'a> Scope<'a> {
         ast: &parse::Ln,
         is_root: bool,
     ) -> Result<Scope<'a>, Box<dyn std::error::Error>> {
-        for (i, element) in ast.body.iter().enumerate() {
+        for element in ast.body.iter() {
             match element {
                 parse::RootElements::Types(t) => {
                     let res = CType::from_ast(s, t, false)?;
@@ -221,7 +223,11 @@ impl<'a> Scope<'a> {
                         let res = CType::from_ast(s, t, true)?;
                         s = res.0;
                     }
-                    e => eprintln!("TODO: Not yet supported export syntax: {:?}\nLast good parsed lines:\n{:?}\n{:?}", e, ast.body[i - 2], ast.body[i - 1]),
+                    e => {
+                        return Err(
+                            format!("{}: unsupported export syntax: {:?}", s.path, e).into()
+                        );
+                    }
                 },
                 parse::RootElements::Whitespace(_) => { /* Do nothing */ }
                 parse::RootElements::CTypes(c) => {
@@ -240,19 +246,17 @@ impl<'a> Scope<'a> {
                         return Err("ctypes can only be defined in the compiler internals".into());
                     }
                     match c.name.as_str() {
-                        "Type" | "Generic" => {
-                            /* Do nothing for the 'structural' types */
-                        }
+                        "Type" | "Generic" => { /* Do nothing for the 'structural' types */ }
                         g @ ("Int" | "Float" | "Bool" | "String" | "Group" | "Unwrap" | "Infix"
-                        | "Prefix" | "Method" | "Property" | "Cast" | "Own" | "Deref" | "Mut"
-                        | "Rust" | "Nodejs" | "From" | "Shared" | "Promise" | "Array" | "Fail" | "Neg"
-                        | "Len" | "Size" | "FileStr" | "Env" | "EnvExists" | "Not") => {
-                            s = CType::from_generic(s, g, 1)
-                        }
-                        g @ ("BindsAs" | "Function" | "Call" | "Dependency" | "Import" | "Field"
-                        | "Prop" | "Exclude" | "Buffer" | "Add" | "Sub" | "Mul" | "Div" | "Mod"
-                        | "Pow" | "Min" | "Max" | "Concat" | "And" | "Or" | "Xor" | "Nand"
-                        | "Nor" | "Xnor" | "Eq" | "Neq" | "Lt" | "Lte" | "Gt" | "Gte") => s = CType::from_generic(s, g, 2),
+                        | "Prefix" | "Method" | "Property" | "Cast" | "Own" | "Deref"
+                        | "Mut" | "Rust" | "Nodejs" | "From" | "Shared" | "Promise"
+                        | "Array" | "Fail" | "Neg" | "Len" | "Size" | "FileStr" | "Env"
+                        | "EnvExists" | "Not") => s = CType::from_generic(s, g, 1),
+                        g @ ("BindsAs" | "Function" | "Call" | "Dependency" | "Import"
+                        | "Field" | "Prop" | "Exclude" | "Buffer" | "Add" | "Sub" | "Mul"
+                        | "Div" | "Mod" | "Pow" | "Min" | "Max" | "Concat" | "And" | "Or"
+                        | "Xor" | "Nand" | "Nor" | "Xnor" | "Eq" | "Neq" | "Lt" | "Lte"
+                        | "Gt" | "Gte") => s = CType::from_generic(s, g, 2),
                         g @ ("If" | "Binds" | "Tuple" | "Either" | "AnyOf") => {
                             // Not kosher in Rust land, but 0 means "as many as we want"
                             s = CType::from_generic(s, g, 0)
@@ -270,10 +274,7 @@ impl<'a> Scope<'a> {
                     if let Some(ref g) = c.opttypegenerics {
                         let mut i = 0;
                         while i < g.typecalllist.len() {
-                            match (
-                                g.typecalllist.get(i),
-                                g.typecalllist.get(i + 1),
-                            ) {
+                            match (g.typecalllist.get(i), g.typecalllist.get(i + 1)) {
                                 (Some(t1), Some(t2)) if t2.to_string().trim() == "," => {
                                     generics.push((
                                         t1.to_string().trim().to_string(),
@@ -315,7 +316,8 @@ impl<'a> Scope<'a> {
                             return Err(format!(
                                 "cfn {} must have a function type signature",
                                 c.name
-                            ).into());
+                            )
+                            .into());
                         }
                     };
                     let is_generic = !generics.is_empty();
@@ -354,7 +356,15 @@ impl<'a> Scope<'a> {
                     let key = if is_generic {
                         function.name.clone()
                     } else {
-                        format!("{}_{}", function.name, type_to_args(function.typen.clone()).iter().map(|a| a.2.clone().to_callable_string()).collect::<Vec<_>>().join("_"))
+                        format!(
+                            "{}_{}",
+                            function.name,
+                            type_to_args(function.typen.clone())
+                                .iter()
+                                .map(|a| a.2.clone().to_callable_string())
+                                .collect::<Vec<_>>()
+                                .join("_")
+                        )
                     };
                     // Prepend (newest-first), matching how `Function::from_ast` registers regular
                     // `fn`s, so dispatch follows Alan's documented "most-recent definition wins"
@@ -367,7 +377,7 @@ impl<'a> Scope<'a> {
                     }
                 }
                 parse::RootElements::Interfaces(_) => {
-                    panic!("Interfaces not yet implemented");
+                    return Err(format!("{}: interfaces are not yet implemented", s.path).into());
                 }
             }
         }
@@ -400,11 +410,14 @@ impl<'a> Scope<'a> {
             ROOT_SCOPE_JS.get_or_init(resolver)
         }
     }
-    pub fn from_src(path: &str, src: String) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn from_src(
+        path: &str,
+        src: String,
+        mtime: Option<SystemTime>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let ast = parse::get_ast(&src)
+            .map_err(|e| -> Box<dyn std::error::Error> { Box::new(e.with_file(path)) })?;
         let txt = Box::pin(src);
-        let txt_ptr: *const str = &**txt;
-        // *How* would this move, anyways? But TODO: See if there's a way to handle this safely
-        let ast = unsafe { parse::get_ast(&*txt_ptr)? };
         let mut s = Scope {
             path: path.to_string(),
             parent: Some(Scope::root()),
@@ -417,9 +430,16 @@ impl<'a> Scope<'a> {
         };
         s = Scope::load_scope(s, &ast, false)?;
         let mut program = Program::get_program();
-        program
-            .scopes_by_file
-            .insert(path.to_string(), (txt, ast, s));
+        program.scopes_by_file.insert(
+            path.to_string(),
+            ParsedFile {
+                src: txt,
+                ast,
+                scope: s,
+                path: path.to_string(),
+                mtime,
+            },
+        );
         Program::return_program(program);
         Ok(())
     }
