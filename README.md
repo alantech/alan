@@ -9,7 +9,9 @@
 [![Reddit](https://img.shields.io/badge/reddit-alanlang-red)](https://www.reddit.com/r/alanlang)
 [![Website](https://img.shields.io/badge/website-alan--lang.org-blue)](https://alan-lang.org)
 
-**🚧 CONSTRUCTION IN PROGRESS** - This language is being reworked for a new purpose in a backwards-incompatible way. The currently published documentation is for the [v0.1](https://github.com/alantech/alan/tree/v0.1) iteration of Alan, which is more stable and capable than the v0.2 code on the `main` branch.
+📚 [Documentation](https://docs.alan-lang.org) for Alan v0.2. Looking for `v0.1` documentation? Visit the [legacy documentation](https://docs-legacy.alan-lang.org/).
+
+**🚧 WORK IN PROGRESS** - The core of the language is functional, but parts of the standard library and package management are still unfinished.
 
 **🔭 Predictable runtime for all computations** - A program is represented as DAG(s) where the running time for all computations can be predicted because there is no unbounded recursion or iteration.
 
