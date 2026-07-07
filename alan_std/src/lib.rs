@@ -926,7 +926,14 @@ pub fn create_buffer_init<T>(
     // Write data to staging buffer
     {
         let view = staging_buffer.slice(..);
-        view.get_mapped_range_mut().copy_from_slice(val_u8);
+        match view.get_mapped_range_mut() {
+            Ok(mut range) => range.copy_from_slice(val_u8),
+            Err(e) => {
+                return Err(AlanError {
+                    message: format!("Somehow got an invalid range on full slice {e:?}"),
+                })
+            }
+        };
     }
     staging_buffer.unmap();
 
@@ -1202,7 +1209,7 @@ pub fn read_buffer<T: std::clone::Clone>(b: &GBuffer) -> Vec<T> {
         submission_index: Some(submission_index),
         timeout: None,
     });
-    let data = temp_slice.get_mapped_range();
+    let data = temp_slice.get_mapped_range().expect("The full buffer should always be mappable");
     let data_ptr = data.as_ptr();
     let data_len = bufferlen(b) as usize;
     let data_slice: &[T] = unsafe { std::slice::from_raw_parts(data_ptr as *const T, data_len) };
@@ -1401,6 +1408,7 @@ where
                     power_preference: wgpu::PowerPreference::default(), // TODO: Configure this
                     force_fallback_adapter: false,
                     compatible_surface: Some(surface),
+                    apply_limit_buckets: false,
                 }))
                 .unwrap(),
             );
@@ -1685,7 +1693,7 @@ where
                     frame.texture.size(),
                 );
                 queue.submit(Some(encoder.finish()));
-                frame.present();
+                queue.present(frame);
                 let render_time = frame_start.elapsed();
                 self.context
                     .window
