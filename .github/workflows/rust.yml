@@ -103,26 +103,6 @@ jobs:
         nvm use 26
         npm install -g pnpm
         cargo run --release -- test --js alan/test.ln
-
-  bench:
-    needs: test
-    runs-on: [self-hosted, linux, X64]
-    steps:
-    - uses: actions/checkout@v7
-    - name: Cache Cargo dependencies
-      uses: actions/cache@v6
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-cargo-
-    - name: Update branch URLs for testing
-      run: ./scripts/update_branch_urls.sh
-    - name: Check and set Rust version
-      run: ./scripts/check_rust_version.sh
     - name: Rust-managed Benchmarks
       run: cargo bench
     - name: Build Alan-managed Benchmarks
@@ -165,26 +145,6 @@ jobs:
       run: cargo run --release -- test alan/test.ln
     - name: Run js tests
       run: cargo run --release -- test --js alan/test.ln
-
-  bench-windows:
-    needs: test-windows
-    runs-on: [self-hosted, windows]
-    steps:
-    - uses: actions/checkout@v7
-    - name: Cache Cargo dependencies
-      uses: actions/cache@v6
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-cargo-
-    - name: Update branch URLs for testing
-      run: ./scripts/update_branch_urls.sh
-    - name: Check and set Rust version
-      run: pwsh -File ./scripts/check_rust_version.ps1
     - name: Rust-managed Benchmarks
       run: cargo bench
 
@@ -225,26 +185,6 @@ jobs:
       run: cargo run --release -- test alan/test.ln
     - name: Run js tests
       run: cargo run --release -- test --js alan/test.ln
-
-  bench-arm-linux:
-    needs: test-arm-linux
-    runs-on: [self-hosted, linux, ARM64]
-    steps:
-    - uses: actions/checkout@v7
-    - name: Cache Cargo dependencies
-      uses: actions/cache@v6
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-cargo-
-    - name: Update branch URLs for testing
-      run: ./scripts/update_branch_urls.sh
-    - name: Check and set Rust version
-      run: ./scripts/check_rust_version.sh
     - name: Rust-managed Benchmarks
       run: cargo bench
 
@@ -295,26 +235,6 @@ jobs:
       run: cargo run --release -- test alan/test.ln
     - name: Run js tests
       run: cargo run --release -- test --js alan/test.ln
-
-  bench-arm-macos:
-    needs: test-arm-macos
-    runs-on: [self-hosted, macOS, ARM64]
-    steps:
-    - uses: actions/checkout@v7
-    - name: Cache Cargo dependencies
-      uses: actions/cache@v6
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-cargo-
-    - name: Update branch URLs for testing
-      run: ./scripts/update_branch_urls.sh
-    - name: Check and set Rust version
-      run: ./scripts/check_rust_version.sh
     - name: Rust-managed Benchmarks
       run: cargo bench
     - name: Build Alan-managed Benchmarks
