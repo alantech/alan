@@ -103,6 +103,12 @@ jobs:
         nvm use 26
         npm install -g pnpm
         cargo run --release -- test --js alan/test.ln
+    - name: Rust-managed Benchmarks
+      run: cargo bench
+    - name: Build Alan-managed Benchmarks
+      run: cargo run --release -- compile alan/benches/bench.ln && cargo run --release -- compile alan/benches/buffer_shader_timings.ln
+    - name: Alan-managed Benchmarks
+      run: ./bench && ./buffer_shader_timings
 
   test-windows:
     runs-on: [self-hosted, windows]
@@ -139,6 +145,8 @@ jobs:
       run: cargo run --release -- test alan/test.ln
     - name: Run js tests
       run: cargo run --release -- test --js alan/test.ln
+    - name: Rust-managed Benchmarks
+      run: cargo bench
 
   test-arm-linux:
     runs-on: [self-hosted, linux, ARM64]
@@ -177,6 +185,8 @@ jobs:
       run: cargo run --release -- test alan/test.ln
     - name: Run js tests
       run: cargo run --release -- test --js alan/test.ln
+    - name: Rust-managed Benchmarks
+      run: cargo bench
 
   test-arm-macos:
     runs-on: [self-hosted, macOS, ARM64]
@@ -225,3 +235,9 @@ jobs:
       run: cargo run --release -- test alan/test.ln
     - name: Run js tests
       run: cargo run --release -- test --js alan/test.ln
+    - name: Rust-managed Benchmarks
+      run: cargo bench
+    - name: Build Alan-managed Benchmarks
+      run: cargo run --release -- compile alan/benches/bench.ln && cargo run --release -- compile alan/benches/buffer_shader_timings.ln
+    - name: Alan-managed Benchmarks
+      run: ./bench && ./buffer_shader_timings
