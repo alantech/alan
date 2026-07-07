@@ -1209,7 +1209,9 @@ pub fn read_buffer<T: std::clone::Clone>(b: &GBuffer) -> Vec<T> {
         submission_index: Some(submission_index),
         timeout: None,
     });
-    let data = temp_slice.get_mapped_range().expect("The full buffer should always be mappable");
+    let data = temp_slice
+        .get_mapped_range()
+        .expect("The full buffer should always be mappable");
     let data_ptr = data.as_ptr();
     let data_len = bufferlen(b) as usize;
     let data_slice: &[T] = unsafe { std::slice::from_raw_parts(data_ptr as *const T, data_len) };
