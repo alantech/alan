@@ -825,8 +825,8 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                     Some(name) => name,
                                     None => "closure",
                                 },
-                                current_rettype.to_strict_string(false),
-                                actual_rettype.to_strict_string(false),
+                                current_rettype.to_error_string(&scope),
+                                actual_rettype.to_error_string(&scope),
                             ));
                         } else {
                             // Do nothing, they're the same
@@ -844,7 +844,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                         Some(name) => name,
                                         None => "closure",
                                     },
-                                    i.clone().to_strict_string(false)
+                                    i.clone().to_error_string(&scope)
                                 ));
                             }
                             CType::Infer(..) => { /* Do nothing */ }
@@ -907,7 +907,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                 "A function with the signature get({}) does not exist",
                                 arg_types
                                     .iter()
-                                    .map(|a| a.clone().to_string())
+                                    .map(|a| a.clone().to_error_string(&scope))
                                     .collect::<Vec<String>>()
                                     .join(", ")
                             )
@@ -964,7 +964,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                 c.to_string(),
                                 arg_types
                                     .iter()
-                                    .map(|a| a.clone().to_string())
+                                    .map(|a| a.clone().to_error_string(&scope))
                                     .collect::<Vec<String>>()
                                     .join(", ")
                             )
@@ -1037,7 +1037,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                             name,
                             arg_types
                                 .iter()
-                                .map(|a| a.clone().to_string())
+                                .map(|a| a.clone().to_error_string(&scope))
                                 .collect::<Vec<String>>()
                                 .join(", ")
                         )
@@ -1258,7 +1258,10 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                 f,
                                 arg_types
                                     .iter()
-                                    .map(|a| a.clone().collapse_anyof_default().to_string())
+                                    .map(|a| a
+                                        .clone()
+                                        .collapse_anyof_default()
+                                        .to_error_string(&scope))
                                     .collect::<Vec<String>>()
                                     .join(", ")
                             )
@@ -1323,7 +1326,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                             g.to_string(),
                             arg_types
                                 .iter()
-                                .map(|t| t.clone().to_functional_string())
+                                .map(|t| t.clone().to_error_string(&scope))
                                 .collect::<Vec<String>>()
                                 .join(", "),
                         )
@@ -1399,7 +1402,7 @@ pub fn baseassignablelist_to_microstatements<'a>(
                             None => {
                                 let arg_str = arg_types
                                     .iter()
-                                    .map(|a| a.clone().to_string())
+                                    .map(|a| a.clone().to_error_string(&scope))
                                     .collect::<Vec<_>>()
                                     .join(", ");
                                 return Err(format!(
@@ -1871,7 +1874,7 @@ pub fn statement_to_microstatements<'a>(
                         "Could not find store function with arguments {}",
                         arg_types
                             .iter()
-                            .map(|a| a.clone().to_strict_string(false))
+                            .map(|a| a.clone().to_error_string(&scope))
                             .collect::<Vec<String>>()
                             .join(", "),
                     )),

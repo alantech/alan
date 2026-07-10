@@ -674,8 +674,8 @@ impl Function {
                     CType::fail(&format!(
                         "Function {} specified to return {} but actually returns {}",
                         name,
-                        current_rettype.to_strict_string(false),
-                        actual_rettype.to_strict_string(false),
+                        current_rettype.to_error_string(&scope),
+                        actual_rettype.to_error_string(&scope),
                     ));
                 } else {
                     // Do nothing, they're the same
@@ -696,7 +696,7 @@ impl Function {
                         CType::fail(&format!(
                             "The return type for {}({}) could not be inferred.",
                             name,
-                            i.clone().to_strict_string(false)
+                            i.clone().to_error_string(&scope)
                         ));
                     }
                     CType::Infer(..) => { /* Do nothing */ }
@@ -819,7 +819,7 @@ impl Function {
                         CType::fail(&format!(
                             "The return type for {}({}) could not be inferred.",
                             func.name,
-                            i.clone().to_strict_string(false)
+                            i.clone().to_error_string(&scope)
                         ));
                     }
                     CType::Infer(..) => { /* Do nothing */ }
@@ -940,8 +940,8 @@ impl Function {
                             CType::fail(&format!(
                                 "Function {} specified to return {} but actually returns {}",
                                 generic_function.name,
-                                rettype.to_strict_string(false),
-                                actual_rettype.to_strict_string(false),
+                                rettype.to_error_string(&scope),
+                                actual_rettype.to_error_string(&scope),
                             ));
                         } else {
                             // Do nothing, they're the same
@@ -1071,8 +1071,8 @@ impl Function {
                             CType::fail(&format!(
                                 "Function {} specified to return {} but actually returns {}",
                                 generic_function.name,
-                                rettype.to_strict_string(false),
-                                actual_rettype.to_strict_string(false),
+                                rettype.to_error_string(&scope),
+                                actual_rettype.to_error_string(&scope),
                             ));
                         } else {
                             // Do nothing, they're the same
