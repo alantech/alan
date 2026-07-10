@@ -175,6 +175,12 @@ impl CType {
     pub fn to_string(self: Arc<CType>) -> String {
         self.to_strict_string(true)
     }
+    /// Format a type for user-facing error messages: use a declared type name from `scope` when
+    /// the type is structurally equivalent to one, otherwise fall back to [`to_functional_string`].
+    pub fn to_error_string(self: Arc<CType>, scope: &Scope) -> String {
+        lookup_declared_type_name(self.clone(), scope)
+            .unwrap_or_else(|| self.to_functional_string())
+    }
     pub fn to_strict_string(self: Arc<CType>, strict: bool) -> String {
         let mut strings = if strict {
             STRICT_STRINGS.lock().unwrap()
@@ -1926,8 +1932,8 @@ impl CType {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched tuple types {} and {} found during inference",
-                                a.clone().to_string(),
-                                i.clone().to_string()
+                                CType::to_error_string(a.clone(), scope),
+                                CType::to_error_string(i.clone(), scope)
                             )
                             .into());
                         }
@@ -2087,13 +2093,23 @@ impl CType {
                                                 }
                                             }
                                             _ => {
-                                                return Err(format!("Mismatch between {a:?} and {i:?} during inference").into());
+                                                return Err(format!(
+                                                    "Mismatch between {} and {} during inference",
+                                                    CType::to_error_string(
+                                                        Arc::new(a.clone()),
+                                                        scope
+                                                    ),
+                                                    CType::to_error_string(i.clone(), scope)
+                                                )
+                                                .into());
                                             }
                                         }
                                     }
                                     _ => {
                                         return Err(format!(
-                                            "Mismatch between {a:?} and {i:?} during inference"
+                                            "Mismatch between {} and {} during inference",
+                                            CType::to_error_string(Arc::new(a.clone()), scope),
+                                            CType::to_error_string(i.clone(), scope)
                                         )
                                         .into());
                                     }
@@ -2101,7 +2117,9 @@ impl CType {
                             }
                             _ => {
                                 return Err(format!(
-                                    "Mismatch between {a:?} and {i:?} during inference"
+                                    "Mismatch between {} and {} during inference",
+                                    CType::to_error_string(Arc::new(a.clone()), scope),
+                                    CType::to_error_string(i.clone(), scope)
                                 )
                                 .into());
                             }
@@ -2130,8 +2148,8 @@ impl CType {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched either types {} and {} found during inference",
-                                a.clone().to_string(),
-                                i.clone().to_string()
+                                CType::to_error_string(a.clone(), scope),
+                                CType::to_error_string(i.clone(), scope)
                             )
                             .into());
                         }
@@ -2203,8 +2221,8 @@ impl CType {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched add types {} and {} found during inference",
-                                a.clone().to_string(),
-                                i.clone().to_string()
+                                CType::to_error_string(a.clone(), scope),
+                                CType::to_error_string(i.clone(), scope)
                             )
                             .into());
                         }
@@ -2262,8 +2280,8 @@ impl CType {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched sub types {} and {} found during inference",
-                                a.clone().to_string(),
-                                i.clone().to_string()
+                                CType::to_error_string(a.clone(), scope),
+                                CType::to_error_string(i.clone(), scope)
                             )
                             .into());
                         }
@@ -2278,8 +2296,8 @@ impl CType {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched mul types {} and {} found during inference",
-                                a.clone().to_string(),
-                                i.clone().to_string()
+                                CType::to_error_string(a.clone(), scope),
+                                CType::to_error_string(i.clone(), scope)
                             )
                             .into());
                         }
@@ -2294,8 +2312,8 @@ impl CType {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched div types {} and {} found during inference",
-                                a.clone().to_string(),
-                                i.clone().to_string()
+                                CType::to_error_string(a.clone(), scope),
+                                CType::to_error_string(i.clone(), scope)
                             )
                             .into());
                         }
@@ -2310,8 +2328,8 @@ impl CType {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched div types {} and {} found during inference",
-                                a.clone().to_string(),
-                                i.clone().to_string()
+                                CType::to_error_string(a.clone(), scope),
+                                CType::to_error_string(i.clone(), scope)
                             )
                             .into());
                         }
@@ -2326,8 +2344,8 @@ impl CType {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched pow types {} and {} found during inference",
-                                a.clone().to_string(),
-                                i.clone().to_string()
+                                CType::to_error_string(a.clone(), scope),
+                                CType::to_error_string(i.clone(), scope)
                             )
                             .into());
                         }
@@ -2342,8 +2360,8 @@ impl CType {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched min types {} and {} found during inference",
-                                a.clone().to_string(),
-                                i.clone().to_string()
+                                CType::to_error_string(a.clone(), scope),
+                                CType::to_error_string(i.clone(), scope)
                             )
                             .into());
                         }
@@ -2358,8 +2376,8 @@ impl CType {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched max types {} and {} found during inference",
-                                a.clone().to_string(),
-                                i.clone().to_string()
+                                CType::to_error_string(a.clone(), scope),
+                                CType::to_error_string(i.clone(), scope)
                             )
                             .into());
                         }
@@ -2390,8 +2408,8 @@ impl CType {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched env types {} and {} found during inference",
-                                a.clone().to_string(),
-                                i.clone().to_string()
+                                CType::to_error_string(a.clone(), scope),
+                                CType::to_error_string(i.clone(), scope)
                             )
                             .into());
                         }
@@ -2410,8 +2428,8 @@ impl CType {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched env types {} and {} found during inference",
-                                a.clone().to_string(),
-                                i.clone().to_string()
+                                CType::to_error_string(a.clone(), scope),
+                                CType::to_error_string(i.clone(), scope)
                             )
                             .into());
                         }
@@ -2428,8 +2446,8 @@ impl CType {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched and types {} and {} found during inference",
-                                a.clone().to_string(),
-                                i.clone().to_string()
+                                CType::to_error_string(a.clone(), scope),
+                                CType::to_error_string(i.clone(), scope)
                             )
                             .into());
                         }
@@ -2444,8 +2462,8 @@ impl CType {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched or types {} and {} found during inference",
-                                a.clone().to_string(),
-                                i.clone().to_string()
+                                CType::to_error_string(a.clone(), scope),
+                                CType::to_error_string(i.clone(), scope)
                             )
                             .into());
                         }
@@ -2460,8 +2478,8 @@ impl CType {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched xor types {} and {} found during inference",
-                                a.clone().to_string(),
-                                i.clone().to_string()
+                                CType::to_error_string(a.clone(), scope),
+                                CType::to_error_string(i.clone(), scope)
                             )
                             .into());
                         }
@@ -2480,8 +2498,8 @@ impl CType {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched nand types {} and {} found during inference",
-                                a.clone().to_string(),
-                                i.clone().to_string()
+                                CType::to_error_string(a.clone(), scope),
+                                CType::to_error_string(i.clone(), scope)
                             )
                             .into());
                         }
@@ -2496,8 +2514,8 @@ impl CType {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched nor types {} and {} found during inference",
-                                a.clone().to_string(),
-                                i.clone().to_string()
+                                CType::to_error_string(a.clone(), scope),
+                                CType::to_error_string(i.clone(), scope)
                             )
                             .into());
                         }
@@ -2512,8 +2530,8 @@ impl CType {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched xnor types {} and {} found during inference",
-                                a.clone().to_string(),
-                                i.clone().to_string()
+                                CType::to_error_string(a.clone(), scope),
+                                CType::to_error_string(i.clone(), scope)
                             )
                             .into());
                         }
@@ -2528,8 +2546,8 @@ impl CType {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched eq types {} and {} found during inference",
-                                a.clone().to_string(),
-                                i.clone().to_string()
+                                CType::to_error_string(a.clone(), scope),
+                                CType::to_error_string(i.clone(), scope)
                             )
                             .into());
                         }
@@ -2544,8 +2562,8 @@ impl CType {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched neq types {} and {} found during inference",
-                                a.clone().to_string(),
-                                i.clone().to_string()
+                                CType::to_error_string(a.clone(), scope),
+                                CType::to_error_string(i.clone(), scope)
                             )
                             .into());
                         }
@@ -2560,8 +2578,8 @@ impl CType {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched lt types {} and {} found during inference",
-                                a.clone().to_string(),
-                                i.clone().to_string()
+                                CType::to_error_string(a.clone(), scope),
+                                CType::to_error_string(i.clone(), scope)
                             )
                             .into());
                         }
@@ -2576,8 +2594,8 @@ impl CType {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched lte types {} and {} found during inference",
-                                a.clone().to_string(),
-                                i.clone().to_string()
+                                CType::to_error_string(a.clone(), scope),
+                                CType::to_error_string(i.clone(), scope)
                             )
                             .into());
                         }
@@ -2592,8 +2610,8 @@ impl CType {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched gt types {} and {} found during inference",
-                                a.clone().to_string(),
-                                i.clone().to_string()
+                                CType::to_error_string(a.clone(), scope),
+                                CType::to_error_string(i.clone(), scope)
                             )
                             .into());
                         }
@@ -2608,8 +2626,8 @@ impl CType {
                         if ts1.len() != ts2.len() {
                             return Err(format!(
                                 "Mismatched gte types {} and {} found during inference",
-                                a.clone().to_string(),
-                                i.clone().to_string()
+                                CType::to_error_string(a.clone(), scope),
+                                CType::to_error_string(i.clone(), scope)
                             )
                             .into());
                         }
@@ -2652,18 +2670,24 @@ impl CType {
                                 }
                             }
                             if matched {
-                                generic_types.insert(g.clone(), a.clone());
+                                generic_types.insert(
+                                    g.clone(),
+                                    canonicalize_inferred_generic_type(a.clone(), scope),
+                                );
                             } else {
                                 return Err(format!(
                                     "Generic {} matched both {} and {}",
                                     g,
-                                    other_type.clone().to_functional_string(),
-                                    a.to_functional_string()
+                                    CType::to_error_string(other_type.clone(), scope),
+                                    CType::to_error_string(a.clone(), scope)
                                 )
                                 .into());
                             }
                         } else {
-                            generic_types.insert(g.clone(), a.clone());
+                            generic_types.insert(
+                                g.clone(),
+                                canonicalize_inferred_generic_type(a.clone(), scope),
+                            );
                         }
                     }
                     (CType::AnyOf(ts), _) => {
@@ -2693,10 +2717,10 @@ impl CType {
                             return Err(format!(
                                 "None of {} matches {}",
                                 ts.iter()
-                                    .map(|t| t.clone().to_strict_string(false))
+                                    .map(|t| CType::to_error_string(t.clone(), scope))
                                     .collect::<Vec<String>>()
                                     .join(" & "),
-                                i.clone().to_strict_string(false)
+                                CType::to_error_string(i.clone(), scope)
                             )
                             .into());
                         }
@@ -2777,10 +2801,13 @@ impl CType {
                                                 "None of {} matches {}",
                                                 newts
                                                     .iter()
-                                                    .map(|t| t.clone().to_strict_string(false))
+                                                    .map(|t| CType::to_error_string(
+                                                        t.clone(),
+                                                        scope
+                                                    ))
                                                     .collect::<Vec<String>>()
                                                     .join(" & "),
-                                                old_v.clone().to_strict_string(false)
+                                                CType::to_error_string(old_v.clone(), scope)
                                             )
                                             .into());
                                         }
@@ -2800,10 +2827,13 @@ impl CType {
                                                 "None of {} matches {}",
                                                 oldts
                                                     .iter()
-                                                    .map(|t| t.clone().to_strict_string(false))
+                                                    .map(|t| CType::to_error_string(
+                                                        t.clone(),
+                                                        scope
+                                                    ))
                                                     .collect::<Vec<String>>()
                                                     .join(" & "),
-                                                v.clone().to_strict_string(false)
+                                                CType::to_error_string(v.clone(), scope)
                                             )
                                             .into());
                                         }
@@ -2815,8 +2845,8 @@ impl CType {
                                         {
                                             return Err(format!(
                                                 "{} does not match {}",
-                                                old_v.clone().to_strict_string(false),
-                                                v.clone().to_strict_string(false),
+                                                CType::to_error_string(old_v.clone(), scope),
+                                                CType::to_error_string(v.clone(), scope),
                                             )
                                             .into());
                                         }
@@ -2826,7 +2856,12 @@ impl CType {
                         }
                     }
                     _ => {
-                        return Err(format!("Mismatch between {a:?} and {i:?}").into());
+                        return Err(format!(
+                            "Mismatch between {} and {}",
+                            CType::to_error_string(a.clone(), scope),
+                            CType::to_error_string(i.clone(), scope)
+                        )
+                        .into());
                     }
                 }
             }
@@ -2862,7 +2897,7 @@ impl CType {
         let mut output_types = Vec::new();
         for (generic_name, _) in generics {
             output_types.push(match generic_types.get(generic_name) {
-                Some(t) => Ok(t.clone()),
+                Some(t) => Ok(canonicalize_inferred_generic_type(t.clone(), scope)),
                 None => Err(format!("No inferred type found for {generic_name}")),
             }?);
         }
@@ -5668,6 +5703,81 @@ pub fn withtypeoperatorslist_to_ctype(
         Some(ctype) => Ok(ctype),
         None => Err(format!("Never resolved a type from {withtypeoperatorslist:?}").into()),
     }
+}
+
+/// Strip user-facing `Type(name, inner)` alias wrappers, leaving the structural type.
+fn strip_type_alias(typen: Arc<CType>) -> Arc<CType> {
+    match &*typen {
+        CType::Type(_, inner) => strip_type_alias(inner.clone()),
+        _ => typen,
+    }
+}
+
+/// True when `typen` is a multi-field record tuple (struct-shaped), after any `Type` alias is
+/// stripped.
+fn is_multi_field_record_tuple(typen: &CType) -> bool {
+    let mut current = typen;
+    loop {
+        match current {
+            CType::Type(_, inner) => current = inner.as_ref(),
+            CType::Tuple(fields, _) => {
+                return fields.len() > 1 && fields.iter().any(|f| matches!(&**f, CType::Field(..)));
+            }
+            _ => return false,
+        }
+    }
+}
+
+/// Look up a declared type name for `ty` by scanning scopes from the current position up through
+/// parents (nearest scope wins).
+fn lookup_declared_type_name(ty: Arc<CType>, scope: &Scope) -> Option<String> {
+    if let CType::Type(n, _) = ty.as_ref() {
+        return Some(n.clone());
+    }
+    let structural = strip_type_alias(ty.clone().degroup());
+    let callable = structural.to_callable_string();
+    let mut current = Some(scope);
+    while let Some(s) = current {
+        for (key, ctype) in &s.types {
+            if strip_type_alias(ctype.clone()).to_callable_string() != callable {
+                continue;
+            }
+            if let CType::Type(n, _) = ctype.as_ref() {
+                return Some(n.clone());
+            }
+            if !key.starts_with("Tuple_") && !key.starts_with("Either_") {
+                return Some(key.clone());
+            }
+        }
+        current = s.parent;
+    }
+    None
+}
+
+/// Look up a user-facing type name for a structural multi-field record tuple.
+fn type_name_for_structural(ty: Arc<CType>, scope: &Scope) -> Option<String> {
+    let structural = strip_type_alias(ty.clone().degroup());
+    if !is_multi_field_record_tuple(structural.as_ref()) {
+        return None;
+    }
+    lookup_declared_type_name(ty, scope)
+}
+
+/// When generic inference would bind a bare structural record tuple, recover the user-facing
+/// `Type(name, inner)` so substitution keeps the type name without requiring call sites to pass
+/// named wrappers.
+fn canonicalize_inferred_generic_type(ty: Arc<CType>, scope: &Scope) -> Arc<CType> {
+    if matches!(ty.as_ref(), CType::Type(..)) {
+        return ty;
+    }
+    let structural = strip_type_alias(ty.clone().degroup());
+    if !is_multi_field_record_tuple(structural.as_ref()) {
+        return ty;
+    }
+    let Some(name) = type_name_for_structural(ty.clone(), scope) else {
+        return ty;
+    };
+    Arc::new(CType::Type(name, structural))
 }
 
 // TODO: This similarly shares a lot of structure with baseassignablelist_to_microstatements, see

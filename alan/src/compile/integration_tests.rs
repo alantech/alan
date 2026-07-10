@@ -2475,22 +2475,14 @@ test_ignore!(seq_recurse_decrement_regression_test => r#"
 
 // Tree
 
-test_ignore!(tree_user_defined_types => r#"
-    type Foo {
+test!(tree_user_defined_types => r#"
+    type Foo =
       foo: string,
-      bar: bool,
-    }
+      bar: bool;
 
     export fn main {
-      const myTree = newTree(new Foo {
-        foo: 'myFoo',
-        bar: false,
-      });
-      const wrongFoo = new Foo {
-        foo: 'wrongFoo',
-        bar: false,
-      };
-      const myFoo = myTree.getRootNode || wrongFoo;
+      const myTree = Tree(Foo('myFoo', false));
+      const myFoo = myTree.rootNode ?? Foo('wrongFoo', false);
       print(myFoo.foo);
     }"#;
     stdout "myFoo\n";
