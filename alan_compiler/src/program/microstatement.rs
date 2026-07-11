@@ -538,92 +538,92 @@ pub fn baseassignablelist_to_microstatements<'a>(
                         _ => unreachable!(),
                     },
                     None => {
-                        // It could be a function.
-                        let mut function_types = scope.resolve_function_types(v);
-                        if let Some(pf) = &parent_fn {
-                            if pf.origin_scope_path != scope.path {
-                                let program = Program::get_program();
-                                if let Ok(origin_scope) =
-                                    program.scope_by_file(&pf.origin_scope_path)
-                                {
-                                    let other_function_types =
-                                        origin_scope.resolve_function_types(v);
-                                    function_types =
-                                        match (&*function_types, &*other_function_types) {
-                                            (
-                                                CType::Void | CType::DerivedVoid(..),
-                                                CType::Void | CType::DerivedVoid(..),
-                                            ) => Arc::new(CType::Void),
-                                            (CType::Void | CType::DerivedVoid(..), _) => {
-                                                other_function_types
-                                            }
-                                            (_, CType::Void | CType::DerivedVoid(..)) => {
-                                                function_types
-                                            }
-                                            (CType::AnyOf(t1), CType::AnyOf(t2)) => {
-                                                Arc::new(CType::AnyOf({
+                        if let Some(c) = scope.resolve_const(v) {
+                            // TODO: Confirm the specified typename matches the
+                            // actual typename of the value
+                            let mut temp_scope = scope.child();
+                            let res = withoperatorslist_to_microstatements(
+                                &c.assignables,
+                                parent_fn,
+                                temp_scope,
+                                microstatements,
+                            )?;
+                            temp_scope = res.0;
+                            microstatements = res.1;
+                            let cm = microstatements.pop().unwrap();
+                            let typen = match &cm {
+                                Microstatement::Value { typen, .. }
+                                | Microstatement::Array { typen, .. } => {
+                                    Ok::<Arc<CType>, Box<dyn std::error::Error>>(typen.clone())
+                                }
+                                Microstatement::FnCall { function: _, args: _ } => {
+                                    Err("TODO: Support global constant function calls".into())
+                                }
+                                _ => Err(
+                                    "This should be impossible, a constant has to be a value, array, or fncall"
+                                        .into(),
+                                ),
+                            }?;
+                            merge!(scope, temp_scope);
+                            microstatements.push(Microstatement::Assignment {
+                                mutable: false,
+                                name: v.clone(),
+                                value: Box::new(cm),
+                            });
+                            Ok(typen)
+                        } else {
+                            // It could be a function.
+                            let mut function_types = scope.resolve_function_types(v);
+                            if let Some(pf) = &parent_fn {
+                                if pf.origin_scope_path != scope.path {
+                                    let program = Program::get_program();
+                                    if let Ok(origin_scope) =
+                                        program.scope_by_file(&pf.origin_scope_path)
+                                    {
+                                        let other_function_types =
+                                            origin_scope.resolve_function_types(v);
+                                        function_types =
+                                            match (&*function_types, &*other_function_types) {
+                                                (
+                                                    CType::Void | CType::DerivedVoid(..),
+                                                    CType::Void | CType::DerivedVoid(..),
+                                                ) => Arc::new(CType::Void),
+                                                (CType::Void | CType::DerivedVoid(..), _) => {
+                                                    other_function_types
+                                                }
+                                                (_, CType::Void | CType::DerivedVoid(..)) => {
+                                                    function_types
+                                                }
+                                                (CType::AnyOf(t1), CType::AnyOf(t2)) => {
+                                                    Arc::new(CType::AnyOf({
+                                                        let mut v = Vec::new();
+                                                        v.append(&mut t1.clone());
+                                                        v.append(&mut t2.clone());
+                                                        v
+                                                    }))
+                                                }
+                                                (_, CType::AnyOf(t2)) => Arc::new(CType::AnyOf({
                                                     let mut v = Vec::new();
-                                                    v.append(&mut t1.clone());
+                                                    v.push(function_types);
                                                     v.append(&mut t2.clone());
                                                     v
-                                                }))
-                                            }
-                                            (_, CType::AnyOf(t2)) => Arc::new(CType::AnyOf({
-                                                let mut v = Vec::new();
-                                                v.push(function_types);
-                                                v.append(&mut t2.clone());
-                                                v
-                                            })),
-                                            (CType::AnyOf(t1), _) => Arc::new(CType::AnyOf({
-                                                let mut v = Vec::new();
-                                                v.append(&mut t1.clone());
-                                                v.push(other_function_types);
-                                                v
-                                            })),
-                                            (_, _) => Arc::new(CType::AnyOf(vec![
-                                                function_types,
-                                                other_function_types,
-                                            ])),
-                                        };
-                                }
-                                Program::return_program(program);
-                            }
-                        }
-                        match &*function_types {
-                            CType::Void | CType::DerivedVoid(..) => {
-                                // It could be a constant
-                                let maybe_c = scope.resolve_const(v);
-                                match maybe_c {
-                                    None => Err(format!("Couldn't find variable {v}").into()),
-                                    Some(c) => {
-                                        // TODO: Confirm the specified typename matches the
-                                        // actual typename of the value
-                                        let mut temp_scope = scope.child();
-                                        let res = withoperatorslist_to_microstatements(
-                                            &c.assignables,
-                                            parent_fn,
-                                            temp_scope,
-                                            microstatements,
-                                        )?;
-                                        temp_scope = res.0;
-                                        microstatements = res.1;
-                                        let cm = microstatements.pop().unwrap();
-                                        let typen = match &cm {
-                                            Microstatement::Value { typen, .. } | Microstatement::Array { typen, .. } => Ok(typen.clone()),
-                                            Microstatement::FnCall { function: _, args: _ } => Err("TODO: Support global constant function calls"),
-                                            _ => Err("This should be impossible, a constant has to be a value, array, or fncall"),
-                                        }?;
-                                        merge!(scope, temp_scope);
-                                        microstatements.push(Microstatement::Assignment {
-                                            mutable: false,
-                                            name: v.clone(),
-                                            value: Box::new(cm),
-                                        });
-                                        Ok(typen)
+                                                })),
+                                                (CType::AnyOf(t1), _) => Arc::new(CType::AnyOf({
+                                                    let mut v = Vec::new();
+                                                    v.append(&mut t1.clone());
+                                                    v.push(other_function_types);
+                                                    v
+                                                })),
+                                                (_, _) => Arc::new(CType::AnyOf(vec![
+                                                    function_types,
+                                                    other_function_types,
+                                                ])),
+                                            };
                                     }
+                                    Program::return_program(program);
                                 }
                             }
-                            _ => Ok(function_types),
+                            Ok(function_types)
                         }
                     }
                 }?;
@@ -668,20 +668,75 @@ pub fn baseassignablelist_to_microstatements<'a>(
                 });
             }
             BaseChunk::Group(g) => {
-                // TODO: Add support for anonymous tuples with this syntax, for now break if the
-                // group's inner length is greater that one record
-                if g.assignablelist.len() != 1 {
-                    return Err("Anonymous tuple support not yet implemented".into());
+                if g.assignablelist.len() == 1 {
+                    // Parenthetical grouping around a single expression
+                    let res = withoperatorslist_to_microstatements(
+                        &g.assignablelist[0],
+                        parent_fn,
+                        scope,
+                        microstatements,
+                    )?;
+                    scope = res.0;
+                    microstatements = res.1;
+                    prior_value = microstatements.pop();
+                } else if g.assignablelist.is_empty() {
+                    let voidn = scope
+                        .resolve_type("void")
+                        .unwrap_or_else(|| Arc::new(CType::Void))
+                        .clone();
+                    prior_value = Some(Microstatement::Value {
+                        typen: voidn,
+                        representation: "()".to_string(),
+                    });
+                } else {
+                    // Anonymous tuple construction, e.g. `(1, "test")`
+                    let mut arg_microstatements = Vec::new();
+                    for arg in &g.assignablelist {
+                        let res = withoperatorslist_to_microstatements(
+                            arg,
+                            parent_fn,
+                            scope,
+                            microstatements,
+                        )?;
+                        scope = res.0;
+                        microstatements = res.1;
+                        arg_microstatements.push(microstatements.pop().unwrap());
+                    }
+                    let mut arg_types = Vec::new();
+                    let mut tuple_fields = Vec::new();
+                    for arg in &arg_microstatements {
+                        let t = arg.get_type().collapse_anyof_default();
+                        arg_types.push(t.clone());
+                        tuple_fields.push(t);
+                    }
+                    let ctype = CType::tuple(tuple_fields);
+                    let name = ctype.clone().to_callable_string();
+                    scope = CType::from_ctype(scope, name.clone(), ctype);
+                    let temp_scope = scope.child();
+                    let res = temp_scope.resolve_function(&name, &arg_types);
+                    match res {
+                        Some((mut temp_scope, f)) => {
+                            temp_scope.functions.insert(name.clone(), vec![f.clone()]);
+                            merge!(scope, temp_scope);
+                            prior_value = Some(Microstatement::FnCall {
+                                args: narrow_call_arg_literals(&f, arg_microstatements),
+                                function: f,
+                            });
+                        }
+                        None => {
+                            return Err(format!(
+                                "A function with the signature {}({}) does not exist",
+                                name,
+                                arg_types
+                                    .iter()
+                                    .map(|a| a.clone().to_error_string(&scope))
+                                    .collect::<Vec<String>>()
+                                    .join(", ")
+                            )
+                            .into());
+                        }
+                    }
                 }
-                let res = withoperatorslist_to_microstatements(
-                    &g.assignablelist[0],
-                    parent_fn,
-                    scope,
-                    microstatements,
-                )?;
-                scope = res.0;
-                microstatements = res.1;
-                prior_value = microstatements.pop();
             }
             BaseChunk::Function(f) => {
                 // TODO: Move a lot of this into `Function`

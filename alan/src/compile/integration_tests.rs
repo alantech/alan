@@ -656,10 +656,11 @@ test!(non_global_memory_exit_code => r#"export fn main() {
 test!(void_values => r#"export fn main {
   5.print;
   5.void.print;
-  void().print; // TODO: `void.print` should work, too. Figure out why it isn't
+  void().print;
+  void.print;
 }
 "#;
-    stdout "5\nvoid\nvoid\n";
+    stdout "5\nvoid\nvoid\nvoid\n";
 );
 
 // Printing Tests
@@ -3108,6 +3109,23 @@ export fn main {
 }
 "#;
   stdout "same\ndifferent\n";
+);
+
+test!(anonymous_tuple_construction => r#"export fn main {
+  let testTuple = (1, "test");
+  testTuple.0.print;
+  testTuple.1.print;
+}
+"#;
+  stdout "1\ntest\n";
+);
+
+test!(void_literal_construction => r#"export fn main {
+  let v = ();
+  print(v);
+}
+"#;
+  stdout "void\n";
 );
 
 test!(len_and_eq_combined => r#"type SingleField = a: i64;

@@ -1816,6 +1816,7 @@ mod parse_error_tests {
 
     #[test]
     fn parse_error_display_is_rust_style() {
+        let _guard = DiagnosticColorOverrideGuard::set(false);
         let input = "on app.start {\n  app.oops\n}";
         let err = get_ast(input).unwrap_err().with_file("totally_broken.ln");
         let msg = err.to_string();
@@ -1827,6 +1828,7 @@ mod parse_error_tests {
 
     #[test]
     fn parse_error_is_owned_after_input_dropped() {
+        let _guard = DiagnosticColorOverrideGuard::set(false);
         let input = "on app.start { app.oops }".to_string();
         let err = get_ast(&input).unwrap_err();
         drop(input);

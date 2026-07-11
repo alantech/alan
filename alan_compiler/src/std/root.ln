@@ -263,6 +263,7 @@ type{Rs} RootBacking = Rust{"alan_std" @ "https://github.com/alantech/alan.git"}
 type{Js} RootBacking = Nodejs{"alan_std" @ "https://github.com/alantech/alan.git"};
 // Defining derived types
 type void = ();
+const void = ();
 type Self{T} = T;
 type{Rs} Error = Binds{"alan_std::AlanError" <- RootBacking};
 type{Js} Error = Binds{"alan_std.AlanError" <- RootBacking};

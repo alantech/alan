@@ -11,6 +11,15 @@ use crate::program::{
     ArgKind, CType, CfnKind, FnKind, Function, Microstatement, NativeCallKind, Program, Scope,
 };
 
+/// JavaScript-safe local binding for an Alan identifier (`var`, `void`, ...).
+fn js_binding_name(name: &str) -> &str {
+    match name {
+        "var" => "__var__",
+        "void" => "__void__",
+        _ => name,
+    }
+}
+
 /// If `representation` is a compile-time literal of a primitive native type
 /// (`string`/`i64`/`u64`/`f64`/`bool`), returns it wrapped in the corresponding
 /// `alan_std` boxing class (`new alan_std.I64(1n)`, `new alan_std.Str("x")`,
@@ -311,11 +320,7 @@ fn js_dedup_declaration(
     declared: &mut std::collections::HashSet<String>,
 ) -> String {
     if let Microstatement::Assignment { name, .. } = ms {
-        let n = if name == "var" {
-            "__var__".to_string()
-        } else {
-            name.clone()
-        };
+        let n = js_binding_name(name).to_string();
         if !declared.insert(n) {
             if let Some(rest) = stmt.strip_prefix("let ") {
                 return rest.to_string();
@@ -369,11 +374,7 @@ pub fn from_microstatement(
             let (val, o, d) = from_microstatement(value, parent_fn, scope, out, deps)?;
             out = o;
             deps = d;
-            let n = if name.as_str() == "var" {
-                "__var__"
-            } else {
-                name.as_str()
-            };
+            let n = js_binding_name(name);
             if *mutable {
                 Ok((format!("let {n} = {val}"), out, deps))
             } else {
@@ -427,6 +428,22 @@ pub fn from_microstatement(
             // to its FUI default so it boxes (`new alan_std.I64(..)`) like a concrete literal.
             let typen = &typen.clone().collapse_anyof_default();
             match &**typen {
+                CType::Void | CType::DerivedVoid(..) if representation == "()" => {
+                    Ok(("undefined".to_string(), out, deps))
+                }
+                CType::Type(n, inner)
+                    if representation == "()"
+                        && (n == "void"
+                            || matches!(&**inner, CType::Void | CType::DerivedVoid(..))) =>
+                {
+                    Ok(("undefined".to_string(), out, deps))
+                }
+                CType::Group(inner)
+                    if representation == "()"
+                        && matches!(&**inner, CType::Void | CType::DerivedVoid(..)) =>
+                {
+                    Ok(("undefined".to_string(), out, deps))
+                }
                 CType::Type(n, _)
                     if matches!(
                         n.as_str(),
