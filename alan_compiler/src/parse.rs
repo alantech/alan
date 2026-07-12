@@ -1730,11 +1730,7 @@ fn is_exported_test_main(export_generics: Option<&GnCall>, f: &Functions) -> boo
 }
 
 fn gncall_references_test(generics: Option<&GnCall>) -> bool {
-    generics.is_some_and(|g| {
-        g.typecalllist
-            .iter()
-            .any(typeoperators_references_test)
-    })
+    generics.is_some_and(|g| g.typecalllist.iter().any(typeoperators_references_test))
 }
 
 fn typeoperators_references_test(wt: &WithTypeOperators) -> bool {
