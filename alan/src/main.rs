@@ -64,14 +64,13 @@ enum Commands {
         )]
         file: String,
     },
-    #[command(about = "Test a specified .ln file")]
+    #[command(about = "Test .ln file(s); with no target, discover test entry points under PWD")]
     Test {
         #[arg(
             value_name = "LN_FILE",
-            help = ".ln source file to compile in test mode.",
-            default_value = "./index.ln"
+            help = ".ln source file(s) to compile in test mode; omit to discover tests under PWD"
         )]
-        file: String,
+        files: Vec<String>,
         #[arg(
             short,
             long,
@@ -128,7 +127,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         match &args.commands {
             Some(Commands::Bundle { file }) => compile::bundle(file.to_string()),
             Some(Commands::Compile { file }) => compile::compile(file.to_string()),
-            Some(Commands::Test { file, js }) => compile::test(file.to_string(), *js),
+            Some(Commands::Test { files, js }) => compile::test(files.clone(), *js),
             Some(Commands::ToRs { file }) => compile::to_rs(file.to_string()),
             Some(Commands::ToJs { file }) => compile::to_js(file.to_string()),
             Some(Commands::Fmt { files, check }) => fmt_command(files, *check),
