@@ -1725,14 +1725,15 @@ pub fn has_exported_test_main(ln: &Ln) -> bool {
 
 fn is_exported_test_main(export_generics: Option<&GnCall>, f: &Functions) -> bool {
     f.optname.as_deref() == Some("main")
-        && (gncall_references_test(export_generics) || gncall_references_test(f.opttypegenerics.as_ref()))
+        && (gncall_references_test(export_generics)
+            || gncall_references_test(f.opttypegenerics.as_ref()))
 }
 
 fn gncall_references_test(generics: Option<&GnCall>) -> bool {
     generics.is_some_and(|g| {
         g.typecalllist
             .iter()
-            .any(|wt| typeoperators_references_test(wt))
+            .any(typeoperators_references_test)
     })
 }
 

@@ -807,7 +807,10 @@ pub fn discover_test_ln_files(dir: &Path) -> Result<Vec<String>, Box<dyn std::er
     Ok(out)
 }
 
-fn collect_test_ln_files(dir: &Path, out: &mut Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
+fn collect_test_ln_files(
+    dir: &Path,
+    out: &mut Vec<String>,
+) -> Result<(), Box<dyn std::error::Error>> {
     for entry in std::fs::read_dir(dir)? {
         let entry = entry?;
         let path = entry.path();
