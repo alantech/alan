@@ -1,6 +1,6 @@
 use std::env::current_dir;
-use std::fs::{create_dir_all, remove_file, write, File, OpenOptions};
-use std::io::{Read, Seek, Write};
+use std::fs::{create_dir_all, read_to_string, remove_file, write, File, OpenOptions};
+use std::io::{IsTerminal, Read, Seek, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
@@ -10,6 +10,7 @@ use fs2::FileExt;
 
 use alan_compiler::lntojs::lntojs;
 use alan_compiler::lntors::lntors;
+use alan_compiler::parse::{get_ast, has_exported_test_main};
 use alan_compiler::program::Program;
 
 mod integration_tests;
@@ -692,13 +693,60 @@ fn interp_inner(source_file: String) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-/// The `test` function is a thin wrapper on top of `compile` that compiles the specified file in
-/// test mode, then immediately invokes it, and deletes the binary when done.
-pub fn test(source_file: String, js: bool) -> Result<(), Box<dyn std::error::Error>> {
-    catch_compile_panics(|| test_inner(source_file, js))
+/// The `test` function compiles the specified file(s) in test mode, runs them, and deletes artifacts
+/// when done. With no files, recursively discovers `.ln` sources under the current directory that
+/// export a `fn{Test} main` entry point.
+pub fn test(source_files: Vec<String>, js: bool) -> Result<(), Box<dyn std::error::Error>> {
+    catch_compile_panics(|| test_inner(source_files, js))
 }
 
-fn test_inner(source_file: String, js: bool) -> Result<(), Box<dyn std::error::Error>> {
+fn test_inner(source_files: Vec<String>, js: bool) -> Result<(), Box<dyn std::error::Error>> {
+    let files = if source_files.is_empty() {
+        discover_test_ln_files(&current_dir()?)?
+    } else {
+        source_files
+    };
+
+    if files.is_empty() {
+        println!("No test files found.");
+        return Ok(());
+    }
+
+    let show_file_banner = files.len() > 1;
+    for file in files {
+        if show_file_banner {
+            print_testing_banner(&test_file_display_path(&file));
+        }
+        run_single_test(&file, js)?;
+    }
+    Ok(())
+}
+
+fn print_testing_banner(display_path: &str) {
+    if std::io::stdout().is_terminal() {
+        const BOLD: &str = "\x1b[1m";
+        const RESET: &str = "\x1b[0m";
+        println!("Testing {BOLD}{display_path}{RESET}...");
+    } else {
+        println!("Testing {display_path}...");
+    }
+}
+
+fn test_file_display_path(file: &str) -> String {
+    let path = PathBuf::from(file);
+    if let Ok(cwd) = current_dir() {
+        if let Ok(rel) = path.strip_prefix(&cwd) {
+            let rel = rel.to_string_lossy();
+            if rel.starts_with('.') || rel.starts_with('/') {
+                return rel.to_string();
+            }
+            return format!("./{rel}");
+        }
+    }
+    file.to_string()
+}
+
+fn run_single_test(source_file: &str, js: bool) -> Result<(), Box<dyn std::error::Error>> {
     if js {
         Program::set_target_lang_js();
     } else {
@@ -706,7 +754,7 @@ fn test_inner(source_file: String, js: bool) -> Result<(), Box<dyn std::error::E
     }
     Program::set_compile_env("ALAN_TARGET", "test");
     if js {
-        let jsfile = web(source_file)?;
+        let jsfile = web(source_file.to_string())?;
         let mut run = Command::new("node")
             .current_dir(current_dir()?)
             .arg(format!("{jsfile}.js"))
@@ -724,7 +772,7 @@ fn test_inner(source_file: String, js: bool) -> Result<(), Box<dyn std::error::E
             std::process::exit(ecode.code().unwrap());
         }
     } else {
-        let binary = build(source_file, "release")?;
+        let binary = build(source_file.to_string(), "release")?;
         let mut run = Command::new(format!("./{binary}"))
             .current_dir(current_dir()?)
             .stdout(Stdio::inherit())
@@ -739,6 +787,50 @@ fn test_inner(source_file: String, js: bool) -> Result<(), Box<dyn std::error::E
             .output()?;
         if !ecode.success() {
             std::process::exit(ecode.code().unwrap());
+        }
+    }
+    Ok(())
+}
+
+fn should_skip_test_discovery_dir(name: &str) -> bool {
+    matches!(
+        name,
+        "target" | "node_modules" | ".git" | "dependencies" | ".cargo"
+    )
+}
+
+/// Recursively find `.ln` files under `dir` that export a test-only `main` entry point.
+pub fn discover_test_ln_files(dir: &Path) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+    let mut out = Vec::new();
+    collect_test_ln_files(dir, &mut out)?;
+    out.sort();
+    Ok(out)
+}
+
+fn collect_test_ln_files(dir: &Path, out: &mut Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
+    for entry in std::fs::read_dir(dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_dir() {
+            let name = entry.file_name();
+            let name = name.to_string_lossy();
+            if should_skip_test_discovery_dir(&name) {
+                continue;
+            }
+            collect_test_ln_files(&path, out)?;
+        } else if path.extension().is_some_and(|e| e == "ln") {
+            let file_path = path.to_string_lossy().to_string();
+            let src = match read_to_string(&path) {
+                Ok(s) => s,
+                Err(_) => continue,
+            };
+            let ast = match get_ast(&src) {
+                Ok(a) => a,
+                Err(_) => continue,
+            };
+            if has_exported_test_main(&ast) {
+                out.push(file_path);
+            }
         }
     }
     Ok(())

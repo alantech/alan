@@ -1711,6 +1711,46 @@ impl fmt::Debug for ParseError {
 
 impl std::error::Error for ParseError {}
 
+/// Returns true when the source file exports a `main` entry point gated on the `Test` compile-time
+/// type (e.g. `export fn{Test} main` or `export{Test} fn main`). Used by `alan test` discovery.
+pub fn has_exported_test_main(ln: &Ln) -> bool {
+    ln.body.iter().any(|elem| match elem {
+        RootElements::Exports(e) => match &e.exportable {
+            Exportable::Functions(f) => is_exported_test_main(e.opttypegenerics.as_ref(), f),
+            _ => false,
+        },
+        _ => false,
+    })
+}
+
+fn is_exported_test_main(export_generics: Option<&GnCall>, f: &Functions) -> bool {
+    f.optname.as_deref() == Some("main")
+        && (gncall_references_test(export_generics) || gncall_references_test(f.opttypegenerics.as_ref()))
+}
+
+fn gncall_references_test(generics: Option<&GnCall>) -> bool {
+    generics.is_some_and(|g| {
+        g.typecalllist
+            .iter()
+            .any(|wt| typeoperators_references_test(wt))
+    })
+}
+
+fn typeoperators_references_test(wt: &WithTypeOperators) -> bool {
+    match wt {
+        WithTypeOperators::TypeBaseList(tbl) => tbl.iter().any(typebase_references_test),
+        WithTypeOperators::Operators(_) => false,
+    }
+}
+
+fn typebase_references_test(tb: &TypeBase) -> bool {
+    match tb {
+        TypeBase::Variable(v) => v == "Test",
+        TypeBase::GnCall(g) => gncall_references_test(Some(g)),
+        _ => false,
+    }
+}
+
 pub fn get_ast(input: &str) -> Result<Ln, ParseError> {
     reset_parse_depth();
     // Strip an optional leading "shebang" line (e.g. `#!/usr/bin/env alan`) so that an Alan source
@@ -1743,6 +1783,44 @@ test!(get_ast =>
     pass "#!/usr/bin/alan\n";
     pass "#!/usr/bin/env alan";
 );
+
+#[cfg(test)]
+mod test_main_discovery {
+    use super::*;
+
+    #[test]
+    fn detects_export_fn_test_main() {
+        let ast = get_ast(
+            "export fn add1(a: i64) -> i64 = a + 1;\nexport fn{Test} main { print('test'); }",
+        )
+        .unwrap();
+        assert!(has_exported_test_main(&ast));
+    }
+
+    #[test]
+    fn detects_export_brace_test_fn_main() {
+        let ast = get_ast("export{Test} fn main() { print('test'); }").unwrap();
+        assert!(has_exported_test_main(&ast));
+    }
+
+    #[test]
+    fn ignores_non_test_main() {
+        let ast = get_ast("export fn main { print('hello'); }").unwrap();
+        assert!(!has_exported_test_main(&ast));
+    }
+
+    #[test]
+    fn ignores_test_main_without_export() {
+        let ast = get_ast("fn{Test} main { print('test'); }").unwrap();
+        assert!(!has_exported_test_main(&ast));
+    }
+
+    #[test]
+    fn ignores_test_functions_other_than_main() {
+        let ast = get_ast("export fn{Test} foo { print('test'); }").unwrap();
+        assert!(!has_exported_test_main(&ast));
+    }
+}
 
 #[cfg(test)]
 mod parse_error_tests {
