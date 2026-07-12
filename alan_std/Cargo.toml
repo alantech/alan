@@ -12,7 +12,7 @@ edition.workspace = true
 [dependencies]
 futures = "0.3.32"
 ordered_hash_map = "0.6.0"
-pollster = "0.4.0"
+pollster = "1.0.1"
 uuid = { version = "1.23.2", features = ["v4", "fast-rng"] }
 wgpu = "30.0.0"
 winit = "0.30.13"
