@@ -484,7 +484,12 @@ pub fn from_microstatement(
                     )),
                 },
                 CType::Function(..) => {
-                    let f = codegen::resolve_function_from_scope(representation, typen.clone(), scope, parent_fn);
+                    let f = codegen::resolve_function_from_scope(
+                        representation,
+                        typen.clone(),
+                        scope,
+                        parent_fn,
+                    );
                     match &f {
                         None => {
                             if codegen::is_function_arg(parent_fn, representation) {
@@ -1046,43 +1051,91 @@ pub fn from_microstatement(
                                                             ));
                                                         } else {
                                                             return Ok((
-                                                                format!("{} = {}", argstrs[0], argstrs[1]),
+                                                                format!(
+                                                                    "{} = {}",
+                                                                    argstrs[0], argstrs[1]
+                                                                ),
                                                                 out,
                                                                 deps,
                                                             ));
                                                         }
                                                     }
                                                     codegen::EnumVariantKind::Result => {
-                                                        let (_, d) = typen::ctype_to_jtype(ts[0].clone(), deps)?;
+                                                        let (_, d) = typen::ctype_to_jtype(
+                                                            ts[0].clone(),
+                                                            deps,
+                                                        )?;
                                                         deps = d;
-                                                        let (_, d) = typen::ctype_to_jtype(ts[1].clone(), deps)?;
+                                                        let (_, d) = typen::ctype_to_jtype(
+                                                            ts[1].clone(),
+                                                            deps,
+                                                        )?;
                                                         deps = d;
-                                                        return Ok((format!("{} = {}", argstrs[0], argstrs[1]), out, deps));
+                                                        return Ok((
+                                                            format!(
+                                                                "{} = {}",
+                                                                argstrs[0], argstrs[1]
+                                                            ),
+                                                            out,
+                                                            deps,
+                                                        ));
                                                     }
                                                 }
                                             }
-                                            return Ok((format!("{} = {}", argstrs[0], argstrs[1]), out, deps));
+                                            return Ok((
+                                                format!("{} = {}", argstrs[0], argstrs[1]),
+                                                out,
+                                                deps,
+                                            ));
                                         }
                                         CType::Type(n, _) if *n == enum_name => {
                                             if let Some(kind) = codegen::enum_variant_kind(ts) {
                                                 match kind {
                                                     codegen::EnumVariantKind::Option => {
                                                         if let CType::Void = &**t {
-                                                            return Ok((format!("{} = null", argstrs[0]), out, deps));
+                                                            return Ok((
+                                                                format!("{} = null", argstrs[0]),
+                                                                out,
+                                                                deps,
+                                                            ));
                                                         } else {
-                                                            return Ok((format!("{} = {}", argstrs[0], argstrs[1]), out, deps));
+                                                            return Ok((
+                                                                format!(
+                                                                    "{} = {}",
+                                                                    argstrs[0], argstrs[1]
+                                                                ),
+                                                                out,
+                                                                deps,
+                                                            ));
                                                         }
                                                     }
                                                     codegen::EnumVariantKind::Result => {
-                                                        let (_, d) = typen::ctype_to_jtype(ts[0].clone(), deps)?;
+                                                        let (_, d) = typen::ctype_to_jtype(
+                                                            ts[0].clone(),
+                                                            deps,
+                                                        )?;
                                                         deps = d;
-                                                        let (_, d) = typen::ctype_to_jtype(ts[1].clone(), deps)?;
+                                                        let (_, d) = typen::ctype_to_jtype(
+                                                            ts[1].clone(),
+                                                            deps,
+                                                        )?;
                                                         deps = d;
-                                                        return Ok((format!("{} = {}", argstrs[0], argstrs[1]), out, deps));
+                                                        return Ok((
+                                                            format!(
+                                                                "{} = {}",
+                                                                argstrs[0], argstrs[1]
+                                                            ),
+                                                            out,
+                                                            deps,
+                                                        ));
                                                     }
                                                 }
                                             }
-                                            return Ok((format!("{} = {}", argstrs[0], argstrs[1]), out, deps));
+                                            return Ok((
+                                                format!("{} = {}", argstrs[0], argstrs[1]),
+                                                out,
+                                                deps,
+                                            ));
                                         }
                                         _ => {}
                                     }
@@ -1148,64 +1201,106 @@ pub fn from_microstatement(
                                             if inner_type.clone().to_callable_string()
                                                 == enum_name =>
                                         {
-                                             if let Some(kind) = codegen::enum_variant_kind(ts) {
-                                                 match kind {
-                                                     codegen::EnumVariantKind::Option => {
-                                                         if let CType::Void = &**t {
-                                                             return Ok(("null".to_string(), out, deps));
-                                                         } else {
-                                                             return Ok((argstrs[0].clone(), out, deps));
-                                                         }
-                                                     }
-                                                     codegen::EnumVariantKind::Result => {
-                                                         let (_, d) = typen::ctype_to_jtype(ts[0].clone(), deps)?;
-                                                         deps = d;
-                                                         let (_, d) = typen::ctype_to_jtype(ts[1].clone(), deps)?;
-                                                         deps = d;
-                                                         return Ok((argstrs[0].clone(), out, deps));
-                                                     }
-                                                 }
-                                             }
-                                             return Ok((argstrs[0].clone(), out, deps));
-                                         }
-                                         CType::Either(ts, _)
-                                            if inner_type.clone().to_callable_string()
-                                                == enum_name =>
-                                        {
-                                             if let Some(kind) = codegen::enum_variant_kind(ts) {
-                                                 match kind {
-                                                     codegen::EnumVariantKind::Option => {
-                                                         if let CType::Void = &**t {
-                                                             return Ok(("null".to_string(), out, deps));
-                                                         } else {
-                                                             return Ok((argstrs[0].clone(), out, deps));
-                                                         }
-                                                     }
-                                                     codegen::EnumVariantKind::Result => {
-                                                         let (_, d) = typen::ctype_to_jtype(ts[0].clone(), deps)?;
-                                                         deps = d;
-                                                         let (_, d) = typen::ctype_to_jtype(ts[1].clone(), deps)?;
-                                                         deps = d;
-                                                         return Ok((argstrs[0].clone(), out, deps));
-                                                     }
-                                                 }
-                                             }
-                                             return Ok((argstrs[0].clone(), out, deps));
-                                         }
-                                         CType::Field(n, _) if *n == enum_name => {
-                                             if let Some(kind) = codegen::enum_variant_kind(ts) {
+                                            if let Some(kind) = codegen::enum_variant_kind(ts) {
                                                 match kind {
                                                     codegen::EnumVariantKind::Option => {
                                                         if let CType::Void = &**t {
-                                                            return Ok(("null".to_string(), out, deps));
+                                                            return Ok((
+                                                                "null".to_string(),
+                                                                out,
+                                                                deps,
+                                                            ));
                                                         } else {
-                                                            return Ok((argstrs[0].clone(), out, deps));
+                                                            return Ok((
+                                                                argstrs[0].clone(),
+                                                                out,
+                                                                deps,
+                                                            ));
                                                         }
                                                     }
                                                     codegen::EnumVariantKind::Result => {
-                                                        let (_, d) = typen::ctype_to_jtype(ts[0].clone(), deps)?;
+                                                        let (_, d) = typen::ctype_to_jtype(
+                                                            ts[0].clone(),
+                                                            deps,
+                                                        )?;
                                                         deps = d;
-                                                        let (_, d) = typen::ctype_to_jtype(ts[1].clone(), deps)?;
+                                                        let (_, d) = typen::ctype_to_jtype(
+                                                            ts[1].clone(),
+                                                            deps,
+                                                        )?;
+                                                        deps = d;
+                                                        return Ok((argstrs[0].clone(), out, deps));
+                                                    }
+                                                }
+                                            }
+                                            return Ok((argstrs[0].clone(), out, deps));
+                                        }
+                                        CType::Either(ts, _)
+                                            if inner_type.clone().to_callable_string()
+                                                == enum_name =>
+                                        {
+                                            if let Some(kind) = codegen::enum_variant_kind(ts) {
+                                                match kind {
+                                                    codegen::EnumVariantKind::Option => {
+                                                        if let CType::Void = &**t {
+                                                            return Ok((
+                                                                "null".to_string(),
+                                                                out,
+                                                                deps,
+                                                            ));
+                                                        } else {
+                                                            return Ok((
+                                                                argstrs[0].clone(),
+                                                                out,
+                                                                deps,
+                                                            ));
+                                                        }
+                                                    }
+                                                    codegen::EnumVariantKind::Result => {
+                                                        let (_, d) = typen::ctype_to_jtype(
+                                                            ts[0].clone(),
+                                                            deps,
+                                                        )?;
+                                                        deps = d;
+                                                        let (_, d) = typen::ctype_to_jtype(
+                                                            ts[1].clone(),
+                                                            deps,
+                                                        )?;
+                                                        deps = d;
+                                                        return Ok((argstrs[0].clone(), out, deps));
+                                                    }
+                                                }
+                                            }
+                                            return Ok((argstrs[0].clone(), out, deps));
+                                        }
+                                        CType::Field(n, _) if *n == enum_name => {
+                                            if let Some(kind) = codegen::enum_variant_kind(ts) {
+                                                match kind {
+                                                    codegen::EnumVariantKind::Option => {
+                                                        if let CType::Void = &**t {
+                                                            return Ok((
+                                                                "null".to_string(),
+                                                                out,
+                                                                deps,
+                                                            ));
+                                                        } else {
+                                                            return Ok((
+                                                                argstrs[0].clone(),
+                                                                out,
+                                                                deps,
+                                                            ));
+                                                        }
+                                                    }
+                                                    codegen::EnumVariantKind::Result => {
+                                                        let (_, d) = typen::ctype_to_jtype(
+                                                            ts[0].clone(),
+                                                            deps,
+                                                        )?;
+                                                        deps = d;
+                                                        let (_, d) = typen::ctype_to_jtype(
+                                                            ts[1].clone(),
+                                                            deps,
+                                                        )?;
                                                         deps = d;
                                                         return Ok((argstrs[0].clone(), out, deps));
                                                     }
@@ -1218,15 +1313,29 @@ pub fn from_microstatement(
                                                 match kind {
                                                     codegen::EnumVariantKind::Option => {
                                                         if let CType::Void = &**t {
-                                                            return Ok(("null".to_string(), out, deps));
+                                                            return Ok((
+                                                                "null".to_string(),
+                                                                out,
+                                                                deps,
+                                                            ));
                                                         } else {
-                                                            return Ok((argstrs[0].clone(), out, deps));
+                                                            return Ok((
+                                                                argstrs[0].clone(),
+                                                                out,
+                                                                deps,
+                                                            ));
                                                         }
                                                     }
                                                     codegen::EnumVariantKind::Result => {
-                                                        let (_, d) = typen::ctype_to_jtype(ts[0].clone(), deps)?;
+                                                        let (_, d) = typen::ctype_to_jtype(
+                                                            ts[0].clone(),
+                                                            deps,
+                                                        )?;
                                                         deps = d;
-                                                        let (_, d) = typen::ctype_to_jtype(ts[1].clone(), deps)?;
+                                                        let (_, d) = typen::ctype_to_jtype(
+                                                            ts[1].clone(),
+                                                            deps,
+                                                        )?;
                                                         deps = d;
                                                         return Ok((argstrs[0].clone(), out, deps));
                                                     }
@@ -1240,27 +1349,50 @@ pub fn from_microstatement(
                                                     match kind {
                                                         codegen::EnumVariantKind::Option => {
                                                             if let CType::Void = &**t {
-                                                                return Ok(("null".to_string(), out, deps));
+                                                                return Ok((
+                                                                    "null".to_string(),
+                                                                    out,
+                                                                    deps,
+                                                                ));
                                                             } else {
-                                                                return Ok((argstrs[0].clone(), out, deps));
+                                                                return Ok((
+                                                                    argstrs[0].clone(),
+                                                                    out,
+                                                                    deps,
+                                                                ));
                                                             }
                                                         }
                                                         codegen::EnumVariantKind::Result => {
-                                                            let (_, d) = typen::ctype_to_jtype(ts[0].clone(), deps)?;
+                                                            let (_, d) = typen::ctype_to_jtype(
+                                                                ts[0].clone(),
+                                                                deps,
+                                                            )?;
                                                             deps = d;
-                                                            let (_, d) = typen::ctype_to_jtype(ts[1].clone(), deps)?;
+                                                            let (_, d) = typen::ctype_to_jtype(
+                                                                ts[1].clone(),
+                                                                deps,
+                                                            )?;
                                                             deps = d;
-                                                            return Ok((argstrs[0].clone(), out, deps));
+                                                            return Ok((
+                                                                argstrs[0].clone(),
+                                                                out,
+                                                                deps,
+                                                            ));
                                                         }
                                                     }
                                                 }
                                                 return Ok((argstrs[0].clone(), out, deps));
                                             }
-                                            CType::Import(n, d) => match &**n {
-                                                CType::TString(s) if s == &enum_name => {
-                                                    super::register_nodejs_dependency(d, &mut deps);
-                                                    if let Some(kind) = codegen::enum_variant_kind(ts) {
-                                                        match kind {
+                                            CType::Import(n, d) => {
+                                                match &**n {
+                                                    CType::TString(s) if s == &enum_name => {
+                                                        super::register_nodejs_dependency(
+                                                            d, &mut deps,
+                                                        );
+                                                        if let Some(kind) =
+                                                            codegen::enum_variant_kind(ts)
+                                                        {
+                                                            match kind {
                                                             codegen::EnumVariantKind::Option => {
                                                                 if let CType::Void = &**t {
                                                                     return Ok(("null".to_string(), out, deps));
@@ -1276,17 +1408,19 @@ pub fn from_microstatement(
                                                                 return Ok((argstrs[0].clone(), out, deps));
                                                             }
                                                         }
+                                                        }
+                                                        return Ok((argstrs[0].clone(), out, deps));
                                                     }
-                                                    return Ok((argstrs[0].clone(), out, deps));
-                                                }
-                                                CType::TString(_)
-                                                    if enum_name
-                                                        == inner_type
-                                                            .clone()
-                                                            .to_callable_string() =>
-                                                {
-                                                    if let Some(kind) = codegen::enum_variant_kind(ts) {
-                                                        match kind {
+                                                    CType::TString(_)
+                                                        if enum_name
+                                                            == inner_type
+                                                                .clone()
+                                                                .to_callable_string() =>
+                                                    {
+                                                        if let Some(kind) =
+                                                            codegen::enum_variant_kind(ts)
+                                                        {
+                                                            match kind {
                                                             codegen::EnumVariantKind::Option => {
                                                                 if let CType::Void = &**t {
                                                                     return Ok(("null".to_string(), out, deps));
@@ -1302,11 +1436,12 @@ pub fn from_microstatement(
                                                                 return Ok((argstrs[0].clone(), out, deps));
                                                             }
                                                         }
+                                                        }
+                                                        return Ok((argstrs[0].clone(), out, deps));
                                                     }
-                                                    return Ok((argstrs[0].clone(), out, deps));
+                                                    _ => {}
                                                 }
-                                                _ => {}
-                                            },
+                                            }
                                             _ => {}
                                         },
                                         _ => {}

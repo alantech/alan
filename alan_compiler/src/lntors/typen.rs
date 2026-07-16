@@ -376,7 +376,8 @@ pub fn generate(
         // output, while the `Structlike` type requires a new struct to be created and inserted
         // into the source definition, potentially inserting inner types as needed
         CType::Binds(n, ts) => {
-            let base = codegen::render_binds_name(n, |d| super::register_rust_dependency(d, &mut deps));
+            let base =
+                codegen::render_binds_name(n, |d| super::register_rust_dependency(d, &mut deps));
             let mut genargs = Vec::new();
             for t in ts {
                 let res = ctype_to_rtype(t.clone(), deps)?;
@@ -436,7 +437,9 @@ pub fn generate(
                 deps = res.1;
                 let wrapper = match kind {
                     codegen::EnumVariantKind::Option => format!("Option<{}>", res.0),
-                    codegen::EnumVariantKind::Result => format!("Result<{}, alan_std::AlanError>", res.0),
+                    codegen::EnumVariantKind::Result => {
+                        format!("Result<{}, alan_std::AlanError>", res.0)
+                    }
                 };
                 return Ok((wrapper, out, deps));
             }

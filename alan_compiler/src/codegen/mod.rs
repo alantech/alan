@@ -98,6 +98,24 @@ pub fn bootstrap<T>(
     Ok(result)
 }
 
+/// Return type for codegen operations producing only `out` and `deps` maps.
+pub type CodegenResult<T> = Result<
+    (
+        T,
+        OrderedHashMap<String, String>,
+        OrderedHashMap<String, String>,
+    ),
+    Box<dyn std::error::Error>,
+>;
+/// Return type for operations producing only `out` and `deps` (no rendered string).
+pub type CodegenMapsResult = Result<
+    (
+        OrderedHashMap<String, String>,
+        OrderedHashMap<String, String>,
+    ),
+    Box<dyn std::error::Error>,
+>;
+
 /// Backend-specific operations needed during codegen. The shared codegen helpers
 /// and traversal call into this trait to produce backend-specific output.
 pub trait Backend {
@@ -109,10 +127,7 @@ pub trait Backend {
         scope: &Scope,
         out: OrderedHashMap<String, String>,
         deps: OrderedHashMap<String, String>,
-    ) -> Result<
-        (OrderedHashMap<String, String>, OrderedHashMap<String, String>),
-        Box<dyn std::error::Error>,
-    >;
+    ) -> CodegenMapsResult;
 
     /// Called from the shared function-value resolution when the resolved
     /// function is a Normal/External/etc. (non-bind). The backend should handle
@@ -121,18 +136,12 @@ pub trait Backend {
         fun: &Arc<Function>,
         out: OrderedHashMap<String, String>,
         deps: OrderedHashMap<String, String>,
-    ) -> Result<
-        (String, OrderedHashMap<String, String>, OrderedHashMap<String, String>),
-        Box<dyn std::error::Error>,
-    >;
+    ) -> CodegenResult<String>;
 
     /// Called when the resolved function is a bind (Bind/BoundGeneric/ExternalBind/etc.).
     fn render_bind_value(
         fun: &Arc<Function>,
         out: OrderedHashMap<String, String>,
         deps: OrderedHashMap<String, String>,
-    ) -> Result<
-        (String, OrderedHashMap<String, String>, OrderedHashMap<String, String>),
-        Box<dyn std::error::Error>,
-    >;
+    ) -> CodegenResult<String>;
 }

@@ -7,7 +7,10 @@ use crate::program::Program;
 mod function;
 mod typen;
 
-pub(crate) fn register_rust_dependency(d: &crate::program::CType, deps: &mut OrderedHashMap<String, String>) {
+pub(crate) fn register_rust_dependency(
+    d: &crate::program::CType,
+    deps: &mut OrderedHashMap<String, String>,
+) {
     codegen::register_dependency(DepType::Rust, d, deps);
 }
 

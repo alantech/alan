@@ -34,9 +34,10 @@ pub fn resolve_function_from_scope<'a>(
 
 /// Check if a representation matches a function-typed argument of the parent function.
 pub fn is_function_arg(parent_fn: &Function, representation: &str) -> bool {
-    parent_fn.args().iter().any(|(name, _, typen)| {
-        name == representation && matches!(&**typen, CType::Function(_, _))
-    })
+    parent_fn
+        .args()
+        .iter()
+        .any(|(name, _, typen)| name == representation && matches!(&**typen, CType::Function(_, _)))
 }
 
 /// Generate the mangled function name used for codegen deduplication.
@@ -76,10 +77,7 @@ pub enum EnumVariantKind {
 /// Try single-expression inlining. Returns `Some(inlined_microstatement)` if the function
 /// is a `Normal` function that's marked as an inline target and has a single-return body
 /// whose parameters can be substituted by the caller's arguments.
-pub fn try_single_inline(
-    function: &Function,
-    args: &[Microstatement],
-) -> Option<Microstatement> {
+pub fn try_single_inline(function: &Function, args: &[Microstatement]) -> Option<Microstatement> {
     if !matches!(function.kind, crate::program::FnKind::Normal) {
         return None;
     }
@@ -114,10 +112,7 @@ pub fn sanitize_ctype_string(s: &str) -> String {
 
 /// Render a `CType::Binds` name to a string, handling both `TString` and `Import` variants.
 /// The `register_dep` closure is called for `Import` variants to register the native dependency.
-pub fn render_binds_name<F: FnOnce(&CType)>(
-    name: &CType,
-    register_dep: F,
-) -> String {
+pub fn render_binds_name<F: FnOnce(&CType)>(name: &CType, register_dep: F) -> String {
     match name {
         CType::TString(s) => s.clone(),
         CType::Import(n, d) => {
@@ -138,16 +133,12 @@ pub fn is_option_or_result_either(ts: &[Arc<CType>]) -> bool {
     if ts.len() != 2 {
         return false;
     }
-    matches!(*ts[1], CType::Void)
-        || matches!(&*ts[1], CType::Type(n, _) if n == "Error")
+    matches!(*ts[1], CType::Void) || matches!(&*ts[1], CType::Type(n, _) if n == "Error")
 }
 
 /// Build a Rust-style enum variant string from a `CType::Either` variant.
 /// Handles `Field`, `Type`, `Void`, `Tuple`, and fallback cases.
-pub fn either_variant_to_rust_str(
-    t: &Arc<CType>,
-    rendered: String,
-) -> String {
+pub fn either_variant_to_rust_str(t: &Arc<CType>, rendered: String) -> String {
     match &**t {
         CType::Field(k, _) => format!("{k}({rendered})"),
         CType::Type(n, _) => format!("{n}({rendered})"),

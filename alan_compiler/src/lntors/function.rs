@@ -1050,7 +1050,12 @@ pub fn from_microstatement(
                 _ => CType::fail("Bound types must be strings or rust imports"),
             },
             CType::Function(..) => {
-                let f = codegen::resolve_function_from_scope(representation, typen.clone(), scope, parent_fn);
+                let f = codegen::resolve_function_from_scope(
+                    representation,
+                    typen.clone(),
+                    scope,
+                    parent_fn,
+                );
                 match &f {
                     None => {
                         if codegen::is_function_arg(parent_fn, representation) {
@@ -1265,9 +1270,7 @@ pub fn from_microstatement(
                             _ => false,
                         }
                     });
-                    if !any_arg_shared
-                        && inline_consumes_are_safe(function, args, parent_fn)
-                    {
+                    if !any_arg_shared && inline_consumes_are_safe(function, args, parent_fn) {
                         // Single `return <expr>` body: inline as a pure expression.
                         if let Some(inlined) = codegen::try_single_inline(function, args) {
                             // The inlined expression splices the callee's body
@@ -1288,9 +1291,7 @@ pub fn from_microstatement(
                         // values drop early). Skip when the callee has `Shared` locals, whose
                         // deref/clone rendering depends on a `shared_vars` map we don't thread in.
                         if build_shared_vars(function).is_empty() {
-                            if let Some((stmts, tail)) =
-                                codegen::try_multi_inline(function, args)
-                            {
+                            if let Some((stmts, tail)) = codegen::try_multi_inline(function, args) {
                                 // The inlined block splices the callee's body into
                                 // this statement; render it with moves disabled.
                                 let _untrusted = UntrustedGuard::new();
@@ -1907,31 +1908,37 @@ pub fn from_microstatement(
                                     let inner_type = t.clone().degroup();
                                     match &*inner_type {
                                         CType::Field(n, _) if *n == enum_name => {
-                                             if let Some(kind) = codegen::enum_variant_kind(ts) {
-                                                 match kind {
-                                                     codegen::EnumVariantKind::Option => {
-                                                         if let CType::Void = &**t {
-                                                             return Ok((
-                                                                 format!(
-                                                                     "{} = None",
-                                                                     codegen::strip_amp_mut(&argstrs[0])
-                                                                 ),
-                                                                 out,
-                                                                 deps,
-                                                             ));
-                                                         } else {
-                                                             return Ok((
-                                                                 format!(
-                                                                     "{} = Some({})",
-                                                                     codegen::strip_amp_mut(&argstrs[0]),
-                                                                     codegen::strip_amp_mut(&argstrs[1])
-                                                                 ),
-                                                                 out,
-                                                                 deps,
-                                                             ));
-                                                         }
-                                                     }
-                                                     codegen::EnumVariantKind::Result => {
+                                            if let Some(kind) = codegen::enum_variant_kind(ts) {
+                                                match kind {
+                                                    codegen::EnumVariantKind::Option => {
+                                                        if let CType::Void = &**t {
+                                                            return Ok((
+                                                                format!(
+                                                                    "{} = None",
+                                                                    codegen::strip_amp_mut(
+                                                                        &argstrs[0]
+                                                                    )
+                                                                ),
+                                                                out,
+                                                                deps,
+                                                            ));
+                                                        } else {
+                                                            return Ok((
+                                                                format!(
+                                                                    "{} = Some({})",
+                                                                    codegen::strip_amp_mut(
+                                                                        &argstrs[0]
+                                                                    ),
+                                                                    codegen::strip_amp_mut(
+                                                                        &argstrs[1]
+                                                                    )
+                                                                ),
+                                                                out,
+                                                                deps,
+                                                            ));
+                                                        }
+                                                    }
+                                                    codegen::EnumVariantKind::Result => {
                                                         let (okrustname, d) =
                                                             typen::ctype_to_rtype(
                                                                 ts[0].clone(),
@@ -1948,10 +1955,14 @@ pub fn from_microstatement(
                                                             return Ok((
                                                                 format!(
                                                                     "{} = Err::<{}, {}>({})",
-                                                                    codegen::strip_amp_mut(&argstrs[0]),
+                                                                    codegen::strip_amp_mut(
+                                                                        &argstrs[0]
+                                                                    ),
                                                                     okrustname,
                                                                     errrustname,
-                                                                    codegen::strip_amp_mut(&argstrs[1])
+                                                                    codegen::strip_amp_mut(
+                                                                        &argstrs[1]
+                                                                    )
                                                                 ),
                                                                 out,
                                                                 deps,
@@ -1960,10 +1971,14 @@ pub fn from_microstatement(
                                                             return Ok((
                                                                 format!(
                                                                     "{} = Ok::<{}, {}>({})",
-                                                                    codegen::strip_amp_mut(&argstrs[0]),
+                                                                    codegen::strip_amp_mut(
+                                                                        &argstrs[0]
+                                                                    ),
                                                                     okrustname,
                                                                     errrustname,
-                                                                    codegen::strip_amp_mut(&argstrs[1])
+                                                                    codegen::strip_amp_mut(
+                                                                        &argstrs[1]
+                                                                    )
                                                                 ),
                                                                 out,
                                                                 deps,
@@ -1986,30 +2001,36 @@ pub fn from_microstatement(
                                         }
                                         CType::Type(n, _) if *n == enum_name => {
                                             if let Some(kind) = codegen::enum_variant_kind(ts) {
-                                                 match kind {
-                                                     codegen::EnumVariantKind::Option => {
-                                                         if let CType::Void = &**t {
-                                                             return Ok((
-                                                                 format!(
-                                                                     "{} = None",
-                                                                     codegen::strip_amp_mut(&argstrs[0])
-                                                                 ),
-                                                                 out,
-                                                                 deps,
-                                                             ));
-                                                         } else {
-                                                             return Ok((
-                                                                 format!(
-                                                                     "{} = Some({})",
-                                                                     codegen::strip_amp_mut(&argstrs[0]),
-                                                                     codegen::strip_amp_mut(&argstrs[1])
-                                                                 ),
-                                                                 out,
-                                                                 deps,
-                                                             ));
-                                                         }
-                                                     }
-                                                     codegen::EnumVariantKind::Result => {
+                                                match kind {
+                                                    codegen::EnumVariantKind::Option => {
+                                                        if let CType::Void = &**t {
+                                                            return Ok((
+                                                                format!(
+                                                                    "{} = None",
+                                                                    codegen::strip_amp_mut(
+                                                                        &argstrs[0]
+                                                                    )
+                                                                ),
+                                                                out,
+                                                                deps,
+                                                            ));
+                                                        } else {
+                                                            return Ok((
+                                                                format!(
+                                                                    "{} = Some({})",
+                                                                    codegen::strip_amp_mut(
+                                                                        &argstrs[0]
+                                                                    ),
+                                                                    codegen::strip_amp_mut(
+                                                                        &argstrs[1]
+                                                                    )
+                                                                ),
+                                                                out,
+                                                                deps,
+                                                            ));
+                                                        }
+                                                    }
+                                                    codegen::EnumVariantKind::Result => {
                                                         let (okrustname, d) =
                                                             typen::ctype_to_rtype(
                                                                 ts[0].clone(),
@@ -2026,10 +2047,14 @@ pub fn from_microstatement(
                                                             return Ok((
                                                                 format!(
                                                                     "{} = Err::<{}, {}>({})",
-                                                                    codegen::strip_amp_mut(&argstrs[0]),
+                                                                    codegen::strip_amp_mut(
+                                                                        &argstrs[0]
+                                                                    ),
                                                                     okrustname,
                                                                     errrustname,
-                                                                    codegen::strip_amp_mut(&argstrs[1])
+                                                                    codegen::strip_amp_mut(
+                                                                        &argstrs[1]
+                                                                    )
                                                                 ),
                                                                 out,
                                                                 deps,
@@ -2038,10 +2063,14 @@ pub fn from_microstatement(
                                                             return Ok((
                                                                 format!(
                                                                     "{} = Ok::<{}, {}>({})",
-                                                                    codegen::strip_amp_mut(&argstrs[0]),
+                                                                    codegen::strip_amp_mut(
+                                                                        &argstrs[0]
+                                                                    ),
                                                                     okrustname,
                                                                     errrustname,
-                                                                    codegen::strip_amp_mut(&argstrs[1])
+                                                                    codegen::strip_amp_mut(
+                                                                        &argstrs[1]
+                                                                    )
                                                                 ),
                                                                 out,
                                                                 deps,
@@ -2129,7 +2158,7 @@ pub fn from_microstatement(
                                 return Ok((
                                     format!(
                                         "std::sync::Arc::new(std::sync::RwLock::new({}))",
-                                        codegen::strip_amp_mut(&argstrs[0]).to_string()
+                                        codegen::strip_amp_mut(&argstrs[0])
                                     ),
                                     out,
                                     deps,
@@ -2175,7 +2204,8 @@ pub fn from_microstatement(
                                         if !matched_indices.is_empty()
                                             && matched_indices.len() < parent_variants.len()
                                         {
-                                            let parent_arg = codegen::strip_amp_mut(&argstrs[0]).to_string();
+                                            let parent_arg =
+                                                codegen::strip_amp_mut(&argstrs[0]).to_string();
                                             // Generate match expression: Some(Child::Variant(v)) for matched, None for excluded
                                             let mut arms = Vec::new();
                                             for (idx, pv) in parent_variants.iter().enumerate() {
@@ -2211,24 +2241,30 @@ pub fn from_microstatement(
                                 for t in ts {
                                     let inner_type = t.clone().degroup();
                                     match &*inner_type {
-                                       CType::Field(n, _) if *n == enum_name => {
-                                             if let Some(kind) = codegen::enum_variant_kind(ts) {
-                                                 match kind {
-                                                     codegen::EnumVariantKind::Option => {
-                                                         if let CType::Void = &**t {
-                                                             return Ok(("None".to_string(), out, deps));
-                                                         } else {
-                                                             return Ok((
-                                                                 format!(
-                                                                     "Some({})",
-                                                                     codegen::strip_amp_mut(&argstrs[0])
-                                                                 ),
-                                                                 out,
-                                                                 deps,
-                                                             ));
-                                                         }
-                                                     }
-                                                     codegen::EnumVariantKind::Result => {
+                                        CType::Field(n, _) if *n == enum_name => {
+                                            if let Some(kind) = codegen::enum_variant_kind(ts) {
+                                                match kind {
+                                                    codegen::EnumVariantKind::Option => {
+                                                        if let CType::Void = &**t {
+                                                            return Ok((
+                                                                "None".to_string(),
+                                                                out,
+                                                                deps,
+                                                            ));
+                                                        } else {
+                                                            return Ok((
+                                                                format!(
+                                                                    "Some({})",
+                                                                    codegen::strip_amp_mut(
+                                                                        &argstrs[0]
+                                                                    )
+                                                                ),
+                                                                out,
+                                                                deps,
+                                                            ));
+                                                        }
+                                                    }
+                                                    codegen::EnumVariantKind::Result => {
                                                         let (okrustname, d) =
                                                             typen::ctype_to_rtype(
                                                                 ts[0].clone(),
@@ -2247,7 +2283,9 @@ pub fn from_microstatement(
                                                                     "Err::<{}, {}>({})",
                                                                     okrustname,
                                                                     errrustname,
-                                                                    codegen::strip_amp_mut(&argstrs[0])
+                                                                    codegen::strip_amp_mut(
+                                                                        &argstrs[0]
+                                                                    )
                                                                 ),
                                                                 out,
                                                                 deps,
@@ -2258,7 +2296,9 @@ pub fn from_microstatement(
                                                                     "Ok::<{}, {}>({})",
                                                                     okrustname,
                                                                     errrustname,
-                                                                    codegen::strip_amp_mut(&argstrs[0])
+                                                                    codegen::strip_amp_mut(
+                                                                        &argstrs[0]
+                                                                    )
                                                                 ),
                                                                 out,
                                                                 deps,
@@ -2278,24 +2318,30 @@ pub fn from_microstatement(
                                                 deps,
                                             ));
                                         }
-                                       CType::Type(n, _) if *n == enum_name => {
-                                             if let Some(kind) = codegen::enum_variant_kind(ts) {
-                                                 match kind {
-                                                     codegen::EnumVariantKind::Option => {
-                                                         if let CType::Void = &**t {
-                                                             return Ok(("None".to_string(), out, deps));
-                                                         } else {
-                                                             return Ok((
-                                                                 format!(
-                                                                     "Some({})",
-                                                                     codegen::strip_amp_mut(&argstrs[0])
-                                                                 ),
-                                                                 out,
-                                                                 deps,
-                                                             ));
-                                                         }
-                                                     }
-                                                     codegen::EnumVariantKind::Result => {
+                                        CType::Type(n, _) if *n == enum_name => {
+                                            if let Some(kind) = codegen::enum_variant_kind(ts) {
+                                                match kind {
+                                                    codegen::EnumVariantKind::Option => {
+                                                        if let CType::Void = &**t {
+                                                            return Ok((
+                                                                "None".to_string(),
+                                                                out,
+                                                                deps,
+                                                            ));
+                                                        } else {
+                                                            return Ok((
+                                                                format!(
+                                                                    "Some({})",
+                                                                    codegen::strip_amp_mut(
+                                                                        &argstrs[0]
+                                                                    )
+                                                                ),
+                                                                out,
+                                                                deps,
+                                                            ));
+                                                        }
+                                                    }
+                                                    codegen::EnumVariantKind::Result => {
                                                         let (okrustname, d) =
                                                             typen::ctype_to_rtype(
                                                                 ts[0].clone(),
@@ -2314,7 +2360,9 @@ pub fn from_microstatement(
                                                                     "Err::<{}, {}>({})",
                                                                     okrustname,
                                                                     errrustname,
-                                                                    codegen::strip_amp_mut(&argstrs[0])
+                                                                    codegen::strip_amp_mut(
+                                                                        &argstrs[0]
+                                                                    )
                                                                 ),
                                                                 out,
                                                                 deps,
@@ -2325,7 +2373,9 @@ pub fn from_microstatement(
                                                                     "Ok::<{}, {}>({})",
                                                                     okrustname,
                                                                     errrustname,
-                                                                    codegen::strip_amp_mut(&argstrs[0])
+                                                                    codegen::strip_amp_mut(
+                                                                        &argstrs[0]
+                                                                    )
                                                                 ),
                                                                 out,
                                                                 deps,
@@ -2346,28 +2396,30 @@ pub fn from_microstatement(
                                             ));
                                         }
                                         CType::Binds(n, ..) => match &**n {
-                                          CType::TString(s) if s == &enum_name => {
-                                                 if let Some(kind) = codegen::enum_variant_kind(ts) {
-                                                     match kind {
-                                                         codegen::EnumVariantKind::Option => {
-                                                             if let CType::Void = &**t {
-                                                                 return Ok((
-                                                                     "None".to_string(),
-                                                                     out,
-                                                                     deps,
-                                                                 ));
-                                                             } else {
-                                                                 return Ok((
-                                                                     format!(
-                                                                         "Some({})",
-                                                                         codegen::strip_amp_mut(&argstrs[0])
-                                                                     ),
-                                                                     out,
-                                                                     deps,
-                                                                 ));
-                                                             }
-                                                         }
-                                                         codegen::EnumVariantKind::Result => {
+                                            CType::TString(s) if s == &enum_name => {
+                                                if let Some(kind) = codegen::enum_variant_kind(ts) {
+                                                    match kind {
+                                                        codegen::EnumVariantKind::Option => {
+                                                            if let CType::Void = &**t {
+                                                                return Ok((
+                                                                    "None".to_string(),
+                                                                    out,
+                                                                    deps,
+                                                                ));
+                                                            } else {
+                                                                return Ok((
+                                                                    format!(
+                                                                        "Some({})",
+                                                                        codegen::strip_amp_mut(
+                                                                            &argstrs[0]
+                                                                        )
+                                                                    ),
+                                                                    out,
+                                                                    deps,
+                                                                ));
+                                                            }
+                                                        }
+                                                        codegen::EnumVariantKind::Result => {
                                                             let (okrustname, d) =
                                                                 typen::ctype_to_rtype(
                                                                     ts[0].clone(),
@@ -2386,7 +2438,9 @@ pub fn from_microstatement(
                                                                         "Err::<{}, {}>({})",
                                                                         okrustname,
                                                                         errrustname,
-                                                                        codegen::strip_amp_mut(&argstrs[0])
+                                                                        codegen::strip_amp_mut(
+                                                                            &argstrs[0]
+                                                                        )
                                                                     ),
                                                                     out,
                                                                     deps,
@@ -2397,7 +2451,9 @@ pub fn from_microstatement(
                                                                         "Ok::<{}, {}>({})",
                                                                         okrustname,
                                                                         errrustname,
-                                                                        codegen::strip_amp_mut(&argstrs[0])
+                                                                        codegen::strip_amp_mut(
+                                                                            &argstrs[0]
+                                                                        )
                                                                     ),
                                                                     out,
                                                                     deps,
@@ -2419,28 +2475,32 @@ pub fn from_microstatement(
                                             }
                                             CType::Import(n, d) => match &**n {
                                                 CType::TString(s) if s == &enum_name => {
-                                                     super::register_rust_dependency(d, &mut deps);
-                                                     if let Some(kind) = codegen::enum_variant_kind(ts) {
-                                                         match kind {
-                                                             codegen::EnumVariantKind::Option => {
-                                                                 if let CType::Void = &**t {
-                                                                     return Ok((
-                                                                         "None".to_string(),
-                                                                         out,
-                                                                         deps,
-                                                                     ));
-                                                                 } else {
-                                                                     return Ok((
-                                                                         format!(
-                                                                             "Some({})",
-                                                                             codegen::strip_amp_mut(&argstrs[0])
-                                                                         ),
-                                                                         out,
-                                                                         deps,
-                                                                     ));
-                                                                 }
-                                                             }
-                                                             codegen::EnumVariantKind::Result => {
+                                                    super::register_rust_dependency(d, &mut deps);
+                                                    if let Some(kind) =
+                                                        codegen::enum_variant_kind(ts)
+                                                    {
+                                                        match kind {
+                                                            codegen::EnumVariantKind::Option => {
+                                                                if let CType::Void = &**t {
+                                                                    return Ok((
+                                                                        "None".to_string(),
+                                                                        out,
+                                                                        deps,
+                                                                    ));
+                                                                } else {
+                                                                    return Ok((
+                                                                        format!(
+                                                                            "Some({})",
+                                                                            codegen::strip_amp_mut(
+                                                                                &argstrs[0]
+                                                                            )
+                                                                        ),
+                                                                        out,
+                                                                        deps,
+                                                                    ));
+                                                                }
+                                                            }
+                                                            codegen::EnumVariantKind::Result => {
                                                                 let (okrustname, d) =
                                                                     typen::ctype_to_rtype(
                                                                         ts[0].clone(),
@@ -2541,7 +2601,9 @@ pub fn from_microstatement(
                                                                     "Err::<{}, {}>({})",
                                                                     okrustname,
                                                                     errrustname,
-                                                                    codegen::strip_amp_mut(&argstrs[0])
+                                                                    codegen::strip_amp_mut(
+                                                                        &argstrs[0]
+                                                                    )
                                                                 ),
                                                                 out,
                                                                 deps,
@@ -2552,7 +2614,9 @@ pub fn from_microstatement(
                                                                     "Ok::<{}, {}>({})",
                                                                     okrustname,
                                                                     errrustname,
-                                                                    codegen::strip_amp_mut(&argstrs[0])
+                                                                    codegen::strip_amp_mut(
+                                                                        &argstrs[0]
+                                                                    )
                                                                 ),
                                                                 out,
                                                                 deps,
@@ -2633,7 +2697,8 @@ pub fn from_microstatement(
                                             }
                                         }
                                         if all_matched && !parent_indices.is_empty() {
-                                            let parent_arg = codegen::strip_amp_mut(&argstrs[0]).to_string();
+                                            let parent_arg =
+                                                codegen::strip_amp_mut(&argstrs[0]).to_string();
                                             let field_accesses: Vec<String> = parent_indices
                                                 .iter()
                                                 .map(|i| format!("{}.{}", parent_arg, i))
@@ -2674,10 +2739,7 @@ pub fn from_microstatement(
                                 {
                                     if argstrs.len() == 1 {
                                         return Ok((
-                                            format!(
-                                                "({},)",
-                                                codegen::strip_amp_mut(&argstrs[0]).to_string()
-                                            ),
+                                            format!("({},)", codegen::strip_amp_mut(&argstrs[0])),
                                             out,
                                             deps,
                                         ));
@@ -2707,10 +2769,7 @@ pub fn from_microstatement(
                             }
                             CType::Field(..) => {
                                 return Ok((
-                                    format!(
-                                        "({},)",
-                                        codegen::strip_amp_mut(&argstrs[0]).to_string()
-                                    ),
+                                    format!("({},)", codegen::strip_amp_mut(&argstrs[0])),
                                     out,
                                     deps,
                                 ));
@@ -2770,7 +2829,8 @@ pub fn from_microstatement(
                                         if !matched_indices.is_empty()
                                             && matched_indices.len() < parent_variants.len()
                                         {
-                                            let parent_arg = codegen::strip_amp_mut(&argstrs[0]).to_string();
+                                            let parent_arg =
+                                                codegen::strip_amp_mut(&argstrs[0]).to_string();
                                             let mut arms = Vec::new();
                                             for (idx, pv) in parent_variants.iter().enumerate() {
                                                 let variant_name =
@@ -2818,7 +2878,7 @@ pub fn from_microstatement(
                         return Ok((
                             format!(
                                 "std::sync::Arc::new(std::sync::RwLock::new({}))",
-                                codegen::strip_amp_mut(&argstrs[0]).to_string()
+                                codegen::strip_amp_mut(&argstrs[0])
                             ),
                             out,
                             deps,
@@ -2865,10 +2925,7 @@ pub fn from_microstatement(
                 out = o;
                 deps = d;
                 Ok((
-                    format!(
-                        "return {}",
-                        codegen::strip_amp_mut(&retval)
-                    ),
+                    format!("return {}", codegen::strip_amp_mut(&retval)),
                     out,
                     deps,
                 ))
