@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use ordered_hash_map::OrderedHashMap;
 
+use crate::codegen;
 use crate::program::CType;
 
 /// Does this type denote the alan `string` (which lowers to Rust `String`)?
@@ -90,50 +91,44 @@ pub fn ctype_to_rtype(
         .into()),
         CType::Type(_, t) => match &**t {
             CType::Either(ts, _) => {
-                if ts.len() == 2 && (matches!(*ts[1], CType::Void) || matches!(&*ts[1], CType::Type(n, _) if n == "Error")) {
+                if codegen::is_option_or_result_either(ts) {
                     return Ok(("".to_string(), deps));
                 }
                 let mut enum_type_strs = Vec::new();
                 for t in ts {
-                    match &**t {
-                        CType::Field(k, v) => {
+                    let rendered = match &**t {
+                        CType::Field(_, v) => {
                             let res = ctype_to_rtype(v.clone(), deps)?;
-                            let s = res.0;
                             deps = res.1;
-                            enum_type_strs.push(format!("{k}({s})"));
+                            res.0
                         }
-                        CType::Type(n, t) => {
+                        CType::Type(_, t) => {
                             let res = ctype_to_rtype(t.clone(), deps)?;
-                            let s = res.0;
                             deps = res.1;
-                            enum_type_strs.push(format!("{n}({s})"));
+                            res.0
                         }
                         CType::Group(g) => {
                             let res = ctype_to_rtype(g.clone(), deps)?;
-                            let s = res.0;
                             deps = res.1;
-                            enum_type_strs.push(s);
+                            res.0
                         }
-                        CType::Void | CType::DerivedVoid(..) => enum_type_strs.push("void".to_string()),
+                        CType::Void | CType::DerivedVoid(..) => "void".to_string(),
                         CType::Tuple(ts, _) => {
                             let mut out = Vec::new();
-                            for t in ts {
-                                let res = ctype_to_rtype(t.clone(), deps)?;
-                                let s = res.0;
+                            for tt in ts {
+                                let res = ctype_to_rtype(tt.clone(), deps)?;
                                 deps = res.1;
-                                out.push(s);
+                                out.push(res.0);
                             }
-                            let name = t.clone().to_callable_string();
-                            enum_type_strs.push(format!("{}({})", name, out.join(", ")));
+                            out.join(", ")
                         }
-                        _otherwise => {
+                        _ => {
                             let res = ctype_to_rtype(t.clone(), deps)?;
-                            let s = res.0;
                             deps = res.1;
-                            let name = t.clone().to_callable_string();
-                            enum_type_strs.push(format!("{name}({s})"));
+                            res.0
                         }
-                    }
+                    };
+                    enum_type_strs.push(codegen::either_variant_to_rust_str(t, rendered));
                 }
                 let name = t.clone().to_callable_string();
                 Ok((format!(
@@ -165,6 +160,7 @@ pub fn ctype_to_rtype(
                 Ok((format!("({})", out.join(", ")), deps))
             }
             CType::Binds(name, args) => {
+                let base = codegen::render_binds_name(name, |d| super::register_rust_dependency(d, &mut deps));
                 let mut out_args = Vec::new();
                 for arg in args {
                     let res = ctype_to_rtype(arg.clone(), deps)?;
@@ -172,39 +168,17 @@ pub fn ctype_to_rtype(
                     deps = res.1;
                     out_args.push(s);
                 }
-                match &**name {
-                    CType::TString(s) => {
-                        if out_args.is_empty() {
-                            Ok((s.clone(), deps))
-                        } else {
-                            Ok((
-                                format!("{}<{}>", s, out_args.join(", ")),
-                                deps,
-                            ))
-                        }
-                    }
-                    CType::Import(n, d) => {
-                        super::register_rust_dependency(d, &mut deps);
-                        let native_type = match &**n {
-                            CType::TString(s) => s.clone(),
-                            _ => CType::fail("Native import names must be strings"),
-                        };
-                        if out_args.is_empty() {
-                            Ok((native_type, deps))
-                        } else {
-                            Ok((
-                                format!("{}<{}>", native_type, out_args.join(", ")),
-                                deps,
-                            ))
-                        }
-                    }
-                    _ => CType::fail("Bound types must be strings or rust imports"),
+                if out_args.is_empty() {
+                    Ok((base, deps))
+                } else {
+                    Ok((format!("{}<{}>", base, out_args.join(", ")), deps))
                 }
             }
             _otherwise => ctype_to_rtype(t.clone(), deps),
         }
         CType::Generic(name, args, _) => Ok((format!("{}<{}>", name, args.join(", ")), deps)),
         CType::Binds(n, args) => {
+            let base = codegen::render_binds_name(n, |d| super::register_rust_dependency(d, &mut deps));
             let mut out_args = Vec::new();
             for arg in args {
                 let res = ctype_to_rtype(arg.clone(), deps)?;
@@ -212,33 +186,10 @@ pub fn ctype_to_rtype(
                 deps = res.1;
                 out_args.push(s);
             }
-            match &**n {
-                CType::TString(s) => {
-                    if out_args.is_empty() {
-                        Ok((s.clone(), deps))
-                    } else {
-                        Ok((
-                            format!("{}<{}>", s, out_args.join(", ")),
-                            deps,
-                        ))
-                    }
-                }
-                CType::Import(n, d) => {
-                    super::register_rust_dependency(d, &mut deps);
-                    let native_type = match &**n {
-                        CType::TString(s) => s.clone(),
-                        _ => CType::fail("Native import names must be strings"),
-                    };
-                    if out_args.is_empty() {
-                        Ok((native_type, deps))
-                    } else {
-                        Ok((
-                            format!("{}<{}>", native_type, out_args.join(", ")),
-                            deps,
-                        ))
-                    }
-                }
-                _ => CType::fail("Bound types must be strings or rust imports"),
+            if out_args.is_empty() {
+                Ok((base, deps))
+            } else {
+                Ok((format!("{}<{}>", base, out_args.join(", ")), deps))
             }
         }
         CType::Shared(t) => {
@@ -251,12 +202,7 @@ pub fn ctype_to_rtype(
         CType::Int(i) => Ok((i.to_string(), deps)),
         CType::Float(f) => Ok((f.to_string(), deps)),
         CType::Bool(b) => Ok((b.to_string(), deps)),
-        CType::TString(s) => Ok((s.chars().map(|c| match c {
-            '0'..='9' => c,
-            'a'..='z' => c,
-            'A'..='Z' => c,
-            _ => '_',
-        }).collect::<String>(), deps)),
+        CType::TString(s) => Ok((codegen::sanitize_ctype_string(s), deps)),
         CType::Group(g) => {
             let res = ctype_to_rtype(g.clone(), deps)?;
             let s = res.0;
@@ -430,6 +376,7 @@ pub fn generate(
         // output, while the `Structlike` type requires a new struct to be created and inserted
         // into the source definition, potentially inserting inner types as needed
         CType::Binds(n, ts) => {
+            let base = codegen::render_binds_name(n, |d| super::register_rust_dependency(d, &mut deps));
             let mut genargs = Vec::new();
             for t in ts {
                 let res = ctype_to_rtype(t.clone(), deps)?;
@@ -437,31 +384,10 @@ pub fn generate(
                 deps = res.1;
                 genargs.push(s);
             }
-            match &**n {
-                CType::TString(s) => {
-                    if genargs.is_empty() {
-                        Ok((s.clone(), out, deps))
-                    } else {
-                        Ok((format!("{}<{}>", s, genargs.join(", ")), out, deps))
-                    }
-                }
-                CType::Import(n, d) => {
-                    super::register_rust_dependency(d, &mut deps);
-                    let native_type = match &**n {
-                        CType::TString(s) => s.clone(),
-                        _ => CType::fail("Native import names must be strings"),
-                    };
-                    if genargs.is_empty() {
-                        Ok((native_type, out, deps))
-                    } else {
-                        Ok((
-                            format!("{}<{}>", native_type, genargs.join(", ")),
-                            out,
-                            deps,
-                        ))
-                    }
-                }
-                _ => CType::fail("Bound types must be strings or rust imports"),
+            if genargs.is_empty() {
+                Ok((base, out, deps))
+            } else {
+                Ok((format!("{}<{}>", base, genargs.join(", ")), out, deps))
             }
         }
         // TODO: The complexity of this function indicates more fundamental issues in the type
@@ -505,49 +431,47 @@ pub fn generate(
             }
 
             // Check if this is a 2-variant Either that maps to Option/Result
-            if ts.len() == 2 && matches!(*ts[1], CType::Void) {
+            if let Some(kind) = codegen::enum_variant_kind(ts) {
                 let res = ctype_to_rtype(ts[0].clone(), deps)?;
                 deps = res.1;
-                Ok((format!("Option<{}>", res.0), out, deps))
-            } else if ts.len() == 2 && matches!(&*ts[1], CType::Type(n, _) if n == "Error") {
-                let res = ctype_to_rtype(ts[0].clone(), deps)?;
-                deps = res.1;
-                Ok((format!("Result<{}, alan_std::AlanError>", res.0), out, deps))
-            } else {
-                // Build the enum definition for 3+ variant Either
-                let mut enum_type_strs = Vec::new();
-                for t in ts {
-                    match &**t {
-                        CType::Field(k, v) => {
-                            let res = ctype_to_rtype(v.clone(), deps)?;
-                            deps = res.1;
-                            enum_type_strs.push(format!("{}({})", k, res.0));
-                        }
-                        CType::Type(n, t) => {
-                            let res = ctype_to_rtype(t.clone(), deps)?;
-                            deps = res.1;
-                            enum_type_strs.push(format!("{}({})", n, res.0));
-                        }
-                        CType::Void | CType::DerivedVoid(..) => {
-                            enum_type_strs.push("void".to_string())
-                        }
-                        _otherwise => {
-                            let res = ctype_to_rtype(t.clone(), deps)?;
-                            deps = res.1;
-                            let name = t.clone().to_callable_string();
-                            enum_type_strs.push(format!("{}({})", name, res.0));
-                        }
-                    }
-                }
-                let enum_key = typen.to_callable_string();
-                let enum_def = format!(
-                    "#[derive(Clone)]\nenum {} {{ {} }}",
-                    enum_key,
-                    enum_type_strs.join(", ")
-                );
-                out.insert(enum_key.clone(), enum_def);
-                Ok((enum_key, out, deps))
+                let wrapper = match kind {
+                    codegen::EnumVariantKind::Option => format!("Option<{}>", res.0),
+                    codegen::EnumVariantKind::Result => format!("Result<{}, alan_std::AlanError>", res.0),
+                };
+                return Ok((wrapper, out, deps));
             }
+
+            // Build the enum definition for 3+ variant Either
+            let mut enum_type_strs = Vec::new();
+            for t in ts {
+                let rendered = match &**t {
+                    CType::Field(_, v) => {
+                        let res = ctype_to_rtype(v.clone(), deps)?;
+                        deps = res.1;
+                        res.0
+                    }
+                    CType::Type(_, t) => {
+                        let res = ctype_to_rtype(t.clone(), deps)?;
+                        deps = res.1;
+                        res.0
+                    }
+                    CType::Void | CType::DerivedVoid(..) => "void".to_string(),
+                    _ => {
+                        let res = ctype_to_rtype(t.clone(), deps)?;
+                        deps = res.1;
+                        res.0
+                    }
+                };
+                enum_type_strs.push(codegen::either_variant_to_rust_str(t, rendered));
+            }
+            let enum_key = typen.to_callable_string();
+            let enum_def = format!(
+                "#[derive(Clone)]\nenum {} {{ {} }}",
+                enum_key,
+                enum_type_strs.join(", ")
+            );
+            out.insert(enum_key.clone(), enum_def);
+            Ok((enum_key, out, deps))
         }
         CType::Group(g) => {
             let res = generate(g.clone(), out, deps)?;

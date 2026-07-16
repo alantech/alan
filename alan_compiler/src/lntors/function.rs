@@ -6,10 +6,11 @@ use std::sync::Arc;
 
 use ordered_hash_map::OrderedHashMap;
 
+use crate::codegen;
 use crate::lntors::typen;
 use crate::program::liveness;
 use crate::program::{
-    ArgKind, CType, CfnKind, FnKind, Function, Microstatement, NativeCallKind, Program, Scope,
+    ArgKind, CType, CfnKind, FnKind, Function, Microstatement, NativeCallKind, Scope,
 };
 
 thread_local! {
@@ -810,10 +811,7 @@ fn render_branch_block(
                         out = o;
                         deps = d;
                         // Terminal value-return becomes the block's tail expression.
-                        let tail = match val.strip_prefix("&mut ") {
-                            Some(s) => s.to_string(),
-                            None => val,
-                        };
+                        let tail = codegen::strip_amp_mut(&val).to_string();
                         parts.push(tail);
                     }
                     (true, Microstatement::Return { value: None }) => { /* void tail */ }
@@ -919,10 +917,7 @@ pub fn from_microstatement(
             let (val, o, d) = from_microstatement(value, parent_fn, shared_vars, scope, out, deps)?;
             out = o;
             deps = d;
-            let final_val = match val.strip_prefix("&mut ") {
-                Some(s) => s.to_string(),
-                None => val,
-            };
+            let final_val = codegen::strip_amp_mut(&val).to_string();
             // Clone Shared (Arc) assignments so they can be moved into closures safely
             let value_type = value.get_type();
             let is_shared = match &*value_type {
@@ -1055,38 +1050,13 @@ pub fn from_microstatement(
                 _ => CType::fail("Bound types must be strings or rust imports"),
             },
             CType::Function(..) => {
-                // We need to make sure this function we're referencing exists
-                let f = scope.resolve_function_by_type(representation, typen.clone());
-                let f = match f {
-                    None => {
-                        // If the current scope isn't the original scope for the parent function, maybe the
-                        // function we're looking for is in the original scope
-                        if parent_fn.origin_scope_path != scope.path {
-                            let program = Program::get_program();
-                            let out = match program.scope_by_file(&parent_fn.origin_scope_path) {
-                                Ok(original_scope) => original_scope
-                                    .resolve_function_by_type(representation, typen.clone()),
-                                Err(_) => None,
-                            };
-                            Program::return_program(program);
-                            out
-                        } else {
-                            None
-                        }
-                    }
-                    f => f,
-                };
+                let f = codegen::resolve_function_from_scope(representation, typen.clone(), scope, parent_fn);
                 match &f {
                     None => {
-                        let args = parent_fn.args();
-                        for (name, _, typen) in args {
-                            if &name == representation {
-                                if let CType::Function(_, _) = &*typen {
-                                    // TODO: Do we need better matching? The upper stage should
-                                    // have taken care of this
-                                    return Ok((representation.clone(), out, deps));
-                                }
-                            }
+                        if codegen::is_function_arg(parent_fn, representation) {
+                            // TODO: Do we need better matching? The upper stage should
+                            // have taken care of this
+                            return Ok((representation.clone(), out, deps));
                         }
                         Err(format!(
                             "Somehow can't find a definition for function {representation}, {typen:?}"
@@ -1103,13 +1073,7 @@ pub fn from_microstatement(
                             | FnKind::Static
                             | FnKind::Cfn(..)
                             | FnKind::CfnRealized(_) => {
-                                let mut arg_strs = Vec::new();
-                                for arg in &fun.args() {
-                                    arg_strs.push(arg.2.clone().to_callable_string());
-                                }
-                                // Come up with a function name that is unique so Rust doesn't choke on
-                                // duplicate function names that are allowed in Alan
-                                let rustname = format!("{}_{}", fun.name, arg_strs.join("_"));
+                                let rustname = codegen::mangled_function_name(fun);
                                 // Make the function we need, but with the name we're
                                 let res = generate(rustname.clone(), fun, scope, out, deps)?;
                                 out = res.0;
@@ -1302,40 +1266,30 @@ pub fn from_microstatement(
                         }
                     });
                     if !any_arg_shared
-                        && matches!(function.kind, FnKind::Normal)
-                        && crate::program::inline::is_inline_target(
-                            &crate::program::inline::fn_identity(function),
-                        )
                         && inline_consumes_are_safe(function, args, parent_fn)
                     {
                         // Single `return <expr>` body: inline as a pure expression.
-                        if let Some(subs) =
-                            crate::program::inline::build_inline_substitution(function, args)
-                        {
-                            if let Some(expr) = crate::program::inline::single_return_expr(function)
-                            {
-                                let inlined = crate::program::inline::substitute(expr, &subs);
-                                // The inlined expression splices the callee's body
-                                // into this statement; the enclosing per-statement
-                                // last-use reasoning does not model its internal
-                                // ownership, so render it with moves disabled.
-                                let _untrusted = UntrustedGuard::new();
-                                return from_microstatement(
-                                    &inlined,
-                                    parent_fn,
-                                    shared_vars,
-                                    scope,
-                                    out,
-                                    deps,
-                                );
-                            }
+                        if let Some(inlined) = codegen::try_single_inline(function, args) {
+                            // The inlined expression splices the callee's body
+                            // into this statement; the enclosing per-statement
+                            // last-use reasoning does not model its internal
+                            // ownership, so render it with moves disabled.
+                            let _untrusted = UntrustedGuard::new();
+                            return from_microstatement(
+                                &inlined,
+                                parent_fn,
+                                shared_vars,
+                                scope,
+                                out,
+                                deps,
+                            );
                         }
                         // Multi-statement body: inline as a block expression (which also lets
                         // values drop early). Skip when the callee has `Shared` locals, whose
                         // deref/clone rendering depends on a `shared_vars` map we don't thread in.
                         if build_shared_vars(function).is_empty() {
                             if let Some((stmts, tail)) =
-                                crate::program::inline::build_multi_inline(function, args)
+                                codegen::try_multi_inline(function, args)
                             {
                                 // The inlined block splices the callee's body into
                                 // this statement; render it with moves disabled.
@@ -1365,10 +1319,7 @@ pub fn from_microstatement(
                                 out = o;
                                 deps = d;
                                 // Match the `Return` handler: the tail is a value, not a `&mut`.
-                                let tail_str = match tail_str.strip_prefix("&mut ") {
-                                    Some(s) => s.to_string(),
-                                    None => tail_str,
-                                };
+                                let tail_str = codegen::strip_amp_mut(&tail_str).to_string();
                                 block.push_str(&format!("        {tail_str}\n    }}"));
                                 return Ok((block, out, deps));
                             }
@@ -1377,11 +1328,7 @@ pub fn from_microstatement(
                     let (_, o, d) = typen::generate(function.rettype(), out, deps)?;
                     out = o;
                     deps = d;
-                    let mut arg_strs = Vec::new();
-                    for arg in &function.args() {
-                        arg_strs.push(arg.2.clone().to_callable_string());
-                    }
-                    let rustname = format!("{}_{}", function.name, arg_strs.join("_")).to_string();
+                    let rustname = codegen::mangled_function_name(function).to_string();
                     let res = generate(rustname.clone(), function, scope, out, deps)?;
                     out = res.0;
                     deps = res.1;
@@ -1960,47 +1907,31 @@ pub fn from_microstatement(
                                     let inner_type = t.clone().degroup();
                                     match &*inner_type {
                                         CType::Field(n, _) if *n == enum_name => {
-                                            // Special-casing for Option and Result mapping. TODO:
-                                            // Make this more centralized
-                                            if ts.len() == 2 {
-                                                if let CType::Void = &*ts[1] {
-                                                    if let CType::Void = &**t {
-                                                        return Ok((
-                                                            format!(
-                                                                "{} = None",
-                                                                match argstrs[0]
-                                                                    .strip_prefix("&mut ")
-                                                                {
-                                                                    Some(s) => s,
-                                                                    None => &argstrs[0],
-                                                                }
-                                                            ),
-                                                            out,
-                                                            deps,
-                                                        ));
-                                                    } else {
-                                                        return Ok((
-                                                            format!(
-                                                                "{} = Some({})",
-                                                                match argstrs[0]
-                                                                    .strip_prefix("&mut ")
-                                                                {
-                                                                    Some(s) => s,
-                                                                    None => &argstrs[0],
-                                                                },
-                                                                match argstrs[1]
-                                                                    .strip_prefix("&mut ")
-                                                                {
-                                                                    Some(s) => s,
-                                                                    None => &argstrs[1],
-                                                                }
-                                                            ),
-                                                            out,
-                                                            deps,
-                                                        ));
-                                                    }
-                                                } else if let CType::Type(name, _) = &*ts[1] {
-                                                    if name == "Error" {
+                                             if let Some(kind) = codegen::enum_variant_kind(ts) {
+                                                 match kind {
+                                                     codegen::EnumVariantKind::Option => {
+                                                         if let CType::Void = &**t {
+                                                             return Ok((
+                                                                 format!(
+                                                                     "{} = None",
+                                                                     codegen::strip_amp_mut(&argstrs[0])
+                                                                 ),
+                                                                 out,
+                                                                 deps,
+                                                             ));
+                                                         } else {
+                                                             return Ok((
+                                                                 format!(
+                                                                     "{} = Some({})",
+                                                                     codegen::strip_amp_mut(&argstrs[0]),
+                                                                     codegen::strip_amp_mut(&argstrs[1])
+                                                                 ),
+                                                                 out,
+                                                                 deps,
+                                                             ));
+                                                         }
+                                                     }
+                                                     codegen::EnumVariantKind::Result => {
                                                         let (okrustname, d) =
                                                             typen::ctype_to_rtype(
                                                                 ts[0].clone(),
@@ -2017,20 +1948,10 @@ pub fn from_microstatement(
                                                             return Ok((
                                                                 format!(
                                                                     "{} = Err::<{}, {}>({})",
-                                                                    match argstrs[0]
-                                                                        .strip_prefix("&mut ")
-                                                                    {
-                                                                        Some(s) => s,
-                                                                        None => &argstrs[0],
-                                                                    },
+                                                                    codegen::strip_amp_mut(&argstrs[0]),
                                                                     okrustname,
                                                                     errrustname,
-                                                                    match argstrs[1]
-                                                                        .strip_prefix("&mut ")
-                                                                    {
-                                                                        Some(s) => s,
-                                                                        None => &argstrs[1],
-                                                                    }
+                                                                    codegen::strip_amp_mut(&argstrs[1])
                                                                 ),
                                                                 out,
                                                                 deps,
@@ -2039,20 +1960,10 @@ pub fn from_microstatement(
                                                             return Ok((
                                                                 format!(
                                                                     "{} = Ok::<{}, {}>({})",
-                                                                    match argstrs[0]
-                                                                        .strip_prefix("&mut ")
-                                                                    {
-                                                                        Some(s) => s,
-                                                                        None => &argstrs[0],
-                                                                    },
+                                                                    codegen::strip_amp_mut(&argstrs[0]),
                                                                     okrustname,
                                                                     errrustname,
-                                                                    match argstrs[1]
-                                                                        .strip_prefix("&mut ")
-                                                                    {
-                                                                        Some(s) => s,
-                                                                        None => &argstrs[1],
-                                                                    }
+                                                                    codegen::strip_amp_mut(&argstrs[1])
                                                                 ),
                                                                 out,
                                                                 deps,
@@ -2064,63 +1975,41 @@ pub fn from_microstatement(
                                             return Ok((
                                                 format!(
                                                     "{} = {}::{}({})",
-                                                    match argstrs[0].strip_prefix("&mut ") {
-                                                        Some(s) => s,
-                                                        None => &argstrs[0],
-                                                    },
+                                                    codegen::strip_amp_mut(&argstrs[0]),
                                                     ret_name,
                                                     enum_name,
-                                                    match argstrs[1].strip_prefix("&mut ") {
-                                                        Some(s) => s,
-                                                        None => &argstrs[1],
-                                                    },
+                                                    codegen::strip_amp_mut(&argstrs[1]),
                                                 ),
                                                 out,
                                                 deps,
                                             ));
                                         }
                                         CType::Type(n, _) if *n == enum_name => {
-                                            // Special-casing for Option and Result mapping. TODO:
-                                            // Make this more centralized
-                                            if ts.len() == 2 {
-                                                if let CType::Void = &*ts[1] {
-                                                    if let CType::Void = &**t {
-                                                        return Ok((
-                                                            format!(
-                                                                "{} = None",
-                                                                match argstrs[0]
-                                                                    .strip_prefix("&mut ")
-                                                                {
-                                                                    Some(s) => s,
-                                                                    None => &argstrs[0],
-                                                                }
-                                                            ),
-                                                            out,
-                                                            deps,
-                                                        ));
-                                                    } else {
-                                                        return Ok((
-                                                            format!(
-                                                                "{} = Some({})",
-                                                                match argstrs[0]
-                                                                    .strip_prefix("&mut ")
-                                                                {
-                                                                    Some(s) => s,
-                                                                    None => &argstrs[0],
-                                                                },
-                                                                match argstrs[1]
-                                                                    .strip_prefix("&mut ")
-                                                                {
-                                                                    Some(s) => s,
-                                                                    None => &argstrs[1],
-                                                                }
-                                                            ),
-                                                            out,
-                                                            deps,
-                                                        ));
-                                                    }
-                                                } else if let CType::Type(name, _) = &*ts[1] {
-                                                    if name == "Error" {
+                                            if let Some(kind) = codegen::enum_variant_kind(ts) {
+                                                 match kind {
+                                                     codegen::EnumVariantKind::Option => {
+                                                         if let CType::Void = &**t {
+                                                             return Ok((
+                                                                 format!(
+                                                                     "{} = None",
+                                                                     codegen::strip_amp_mut(&argstrs[0])
+                                                                 ),
+                                                                 out,
+                                                                 deps,
+                                                             ));
+                                                         } else {
+                                                             return Ok((
+                                                                 format!(
+                                                                     "{} = Some({})",
+                                                                     codegen::strip_amp_mut(&argstrs[0]),
+                                                                     codegen::strip_amp_mut(&argstrs[1])
+                                                                 ),
+                                                                 out,
+                                                                 deps,
+                                                             ));
+                                                         }
+                                                     }
+                                                     codegen::EnumVariantKind::Result => {
                                                         let (okrustname, d) =
                                                             typen::ctype_to_rtype(
                                                                 ts[0].clone(),
@@ -2137,20 +2026,10 @@ pub fn from_microstatement(
                                                             return Ok((
                                                                 format!(
                                                                     "{} = Err::<{}, {}>({})",
-                                                                    match argstrs[0]
-                                                                        .strip_prefix("&mut ")
-                                                                    {
-                                                                        Some(s) => s,
-                                                                        None => &argstrs[0],
-                                                                    },
+                                                                    codegen::strip_amp_mut(&argstrs[0]),
                                                                     okrustname,
                                                                     errrustname,
-                                                                    match argstrs[1]
-                                                                        .strip_prefix("&mut ")
-                                                                    {
-                                                                        Some(s) => s,
-                                                                        None => &argstrs[1],
-                                                                    }
+                                                                    codegen::strip_amp_mut(&argstrs[1])
                                                                 ),
                                                                 out,
                                                                 deps,
@@ -2159,20 +2038,10 @@ pub fn from_microstatement(
                                                             return Ok((
                                                                 format!(
                                                                     "{} = Ok::<{}, {}>({})",
-                                                                    match argstrs[0]
-                                                                        .strip_prefix("&mut ")
-                                                                    {
-                                                                        Some(s) => s,
-                                                                        None => &argstrs[0],
-                                                                    },
+                                                                    codegen::strip_amp_mut(&argstrs[0]),
                                                                     okrustname,
                                                                     errrustname,
-                                                                    match argstrs[1]
-                                                                        .strip_prefix("&mut ")
-                                                                    {
-                                                                        Some(s) => s,
-                                                                        None => &argstrs[1],
-                                                                    }
+                                                                    codegen::strip_amp_mut(&argstrs[1])
                                                                 ),
                                                                 out,
                                                                 deps,
@@ -2184,16 +2053,10 @@ pub fn from_microstatement(
                                             return Ok((
                                                 format!(
                                                     "{} = {}::{}({})",
-                                                    match argstrs[0].strip_prefix("&mut ") {
-                                                        Some(s) => s,
-                                                        None => &argstrs[0],
-                                                    },
+                                                    codegen::strip_amp_mut(&argstrs[0]),
                                                     ret_name,
                                                     enum_name,
-                                                    match argstrs[1].strip_prefix("&mut ") {
-                                                        Some(s) => s,
-                                                        None => &argstrs[1],
-                                                    },
+                                                    codegen::strip_amp_mut(&argstrs[1]),
                                                 ),
                                                 out,
                                                 deps,
@@ -2227,10 +2090,7 @@ pub fn from_microstatement(
                                             "[{}]",
                                             argstrs
                                                 .iter()
-                                                .map(|a| match a.strip_prefix("&mut ") {
-                                                    Some(v) => v,
-                                                    None => a,
-                                                })
+                                                .map(|a| codegen::strip_amp_mut(a))
                                                 .collect::<Vec<&str>>()
                                                 .join(", ")
                                         ),
@@ -2241,10 +2101,7 @@ pub fn from_microstatement(
                                     return Ok((
                                         format!(
                                             "[{};{}]",
-                                            match argstrs[0].strip_prefix("&mut ") {
-                                                Some(v) => v,
-                                                None => &argstrs[0],
-                                            },
+                                            codegen::strip_amp_mut(&argstrs[0]),
                                             size
                                         ),
                                         out,
@@ -2260,10 +2117,7 @@ pub fn from_microstatement(
                                         "vec![{}]",
                                         argstrs
                                             .iter()
-                                            .map(|a| match a.strip_prefix("&mut ") {
-                                                Some(v) => v.to_string(),
-                                                None => a.clone(),
-                                            })
+                                            .map(|a| codegen::strip_amp_mut(a).to_string())
                                             .collect::<Vec<String>>()
                                             .join(", ")
                                     ),
@@ -2275,10 +2129,7 @@ pub fn from_microstatement(
                                 return Ok((
                                     format!(
                                         "std::sync::Arc::new(std::sync::RwLock::new({}))",
-                                        match argstrs[0].strip_prefix("&mut ") {
-                                            Some(v) => v.to_string(),
-                                            None => argstrs[0].clone(),
-                                        }
+                                        codegen::strip_amp_mut(&argstrs[0]).to_string()
                                     ),
                                     out,
                                     deps,
@@ -2324,11 +2175,7 @@ pub fn from_microstatement(
                                         if !matched_indices.is_empty()
                                             && matched_indices.len() < parent_variants.len()
                                         {
-                                            let parent_arg = match argstrs[0].strip_prefix("&mut ")
-                                            {
-                                                Some(s) => s.to_string(),
-                                                None => argstrs[0].clone(),
-                                            };
+                                            let parent_arg = codegen::strip_amp_mut(&argstrs[0]).to_string();
                                             // Generate match expression: Some(Child::Variant(v)) for matched, None for excluded
                                             let mut arms = Vec::new();
                                             for (idx, pv) in parent_variants.iter().enumerate() {
@@ -2364,30 +2211,24 @@ pub fn from_microstatement(
                                 for t in ts {
                                     let inner_type = t.clone().degroup();
                                     match &*inner_type {
-                                        CType::Field(n, _) if *n == enum_name => {
-                                            // Special-casing for Option and Result mapping. TODO:
-                                            // Make this more centralized
-                                            if ts.len() == 2 {
-                                                if let CType::Void = &*ts[1] {
-                                                    if let CType::Void = &**t {
-                                                        return Ok(("None".to_string(), out, deps));
-                                                    } else {
-                                                        return Ok((
-                                                            format!(
-                                                                "Some({})",
-                                                                match argstrs[0]
-                                                                    .strip_prefix("&mut ")
-                                                                {
-                                                                    Some(s) => s,
-                                                                    None => &argstrs[0],
-                                                                }
-                                                            ),
-                                                            out,
-                                                            deps,
-                                                        ));
-                                                    }
-                                                } else if let CType::Type(name, _) = &*ts[1] {
-                                                    if name == "Error" {
+                                       CType::Field(n, _) if *n == enum_name => {
+                                             if let Some(kind) = codegen::enum_variant_kind(ts) {
+                                                 match kind {
+                                                     codegen::EnumVariantKind::Option => {
+                                                         if let CType::Void = &**t {
+                                                             return Ok(("None".to_string(), out, deps));
+                                                         } else {
+                                                             return Ok((
+                                                                 format!(
+                                                                     "Some({})",
+                                                                     codegen::strip_amp_mut(&argstrs[0])
+                                                                 ),
+                                                                 out,
+                                                                 deps,
+                                                             ));
+                                                         }
+                                                     }
+                                                     codegen::EnumVariantKind::Result => {
                                                         let (okrustname, d) =
                                                             typen::ctype_to_rtype(
                                                                 ts[0].clone(),
@@ -2406,12 +2247,7 @@ pub fn from_microstatement(
                                                                     "Err::<{}, {}>({})",
                                                                     okrustname,
                                                                     errrustname,
-                                                                    match argstrs[0]
-                                                                        .strip_prefix("&mut ")
-                                                                    {
-                                                                        Some(s) => s,
-                                                                        None => &argstrs[0],
-                                                                    }
+                                                                    codegen::strip_amp_mut(&argstrs[0])
                                                                 ),
                                                                 out,
                                                                 deps,
@@ -2422,12 +2258,7 @@ pub fn from_microstatement(
                                                                     "Ok::<{}, {}>({})",
                                                                     okrustname,
                                                                     errrustname,
-                                                                    match argstrs[0]
-                                                                        .strip_prefix("&mut ")
-                                                                    {
-                                                                        Some(s) => s,
-                                                                        None => &argstrs[0],
-                                                                    }
+                                                                    codegen::strip_amp_mut(&argstrs[0])
                                                                 ),
                                                                 out,
                                                                 deps,
@@ -2441,39 +2272,30 @@ pub fn from_microstatement(
                                                     "{}::{}({})",
                                                     function.name,
                                                     enum_name,
-                                                    match argstrs[0].strip_prefix("&mut ") {
-                                                        Some(s) => s,
-                                                        None => &argstrs[0],
-                                                    },
+                                                    codegen::strip_amp_mut(&argstrs[0]),
                                                 ),
                                                 out,
                                                 deps,
                                             ));
                                         }
-                                        CType::Type(n, _) if *n == enum_name => {
-                                            // Special-casing for Option and Result mapping. TODO:
-                                            // Make this more centralized
-                                            if ts.len() == 2 {
-                                                if let CType::Void = &*ts[1] {
-                                                    if let CType::Void = &**t {
-                                                        return Ok(("None".to_string(), out, deps));
-                                                    } else {
-                                                        return Ok((
-                                                            format!(
-                                                                "Some({})",
-                                                                match argstrs[0]
-                                                                    .strip_prefix("&mut ")
-                                                                {
-                                                                    Some(s) => s,
-                                                                    None => &argstrs[0],
-                                                                }
-                                                            ),
-                                                            out,
-                                                            deps,
-                                                        ));
-                                                    }
-                                                } else if let CType::Type(name, _) = &*ts[1] {
-                                                    if name == "Error" {
+                                       CType::Type(n, _) if *n == enum_name => {
+                                             if let Some(kind) = codegen::enum_variant_kind(ts) {
+                                                 match kind {
+                                                     codegen::EnumVariantKind::Option => {
+                                                         if let CType::Void = &**t {
+                                                             return Ok(("None".to_string(), out, deps));
+                                                         } else {
+                                                             return Ok((
+                                                                 format!(
+                                                                     "Some({})",
+                                                                     codegen::strip_amp_mut(&argstrs[0])
+                                                                 ),
+                                                                 out,
+                                                                 deps,
+                                                             ));
+                                                         }
+                                                     }
+                                                     codegen::EnumVariantKind::Result => {
                                                         let (okrustname, d) =
                                                             typen::ctype_to_rtype(
                                                                 ts[0].clone(),
@@ -2492,12 +2314,7 @@ pub fn from_microstatement(
                                                                     "Err::<{}, {}>({})",
                                                                     okrustname,
                                                                     errrustname,
-                                                                    match argstrs[0]
-                                                                        .strip_prefix("&mut ")
-                                                                    {
-                                                                        Some(s) => s,
-                                                                        None => &argstrs[0],
-                                                                    }
+                                                                    codegen::strip_amp_mut(&argstrs[0])
                                                                 ),
                                                                 out,
                                                                 deps,
@@ -2508,12 +2325,7 @@ pub fn from_microstatement(
                                                                     "Ok::<{}, {}>({})",
                                                                     okrustname,
                                                                     errrustname,
-                                                                    match argstrs[0]
-                                                                        .strip_prefix("&mut ")
-                                                                    {
-                                                                        Some(s) => s,
-                                                                        None => &argstrs[0],
-                                                                    }
+                                                                    codegen::strip_amp_mut(&argstrs[0])
                                                                 ),
                                                                 out,
                                                                 deps,
@@ -2527,44 +2339,35 @@ pub fn from_microstatement(
                                                     "{}::{}({})",
                                                     function.name,
                                                     enum_name,
-                                                    match argstrs[0].strip_prefix("&mut ") {
-                                                        Some(s) => s,
-                                                        None => &argstrs[0],
-                                                    },
+                                                    codegen::strip_amp_mut(&argstrs[0]),
                                                 ),
                                                 out,
                                                 deps,
                                             ));
                                         }
                                         CType::Binds(n, ..) => match &**n {
-                                            CType::TString(s) if s == &enum_name => {
-                                                // Special-casing for Option and Result mapping. TODO:
-                                                // Make this more centralized
-                                                if ts.len() == 2 {
-                                                    if let CType::Void = &*ts[1] {
-                                                        if let CType::Void = &**t {
-                                                            return Ok((
-                                                                "None".to_string(),
-                                                                out,
-                                                                deps,
-                                                            ));
-                                                        } else {
-                                                            return Ok((
-                                                                format!(
-                                                                    "Some({})",
-                                                                    match argstrs[0]
-                                                                        .strip_prefix("&mut ")
-                                                                    {
-                                                                        Some(s) => s,
-                                                                        None => &argstrs[0],
-                                                                    }
-                                                                ),
-                                                                out,
-                                                                deps,
-                                                            ));
-                                                        }
-                                                    } else if let CType::Type(name, _) = &*ts[1] {
-                                                        if name == "Error" {
+                                          CType::TString(s) if s == &enum_name => {
+                                                 if let Some(kind) = codegen::enum_variant_kind(ts) {
+                                                     match kind {
+                                                         codegen::EnumVariantKind::Option => {
+                                                             if let CType::Void = &**t {
+                                                                 return Ok((
+                                                                     "None".to_string(),
+                                                                     out,
+                                                                     deps,
+                                                                 ));
+                                                             } else {
+                                                                 return Ok((
+                                                                     format!(
+                                                                         "Some({})",
+                                                                         codegen::strip_amp_mut(&argstrs[0])
+                                                                     ),
+                                                                     out,
+                                                                     deps,
+                                                                 ));
+                                                             }
+                                                         }
+                                                         codegen::EnumVariantKind::Result => {
                                                             let (okrustname, d) =
                                                                 typen::ctype_to_rtype(
                                                                     ts[0].clone(),
@@ -2583,12 +2386,7 @@ pub fn from_microstatement(
                                                                         "Err::<{}, {}>({})",
                                                                         okrustname,
                                                                         errrustname,
-                                                                        match argstrs[0]
-                                                                            .strip_prefix("&mut ")
-                                                                        {
-                                                                            Some(s) => s,
-                                                                            None => &argstrs[0],
-                                                                        }
+                                                                        codegen::strip_amp_mut(&argstrs[0])
                                                                     ),
                                                                     out,
                                                                     deps,
@@ -2599,12 +2397,7 @@ pub fn from_microstatement(
                                                                         "Ok::<{}, {}>({})",
                                                                         okrustname,
                                                                         errrustname,
-                                                                        match argstrs[0]
-                                                                            .strip_prefix("&mut ")
-                                                                        {
-                                                                            Some(s) => s,
-                                                                            None => &argstrs[0],
-                                                                        }
+                                                                        codegen::strip_amp_mut(&argstrs[0])
                                                                     ),
                                                                     out,
                                                                     deps,
@@ -2618,10 +2411,7 @@ pub fn from_microstatement(
                                                         "{}::{}({})",
                                                         function.name,
                                                         enum_name,
-                                                        match argstrs[0].strip_prefix("&mut ") {
-                                                            Some(s) => s,
-                                                            None => &argstrs[0],
-                                                        },
+                                                        codegen::strip_amp_mut(&argstrs[0]),
                                                     ),
                                                     out,
                                                     deps,
@@ -2629,35 +2419,28 @@ pub fn from_microstatement(
                                             }
                                             CType::Import(n, d) => match &**n {
                                                 CType::TString(s) if s == &enum_name => {
-                                                    super::register_rust_dependency(d, &mut deps);
-                                                    // Special-casing for Option and Result mapping. TODO:
-                                                    // Make this more centralized
-                                                    if ts.len() == 2 {
-                                                        if let CType::Void = &*ts[1] {
-                                                            if let CType::Void = &**t {
-                                                                return Ok((
-                                                                    "None".to_string(),
-                                                                    out,
-                                                                    deps,
-                                                                ));
-                                                            } else {
-                                                                return Ok((
-                                                                    format!(
-                                                                        "Some({})",
-                                                                        match argstrs[0]
-                                                                            .strip_prefix("&mut ")
-                                                                        {
-                                                                            Some(s) => s,
-                                                                            None => &argstrs[0],
-                                                                        }
-                                                                    ),
-                                                                    out,
-                                                                    deps,
-                                                                ));
-                                                            }
-                                                        } else if let CType::Type(name, _) = &*ts[1]
-                                                        {
-                                                            if name == "Error" {
+                                                     super::register_rust_dependency(d, &mut deps);
+                                                     if let Some(kind) = codegen::enum_variant_kind(ts) {
+                                                         match kind {
+                                                             codegen::EnumVariantKind::Option => {
+                                                                 if let CType::Void = &**t {
+                                                                     return Ok((
+                                                                         "None".to_string(),
+                                                                         out,
+                                                                         deps,
+                                                                     ));
+                                                                 } else {
+                                                                     return Ok((
+                                                                         format!(
+                                                                             "Some({})",
+                                                                             codegen::strip_amp_mut(&argstrs[0])
+                                                                         ),
+                                                                         out,
+                                                                         deps,
+                                                                     ));
+                                                                 }
+                                                             }
+                                                             codegen::EnumVariantKind::Result => {
                                                                 let (okrustname, d) =
                                                                     typen::ctype_to_rtype(
                                                                         ts[0].clone(),
@@ -2713,10 +2496,7 @@ pub fn from_microstatement(
                                                             "{}::{}({})",
                                                             function.name,
                                                             enum_name,
-                                                            match argstrs[0].strip_prefix("&mut ") {
-                                                                Some(s) => s,
-                                                                None => &argstrs[0],
-                                                            },
+                                                            codegen::strip_amp_mut(&argstrs[0]),
                                                         ),
                                                         out,
                                                         deps,
@@ -2735,12 +2515,7 @@ pub fn from_microstatement(
                                                         return Ok((
                                                             format!(
                                                                 "Some({})",
-                                                                match argstrs[0]
-                                                                    .strip_prefix("&mut ")
-                                                                {
-                                                                    Some(s) => s,
-                                                                    None => &argstrs[0],
-                                                                }
+                                                                codegen::strip_amp_mut(&argstrs[0])
                                                             ),
                                                             out,
                                                             deps,
@@ -2766,12 +2541,7 @@ pub fn from_microstatement(
                                                                     "Err::<{}, {}>({})",
                                                                     okrustname,
                                                                     errrustname,
-                                                                    match argstrs[0]
-                                                                        .strip_prefix("&mut ")
-                                                                    {
-                                                                        Some(s) => s,
-                                                                        None => &argstrs[0],
-                                                                    }
+                                                                    codegen::strip_amp_mut(&argstrs[0])
                                                                 ),
                                                                 out,
                                                                 deps,
@@ -2782,12 +2552,7 @@ pub fn from_microstatement(
                                                                     "Ok::<{}, {}>({})",
                                                                     okrustname,
                                                                     errrustname,
-                                                                    match argstrs[0]
-                                                                        .strip_prefix("&mut ")
-                                                                    {
-                                                                        Some(s) => s,
-                                                                        None => &argstrs[0],
-                                                                    }
+                                                                    codegen::strip_amp_mut(&argstrs[0])
                                                                 ),
                                                                 out,
                                                                 deps,
@@ -2801,10 +2566,7 @@ pub fn from_microstatement(
                                                     "{}::{}({})",
                                                     function.name,
                                                     enum_name,
-                                                    match argstrs[0].strip_prefix("&mut ") {
-                                                        Some(s) => s,
-                                                        None => &argstrs[0],
-                                                    },
+                                                    codegen::strip_amp_mut(&argstrs[0]),
                                                 ),
                                                 out,
                                                 deps,
@@ -2871,11 +2633,7 @@ pub fn from_microstatement(
                                             }
                                         }
                                         if all_matched && !parent_indices.is_empty() {
-                                            let parent_arg = match argstrs[0].strip_prefix("&mut ")
-                                            {
-                                                Some(s) => s.to_string(),
-                                                None => argstrs[0].clone(),
-                                            };
+                                            let parent_arg = codegen::strip_amp_mut(&argstrs[0]).to_string();
                                             let field_accesses: Vec<String> = parent_indices
                                                 .iter()
                                                 .map(|i| format!("{}.{}", parent_arg, i))
@@ -2918,10 +2676,7 @@ pub fn from_microstatement(
                                         return Ok((
                                             format!(
                                                 "({},)",
-                                                match argstrs[0].strip_prefix("&mut ") {
-                                                    Some(s) => s.to_string(),
-                                                    None => argstrs[0].clone(),
-                                                }
+                                                codegen::strip_amp_mut(&argstrs[0]).to_string()
                                             ),
                                             out,
                                             deps,
@@ -2932,10 +2687,7 @@ pub fn from_microstatement(
                                                 "({})",
                                                 argstrs
                                                     .iter()
-                                                    .map(|a| match a.strip_prefix("&mut ") {
-                                                        Some(s) => s.to_string(),
-                                                        None => a.to_string(),
-                                                    })
+                                                    .map(|a| codegen::strip_amp_mut(a).to_string())
                                                     .collect::<Vec<String>>()
                                                     .join(", ")
                                             ),
@@ -2957,10 +2709,7 @@ pub fn from_microstatement(
                                 return Ok((
                                     format!(
                                         "({},)",
-                                        match argstrs[0].strip_prefix("&mut ") {
-                                            Some(s) => s.to_string(),
-                                            None => argstrs[0].clone(),
-                                        }
+                                        codegen::strip_amp_mut(&argstrs[0]).to_string()
                                     ),
                                     out,
                                     deps,
@@ -3021,11 +2770,7 @@ pub fn from_microstatement(
                                         if !matched_indices.is_empty()
                                             && matched_indices.len() < parent_variants.len()
                                         {
-                                            let parent_arg = match argstrs[0].strip_prefix("&mut ")
-                                            {
-                                                Some(s) => s.to_string(),
-                                                None => argstrs[0].clone(),
-                                            };
+                                            let parent_arg = codegen::strip_amp_mut(&argstrs[0]).to_string();
                                             let mut arms = Vec::new();
                                             for (idx, pv) in parent_variants.iter().enumerate() {
                                                 let variant_name =
@@ -3073,10 +2818,7 @@ pub fn from_microstatement(
                         return Ok((
                             format!(
                                 "std::sync::Arc::new(std::sync::RwLock::new({}))",
-                                match argstrs[0].strip_prefix("&mut ") {
-                                    Some(v) => v.to_string(),
-                                    None => argstrs[0].clone(),
-                                }
+                                codegen::strip_amp_mut(&argstrs[0]).to_string()
                             ),
                             out,
                             deps,
@@ -3125,10 +2867,7 @@ pub fn from_microstatement(
                 Ok((
                     format!(
                         "return {}",
-                        match retval.strip_prefix("&mut ") {
-                            Some(v) => v,
-                            None => &retval,
-                        }
+                        codegen::strip_amp_mut(&retval)
                     ),
                     out,
                     deps,
