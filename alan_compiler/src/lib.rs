@@ -1,3 +1,4 @@
+pub mod codegen;
 pub mod fmt;
 pub mod lntojs;
 pub mod lntors;

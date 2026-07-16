@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use ordered_hash_map::OrderedHashMap;
 
+use crate::codegen;
 use crate::program::CType;
 
 pub fn ctype_to_jtype(
@@ -17,41 +18,19 @@ pub fn ctype_to_jtype(
         .into()),
         CType::Type(n, t) => match &**t {
         CType::Either(ts, _) => {
-                if ts.len() == 2 && (matches!(*ts[1], CType::Void) || matches!(&*ts[1], CType::Type(n, _) if n == "Error")) {
+                if codegen::is_option_or_result_either(ts) {
                     return Ok(("".to_string(), deps));
                 }
                 for t in ts {
                     match &**t {
-                        CType::Field(_, v) => {
-                            let res = ctype_to_jtype(v.clone(), deps)?;
-                            deps = res.1;
-                        }
-                        CType::Type(_, t) => {
-                            let res = ctype_to_jtype(t.clone(), deps)?;
-                            deps = res.1;
-                        }
-                        CType::Group(g) => {
-                            let res = ctype_to_jtype(g.clone(), deps)?;
-                            deps = res.1;
-                        }
-                        CType::Void | CType::DerivedVoid(..) => { /* Do nothing */ }
-                        CType::Tuple(ts, _) => {
-                            for t in ts {
-                                let res = ctype_to_jtype(t.clone(), deps)?;
-                                deps = res.1;
-                            }
-                        }
-                        CType::Array(t) => {
-                            let res = ctype_to_jtype(t.clone(), deps)?;
-                            deps = res.1;
-                        }
-                        CType::Binds(..) => {
-                            let res = ctype_to_jtype(t.clone(), deps)?;
-                            deps = res.1;
-                        }
-                        otherwise => {
-                            return Err(format!("TODO: What is this? {otherwise:?}").into());
-                        }
+                        CType::Field(_, v) => { deps = ctype_to_jtype(v.clone(), deps)?.1; }
+                        CType::Type(_, t) => { deps = ctype_to_jtype(t.clone(), deps)?.1; }
+                        CType::Group(g) => { deps = ctype_to_jtype(g.clone(), deps)?.1; }
+                        CType::Void | CType::DerivedVoid(..) => {}
+                        CType::Tuple(ts, _) => { for tt in ts { deps = ctype_to_jtype(tt.clone(), deps)?.1; } }
+                        CType::Array(t) => { deps = ctype_to_jtype(t.clone(), deps)?.1; }
+                        CType::Binds(..) => { deps = ctype_to_jtype(t.clone(), deps)?.1; }
+                        otherwise => { return Err(format!("TODO: What is this? {otherwise:?}").into()); }
                     }
                 }
                 Ok(("".to_string(), deps))
@@ -93,20 +72,10 @@ pub fn ctype_to_jtype(
                     deps,
                 ))
             }
-            CType::Binds(name, _) => match &**name {
-                CType::TString(_) => Ok(("".to_string(), deps)),
-                CType::Import(n, d) => {
-                    super::register_nodejs_dependency(d, &mut deps);
-                    match &**n {
-                        CType::TString(s) => s.clone(),
-                        _ => CType::fail("Native import names must be strings"),
-                    };
-                    Ok(("".to_string(), deps))
-                }
-                otherwise => CType::fail(&format!(
-                    "Bound types must be strings or node.js imports: {otherwise:?}"
-                )),
-            },
+            CType::Binds(name, _) => {
+                let _ = codegen::render_binds_name(name, |d| super::register_nodejs_dependency(d, &mut deps));
+                Ok(("".to_string(), deps))
+            }
             _ => Ok(("".to_string(), deps)), // TODO: Is this correct?
         },
         CType::Generic(name, ..) => Ok((name.clone(), deps)),
@@ -115,36 +84,14 @@ pub fn ctype_to_jtype(
                 let res = ctype_to_jtype(arg.clone(), deps)?;
                 deps = res.1;
             }
-            match &**n {
-                CType::TString(s) => Ok((s.clone(), deps)),
-                CType::Import(n, d) => {
-                    super::register_nodejs_dependency(d, &mut deps);
-                    let native_type = match &**n {
-                        CType::TString(s) => s.clone(),
-                        _ => CType::fail("Native import names must be strings"),
-                    };
-                    Ok((native_type, deps))
-                }
-                otherwise => CType::fail(&format!(
-                    "Bound types must be strings or node.js imports: {otherwise:?}"
-                )),
-            }
+            let base = codegen::render_binds_name(n, |d| super::register_nodejs_dependency(d, &mut deps));
+            Ok((base, deps))
         }
         CType::IntrinsicGeneric(..) => Ok(("".to_string(), deps)),
         CType::Int(i) => Ok((i.to_string(), deps)),
         CType::Float(f) => Ok((f.to_string(), deps)),
         CType::Bool(b) => Ok((b.to_string(), deps)),
-        CType::TString(s) => Ok((
-            s.chars()
-                .map(|c| match c {
-                    '0'..='9' => c,
-                    'a'..='z' => c,
-                    'A'..='Z' => c,
-                    _ => '_',
-                })
-                .collect::<String>(),
-            deps,
-        )),
+        CType::TString(s) => Ok((codegen::sanitize_ctype_string(s), deps)),
         CType::Group(g) => {
             let res = ctype_to_jtype(g.clone(), deps)?;
             let s = res.0;
