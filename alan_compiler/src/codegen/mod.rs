@@ -73,8 +73,8 @@ pub fn bootstrap<T>(
     work: impl FnOnce(&[Arc<Function>], &Scope) -> Result<T, Box<dyn std::error::Error>>,
 ) -> Result<T, Box<dyn std::error::Error>> {
     Program::load(entry_file.to_string())?;
-    let program = Program::get_program();
-    let scope = program.scope_by_file(entry_file)?;
+    let program = Program::get_program_guard();
+    let scope = program.get_ref().scope_by_file(entry_file)?;
     match scope.exports.get("main") {
         Some(_) => {}
         None => {
@@ -94,7 +94,6 @@ pub fn bootstrap<T>(
     assert_eq!(func.len(), 1);
     assert_eq!(func[0].args().len(), 0);
     let result = work(func, scope)?;
-    Program::return_program(program);
     Ok(result)
 }
 

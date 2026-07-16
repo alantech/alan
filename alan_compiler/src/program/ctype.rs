@@ -2958,8 +2958,8 @@ impl CType {
         match &*self {
             CType::Import(n, d) => match &**d {
                 CType::TString(dep_name) => {
-                    let program = Program::get_program();
-                    let other_scope = program.scope_by_file(dep_name).unwrap();
+                    let program = Program::get_program_guard();
+                    let other_scope = program.get_ref().scope_by_file(dep_name).unwrap();
                     match &**n {
                         CType::TString(name) => match other_scope.functions.get(name) {
                             None => CType::fail(&format!("{name} not found in {dep_name}")),
@@ -2969,7 +2969,6 @@ impl CType {
                         },
                         _ => CType::fail("The name of the import must be a string"),
                     };
-                    Program::return_program(program);
                 }
                 _ => CType::fail("TODO: Support imports beyond local directories"),
             },
@@ -3866,8 +3865,8 @@ impl CType {
                 if let CType::Import(name, dep) = &*inner_type {
                     match &**dep {
                         CType::TString(dep_name) => {
-                            let program = Program::get_program();
-                            let scope = program.scope_by_file(dep_name)?;
+                            let program = Program::get_program_guard();
+                            let scope = program.get_ref().scope_by_file(dep_name)?;
                             match &**name {
                                 CType::TString(n) => {
                                     inner_type = match scope.types.get(n) {
@@ -3882,7 +3881,6 @@ impl CType {
                                 }
                                 _ => CType::fail("The name of the import must be a string"),
                             };
-                            Program::return_program(program);
                         }
                         _ => CType::fail("TODO: Support imports beyond local directories"),
                     }
@@ -4404,8 +4402,8 @@ impl CType {
                     if let Err(e) = Program::load(s.clone()) {
                         CType::fail(&format!("Failed to load dependency {s}: {e:?}"))
                     } else {
-                        let program = Program::get_program();
-                        let out = match program.scope_by_file(s) {
+                        let program = Program::get_program_guard();
+                        let out = match program.get_ref().scope_by_file(s) {
                             Err(e) => CType::fail(&format!("Failed to load dependency {s}: {e:?}")),
                             Ok(dep_scope) => {
                                 // Currently can only import types and functions. Constants and
@@ -4426,7 +4424,6 @@ impl CType {
                                 }
                             }
                         };
-                        Program::return_program(program);
                         out
                     }
                 }

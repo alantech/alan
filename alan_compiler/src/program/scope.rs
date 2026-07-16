@@ -449,8 +449,8 @@ impl<'a> Scope<'a> {
             exports: OrderedHashMap::new(),
         };
         s = Scope::load_scope(s, &ast, false)?;
-        let mut program = Program::get_program();
-        program.scopes_by_file.insert(
+        let mut program = Program::get_program_guard();
+        program.get_mut().scopes_by_file.insert(
             path.to_string(),
             ParsedFile {
                 src: txt,
@@ -460,7 +460,6 @@ impl<'a> Scope<'a> {
                 mtime,
             },
         );
-        Program::return_program(program);
         Ok(())
     }
 

@@ -576,9 +576,9 @@ pub fn baseassignablelist_to_microstatements<'a>(
                             let mut function_types = scope.resolve_function_types(v);
                             if let Some(pf) = &parent_fn {
                                 if pf.origin_scope_path != scope.path {
-                                    let program = Program::get_program();
+                                    let program = Program::get_program_guard();
                                     if let Ok(origin_scope) =
-                                        program.scope_by_file(&pf.origin_scope_path)
+                                        program.get_ref().scope_by_file(&pf.origin_scope_path)
                                     {
                                         let other_function_types =
                                             origin_scope.resolve_function_types(v);
@@ -620,7 +620,6 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                                 ])),
                                             };
                                     }
-                                    Program::return_program(program);
                                 }
                             }
                             Ok(function_types)
@@ -1214,8 +1213,9 @@ pub fn baseassignablelist_to_microstatements<'a>(
                         None => match &parent_fn {
                             Some(parent) => {
                                 // Perhaps this function is defined in the parent function's origin scope?
-                                let program = Program::get_program();
-                                let origin_scope = program.scope_by_file(&parent.origin_scope_path);
+                                let program = Program::get_program_guard();
+                                let origin_scope =
+                                    program.get_ref().scope_by_file(&parent.origin_scope_path);
                                 let out = match origin_scope {
                                     Ok(origin) => {
                                         maybe_origin_scope = Some(origin.clone());
@@ -1224,7 +1224,6 @@ pub fn baseassignablelist_to_microstatements<'a>(
                                     }
                                     Err(_) => None,
                                 };
-                                Program::return_program(program);
                                 out
                             }
                             None => None,
