@@ -14,14 +14,16 @@ pub fn resolve_function_from_scope<'a>(
     let f = match f {
         None => {
             if parent_fn.origin_scope_path != scope.path {
-                let program = Program::get_program();
-                let out = match program.scope_by_file(&parent_fn.origin_scope_path) {
+                let program = Program::get_program_guard();
+                let out = match program
+                    .get_ref()
+                    .scope_by_file(&parent_fn.origin_scope_path)
+                {
                     Ok(original_scope) => {
                         original_scope.resolve_function_by_type(&representation.to_string(), typen)
                     }
                     Err(_) => None,
                 };
-                Program::return_program(program);
                 out
             } else {
                 None

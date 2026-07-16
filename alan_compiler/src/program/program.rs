@@ -40,6 +40,39 @@ thread_local!(pub static PROGRAM_JS: Cell<Program<'static>> = Cell::new(Program:
 
 thread_local!(static TARGET_LANG_RS: Cell<bool> = const { Cell::new(true) });
 
+/// RAII guard that ensures the program is returned to thread-local storage on drop.
+/// Use via `let guard = Program::get_program_guard()` instead of `Program::get_program()`
+/// to guarantee the program is returned even if the function returns early or panics.
+pub struct ProgramGuard {
+    program: Option<Program<'static>>,
+}
+
+impl ProgramGuard {
+    pub fn new(program: Program<'static>) -> Self {
+        ProgramGuard {
+            program: Some(program),
+        }
+    }
+
+    /// Access the inner program as a reference.
+    pub fn get_ref(&self) -> &Program<'static> {
+        self.program.as_ref().expect("program already returned")
+    }
+
+    /// Access the inner program as a mutable reference.
+    pub fn get_mut(&mut self) -> &mut Program<'static> {
+        self.program.as_mut().expect("program already returned")
+    }
+}
+
+impl Drop for ProgramGuard {
+    fn drop(&mut self) {
+        if let Some(p) = self.program.take() {
+            Program::return_program(p);
+        }
+    }
+}
+
 fn platform_env() -> String {
     if cfg!(target_os = "windows") {
         "windows".to_string()
@@ -134,13 +167,12 @@ impl<'a> Program<'a> {
     }
 
     pub fn load(path: String) -> Result<(), Box<dyn std::error::Error>> {
-        let program = Program::get_program();
-        if program.scopes_by_file.contains_key(&path) {
-            // Already loaded, let's get out of here
-            Program::return_program(program);
-            return Ok(());
+        {
+            let program = Program::get_program_guard();
+            if program.get_ref().scopes_by_file.contains_key(&path) {
+                return Ok(());
+            }
         }
-        Program::return_program(program);
         let (ln_src, mtime) = if path.starts_with('@') {
             let src = match path.as_str() {
                 "@std/fs" => include_str!("../std/fs.ln").to_string(),
@@ -196,6 +228,12 @@ impl<'a> Program<'a> {
                 .clone()
         });
         program
+    }
+
+    /// RAII-safe alternative to `get_program()`. The program is automatically returned
+    /// when the guard is dropped, even on early return or panic.
+    pub fn get_program_guard() -> ProgramGuard {
+        ProgramGuard::new(Self::get_program())
     }
 
     pub fn return_program(p: Program<'static>) {
