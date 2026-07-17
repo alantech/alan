@@ -133,6 +133,7 @@ pub trait Backend {
     /// name construction, generation, and any post-generation wrapping.
     fn render_function_value(
         fun: &Arc<Function>,
+        scope: &Scope,
         out: OrderedHashMap<String, String>,
         deps: OrderedHashMap<String, String>,
     ) -> CodegenResult<String>;

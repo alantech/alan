@@ -7,6 +7,7 @@ use std::sync::Arc;
 use ordered_hash_map::OrderedHashMap;
 
 use crate::codegen;
+use crate::codegen::Backend;
 use crate::lntors::typen;
 use crate::program::liveness;
 use crate::program::{
@@ -1068,79 +1069,35 @@ pub fn from_microstatement(
                         )
                         .into())
                     }
-                    Some(fun) => {
-                        match &fun.kind {
-                            FnKind::Normal
-                            | FnKind::External(_)
-                            | FnKind::Generic(..)
-                            | FnKind::Derived
-                            | FnKind::DerivedVariadic
-                            | FnKind::Static
-                            | FnKind::Cfn(..)
-                            | FnKind::CfnRealized(_) => {
-                                let rustname = codegen::mangled_function_name(fun);
-                                // Make the function we need, but with the name we're
-                                let res = generate(rustname.clone(), fun, scope, out, deps)?;
-                                out = res.0;
-                                deps = res.1;
-                                if let FnKind::External(d) = &fun.kind {
-                                    super::register_rust_dependency(d, &mut deps);
-                                }
-                                // A borrowed-`string` parameter is rendered as `&str`,
-                                // but a higher-order call site that monomorphizes the
-                                // element type to `String` invokes the callback with
-                                // `&String` (e.g. `alan_std`'s generic buffer/array
-                                // reducers). A bare `fn(&str)` path does not satisfy
-                                // `Fn(&String)`, so wrap the reference in a closure: the
-                                // closure's parameter types are *inferred* from the
-                                // expected bound (`&String`) and the forwarded call
-                                // coerces `&String` -> `&str`. For any other callback
-                                // shape this is an identity wrapper.
-                                let has_borrowed_string = fun.args().iter().any(|(_, k, t)| {
-                                    matches!(k, ArgKind::Ref) && is_string_type(t)
-                                });
-                                if has_borrowed_string {
-                                    let params = (0..fun.args().len())
-                                        .map(|i| format!("arg{i}"))
-                                        .collect::<Vec<_>>()
-                                        .join(", ");
-                                    Ok((format!("|{params}| {rustname}({params})"), out, deps))
-                                } else {
-                                    Ok((rustname, out, deps))
-                                }
-                            }
-                            FnKind::Bind(rustname)
-                            | FnKind::BoundGeneric(_, rustname)
-                            | FnKind::ExternalBind(rustname, _)
-                            | FnKind::ExternalGeneric(_, rustname, _) => {
-                                if let FnKind::ExternalGeneric(_, _, d)
-                                | FnKind::ExternalBind(_, d) = &fun.kind
-                                {
-                                    super::register_rust_dependency(d, &mut deps);
-                                }
-                                Ok((rustname.clone(), out, deps))
-                            }
+                    Some(fun) => match &fun.kind {
+                        FnKind::Normal
+                        | FnKind::External(_)
+                        | FnKind::Generic(..)
+                        | FnKind::Derived
+                        | FnKind::DerivedVariadic
+                        | FnKind::Static
+                        | FnKind::Cfn(..)
+                        | FnKind::CfnRealized(_) => {
+                            LnToRs::render_function_value(fun, scope, out, deps)
                         }
-                    }
+                        FnKind::Bind(_)
+                        | FnKind::BoundGeneric(_, _)
+                        | FnKind::ExternalBind(_, _)
+                        | FnKind::ExternalGeneric(_, _, _) => {
+                            LnToRs::render_bind_value(fun, out, deps)
+                        }
+                    },
                 }
             }
             _ => Ok((representation.clone(), out, deps)),
         },
-        Microstatement::Array { vals, .. } => {
-            let mut val_representations = Vec::new();
-            for val in vals {
-                let (rep, o, d) =
-                    from_microstatement(val, parent_fn, shared_vars, scope, out, deps)?;
-                val_representations.push(rep);
-                out = o;
-                deps = d;
-            }
-            Ok((
-                format!("vec![{}]", val_representations.join(", ")),
-                out,
-                deps,
-            ))
-        }
+        Microstatement::Array { vals, .. } => codegen::render_array(
+            vals,
+            out,
+            deps,
+            |val, out, deps| from_microstatement(val, parent_fn, shared_vars, scope, out, deps),
+            |vals| format!("vec![{}]", vals.join(", ")),
+        ),
         Microstatement::NativeCall {
             typen,
             kind,
@@ -1167,27 +1124,8 @@ pub fn from_microstatement(
                 };
                 rendered.push(s);
             }
-            let call = match kind {
-                NativeCallKind::Function => format!("{}({})", name, rendered.join(", ")),
-                NativeCallKind::Method => {
-                    let (recv, rest) = rendered
-                        .split_first()
-                        .expect("a Method NativeCall always has a receiver argument");
-                    format!("{}.{}({})", recv, name, rest.join(", "))
-                }
-                NativeCallKind::Property => {
-                    let (recv, _) = rendered
-                        .split_first()
-                        .expect("a Property NativeCall always has a receiver argument");
-                    format!("{}.{}", recv, name)
-                }
-                NativeCallKind::Infix => {
-                    // `(lhs op rhs)` — exactly two arguments (enforced at bind realization).
-                    format!("({} {} {})", rendered[0], name, rendered[1])
-                }
-                NativeCallKind::Prefix => format!("({} {})", name, rendered[0]),
-                NativeCallKind::Cast => format!("({} as {})", rendered[0], name),
-            };
+            let call = codegen::build_native_call(kind, name, &rendered)
+                .expect("NativeCall formatting should not fail");
             // Apply the result type's serialization (e.g. wrapping a `&str` result
             // in `.to_string()` for a `string` return) by rendering the assembled
             // call through the `Value` handler with the call's return type.
@@ -3042,4 +2980,64 @@ pub fn generate(
     fn_string = format!("{fn_string}}}");
     out.insert(rustname, fn_string);
     Ok((out, deps))
+}
+
+/// Rust backend implementation of the shared `Backend` trait.
+pub struct LnToRs;
+
+impl codegen::Backend for LnToRs {
+    fn generate_function(
+        name: String,
+        function: &Function,
+        scope: &Scope,
+        out: OrderedHashMap<String, String>,
+        deps: OrderedHashMap<String, String>,
+    ) -> codegen::CodegenMapsResult {
+        generate(name, function, scope, out, deps)
+    }
+
+    fn render_function_value(
+        fun: &Arc<Function>,
+        scope: &Scope,
+        out: OrderedHashMap<String, String>,
+        deps: OrderedHashMap<String, String>,
+    ) -> codegen::CodegenResult<String> {
+        let rustname = codegen::mangled_function_name(fun);
+        let res = generate(rustname.clone(), fun, scope, out, deps)?;
+        let (out, mut deps) = (res.0, res.1);
+        if let FnKind::External(d) = &fun.kind {
+            super::register_rust_dependency(d, &mut deps);
+        }
+        let has_borrowed_string = fun
+            .args()
+            .iter()
+            .any(|(_, k, t)| matches!(k, ArgKind::Ref) && is_string_type(t));
+        if has_borrowed_string {
+            let params = (0..fun.args().len())
+                .map(|i| format!("arg{i}"))
+                .collect::<Vec<_>>()
+                .join(", ");
+            Ok((format!("|{params}| {rustname}({params})"), out, deps))
+        } else {
+            Ok((rustname, out, deps))
+        }
+    }
+
+    fn render_bind_value(
+        fun: &Arc<Function>,
+        out: OrderedHashMap<String, String>,
+        deps: OrderedHashMap<String, String>,
+    ) -> codegen::CodegenResult<String> {
+        let mut deps = deps;
+        if let FnKind::ExternalGeneric(_, _, d) | FnKind::ExternalBind(_, d) = &fun.kind {
+            super::register_rust_dependency(d, &mut deps);
+        }
+        match &fun.kind {
+            FnKind::Bind(name)
+            | FnKind::BoundGeneric(_, name)
+            | FnKind::ExternalBind(name, _)
+            | FnKind::ExternalGeneric(_, name, _) => Ok((name.clone(), out, deps)),
+            _ => Err("render_bind_value called on non-bind function kind".into()),
+        }
+    }
 }
