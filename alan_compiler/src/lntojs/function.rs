@@ -6,11 +6,10 @@ use nom::Parser;
 use ordered_hash_map::OrderedHashMap;
 
 use crate::codegen;
+use crate::codegen::Backend;
 use crate::lntojs::typen;
 use crate::parse::{booln, integer, real};
-use crate::program::{
-    ArgKind, CType, CfnKind, FnKind, Function, Microstatement, NativeCallKind, Scope,
-};
+use crate::program::{ArgKind, CType, CfnKind, FnKind, Function, Microstatement, Scope};
 
 /// JavaScript-safe local binding for an Alan identifier (`var`, `void`, ...).
 fn js_binding_name(name: &str) -> &str {
@@ -511,25 +510,13 @@ pub fn from_microstatement(
                             | FnKind::Static
                             | FnKind::Cfn(..)
                             | FnKind::CfnRealized(_) => {
-                                let jsname = codegen::mangled_function_name(fun);
-                                let (o, d) = generate(jsname.clone(), fun, scope, out, deps)?;
-                                out = o;
-                                deps = d;
-                                if let FnKind::External(d) = &fun.kind {
-                                    super::register_nodejs_dependency(d, &mut deps);
-                                }
-                                Ok((jsname, out, deps))
+                                LnToJs::render_function_value(fun, scope, out, deps)
                             }
-                            FnKind::Bind(jsname)
-                            | FnKind::BoundGeneric(_, jsname)
-                            | FnKind::ExternalBind(jsname, _)
-                            | FnKind::ExternalGeneric(_, jsname, _) => {
-                                if let FnKind::ExternalGeneric(_, _, d)
-                                | FnKind::ExternalBind(_, d) = &fun.kind
-                                {
-                                    super::register_nodejs_dependency(d, &mut deps);
-                                }
-                                Ok((jsname.clone(), out, deps))
+                            FnKind::Bind(_)
+                            | FnKind::BoundGeneric(_, _)
+                            | FnKind::ExternalBind(_, _)
+                            | FnKind::ExternalGeneric(_, _, _) => {
+                                LnToJs::render_bind_value(fun, out, deps)
                             }
                         },
                     }
@@ -537,16 +524,13 @@ pub fn from_microstatement(
                 _ => Ok((js_binding_name(representation).to_string(), out, deps)),
             }
         }
-        Microstatement::Array { vals, .. } => {
-            let mut val_representations = Vec::new();
-            for val in vals {
-                let (rep, o, d) = from_microstatement(val, parent_fn, scope, out, deps)?;
-                val_representations.push(rep);
-                out = o;
-                deps = d;
-            }
-            Ok((format!("[{}]", val_representations.join(", ")), out, deps))
-        }
+        Microstatement::Array { vals, .. } => codegen::render_array(
+            vals,
+            out,
+            deps,
+            |val, out, deps| from_microstatement(val, parent_fn, scope, out, deps),
+            |vals| format!("[{}]", vals.join(", ")),
+        ),
         Microstatement::NativeCall {
             typen,
             kind,
@@ -579,31 +563,7 @@ pub fn from_microstatement(
                 };
                 rendered.push(s);
             }
-            let call = match kind {
-                NativeCallKind::Function => format!("{}({})", name, rendered.join(", ")),
-                NativeCallKind::Method => {
-                    let (recv, rest) = rendered
-                        .split_first()
-                        .expect("a Method NativeCall always has a receiver argument");
-                    format!("{}.{}({})", recv, name, rest.join(", "))
-                }
-                NativeCallKind::Property => {
-                    let (recv, _) = rendered
-                        .split_first()
-                        .expect("a Property NativeCall always has a receiver argument");
-                    format!("{}.{}", recv, name)
-                }
-                NativeCallKind::Infix => {
-                    // `(lhs op rhs)` — exactly two arguments (enforced at bind realization).
-                    format!("({} {} {})", rendered[0], name, rendered[1])
-                }
-                NativeCallKind::Prefix => format!("({} {})", name, rendered[0]),
-                // `Cast` is Rust-only syntax (every `Cast{..}` bind is `fn{Rs}`), so a
-                // `NativeCallKind::Cast` is never constructed when targeting JavaScript.
-                NativeCallKind::Cast => {
-                    return Err("native casts have no JavaScript form".into());
-                }
-            };
+            let call = codegen::build_native_call_no_cast(kind, name, &rendered)?;
             // Apply the result type's serialization by rendering the assembled call
             // through the `Value` handler with the call's return type.
             from_microstatement(
@@ -1969,4 +1929,52 @@ pub fn generate(
     fn_string = format!("{fn_string}}}");
     out.insert(jsname, fn_string);
     Ok((out, deps))
+}
+
+/// JavaScript backend implementation of the shared `Backend` trait.
+pub struct LnToJs;
+
+impl codegen::Backend for LnToJs {
+    fn generate_function(
+        name: String,
+        function: &Function,
+        scope: &Scope,
+        out: OrderedHashMap<String, String>,
+        deps: OrderedHashMap<String, String>,
+    ) -> codegen::CodegenMapsResult {
+        generate(name, function, scope, out, deps)
+    }
+
+    fn render_function_value(
+        fun: &Arc<Function>,
+        scope: &Scope,
+        out: OrderedHashMap<String, String>,
+        deps: OrderedHashMap<String, String>,
+    ) -> codegen::CodegenResult<String> {
+        let jsname = codegen::mangled_function_name(fun);
+        let (o, d) = generate(jsname.clone(), fun, scope, out, deps)?;
+        let (out, mut deps) = (o, d);
+        if let FnKind::External(d) = &fun.kind {
+            super::register_nodejs_dependency(d, &mut deps);
+        }
+        Ok((jsname, out, deps))
+    }
+
+    fn render_bind_value(
+        fun: &Arc<Function>,
+        out: OrderedHashMap<String, String>,
+        deps: OrderedHashMap<String, String>,
+    ) -> codegen::CodegenResult<String> {
+        let mut deps = deps;
+        if let FnKind::ExternalGeneric(_, _, d) | FnKind::ExternalBind(_, d) = &fun.kind {
+            super::register_nodejs_dependency(d, &mut deps);
+        }
+        match &fun.kind {
+            FnKind::Bind(name)
+            | FnKind::BoundGeneric(_, name)
+            | FnKind::ExternalBind(name, _)
+            | FnKind::ExternalGeneric(_, name, _) => Ok((name.clone(), out, deps)),
+            _ => Err("render_bind_value called on non-bind function kind".into()),
+        }
+    }
 }

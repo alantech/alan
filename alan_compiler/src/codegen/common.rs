@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
-use crate::program::{CType, Function, Microstatement, Program, Scope};
+use ordered_hash_map::OrderedHashMap;
+
+use crate::program::{CType, Function, Microstatement, NativeCallKind, Program, Scope};
 
 /// Resolve a function by its representation name and type from scope, with fallback
 /// to the parent function's original scope if the current scope doesn't contain it.
@@ -147,4 +149,69 @@ pub fn either_variant_to_rust_str(t: &Arc<CType>, rendered: String) -> String {
         CType::Void | CType::DerivedVoid(..) => "void".to_string(),
         _ => format!("{}({rendered})", t.clone().to_callable_string()),
     }
+}
+
+/// Build the native call expression string from a `NativeCallKind`, call `name`,
+/// and pre-rendered arguments. Both backends share this exact formatting logic.
+/// Returns `None` if the backend doesn't support the given `NativeCallKind`
+/// (e.g. JS doesn't support `Cast`).
+pub fn build_native_call(kind: &NativeCallKind, name: &str, rendered: &[String]) -> Option<String> {
+    Some(match kind {
+        NativeCallKind::Function => format!("{}({})", name, rendered.join(", ")),
+        NativeCallKind::Method => {
+            let (recv, rest) = rendered.split_first()?;
+            format!("{}.{}({})", recv, name, rest.join(", "))
+        }
+        NativeCallKind::Property => {
+            let (recv, _) = rendered.split_first()?;
+            format!("{}.{}", recv, name)
+        }
+        NativeCallKind::Infix => {
+            format!("({} {} {})", rendered[0], name, rendered[1])
+        }
+        NativeCallKind::Prefix => format!("({} {})", name, rendered[0]),
+        NativeCallKind::Cast => format!("({} as {})", rendered[0], name),
+    })
+}
+
+/// Build the native call expression string for backends that don't support `Cast`.
+/// Returns `Err` for `NativeCallKind::Cast`.
+pub fn build_native_call_no_cast(
+    kind: &NativeCallKind,
+    name: &str,
+    rendered: &[String],
+) -> Result<String, Box<dyn std::error::Error>> {
+    match kind {
+        NativeCallKind::Cast => Err("native casts have no JavaScript form".into()),
+        _ => build_native_call(kind, name, rendered)
+            .ok_or_else(|| "NativeCall split_first failed".into()),
+    }
+}
+
+/// Shared helper to render an array of microstatements.
+/// Takes a render function (for backend-specific recursion) and a format closure
+/// for the backend-specific array syntax (e.g. `vec![..]` vs `[..]`).
+pub fn render_array<F, G>(
+    vals: &[Microstatement],
+    mut out: OrderedHashMap<String, String>,
+    mut deps: OrderedHashMap<String, String>,
+    mut render: F,
+    format: G,
+) -> super::CodegenResult<String>
+where
+    F: FnMut(
+        &Microstatement,
+        OrderedHashMap<String, String>,
+        OrderedHashMap<String, String>,
+    ) -> super::CodegenResult<String>,
+    G: FnOnce(&[String]) -> String,
+{
+    let mut val_representations = Vec::new();
+    for val in vals {
+        let (rep, o, d) = render(val, out, deps)?;
+        val_representations.push(rep);
+        out = o;
+        deps = d;
+    }
+    Ok((format(&val_representations), out, deps))
 }
