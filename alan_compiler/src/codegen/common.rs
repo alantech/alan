@@ -78,6 +78,44 @@ pub enum EnumVariantKind {
     Result,
 }
 
+/// Checks if a given variant `t` is the "empty" sentinel of a 2-variant enum
+/// (i.e., the `Void` variant of an `Option` or the `Error` variant of a `Result`).
+pub fn is_empty_variant(ts: &[Arc<CType>], t: &Arc<CType>) -> bool {
+    match enum_variant_kind(ts) {
+        Some(EnumVariantKind::Option) => matches!(&**t, CType::Void),
+        Some(EnumVariantKind::Result) => matches!(&**t, CType::Type(name, _) if name == "Error"),
+        None => false,
+    }
+}
+
+/// Handles the common pattern of checking if a variant is a sentinel (Empty) or data (Value)
+/// for Option/Result types. Returns `Some(result)` if the type is an Option/Result,
+/// otherwise `None` to allow the caller to fall back to default rendering.
+/// Handles the common Option/Result sentinel-vs-data pattern.
+/// `is_empty` is a closure that determines whether the current variant is the empty one.
+/// `on_empty` handles the `None`/`Err` case; `on_value` handles the `Some`/`Ok` case.
+/// Accepts a mutable reference to `deps` so the closures can update it (e.g., via
+/// `typen::ctype_to_rtype`).  Returns `None` if `ts` is not an Option/Result mapping.
+pub fn handle_option_result_symmetry<E, F, G>(
+    ts: &[Arc<CType>],
+    deps: &mut OrderedHashMap<String, String>,
+    is_empty: E,
+    on_empty: F,
+    on_value: G,
+) -> Option<Result<String, Box<dyn std::error::Error>>>
+where
+    E: FnOnce() -> bool,
+    F: FnOnce(EnumVariantKind, &mut OrderedHashMap<String, String>) -> Result<String, Box<dyn std::error::Error>>,
+    G: FnOnce(EnumVariantKind, &mut OrderedHashMap<String, String>) -> Result<String, Box<dyn std::error::Error>>,
+{
+    let kind = enum_variant_kind(ts)?;
+    if is_empty() {
+        Some(on_empty(kind, deps))
+    } else {
+        Some(on_value(kind, deps))
+    }
+}
+
 /// Try single-expression inlining. Returns `Some(inlined_microstatement)` if the function
 /// is a `Normal` function that's marked as an inline target and has a single-return body
 /// whose parameters can be substituted by the caller's arguments.
