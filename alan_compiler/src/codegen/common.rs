@@ -105,8 +105,14 @@ pub fn handle_option_result_symmetry<E, F, G>(
 ) -> Option<Result<String, Box<dyn std::error::Error>>>
 where
     E: FnOnce() -> bool,
-    F: FnOnce(EnumVariantKind, &mut OrderedHashMap<String, String>) -> Result<String, Box<dyn std::error::Error>>,
-    G: FnOnce(EnumVariantKind, &mut OrderedHashMap<String, String>) -> Result<String, Box<dyn std::error::Error>>,
+    F: FnOnce(
+        EnumVariantKind,
+        &mut OrderedHashMap<String, String>,
+    ) -> Result<String, Box<dyn std::error::Error>>,
+    G: FnOnce(
+        EnumVariantKind,
+        &mut OrderedHashMap<String, String>,
+    ) -> Result<String, Box<dyn std::error::Error>>,
 {
     let kind = enum_variant_kind(ts)?;
     if is_empty() {
