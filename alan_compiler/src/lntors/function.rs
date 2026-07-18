@@ -1049,16 +1049,14 @@ pub fn from_microstatement(
                 }
                 _ => CType::fail("Bound types must be strings or rust imports"),
             },
-            CType::Function(..) => {
-                codegen::resolve_function_value::<LnToRs>(
-                    representation,
-                    typen.clone(),
-                    scope,
-                    parent_fn,
-                    out,
-                    deps,
-                )
-            }
+            CType::Function(..) => codegen::resolve_function_value::<LnToRs>(
+                representation,
+                typen.clone(),
+                scope,
+                parent_fn,
+                out,
+                deps,
+            ),
             _ => Ok((representation.clone(), out, deps)),
         },
         Microstatement::Array { vals, .. } => codegen::render_array(
@@ -2552,7 +2550,9 @@ pub fn from_microstatement(
                                     }
                                 }
                                 if argstrs.len()
-                                    == codegen::filter_static_fields(ts.iter()).collect::<Vec<&Arc<CType>>>().len()
+                                    == codegen::filter_static_fields(ts.iter())
+                                        .collect::<Vec<&Arc<CType>>>()
+                                        .len()
                                 {
                                     if argstrs.len() == 1 {
                                         return Ok((

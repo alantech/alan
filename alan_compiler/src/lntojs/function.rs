@@ -481,16 +481,14 @@ pub fn from_microstatement(
                         "Bound types must be strings or node.js imports: {otherwise:?}"
                     )),
                 },
-                CType::Function(..) => {
-                    codegen::resolve_function_value::<LnToJs>(
-                        representation,
-                        typen.clone(),
-                        scope,
-                        parent_fn,
-                        out,
-                        deps,
-                    )
-                }
+                CType::Function(..) => codegen::resolve_function_value::<LnToJs>(
+                    representation,
+                    typen.clone(),
+                    scope,
+                    parent_fn,
+                    out,
+                    deps,
+                ),
                 _ => Ok((js_binding_name(representation).to_string(), out, deps)),
             }
         }
@@ -1434,7 +1432,7 @@ pub fn from_microstatement(
                                         CType::Tuple(pf, _) => Some(pf.clone()),
                                         CType::Either(pf, _) => Some(pf.clone()),
                                         _ => None,
-                                    }                                     {
+                                    } {
                                         let child_fields: Vec<&Arc<CType>> =
                                             codegen::filter_static_fields(ts.iter()).collect();
                                         let mut parent_indices: Vec<usize> = Vec::new();
@@ -1498,8 +1496,8 @@ pub fn from_microstatement(
                                         }
                                     }
                                 }
-                                let filtered_ts =
-                                    codegen::filter_static_fields(ts.iter()).collect::<Vec<&Arc<CType>>>();
+                                let filtered_ts = codegen::filter_static_fields(ts.iter())
+                                    .collect::<Vec<&Arc<CType>>>();
                                 if argstrs.len() == filtered_ts.len() {
                                     if argstrs.len() == 1 {
                                         return Ok((

@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use ordered_hash_map::OrderedHashMap;
 
-use crate::program::{CType, FnKind, Function, Microstatement, NativeCallKind, Program, Scope};
 use super::Backend;
+use crate::program::{CType, FnKind, Function, Microstatement, NativeCallKind, Program, Scope};
 
 /// Resolve a function by its representation name and type from scope, with fallback
 /// to the parent function's original scope if the current scope doesn't contain it.
@@ -174,7 +174,9 @@ pub fn is_static_field(t: &CType) -> bool {
 }
 
 /// Filter iterator adapter that removes static fields from a set of variant types.
-pub fn filter_static_fields<'a>(ts: impl IntoIterator<Item = &'a Arc<CType>>) -> impl Iterator<Item = &'a Arc<CType>> {
+pub fn filter_static_fields<'a>(
+    ts: impl IntoIterator<Item = &'a Arc<CType>>,
+) -> impl Iterator<Item = &'a Arc<CType>> {
     ts.into_iter().filter(|t| !is_static_field(t))
 }
 
@@ -196,10 +198,10 @@ pub fn resolve_function_value<B: Backend>(
             if is_function_arg(parent_fn, representation) {
                 return Ok((representation.to_string(), out, deps));
             }
-            Err(format!(
-                "Somehow can't find a definition for function {representation}, {typen:?}"
+            Err(
+                format!("Somehow can't find a definition for function {representation}, {typen:?}")
+                    .into(),
             )
-            .into())
         }
         Some(fun) => match &fun.kind {
             FnKind::Normal
