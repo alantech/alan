@@ -7,7 +7,6 @@ use std::sync::Arc;
 use ordered_hash_map::OrderedHashMap;
 
 use crate::codegen;
-use crate::codegen::Backend;
 use crate::lntors::typen;
 use crate::program::liveness;
 use crate::program::{
@@ -1051,43 +1050,14 @@ pub fn from_microstatement(
                 _ => CType::fail("Bound types must be strings or rust imports"),
             },
             CType::Function(..) => {
-                let f = codegen::resolve_function_from_scope(
+                codegen::resolve_function_value::<LnToRs>(
                     representation,
                     typen.clone(),
                     scope,
                     parent_fn,
-                );
-                match &f {
-                    None => {
-                        if codegen::is_function_arg(parent_fn, representation) {
-                            // TODO: Do we need better matching? The upper stage should
-                            // have taken care of this
-                            return Ok((representation.clone(), out, deps));
-                        }
-                        Err(format!(
-                            "Somehow can't find a definition for function {representation}, {typen:?}"
-                        )
-                        .into())
-                    }
-                    Some(fun) => match &fun.kind {
-                        FnKind::Normal
-                        | FnKind::External(_)
-                        | FnKind::Generic(..)
-                        | FnKind::Derived
-                        | FnKind::DerivedVariadic
-                        | FnKind::Static
-                        | FnKind::Cfn(..)
-                        | FnKind::CfnRealized(_) => {
-                            LnToRs::render_function_value(fun, scope, out, deps)
-                        }
-                        FnKind::Bind(_)
-                        | FnKind::BoundGeneric(_, _)
-                        | FnKind::ExternalBind(_, _)
-                        | FnKind::ExternalGeneric(_, _, _) => {
-                            LnToRs::render_bind_value(fun, out, deps)
-                        }
-                    },
-                }
+                    out,
+                    deps,
+                )
             }
             _ => Ok((representation.clone(), out, deps)),
         },
@@ -2535,23 +2505,8 @@ pub fn from_microstatement(
                                         _ => None,
                                     } {
                                         // Filter out static fields from the child's expected fields
-                                        let child_fields: Vec<&Arc<CType>> = ts
-                                            .iter()
-                                            .filter(|t| match &***t {
-                                                CType::Field(_, t) => !matches!(
-                                                    &**t,
-                                                    CType::Int(_)
-                                                        | CType::Float(_)
-                                                        | CType::Bool(_)
-                                                        | CType::TString(_),
-                                                ),
-                                                CType::Int(_)
-                                                | CType::Float(_)
-                                                | CType::Bool(_)
-                                                | CType::TString(_) => false,
-                                                _ => true,
-                                            })
-                                            .collect();
+                                        let child_fields: Vec<&Arc<CType>> =
+                                            codegen::filter_static_fields(ts.iter()).collect();
                                         // Find matching field indices in the parent
                                         let mut parent_indices: Vec<usize> = Vec::new();
                                         let mut all_matched = true;
@@ -2597,24 +2552,7 @@ pub fn from_microstatement(
                                     }
                                 }
                                 if argstrs.len()
-                                    == ts
-                                        .iter()
-                                        .filter(|t| match &***t {
-                                            CType::Field(_, t) => !matches!(
-                                                &**t,
-                                                CType::Int(_)
-                                                    | CType::Float(_)
-                                                    | CType::Bool(_)
-                                                    | CType::TString(_),
-                                            ),
-                                            CType::Int(_)
-                                            | CType::Float(_)
-                                            | CType::Bool(_)
-                                            | CType::TString(_) => false,
-                                            _ => true,
-                                        })
-                                        .collect::<Vec<&Arc<CType>>>()
-                                        .len()
+                                    == codegen::filter_static_fields(ts.iter()).collect::<Vec<&Arc<CType>>>().len()
                                 {
                                     if argstrs.len() == 1 {
                                         return Ok((

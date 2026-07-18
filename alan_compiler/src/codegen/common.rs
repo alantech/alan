@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use ordered_hash_map::OrderedHashMap;
 
-use crate::program::{CType, Function, Microstatement, NativeCallKind, Program, Scope};
+use crate::program::{CType, FnKind, Function, Microstatement, NativeCallKind, Program, Scope};
+use super::Backend;
 
 /// Resolve a function by its representation name and type from scope, with fallback
 /// to the parent function's original scope if the current scope doesn't contain it.
@@ -156,6 +157,65 @@ pub fn sanitize_ctype_string(s: &str) -> String {
             _ => '_',
         })
         .collect()
+}
+
+/// Returns true if the type is a "static" field — a primitive (`Int`/`Float`/`Bool`/`TString`)
+/// or a `Field` whose inner type is a primitive.  Static fields are handled by the
+/// compiler's field accessor logic rather than generated as struct members.
+pub fn is_static_field(t: &CType) -> bool {
+    match t {
+        CType::Field(_, inner) => matches!(
+            &**inner,
+            CType::Int(_) | CType::Float(_) | CType::Bool(_) | CType::TString(_)
+        ),
+        CType::Int(_) | CType::Float(_) | CType::Bool(_) | CType::TString(_) => true,
+        _ => false,
+    }
+}
+
+/// Filter iterator adapter that removes static fields from a set of variant types.
+pub fn filter_static_fields<'a>(ts: impl IntoIterator<Item = &'a Arc<CType>>) -> impl Iterator<Item = &'a Arc<CType>> {
+    ts.into_iter().filter(|t| !is_static_field(t))
+}
+
+/// Shared resolution + dispatch for `CType::Function` values in `from_microstatement`.
+/// Resolves the function from scope, falls back to `is_function_arg`, then dispatches
+/// to the appropriate backend rendering method based on `FnKind`.
+#[allow(clippy::type_complexity)]
+pub fn resolve_function_value<B: Backend>(
+    representation: &str,
+    typen: Arc<CType>,
+    scope: &Scope,
+    parent_fn: &Function,
+    out: OrderedHashMap<String, String>,
+    deps: OrderedHashMap<String, String>,
+) -> super::CodegenResult<String> {
+    let f = resolve_function_from_scope(representation, typen.clone(), scope, parent_fn);
+    match &f {
+        None => {
+            if is_function_arg(parent_fn, representation) {
+                return Ok((representation.to_string(), out, deps));
+            }
+            Err(format!(
+                "Somehow can't find a definition for function {representation}, {typen:?}"
+            )
+            .into())
+        }
+        Some(fun) => match &fun.kind {
+            FnKind::Normal
+            | FnKind::External(_)
+            | FnKind::Generic(..)
+            | FnKind::Derived
+            | FnKind::DerivedVariadic
+            | FnKind::Static
+            | FnKind::Cfn(..)
+            | FnKind::CfnRealized(_) => B::render_function_value(fun, scope, out, deps),
+            FnKind::Bind(_)
+            | FnKind::BoundGeneric(_, _)
+            | FnKind::ExternalBind(_, _)
+            | FnKind::ExternalGeneric(_, _, _) => B::render_bind_value(fun, out, deps),
+        },
+    }
 }
 
 /// Render a `CType::Binds` name to a string, handling both `TString` and `Import` variants.

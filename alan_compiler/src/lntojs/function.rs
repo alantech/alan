@@ -6,7 +6,6 @@ use nom::Parser;
 use ordered_hash_map::OrderedHashMap;
 
 use crate::codegen;
-use crate::codegen::Backend;
 use crate::lntojs::typen;
 use crate::parse::{booln, integer, real};
 use crate::program::{ArgKind, CType, CfnKind, FnKind, Function, Microstatement, Scope};
@@ -483,43 +482,14 @@ pub fn from_microstatement(
                     )),
                 },
                 CType::Function(..) => {
-                    let f = codegen::resolve_function_from_scope(
+                    codegen::resolve_function_value::<LnToJs>(
                         representation,
                         typen.clone(),
                         scope,
                         parent_fn,
-                    );
-                    match &f {
-                        None => {
-                            if codegen::is_function_arg(parent_fn, representation) {
-                                // TODO: Do we need better matching? The upper stage should
-                                // have taken care of this
-                                return Ok((representation.clone(), out, deps));
-                            }
-                            Err(format!(
-                            "Somehow can't find a definition for function {representation}, {typen:?}"
-                        )
-                        .into())
-                        }
-                        Some(fun) => match &fun.kind {
-                            FnKind::Normal
-                            | FnKind::External(_)
-                            | FnKind::Generic(..)
-                            | FnKind::Derived
-                            | FnKind::DerivedVariadic
-                            | FnKind::Static
-                            | FnKind::Cfn(..)
-                            | FnKind::CfnRealized(_) => {
-                                LnToJs::render_function_value(fun, scope, out, deps)
-                            }
-                            FnKind::Bind(_)
-                            | FnKind::BoundGeneric(_, _)
-                            | FnKind::ExternalBind(_, _)
-                            | FnKind::ExternalGeneric(_, _, _) => {
-                                LnToJs::render_bind_value(fun, out, deps)
-                            }
-                        },
-                    }
+                        out,
+                        deps,
+                    )
                 }
                 _ => Ok((js_binding_name(representation).to_string(), out, deps)),
             }
@@ -1464,24 +1434,9 @@ pub fn from_microstatement(
                                         CType::Tuple(pf, _) => Some(pf.clone()),
                                         CType::Either(pf, _) => Some(pf.clone()),
                                         _ => None,
-                                    } {
-                                        let child_fields: Vec<&Arc<CType>> = ts
-                                            .iter()
-                                            .filter(|t| match &***t {
-                                                CType::Field(_, t) => !matches!(
-                                                    &**t,
-                                                    CType::Int(_)
-                                                        | CType::Float(_)
-                                                        | CType::Bool(_)
-                                                        | CType::TString(_),
-                                                ),
-                                                CType::Int(_)
-                                                | CType::Float(_)
-                                                | CType::Bool(_)
-                                                | CType::TString(_) => false,
-                                                _ => true,
-                                            })
-                                            .collect();
+                                    }                                     {
+                                        let child_fields: Vec<&Arc<CType>> =
+                                            codegen::filter_static_fields(ts.iter()).collect();
                                         let mut parent_indices: Vec<usize> = Vec::new();
                                         let mut all_matched = true;
                                         for child_field in &child_fields {
@@ -1543,23 +1498,8 @@ pub fn from_microstatement(
                                         }
                                     }
                                 }
-                                let filtered_ts = ts
-                                    .iter()
-                                    .filter(|t| match &***t {
-                                        CType::Field(_, t) => !matches!(
-                                            &**t,
-                                            CType::Int(_)
-                                                | CType::Float(_)
-                                                | CType::Bool(_)
-                                                | CType::TString(_),
-                                        ),
-                                        CType::Int(_)
-                                        | CType::Float(_)
-                                        | CType::Bool(_)
-                                        | CType::TString(_) => false,
-                                        _ => true,
-                                    })
-                                    .collect::<Vec<&Arc<CType>>>();
+                                let filtered_ts =
+                                    codegen::filter_static_fields(ts.iter()).collect::<Vec<&Arc<CType>>>();
                                 if argstrs.len() == filtered_ts.len() {
                                     if argstrs.len() == 1 {
                                         return Ok((
