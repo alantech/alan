@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use ordered_hash_map::OrderedHashMap;
 
-use crate::program::{CType, Function, Microstatement, NativeCallKind, Program, Scope};
+use super::Backend;
+use crate::program::{CType, FnKind, Function, Microstatement, NativeCallKind, Program, Scope};
 
 /// Resolve a function by its representation name and type from scope, with fallback
 /// to the parent function's original scope if the current scope doesn't contain it.
@@ -78,6 +79,50 @@ pub enum EnumVariantKind {
     Result,
 }
 
+/// Checks if a given variant `t` is the "empty" sentinel of a 2-variant enum
+/// (i.e., the `Void` variant of an `Option` or the `Error` variant of a `Result`).
+pub fn is_empty_variant(ts: &[Arc<CType>], t: &Arc<CType>) -> bool {
+    match enum_variant_kind(ts) {
+        Some(EnumVariantKind::Option) => matches!(&**t, CType::Void),
+        Some(EnumVariantKind::Result) => matches!(&**t, CType::Type(name, _) if name == "Error"),
+        None => false,
+    }
+}
+
+/// Handles the common pattern of checking if a variant is a sentinel (Empty) or data (Value)
+/// for Option/Result types. Returns `Some(result)` if the type is an Option/Result,
+/// otherwise `None` to allow the caller to fall back to default rendering.
+/// Handles the common Option/Result sentinel-vs-data pattern.
+/// `is_empty` is a closure that determines whether the current variant is the empty one.
+/// `on_empty` handles the `None`/`Err` case; `on_value` handles the `Some`/`Ok` case.
+/// Accepts a mutable reference to `deps` so the closures can update it (e.g., via
+/// `typen::ctype_to_rtype`).  Returns `None` if `ts` is not an Option/Result mapping.
+pub fn handle_option_result_symmetry<E, F, G>(
+    ts: &[Arc<CType>],
+    deps: &mut OrderedHashMap<String, String>,
+    is_empty: E,
+    on_empty: F,
+    on_value: G,
+) -> Option<Result<String, Box<dyn std::error::Error>>>
+where
+    E: FnOnce() -> bool,
+    F: FnOnce(
+        EnumVariantKind,
+        &mut OrderedHashMap<String, String>,
+    ) -> Result<String, Box<dyn std::error::Error>>,
+    G: FnOnce(
+        EnumVariantKind,
+        &mut OrderedHashMap<String, String>,
+    ) -> Result<String, Box<dyn std::error::Error>>,
+{
+    let kind = enum_variant_kind(ts)?;
+    if is_empty() {
+        Some(on_empty(kind, deps))
+    } else {
+        Some(on_value(kind, deps))
+    }
+}
+
 /// Try single-expression inlining. Returns `Some(inlined_microstatement)` if the function
 /// is a `Normal` function that's marked as an inline target and has a single-return body
 /// whose parameters can be substituted by the caller's arguments.
@@ -112,6 +157,67 @@ pub fn sanitize_ctype_string(s: &str) -> String {
             _ => '_',
         })
         .collect()
+}
+
+/// Returns true if the type is a "static" field — a primitive (`Int`/`Float`/`Bool`/`TString`)
+/// or a `Field` whose inner type is a primitive.  Static fields are handled by the
+/// compiler's field accessor logic rather than generated as struct members.
+pub fn is_static_field(t: &CType) -> bool {
+    match t {
+        CType::Field(_, inner) => matches!(
+            &**inner,
+            CType::Int(_) | CType::Float(_) | CType::Bool(_) | CType::TString(_)
+        ),
+        CType::Int(_) | CType::Float(_) | CType::Bool(_) | CType::TString(_) => true,
+        _ => false,
+    }
+}
+
+/// Filter iterator adapter that removes static fields from a set of variant types.
+pub fn filter_static_fields<'a>(
+    ts: impl IntoIterator<Item = &'a Arc<CType>>,
+) -> impl Iterator<Item = &'a Arc<CType>> {
+    ts.into_iter().filter(|t| !is_static_field(t))
+}
+
+/// Shared resolution + dispatch for `CType::Function` values in `from_microstatement`.
+/// Resolves the function from scope, falls back to `is_function_arg`, then dispatches
+/// to the appropriate backend rendering method based on `FnKind`.
+#[allow(clippy::type_complexity)]
+pub fn resolve_function_value<B: Backend>(
+    representation: &str,
+    typen: Arc<CType>,
+    scope: &Scope,
+    parent_fn: &Function,
+    out: OrderedHashMap<String, String>,
+    deps: OrderedHashMap<String, String>,
+) -> super::CodegenResult<String> {
+    let f = resolve_function_from_scope(representation, typen.clone(), scope, parent_fn);
+    match &f {
+        None => {
+            if is_function_arg(parent_fn, representation) {
+                return Ok((representation.to_string(), out, deps));
+            }
+            Err(
+                format!("Somehow can't find a definition for function {representation}, {typen:?}")
+                    .into(),
+            )
+        }
+        Some(fun) => match &fun.kind {
+            FnKind::Normal
+            | FnKind::External(_)
+            | FnKind::Generic(..)
+            | FnKind::Derived
+            | FnKind::DerivedVariadic
+            | FnKind::Static
+            | FnKind::Cfn(..)
+            | FnKind::CfnRealized(_) => B::render_function_value(fun, scope, out, deps),
+            FnKind::Bind(_)
+            | FnKind::BoundGeneric(_, _)
+            | FnKind::ExternalBind(_, _)
+            | FnKind::ExternalGeneric(_, _, _) => B::render_bind_value(fun, out, deps),
+        },
+    }
 }
 
 /// Render a `CType::Binds` name to a string, handling both `TString` and `Import` variants.

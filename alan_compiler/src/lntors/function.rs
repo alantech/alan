@@ -7,7 +7,6 @@ use std::sync::Arc;
 use ordered_hash_map::OrderedHashMap;
 
 use crate::codegen;
-use crate::codegen::Backend;
 use crate::lntors::typen;
 use crate::program::liveness;
 use crate::program::{
@@ -1050,45 +1049,14 @@ pub fn from_microstatement(
                 }
                 _ => CType::fail("Bound types must be strings or rust imports"),
             },
-            CType::Function(..) => {
-                let f = codegen::resolve_function_from_scope(
-                    representation,
-                    typen.clone(),
-                    scope,
-                    parent_fn,
-                );
-                match &f {
-                    None => {
-                        if codegen::is_function_arg(parent_fn, representation) {
-                            // TODO: Do we need better matching? The upper stage should
-                            // have taken care of this
-                            return Ok((representation.clone(), out, deps));
-                        }
-                        Err(format!(
-                            "Somehow can't find a definition for function {representation}, {typen:?}"
-                        )
-                        .into())
-                    }
-                    Some(fun) => match &fun.kind {
-                        FnKind::Normal
-                        | FnKind::External(_)
-                        | FnKind::Generic(..)
-                        | FnKind::Derived
-                        | FnKind::DerivedVariadic
-                        | FnKind::Static
-                        | FnKind::Cfn(..)
-                        | FnKind::CfnRealized(_) => {
-                            LnToRs::render_function_value(fun, scope, out, deps)
-                        }
-                        FnKind::Bind(_)
-                        | FnKind::BoundGeneric(_, _)
-                        | FnKind::ExternalBind(_, _)
-                        | FnKind::ExternalGeneric(_, _, _) => {
-                            LnToRs::render_bind_value(fun, out, deps)
-                        }
-                    },
-                }
-            }
+            CType::Function(..) => codegen::resolve_function_value::<LnToRs>(
+                representation,
+                typen.clone(),
+                scope,
+                parent_fn,
+                out,
+                deps,
+            ),
             _ => Ok((representation.clone(), out, deps)),
         },
         Microstatement::Array { vals, .. } => codegen::render_array(
@@ -1846,84 +1814,74 @@ pub fn from_microstatement(
                                     let inner_type = t.clone().degroup();
                                     match &*inner_type {
                                         CType::Field(n, _) if *n == enum_name => {
-                                            if let Some(kind) = codegen::enum_variant_kind(ts) {
-                                                match kind {
-                                                    codegen::EnumVariantKind::Option => {
-                                                        if let CType::Void = &**t {
-                                                            return Ok((
-                                                                format!(
-                                                                    "{} = None",
-                                                                    codegen::strip_amp_mut(
-                                                                        &argstrs[0]
-                                                                    )
-                                                                ),
-                                                                out,
-                                                                deps,
-                                                            ));
-                                                        } else {
-                                                            return Ok((
-                                                                format!(
-                                                                    "{} = Some({})",
-                                                                    codegen::strip_amp_mut(
-                                                                        &argstrs[0]
-                                                                    ),
-                                                                    codegen::strip_amp_mut(
-                                                                        &argstrs[1]
-                                                                    )
-                                                                ),
-                                                                out,
-                                                                deps,
-                                                            ));
+                                            if let Some(res) =
+                                                codegen::handle_option_result_symmetry(
+                                                    ts,
+                                                    &mut deps,
+                                                    || {
+                                                        matches!(
+                                                            &**t,
+                                                            CType::Void | CType::Binds(..)
+                                                        )
+                                                    },
+                                                    |kind, d| match kind {
+                                                        codegen::EnumVariantKind::Option => {
+                                                            Ok(format!(
+                                                                "{} = None",
+                                                                codegen::strip_amp_mut(&argstrs[0])
+                                                            ))
                                                         }
-                                                    }
-                                                    codegen::EnumVariantKind::Result => {
-                                                        let (okrustname, d) =
-                                                            typen::ctype_to_rtype(
+                                                        codegen::EnumVariantKind::Result => {
+                                                            let (ok, dd) = typen::ctype_to_rtype(
                                                                 ts[0].clone(),
-                                                                deps,
+                                                                d.clone(),
                                                             )?;
-                                                        deps = d;
-                                                        let (errrustname, d) =
-                                                            typen::ctype_to_rtype(
+                                                            *d = dd;
+                                                            let (err, dd) = typen::ctype_to_rtype(
                                                                 ts[1].clone(),
-                                                                deps,
+                                                                d.clone(),
                                                             )?;
-                                                        deps = d;
-                                                        if let CType::Binds(..) = &**t {
-                                                            return Ok((
-                                                                format!(
-                                                                    "{} = Err::<{}, {}>({})",
-                                                                    codegen::strip_amp_mut(
-                                                                        &argstrs[0]
-                                                                    ),
-                                                                    okrustname,
-                                                                    errrustname,
-                                                                    codegen::strip_amp_mut(
-                                                                        &argstrs[1]
-                                                                    )
-                                                                ),
-                                                                out,
-                                                                deps,
-                                                            ));
-                                                        } else {
-                                                            return Ok((
-                                                                format!(
-                                                                    "{} = Ok::<{}, {}>({})",
-                                                                    codegen::strip_amp_mut(
-                                                                        &argstrs[0]
-                                                                    ),
-                                                                    okrustname,
-                                                                    errrustname,
-                                                                    codegen::strip_amp_mut(
-                                                                        &argstrs[1]
-                                                                    )
-                                                                ),
-                                                                out,
-                                                                deps,
-                                                            ));
+                                                            *d = dd;
+                                                            Ok(format!(
+                                                                "{} = Err::<{}, {}>({})",
+                                                                codegen::strip_amp_mut(&argstrs[0]),
+                                                                ok,
+                                                                err,
+                                                                codegen::strip_amp_mut(&argstrs[1])
+                                                            ))
                                                         }
-                                                    }
-                                                }
+                                                    },
+                                                    |kind, d| match kind {
+                                                        codegen::EnumVariantKind::Option => {
+                                                            Ok(format!(
+                                                                "{} = Some({})",
+                                                                codegen::strip_amp_mut(&argstrs[0]),
+                                                                codegen::strip_amp_mut(&argstrs[1])
+                                                            ))
+                                                        }
+                                                        codegen::EnumVariantKind::Result => {
+                                                            let (ok, dd) = typen::ctype_to_rtype(
+                                                                ts[0].clone(),
+                                                                d.clone(),
+                                                            )?;
+                                                            *d = dd;
+                                                            let (err, dd) = typen::ctype_to_rtype(
+                                                                ts[1].clone(),
+                                                                d.clone(),
+                                                            )?;
+                                                            *d = dd;
+                                                            Ok(format!(
+                                                                "{} = Ok::<{}, {}>({})",
+                                                                codegen::strip_amp_mut(&argstrs[0]),
+                                                                ok,
+                                                                err,
+                                                                codegen::strip_amp_mut(&argstrs[1])
+                                                            ))
+                                                        }
+                                                    },
+                                                )
+                                            {
+                                                return Ok((res?, out, deps));
                                             }
                                             return Ok((
                                                 format!(
@@ -1938,84 +1896,74 @@ pub fn from_microstatement(
                                             ));
                                         }
                                         CType::Type(n, _) if *n == enum_name => {
-                                            if let Some(kind) = codegen::enum_variant_kind(ts) {
-                                                match kind {
-                                                    codegen::EnumVariantKind::Option => {
-                                                        if let CType::Void = &**t {
-                                                            return Ok((
-                                                                format!(
-                                                                    "{} = None",
-                                                                    codegen::strip_amp_mut(
-                                                                        &argstrs[0]
-                                                                    )
-                                                                ),
-                                                                out,
-                                                                deps,
-                                                            ));
-                                                        } else {
-                                                            return Ok((
-                                                                format!(
-                                                                    "{} = Some({})",
-                                                                    codegen::strip_amp_mut(
-                                                                        &argstrs[0]
-                                                                    ),
-                                                                    codegen::strip_amp_mut(
-                                                                        &argstrs[1]
-                                                                    )
-                                                                ),
-                                                                out,
-                                                                deps,
-                                                            ));
+                                            if let Some(res) =
+                                                codegen::handle_option_result_symmetry(
+                                                    ts,
+                                                    &mut deps,
+                                                    || {
+                                                        matches!(
+                                                            &**t,
+                                                            CType::Void | CType::Binds(..)
+                                                        )
+                                                    },
+                                                    |kind, d| match kind {
+                                                        codegen::EnumVariantKind::Option => {
+                                                            Ok(format!(
+                                                                "{} = None",
+                                                                codegen::strip_amp_mut(&argstrs[0])
+                                                            ))
                                                         }
-                                                    }
-                                                    codegen::EnumVariantKind::Result => {
-                                                        let (okrustname, d) =
-                                                            typen::ctype_to_rtype(
+                                                        codegen::EnumVariantKind::Result => {
+                                                            let (ok, dd) = typen::ctype_to_rtype(
                                                                 ts[0].clone(),
-                                                                deps,
+                                                                d.clone(),
                                                             )?;
-                                                        deps = d;
-                                                        let (errrustname, d) =
-                                                            typen::ctype_to_rtype(
+                                                            *d = dd;
+                                                            let (err, dd) = typen::ctype_to_rtype(
                                                                 ts[1].clone(),
-                                                                deps,
+                                                                d.clone(),
                                                             )?;
-                                                        deps = d;
-                                                        if let CType::Binds(..) = &**t {
-                                                            return Ok((
-                                                                format!(
-                                                                    "{} = Err::<{}, {}>({})",
-                                                                    codegen::strip_amp_mut(
-                                                                        &argstrs[0]
-                                                                    ),
-                                                                    okrustname,
-                                                                    errrustname,
-                                                                    codegen::strip_amp_mut(
-                                                                        &argstrs[1]
-                                                                    )
-                                                                ),
-                                                                out,
-                                                                deps,
-                                                            ));
-                                                        } else {
-                                                            return Ok((
-                                                                format!(
-                                                                    "{} = Ok::<{}, {}>({})",
-                                                                    codegen::strip_amp_mut(
-                                                                        &argstrs[0]
-                                                                    ),
-                                                                    okrustname,
-                                                                    errrustname,
-                                                                    codegen::strip_amp_mut(
-                                                                        &argstrs[1]
-                                                                    )
-                                                                ),
-                                                                out,
-                                                                deps,
-                                                            ));
+                                                            *d = dd;
+                                                            Ok(format!(
+                                                                "{} = Err::<{}, {}>({})",
+                                                                codegen::strip_amp_mut(&argstrs[0]),
+                                                                ok,
+                                                                err,
+                                                                codegen::strip_amp_mut(&argstrs[1])
+                                                            ))
                                                         }
-                                                    }
-                                                }
+                                                    },
+                                                    |kind, d| match kind {
+                                                        codegen::EnumVariantKind::Option => {
+                                                            Ok(format!(
+                                                                "{} = Some({})",
+                                                                codegen::strip_amp_mut(&argstrs[0]),
+                                                                codegen::strip_amp_mut(&argstrs[1])
+                                                            ))
+                                                        }
+                                                        codegen::EnumVariantKind::Result => {
+                                                            let (ok, dd) = typen::ctype_to_rtype(
+                                                                ts[0].clone(),
+                                                                d.clone(),
+                                                            )?;
+                                                            *d = dd;
+                                                            let (err, dd) = typen::ctype_to_rtype(
+                                                                ts[1].clone(),
+                                                                d.clone(),
+                                                            )?;
+                                                            *d = dd;
+                                                            Ok(format!(
+                                                                "{} = Ok::<{}, {}>({})",
+                                                                codegen::strip_amp_mut(&argstrs[0]),
+                                                                ok,
+                                                                err,
+                                                                codegen::strip_amp_mut(&argstrs[1])
+                                                            ))
+                                                        }
+                                                    },
+                                                )
+                                            {
+                                                return Ok((res?, out, deps));
                                             }
                                             return Ok((
                                                 format!(
@@ -2180,70 +2128,68 @@ pub fn from_microstatement(
                                     let inner_type = t.clone().degroup();
                                     match &*inner_type {
                                         CType::Field(n, _) if *n == enum_name => {
-                                            if let Some(kind) = codegen::enum_variant_kind(ts) {
-                                                match kind {
-                                                    codegen::EnumVariantKind::Option => {
-                                                        if let CType::Void = &**t {
-                                                            return Ok((
-                                                                "None".to_string(),
-                                                                out,
-                                                                deps,
-                                                            ));
-                                                        } else {
-                                                            return Ok((
-                                                                format!(
-                                                                    "Some({})",
-                                                                    codegen::strip_amp_mut(
-                                                                        &argstrs[0]
-                                                                    )
-                                                                ),
-                                                                out,
-                                                                deps,
-                                                            ));
+                                            if let Some(res) =
+                                                codegen::handle_option_result_symmetry(
+                                                    ts,
+                                                    &mut deps,
+                                                    || {
+                                                        matches!(
+                                                            &**t,
+                                                            CType::Void | CType::Binds(..)
+                                                        )
+                                                    },
+                                                    |kind, d| match kind {
+                                                        codegen::EnumVariantKind::Option => {
+                                                            Ok("None".to_string())
                                                         }
-                                                    }
-                                                    codegen::EnumVariantKind::Result => {
-                                                        let (okrustname, d) =
-                                                            typen::ctype_to_rtype(
+                                                        codegen::EnumVariantKind::Result => {
+                                                            let (ok, dd) = typen::ctype_to_rtype(
                                                                 ts[0].clone(),
-                                                                deps,
+                                                                d.clone(),
                                                             )?;
-                                                        deps = d;
-                                                        let (errrustname, d) =
-                                                            typen::ctype_to_rtype(
+                                                            *d = dd;
+                                                            let (err, dd) = typen::ctype_to_rtype(
                                                                 ts[1].clone(),
-                                                                deps,
+                                                                d.clone(),
                                                             )?;
-                                                        deps = d;
-                                                        if let CType::Binds(..) = &**t {
-                                                            return Ok((
-                                                                format!(
-                                                                    "Err::<{}, {}>({})",
-                                                                    okrustname,
-                                                                    errrustname,
-                                                                    codegen::strip_amp_mut(
-                                                                        &argstrs[0]
-                                                                    )
-                                                                ),
-                                                                out,
-                                                                deps,
-                                                            ));
-                                                        } else {
-                                                            return Ok((
-                                                                format!(
-                                                                    "Ok::<{}, {}>({})",
-                                                                    okrustname,
-                                                                    errrustname,
-                                                                    codegen::strip_amp_mut(
-                                                                        &argstrs[0]
-                                                                    )
-                                                                ),
-                                                                out,
-                                                                deps,
-                                                            ));
+                                                            *d = dd;
+                                                            Ok(format!(
+                                                                "Err::<{}, {}>({})",
+                                                                ok,
+                                                                err,
+                                                                codegen::strip_amp_mut(&argstrs[0])
+                                                            ))
                                                         }
-                                                    }
-                                                }
+                                                    },
+                                                    |kind, d| match kind {
+                                                        codegen::EnumVariantKind::Option => {
+                                                            Ok(format!(
+                                                                "Some({})",
+                                                                codegen::strip_amp_mut(&argstrs[0])
+                                                            ))
+                                                        }
+                                                        codegen::EnumVariantKind::Result => {
+                                                            let (ok, dd) = typen::ctype_to_rtype(
+                                                                ts[0].clone(),
+                                                                d.clone(),
+                                                            )?;
+                                                            *d = dd;
+                                                            let (err, dd) = typen::ctype_to_rtype(
+                                                                ts[1].clone(),
+                                                                d.clone(),
+                                                            )?;
+                                                            *d = dd;
+                                                            Ok(format!(
+                                                                "Ok::<{}, {}>({})",
+                                                                ok,
+                                                                err,
+                                                                codegen::strip_amp_mut(&argstrs[0])
+                                                            ))
+                                                        }
+                                                    },
+                                                )
+                                            {
+                                                return Ok((res?, out, deps));
                                             }
                                             return Ok((
                                                 format!(
@@ -2257,70 +2203,68 @@ pub fn from_microstatement(
                                             ));
                                         }
                                         CType::Type(n, _) if *n == enum_name => {
-                                            if let Some(kind) = codegen::enum_variant_kind(ts) {
-                                                match kind {
-                                                    codegen::EnumVariantKind::Option => {
-                                                        if let CType::Void = &**t {
-                                                            return Ok((
-                                                                "None".to_string(),
-                                                                out,
-                                                                deps,
-                                                            ));
-                                                        } else {
-                                                            return Ok((
-                                                                format!(
-                                                                    "Some({})",
-                                                                    codegen::strip_amp_mut(
-                                                                        &argstrs[0]
-                                                                    )
-                                                                ),
-                                                                out,
-                                                                deps,
-                                                            ));
+                                            if let Some(res) =
+                                                codegen::handle_option_result_symmetry(
+                                                    ts,
+                                                    &mut deps,
+                                                    || {
+                                                        matches!(
+                                                            &**t,
+                                                            CType::Void | CType::Binds(..)
+                                                        )
+                                                    },
+                                                    |kind, d| match kind {
+                                                        codegen::EnumVariantKind::Option => {
+                                                            Ok("None".to_string())
                                                         }
-                                                    }
-                                                    codegen::EnumVariantKind::Result => {
-                                                        let (okrustname, d) =
-                                                            typen::ctype_to_rtype(
+                                                        codegen::EnumVariantKind::Result => {
+                                                            let (ok, dd) = typen::ctype_to_rtype(
                                                                 ts[0].clone(),
-                                                                deps,
+                                                                d.clone(),
                                                             )?;
-                                                        deps = d;
-                                                        let (errrustname, d) =
-                                                            typen::ctype_to_rtype(
+                                                            *d = dd;
+                                                            let (err, dd) = typen::ctype_to_rtype(
                                                                 ts[1].clone(),
-                                                                deps,
+                                                                d.clone(),
                                                             )?;
-                                                        deps = d;
-                                                        if let CType::Binds(..) = &**t {
-                                                            return Ok((
-                                                                format!(
-                                                                    "Err::<{}, {}>({})",
-                                                                    okrustname,
-                                                                    errrustname,
-                                                                    codegen::strip_amp_mut(
-                                                                        &argstrs[0]
-                                                                    )
-                                                                ),
-                                                                out,
-                                                                deps,
-                                                            ));
-                                                        } else {
-                                                            return Ok((
-                                                                format!(
-                                                                    "Ok::<{}, {}>({})",
-                                                                    okrustname,
-                                                                    errrustname,
-                                                                    codegen::strip_amp_mut(
-                                                                        &argstrs[0]
-                                                                    )
-                                                                ),
-                                                                out,
-                                                                deps,
-                                                            ));
+                                                            *d = dd;
+                                                            Ok(format!(
+                                                                "Err::<{}, {}>({})",
+                                                                ok,
+                                                                err,
+                                                                codegen::strip_amp_mut(&argstrs[0])
+                                                            ))
                                                         }
-                                                    }
-                                                }
+                                                    },
+                                                    |kind, d| match kind {
+                                                        codegen::EnumVariantKind::Option => {
+                                                            Ok(format!(
+                                                                "Some({})",
+                                                                codegen::strip_amp_mut(&argstrs[0])
+                                                            ))
+                                                        }
+                                                        codegen::EnumVariantKind::Result => {
+                                                            let (ok, dd) = typen::ctype_to_rtype(
+                                                                ts[0].clone(),
+                                                                d.clone(),
+                                                            )?;
+                                                            *d = dd;
+                                                            let (err, dd) = typen::ctype_to_rtype(
+                                                                ts[1].clone(),
+                                                                d.clone(),
+                                                            )?;
+                                                            *d = dd;
+                                                            Ok(format!(
+                                                                "Ok::<{}, {}>({})",
+                                                                ok,
+                                                                err,
+                                                                codegen::strip_amp_mut(&argstrs[0])
+                                                            ))
+                                                        }
+                                                    },
+                                                )
+                                            {
+                                                return Ok((res?, out, deps));
                                             }
                                             return Ok((
                                                 format!(
@@ -2333,161 +2277,59 @@ pub fn from_microstatement(
                                                 deps,
                                             ));
                                         }
-                                        CType::Binds(n, ..) => match &**n {
-                                            CType::TString(s) if s == &enum_name => {
-                                                if let Some(kind) = codegen::enum_variant_kind(ts) {
-                                                    match kind {
-                                                        codegen::EnumVariantKind::Option => {
-                                                            if let CType::Void = &**t {
-                                                                return Ok((
-                                                                    "None".to_string(),
-                                                                    out,
-                                                                    deps,
-                                                                ));
-                                                            } else {
-                                                                return Ok((
-                                                                    format!(
-                                                                        "Some({})",
-                                                                        codegen::strip_amp_mut(
-                                                                            &argstrs[0]
-                                                                        )
-                                                                    ),
-                                                                    out,
-                                                                    deps,
-                                                                ));
-                                                            }
-                                                        }
-                                                        codegen::EnumVariantKind::Result => {
-                                                            let (okrustname, d) =
-                                                                typen::ctype_to_rtype(
-                                                                    ts[0].clone(),
-                                                                    deps,
-                                                                )?;
-                                                            deps = d;
-                                                            let (errrustname, d) =
-                                                                typen::ctype_to_rtype(
-                                                                    ts[1].clone(),
-                                                                    deps,
-                                                                )?;
-                                                            deps = d;
-                                                            if let CType::Binds(..) = &**t {
-                                                                return Ok((
-                                                                    format!(
-                                                                        "Err::<{}, {}>({})",
-                                                                        okrustname,
-                                                                        errrustname,
-                                                                        codegen::strip_amp_mut(
-                                                                            &argstrs[0]
-                                                                        )
-                                                                    ),
-                                                                    out,
-                                                                    deps,
-                                                                ));
-                                                            } else {
-                                                                return Ok((
-                                                                    format!(
-                                                                        "Ok::<{}, {}>({})",
-                                                                        okrustname,
-                                                                        errrustname,
-                                                                        codegen::strip_amp_mut(
-                                                                            &argstrs[0]
-                                                                        )
-                                                                    ),
-                                                                    out,
-                                                                    deps,
-                                                                ));
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                                return Ok((
-                                                    format!(
-                                                        "{}::{}({})",
-                                                        function.name,
-                                                        enum_name,
-                                                        codegen::strip_amp_mut(&argstrs[0]),
-                                                    ),
-                                                    out,
-                                                    deps,
-                                                ));
-                                            }
-                                            CType::Import(n, d) => match &**n {
+                                        CType::Binds(n, ..) => {
+                                            match &**n {
                                                 CType::TString(s) if s == &enum_name => {
-                                                    super::register_rust_dependency(d, &mut deps);
-                                                    if let Some(kind) =
-                                                        codegen::enum_variant_kind(ts)
+                                                    if let Some(res) =
+                                                        codegen::handle_option_result_symmetry(
+                                                            ts,
+                                                            &mut deps,
+                                                            || {
+                                                                matches!(
+                                                                    &**t,
+                                                                    CType::Void | CType::Binds(..)
+                                                                )
+                                                            },
+                                                            |kind, d| {
+                                                                match kind {
+                                                         codegen::EnumVariantKind::Option => Ok("None".to_string()),
+                                                         codegen::EnumVariantKind::Result => {
+                                                             let (ok, dd) = typen::ctype_to_rtype(ts[0].clone(), d.clone())?;
+                                                             *d = dd;
+                                                             let (err, dd) = typen::ctype_to_rtype(ts[1].clone(), d.clone())?;
+                                                             *d = dd;
+                                                             Ok(format!(
+                                                                 "Err::<{}, {}>({})",
+                                                                 ok,
+                                                                 err,
+                                                                 codegen::strip_amp_mut(&argstrs[0])
+                                                             ))
+                                                         }
+                                                     }
+                                                            },
+                                                            |kind, d| {
+                                                                match kind {
+                                                         codegen::EnumVariantKind::Option => Ok(format!(
+                                                             "Some({})",
+                                                             codegen::strip_amp_mut(&argstrs[0])
+                                                         )),
+                                                         codegen::EnumVariantKind::Result => {
+                                                             let (ok, dd) = typen::ctype_to_rtype(ts[0].clone(), d.clone())?;
+                                                             *d = dd;
+                                                             let (err, dd) = typen::ctype_to_rtype(ts[1].clone(), d.clone())?;
+                                                             *d = dd;
+                                                             Ok(format!(
+                                                                 "Ok::<{}, {}>({})",
+                                                                 ok,
+                                                                 err,
+                                                                 codegen::strip_amp_mut(&argstrs[0])
+                                                             ))
+                                                         }
+                                                     }
+                                                            },
+                                                        )
                                                     {
-                                                        match kind {
-                                                            codegen::EnumVariantKind::Option => {
-                                                                if let CType::Void = &**t {
-                                                                    return Ok((
-                                                                        "None".to_string(),
-                                                                        out,
-                                                                        deps,
-                                                                    ));
-                                                                } else {
-                                                                    return Ok((
-                                                                        format!(
-                                                                            "Some({})",
-                                                                            codegen::strip_amp_mut(
-                                                                                &argstrs[0]
-                                                                            )
-                                                                        ),
-                                                                        out,
-                                                                        deps,
-                                                                    ));
-                                                                }
-                                                            }
-                                                            codegen::EnumVariantKind::Result => {
-                                                                let (okrustname, d) =
-                                                                    typen::ctype_to_rtype(
-                                                                        ts[0].clone(),
-                                                                        deps,
-                                                                    )?;
-                                                                deps = d;
-                                                                let (errrustname, d) =
-                                                                    typen::ctype_to_rtype(
-                                                                        ts[1].clone(),
-                                                                        deps,
-                                                                    )?;
-                                                                deps = d;
-                                                                if let CType::Binds(..) = &**t {
-                                                                    return Ok((
-                                                                        format!(
-                                                                            "Err::<{}, {}>({})",
-                                                                            okrustname,
-                                                                            errrustname,
-                                                                            match argstrs[0]
-                                                                                .strip_prefix(
-                                                                                    "&mut "
-                                                                                ) {
-                                                                                Some(s) => s,
-                                                                                None => &argstrs[0],
-                                                                            }
-                                                                        ),
-                                                                        out,
-                                                                        deps,
-                                                                    ));
-                                                                } else {
-                                                                    return Ok((
-                                                                        format!(
-                                                                            "Ok::<{}, {}>({})",
-                                                                            okrustname,
-                                                                            errrustname,
-                                                                            match argstrs[0]
-                                                                                .strip_prefix(
-                                                                                    "&mut "
-                                                                                ) {
-                                                                                Some(s) => s,
-                                                                                None => &argstrs[0],
-                                                                            }
-                                                                        ),
-                                                                        out,
-                                                                        deps,
-                                                                    ));
-                                                                }
-                                                            }
-                                                        }
+                                                        return Ok((res?, out, deps));
                                                     }
                                                     return Ok((
                                                         format!(
@@ -2500,10 +2342,77 @@ pub fn from_microstatement(
                                                         deps,
                                                     ));
                                                 }
+                                                CType::Import(n, d) => {
+                                                    match &**n {
+                                                        CType::TString(s) if s == &enum_name => {
+                                                            super::register_rust_dependency(
+                                                                d, &mut deps,
+                                                            );
+                                                            let arg0 = match argstrs[0]
+                                                                .strip_prefix("&mut ")
+                                                            {
+                                                                Some(s) => s,
+                                                                None => &argstrs[0],
+                                                            };
+                                                            if let Some(res) = codegen::handle_option_result_symmetry(
+                                                 ts,
+                                                 &mut deps,
+                                                         || matches!(&**t, CType::Void | CType::Binds(..)),
+                                                         |kind, dd| match kind {
+                                                             codegen::EnumVariantKind::Option => Ok("None".to_string()),
+                                                             codegen::EnumVariantKind::Result => {
+                                                                 let (ok, ddd) = typen::ctype_to_rtype(ts[0].clone(), dd.clone())?;
+                                                                 *dd = ddd;
+                                                                 let (err, ddd) = typen::ctype_to_rtype(ts[1].clone(), dd.clone())?;
+                                                                 *dd = ddd;
+                                                                 Ok(format!(
+                                                                     "Err::<{}, {}>({})",
+                                                                     ok,
+                                                                     err,
+                                                                     arg0
+                                                                 ))
+                                                             }
+                                                         },
+                                                         |kind, dd| match kind {
+                                                             codegen::EnumVariantKind::Option => Ok(format!(
+                                                                 "Some({})",
+                                                                 codegen::strip_amp_mut(&argstrs[0])
+                                                             )),
+                                                             codegen::EnumVariantKind::Result => {
+                                                                 let (ok, ddd) = typen::ctype_to_rtype(ts[0].clone(), dd.clone())?;
+                                                                 *dd = ddd;
+                                                                 let (err, ddd) = typen::ctype_to_rtype(ts[1].clone(), dd.clone())?;
+                                                                 *dd = ddd;
+                                                                 Ok(format!(
+                                                                     "Ok::<{}, {}>({})",
+                                                                     ok,
+                                                                     err,
+                                                                     arg0
+                                                                 ))
+                                                             }
+                                                         },
+                                                     ) {
+                                                         return Ok((res?, out, deps));
+                                                     }
+                                                            return Ok((
+                                                                format!(
+                                                                    "{}::{}({})",
+                                                                    function.name,
+                                                                    enum_name,
+                                                                    codegen::strip_amp_mut(
+                                                                        &argstrs[0]
+                                                                    ),
+                                                                ),
+                                                                out,
+                                                                deps,
+                                                            ));
+                                                        }
+                                                        _ => {}
+                                                    }
+                                                }
                                                 _ => {}
-                                            },
-                                            _ => {}
-                                        },
+                                            }
+                                        }
                                         _ => {
                                             if ts.len() == 2 {
                                                 if let CType::Void = &*ts[1] {
@@ -2594,23 +2503,8 @@ pub fn from_microstatement(
                                         _ => None,
                                     } {
                                         // Filter out static fields from the child's expected fields
-                                        let child_fields: Vec<&Arc<CType>> = ts
-                                            .iter()
-                                            .filter(|t| match &***t {
-                                                CType::Field(_, t) => !matches!(
-                                                    &**t,
-                                                    CType::Int(_)
-                                                        | CType::Float(_)
-                                                        | CType::Bool(_)
-                                                        | CType::TString(_),
-                                                ),
-                                                CType::Int(_)
-                                                | CType::Float(_)
-                                                | CType::Bool(_)
-                                                | CType::TString(_) => false,
-                                                _ => true,
-                                            })
-                                            .collect();
+                                        let child_fields: Vec<&Arc<CType>> =
+                                            codegen::filter_static_fields(ts.iter()).collect();
                                         // Find matching field indices in the parent
                                         let mut parent_indices: Vec<usize> = Vec::new();
                                         let mut all_matched = true;
@@ -2656,22 +2550,7 @@ pub fn from_microstatement(
                                     }
                                 }
                                 if argstrs.len()
-                                    == ts
-                                        .iter()
-                                        .filter(|t| match &***t {
-                                            CType::Field(_, t) => !matches!(
-                                                &**t,
-                                                CType::Int(_)
-                                                    | CType::Float(_)
-                                                    | CType::Bool(_)
-                                                    | CType::TString(_),
-                                            ),
-                                            CType::Int(_)
-                                            | CType::Float(_)
-                                            | CType::Bool(_)
-                                            | CType::TString(_) => false,
-                                            _ => true,
-                                        })
+                                    == codegen::filter_static_fields(ts.iter())
                                         .collect::<Vec<&Arc<CType>>>()
                                         .len()
                                 {
