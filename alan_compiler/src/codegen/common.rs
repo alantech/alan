@@ -5,8 +5,26 @@ use ordered_hash_map::OrderedHashMap;
 use super::Backend;
 use crate::program::{CType, FnKind, Function, Microstatement, NativeCallKind, Program, Scope};
 
-/// Resolve a function by its representation name and type from scope, with fallback
-/// to the parent function's original scope if the current scope doesn't contain it.
+/// Shared `render_bind_value`: register external dep, return bind name.
+pub fn shared_render_bind_value(
+    fun: &Arc<Function>,
+    out: OrderedHashMap<String, String>,
+    mut deps: OrderedHashMap<String, String>,
+    register_dep: impl FnOnce(&CType, &mut OrderedHashMap<String, String>),
+) -> super::CodegenResult<String> {
+    if let FnKind::ExternalGeneric(_, _, d) | FnKind::ExternalBind(_, d) = &fun.kind {
+        register_dep(d, &mut deps);
+    }
+    match &fun.kind {
+        FnKind::Bind(name)
+        | FnKind::BoundGeneric(_, name)
+        | FnKind::ExternalBind(name, _)
+        | FnKind::ExternalGeneric(_, name, _) => Ok((name.clone(), out, deps)),
+        _ => Err("render_bind_value called on non-bind function kind".into()),
+    }
+}
+
+/// Resolve function from scope, with fallback to parent's origin scope.
 pub fn resolve_function_from_scope<'a>(
     representation: &str,
     typen: Arc<CType>,
@@ -37,7 +55,7 @@ pub fn resolve_function_from_scope<'a>(
     f
 }
 
-/// Check if a representation matches a function-typed argument of the parent function.
+/// Does representation match a function-typed parent arg?
 pub fn is_function_arg(parent_fn: &Function, representation: &str) -> bool {
     parent_fn
         .args()
@@ -45,7 +63,7 @@ pub fn is_function_arg(parent_fn: &Function, representation: &str) -> bool {
         .any(|(name, _, typen)| name == representation && matches!(&**typen, CType::Function(_, _)))
 }
 
-/// Generate the mangled function name used for codegen deduplication.
+/// Mangled function name for codegen deduplication.
 pub fn mangled_function_name(fun: &Function) -> String {
     let arg_strs = fun
         .args()
@@ -55,14 +73,12 @@ pub fn mangled_function_name(fun: &Function) -> String {
     format!("{}_{}", fun.name, arg_strs.join("_"))
 }
 
-/// Strip `&mut ` prefix from a rendered argument expression (Rust ownership model).
+/// Strip `&mut ` prefix.
 pub fn strip_amp_mut(arg: &str) -> &str {
     arg.strip_prefix("&mut ").unwrap_or(arg)
 }
 
-/// Determines whether a 2-variant enum constructor call is an Option or Result mapping.
-/// Returns `Some(Option)` if the second variant is `Void`, `Some(Result)` if it's `Error`,
-/// and `None` for regular enum constructors.
+/// Is a 2-variant enum `Option` (void sentinel) or `Result` (Error sentinel)?
 pub fn enum_variant_kind(ts: &[Arc<CType>]) -> Option<EnumVariantKind> {
     if ts.len() != 2 {
         return None;
@@ -79,8 +95,7 @@ pub enum EnumVariantKind {
     Result,
 }
 
-/// Checks if a given variant `t` is the "empty" sentinel of a 2-variant enum
-/// (i.e., the `Void` variant of an `Option` or the `Error` variant of a `Result`).
+/// Is variant `t` the empty sentinel of an Option/Result?
 pub fn is_empty_variant(ts: &[Arc<CType>], t: &Arc<CType>) -> bool {
     match enum_variant_kind(ts) {
         Some(EnumVariantKind::Option) => matches!(&**t, CType::Void),
@@ -89,14 +104,7 @@ pub fn is_empty_variant(ts: &[Arc<CType>], t: &Arc<CType>) -> bool {
     }
 }
 
-/// Handles the common pattern of checking if a variant is a sentinel (Empty) or data (Value)
-/// for Option/Result types. Returns `Some(result)` if the type is an Option/Result,
-/// otherwise `None` to allow the caller to fall back to default rendering.
-/// Handles the common Option/Result sentinel-vs-data pattern.
-/// `is_empty` is a closure that determines whether the current variant is the empty one.
-/// `on_empty` handles the `None`/`Err` case; `on_value` handles the `Some`/`Ok` case.
-/// Accepts a mutable reference to `deps` so the closures can update it (e.g., via
-/// `typen::ctype_to_rtype`).  Returns `None` if `ts` is not an Option/Result mapping.
+/// Option/Result sentinel-vs-data handler. Returns `None` if not Option/Result.
 pub fn handle_option_result_symmetry<E, F, G>(
     ts: &[Arc<CType>],
     deps: &mut OrderedHashMap<String, String>,
@@ -123,9 +131,7 @@ where
     }
 }
 
-/// Try single-expression inlining. Returns `Some(inlined_microstatement)` if the function
-/// is a `Normal` function that's marked as an inline target and has a single-return body
-/// whose parameters can be substituted by the caller's arguments.
+/// Try single-expression inline: substitute params with caller args.
 pub fn try_single_inline(function: &Function, args: &[Microstatement]) -> Option<Microstatement> {
     if !matches!(function.kind, crate::program::FnKind::Normal) {
         return None;
@@ -138,9 +144,7 @@ pub fn try_single_inline(function: &Function, args: &[Microstatement]) -> Option
     Some(crate::program::inline::substitute(expr, &subs))
 }
 
-/// Try multi-statement inlining. Returns `Some((stmts, tail))` if the function has a
-/// multi-statement body (assignments + final return) suitable for block-expression inlining.
-/// Inner locals are renamed to avoid shadowing caller variables.
+/// Try multi-statement inline: returns (stmts, tail) for block-expression inlining.
 pub fn try_multi_inline(
     function: &Function,
     args: &[Microstatement],
@@ -148,8 +152,7 @@ pub fn try_multi_inline(
     crate::program::inline::build_multi_inline(function, args)
 }
 
-/// Sanitize a `TString` for use as an identifier in the target language:
-/// keep alphanumeric characters, replace everything else with `_`.
+/// Sanitize for identifier: keep alphanumeric, replace rest with `_`.
 pub fn sanitize_ctype_string(s: &str) -> String {
     s.chars()
         .map(|c| match c {
@@ -159,9 +162,7 @@ pub fn sanitize_ctype_string(s: &str) -> String {
         .collect()
 }
 
-/// Returns true if the type is a "static" field — a primitive (`Int`/`Float`/`Bool`/`TString`)
-/// or a `Field` whose inner type is a primitive.  Static fields are handled by the
-/// compiler's field accessor logic rather than generated as struct members.
+/// Is a primitive or `Field` wrapping a primitive (handled by field accessor logic)?
 pub fn is_static_field(t: &CType) -> bool {
     match t {
         CType::Field(_, inner) => matches!(
@@ -180,9 +181,7 @@ pub fn filter_static_fields<'a>(
     ts.into_iter().filter(|t| !is_static_field(t))
 }
 
-/// Shared resolution + dispatch for `CType::Function` values in `from_microstatement`.
-/// Resolves the function from scope, falls back to `is_function_arg`, then dispatches
-/// to the appropriate backend rendering method based on `FnKind`.
+/// Resolve function value and dispatch to backend render based on FnKind.
 #[allow(clippy::type_complexity)]
 pub fn resolve_function_value<B: Backend>(
     representation: &str,
@@ -220,8 +219,7 @@ pub fn resolve_function_value<B: Backend>(
     }
 }
 
-/// Render a `CType::Binds` name to a string, handling both `TString` and `Import` variants.
-/// The `register_dep` closure is called for `Import` variants to register the native dependency.
+/// Render Binds name; register dep for Import variants.
 pub fn render_binds_name<F: FnOnce(&CType)>(name: &CType, register_dep: F) -> String {
     match name {
         CType::TString(s) => s.clone(),
@@ -236,9 +234,7 @@ pub fn render_binds_name<F: FnOnce(&CType)>(name: &CType, register_dep: F) -> St
     }
 }
 
-/// Check if a 2-variant `Either` represents `Option` or `Result` (early-return shortcut).
-/// Returns `true` for `Either{T, void}` or `Either{T, Error}`, in which case the backend
-/// should render the `Either` as empty (no custom enum needed).
+/// Is a 2-variant Either an Option or Result?
 pub fn is_option_or_result_either(ts: &[Arc<CType>]) -> bool {
     if ts.len() != 2 {
         return false;
@@ -246,8 +242,7 @@ pub fn is_option_or_result_either(ts: &[Arc<CType>]) -> bool {
     matches!(*ts[1], CType::Void) || matches!(&*ts[1], CType::Type(n, _) if n == "Error")
 }
 
-/// Build a Rust-style enum variant string from a `CType::Either` variant.
-/// Handles `Field`, `Type`, `Void`, `Tuple`, and fallback cases.
+/// Build Rust enum variant string from Either variant.
 pub fn either_variant_to_rust_str(t: &Arc<CType>, rendered: String) -> String {
     match &**t {
         CType::Field(k, _) => format!("{k}({rendered})"),
@@ -257,10 +252,7 @@ pub fn either_variant_to_rust_str(t: &Arc<CType>, rendered: String) -> String {
     }
 }
 
-/// Build the native call expression string from a `NativeCallKind`, call `name`,
-/// and pre-rendered arguments. Both backends share this exact formatting logic.
-/// Returns `None` if the backend doesn't support the given `NativeCallKind`
-/// (e.g. JS doesn't support `Cast`).
+/// Format native call expression. Returns `None` if kind unsupported (e.g. Cast in JS).
 pub fn build_native_call(kind: &NativeCallKind, name: &str, rendered: &[String]) -> Option<String> {
     Some(match kind {
         NativeCallKind::Function => format!("{}({})", name, rendered.join(", ")),
@@ -280,8 +272,7 @@ pub fn build_native_call(kind: &NativeCallKind, name: &str, rendered: &[String])
     })
 }
 
-/// Build the native call expression string for backends that don't support `Cast`.
-/// Returns `Err` for `NativeCallKind::Cast`.
+/// Native call expression that errors on Cast (for JS backend).
 pub fn build_native_call_no_cast(
     kind: &NativeCallKind,
     name: &str,
@@ -294,9 +285,7 @@ pub fn build_native_call_no_cast(
     }
 }
 
-/// Shared helper to render an array of microstatements.
-/// Takes a render function (for backend-specific recursion) and a format closure
-/// for the backend-specific array syntax (e.g. `vec![..]` vs `[..]`).
+/// Render array of microstatements; backend provides format closure.
 pub fn render_array<F, G>(
     vals: &[Microstatement],
     mut out: OrderedHashMap<String, String>,
