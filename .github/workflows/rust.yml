@@ -19,9 +19,8 @@ jobs:
       uses: actions/cache@v6
       with:
         path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
+          ${{ github.workspace }}/.cargo/registry
+          ${{ github.workspace }}/.cargo/git
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-cargo-
@@ -118,9 +117,8 @@ jobs:
       uses: actions/cache@v6
       with:
         path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
+          ${{ github.workspace }}/.cargo/registry
+          ${{ github.workspace }}/.cargo/git
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-cargo-
@@ -156,9 +154,8 @@ jobs:
       uses: actions/cache@v6
       with:
         path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
+          ${{ github.workspace }}/.cargo/registry
+          ${{ github.workspace }}/.cargo/git
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-cargo-
@@ -196,9 +193,8 @@ jobs:
       uses: actions/cache@v6
       with:
         path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
+          ${{ github.workspace }}/.cargo/registry
+          ${{ github.workspace }}/.cargo/git
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-cargo-
