@@ -1486,11 +1486,7 @@ pub fn from_microstatement(
                             from_microstatement(arg, parent_fn, shared_vars, scope, out, deps)?;
                         out = o;
                         deps = d;
-                        let arg_type = arg.get_type();
-                        match &*arg_type {
-                            CType::Function(..) => argstrs.push(a.to_string()),
-                            _ => argstrs.push(a.to_string()),
-                        }
+                        argstrs.push(a.to_string());
                     }
                     let arg_type = args[0].get_type();
                     let is_shared = matches!(&*arg_type, CType::Shared(_))
@@ -1586,38 +1582,7 @@ pub fn from_microstatement(
                             argstrs.push(a.to_string());
                         }
                     }
-                    // The behavior of the generated code depends on the structure of the
-                    // return type and the input types. We also do some logic based on the name
-                    // of the function.
-                    // 1) If the name of the function matches the name of return type, it's a
-                    //    constructor function, and will interpret the arguments in different
-                    //    ways:
-                    //    a) If the return type is a Buffer, the arg count must be either the
-                    //       size of the buffer with all args having the same type *or* it must
-                    //       be exactly 1, with the arg matching the buffer's primary type that
-                    //       the buffer will be filled with. In case someone creates a
-                    //       one-element buffer, well, those two definitions are the same so it
-                    //       will use the first implementation (as it will be faster).
-                    //    b) If the return type is an Array, any number of values can be
-                    //       provided and it will pre-populate the array with those values.
-                    //    c) If the return type is an Either, it will expect only *one*
-                    //       argument, and fail otherwise. The argument needs to be one of the
-                    //       possibilities, which it will then put into the correct enum. An
-                    //       earlier stage of the compiler should have generated function
-                    //       definitions for each type in the Either.
-                    //    d) If the return type is a tuple type, each argument of the function
-                    //       needs to match, in the same order, the tuple's types. It doesn't
-                    //       matter if the type itself has fields with names, those are ignored
-                    //       and they're all turned into tuples.
-                    //    e) If the return type is a group type or "type" type, it's unwrapped
-                    //       and checked if it is one of the types above.
-                    //    f) If it's any other type, it's a compiler error. There's no way to
-                    //       derive an implementation for them that would be sensical.
-                    // 2) If the input type is a tuple and the name of the function matches the
-                    //    name of a field in the tuple, it's an accessor function.
-                    // 3) If the input type is an either and the name of the function matches
-                    //    the name of a sub-type, it returns a Maybe{T} for the type in
-                    //    question. (This conflicts with (1) so it's checked first.)
+                    // Derived constructor/accessor/unwrap logic
                     if function.args().len() == 1 && !argstrs.is_empty() {
                         // Auto-deref Shared{T}: unwrap Arc<RwLock<T>> before accessing inner properties
                         let arg0_type = args[0].get_type();
@@ -2822,12 +2787,7 @@ pub fn generate(
             }
         }
     };
-    // Start generating the function output. We can do this eagerly like this because, at least for
-    // now, we inline all other function calls within an "entry" function (the main function, or
-    // any function that's attached to an event, or any function that's part of an exported set in
-    // a shared library). LLVM *probably* doesn't deduplicate this redundancy, so this will need to
-    // be revisited, but it eliminates a whole host of generation problems that I can come back to
-    // later.
+    // Eager function generation; LLVM may not deduplicate
     fn_string = format!(
         "{}fn {}({}){} {{\n",
         fn_string,
@@ -2907,16 +2867,6 @@ impl codegen::Backend for LnToRs {
         out: OrderedHashMap<String, String>,
         deps: OrderedHashMap<String, String>,
     ) -> codegen::CodegenResult<String> {
-        let mut deps = deps;
-        if let FnKind::ExternalGeneric(_, _, d) | FnKind::ExternalBind(_, d) = &fun.kind {
-            super::register_rust_dependency(d, &mut deps);
-        }
-        match &fun.kind {
-            FnKind::Bind(name)
-            | FnKind::BoundGeneric(_, name)
-            | FnKind::ExternalBind(name, _)
-            | FnKind::ExternalGeneric(_, name, _) => Ok((name.clone(), out, deps)),
-            _ => Err("render_bind_value called on non-bind function kind".into()),
-        }
+        codegen::shared_render_bind_value(fun, out, deps, super::register_rust_dependency)
     }
 }
