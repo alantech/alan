@@ -1,12 +1,11 @@
+use std::collections::VecDeque;
 /// Rust functions that the root scope binds.
 use std::collections::{HashMap, HashSet};
-use std::collections::VecDeque;
 use std::hash::{Hash, Hasher};
 use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 use std::sync::mpsc::{channel, Sender};
 use std::sync::{Arc, OnceLock};
-
 
 pub use ordered_hash_map::OrderedHashMap;
 pub use uuid::Uuid;
@@ -819,22 +818,21 @@ impl GPU {
     }
     /// Lazily create the device and queue for this adapter on first access.
     fn get_device(&self) -> &wgpu::Device {
-        &self.device.get_or_init(|| {
-            let info = self.adapter.get_info();
-            futures::executor::block_on(
-                self.adapter
-                    .request_device(&wgpu::DeviceDescriptor {
-                        label: Some(&format!("{} on {}", info.name, info.backend.to_str())),
-                        required_features: wgpu::Features::empty(),
-                        required_limits: self.adapter.limits(),
-                        experimental_features: wgpu::ExperimentalFeatures::disabled(),
-                        memory_hints: wgpu::MemoryHints::Performance,
-                        trace: wgpu::Trace::Off,
-                    }),
-            )
-            .expect("Failed to create GPU device")
-        })
-        .0
+        &self
+            .device
+            .get_or_init(|| {
+                let info = self.adapter.get_info();
+                futures::executor::block_on(self.adapter.request_device(&wgpu::DeviceDescriptor {
+                    label: Some(&format!("{} on {}", info.name, info.backend.to_str())),
+                    required_features: wgpu::Features::empty(),
+                    required_limits: self.adapter.limits(),
+                    experimental_features: wgpu::ExperimentalFeatures::disabled(),
+                    memory_hints: wgpu::MemoryHints::Performance,
+                    trace: wgpu::Trace::Off,
+                }))
+                .expect("Failed to create GPU device")
+            })
+            .0
     }
     /// Lazily create the device and queue for this adapter on first access.
     fn get_queue(&self) -> &wgpu::Queue {
@@ -859,14 +857,8 @@ fn gpus_init() -> &'static Vec<GPU> {
         }
         impl ApplicationHandler<()> for TestAdapterFinder {
             fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-                match event_loop.create_window(Window::default_attributes()) {
-                    Ok(window) => {
-                        self.found_surface = match instance().create_surface(window) {
-                            Ok(s) => Some(s),
-                            Err(_) => None,
-                        };
-                    }
-                    Err(_) => {}
+                if let Ok(window) = event_loop.create_window(Window::default_attributes()) {
+                    self.found_surface = instance().create_surface(window).ok();
                 }
                 event_loop.exit();
             }
@@ -883,7 +875,9 @@ fn gpus_init() -> &'static Vec<GPU> {
                 Ok(el) => el,
                 Err(_) => return None,
             };
-            let mut finder = TestAdapterFinder { found_surface: None };
+            let mut finder = TestAdapterFinder {
+                found_surface: None,
+            };
             if event_loop.run_app(&mut finder).is_err() {
                 return None;
             }
@@ -906,7 +900,6 @@ fn gpu() -> &'static GPU {
         ),
     }
 }
-
 
 fn subgroup_max_size() -> u32 {
     *SUBGROUP_MAX_SIZE.get_or_init(|| {
@@ -1023,7 +1016,9 @@ pub fn create_buffer_init<T>(
     staging_buffer.unmap();
 
     // Copy from staging buffer to target buffer
-    let mut encoder = g.get_device().create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+    let mut encoder = g
+        .get_device()
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
     encoder.copy_buffer_to_buffer(&staging_buffer, 0, &buf, 0, val_u8_len as u64);
 
     // Submit and wait for the copy to complete
@@ -1122,10 +1117,13 @@ impl GPGPU {
 pub fn gpu_run(gg: &mut GPGPU) {
     let g = gpu();
     if gg.module.is_none() {
-        gg.module = Some(g.get_device().create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: None,
-            source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(&gg.source)),
-        }));
+        gg.module = Some(
+            g.get_device()
+                .create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: None,
+                    source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(&gg.source)),
+                }),
+        );
     }
     let module = gg.module.as_ref().unwrap();
     if gg.compute_pipeline.is_none() {
@@ -1142,7 +1140,9 @@ pub fn gpu_run(gg: &mut GPGPU) {
     }
     let compute_pipeline = gg.compute_pipeline.as_ref().unwrap();
     let mut bind_groups = Vec::new();
-    let mut encoder = g.get_device().create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+    let mut encoder = g
+        .get_device()
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
     {
         let mut cpass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: None,
@@ -1160,11 +1160,13 @@ pub fn gpu_run(gg: &mut GPGPU) {
                     resource: bind_group_buffers[j].as_entire_binding(),
                 });
             }
-            let bind_group = g.get_device().create_bind_group(&wgpu::BindGroupDescriptor {
-                label: None,
-                layout: &bind_group_layout,
-                entries: &bind_group_entries[..],
-            });
+            let bind_group = g
+                .get_device()
+                .create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: None,
+                    layout: &bind_group_layout,
+                    entries: &bind_group_entries[..],
+                });
             bind_groups.push(bind_group);
         }
         #[allow(clippy::needless_range_loop)] // Not needless clippy
@@ -1193,13 +1195,18 @@ pub fn gpu_run(gg: &mut GPGPU) {
 
 pub fn gpu_run_list(ggs: &mut Vec<GPGPU>) {
     let g = gpu();
-    let mut encoder = g.get_device().create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+    let mut encoder = g
+        .get_device()
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
     for gg in ggs {
         if gg.module.is_none() {
-            gg.module = Some(g.get_device().create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: None,
-                source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(&gg.source)),
-            }));
+            gg.module = Some(
+                g.get_device()
+                    .create_shader_module(wgpu::ShaderModuleDescriptor {
+                        label: None,
+                        source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(&gg.source)),
+                    }),
+            );
         }
         let module = gg.module.as_ref().unwrap();
         if gg.compute_pipeline.is_none() {
@@ -1234,11 +1241,13 @@ pub fn gpu_run_list(ggs: &mut Vec<GPGPU>) {
                         resource: bind_group_buffers[j].as_entire_binding(),
                     });
                 }
-                let bind_group = g.get_device().create_bind_group(&wgpu::BindGroupDescriptor {
-                    label: None,
-                    layout: &bind_group_layout,
-                    entries: &bind_group_entries[..],
-                });
+                let bind_group = g
+                    .get_device()
+                    .create_bind_group(&wgpu::BindGroupDescriptor {
+                        label: None,
+                        layout: &bind_group_layout,
+                        entries: &bind_group_entries[..],
+                    });
                 bind_groups.push(bind_group);
             }
             #[allow(clippy::needless_range_loop)] // Not needless clippy
@@ -1274,7 +1283,9 @@ pub fn read_buffer<T: std::clone::Clone>(b: &GBuffer) -> Vec<T> {
 
     let temp_buffer = create_empty_buffer(&map_read_buffer_type(), &bufferlen(b), &b.element_size)
         .expect("The buffer already exists so a new one the same size should always work");
-    let mut encoder = g.get_device().create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+    let mut encoder = g
+        .get_device()
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
     encoder.copy_buffer_to_buffer(b, 0, &temp_buffer, 0, b.size());
     let submission_index = g.get_queue().submit(Some(encoder.finish()));
     let temp_slice = temp_buffer.slice(..);
@@ -1311,7 +1322,9 @@ pub fn replace_buffer<T>(b: &GBuffer, v: &[T]) -> Result<(), AlanError> {
         let g = gpu();
         let gb = create_buffer_init(&storage_buffer_type(), v, &b.element_size)
             .expect("The buffer already exists so a new one the same size should always work");
-        let mut encoder = g.get_device().create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        let mut encoder = g
+            .get_device()
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
         encoder.copy_buffer_to_buffer(&gb, 0, b, 0, b.size());
         let submission_index = g.get_queue().submit(Some(encoder.finish()));
         let _ = g.get_device().poll(wgpu::PollType::Wait {
@@ -1435,14 +1448,17 @@ pub struct AlanWindowFrame {
     pub height: u32,
 }
 
+type WindowContextFn = Box<dyn FnMut(&mut AlanWindowContext) -> Vec<u32> + Send>;
+type WindowGPGPUShaderFn = Box<dyn Fn(&AlanWindowFrame) -> Vec<GPGPU> + Send>;
+
 /// User events sent to the shared event loop
 enum UserEvent {
     /// Request to create a new window; blocks on `done_tx` until window closes
     NewWindow {
         config: WindowAttributes,
         context: AlanWindowContext,
-        context_fn: Box<dyn FnMut(&mut AlanWindowContext) -> Vec<u32> + Send>,
-        gpgpu_shader_fn: Box<dyn Fn(&AlanWindowFrame) -> Vec<GPGPU> + Send>,
+        context_fn: WindowContextFn,
+        gpgpu_shader_fn: WindowGPGPUShaderFn,
         done_tx: Sender<()>,
     },
 }
@@ -1457,8 +1473,8 @@ struct WindowState {
     buffer: Option<GBuffer>,
     cached_surface_config: Option<wgpu::SurfaceConfiguration>,
     cached_size: winit::dpi::PhysicalSize<u32>,
-    context_fn: Box<dyn FnMut(&mut AlanWindowContext) -> Vec<u32>>,
-    gpgpu_shader_fn: Box<dyn Fn(&AlanWindowFrame) -> Vec<GPGPU>>,
+    context_fn: WindowContextFn,
+    gpgpu_shader_fn: WindowGPGPUShaderFn,
     gpgpu_shaders: Option<Vec<GPGPU>>,
     inited: bool,
     /// Signals the calling thread that this window has closed
@@ -1511,8 +1527,11 @@ impl WindowManager {
             let mut size = ws.context.window.as_ref().unwrap().inner_size();
             size.width = size.width.max(1);
             size.height = size.height.max(1);
-            ws.context.buffer_width =
-                Some(if (4 * size.width) % 256 == 0 { 4 * size.width } else { (4 * size.width) + (256 - ((4 * size.width) % 256)) });
+            ws.context.buffer_width = Some(if (4 * size.width).is_multiple_of(256) {
+                4 * size.width
+            } else {
+                (4 * size.width) + (256 - ((4 * size.width) % 256))
+            });
             let buffer_size = (ws.context.buffer_width.unwrap() as u64) * (size.height as u64);
             ws.buffer = Some(GBuffer {
                 buffer: Rc::new(device.create_buffer(&wgpu::BufferDescriptor {
@@ -1529,13 +1548,12 @@ impl WindowManager {
             let mut size = ws.context.window.as_ref().unwrap().inner_size();
             size.width = size.width.max(1);
             size.height = size.height.max(1);
-            ws.gpgpu_shaders =
-                Some((ws.gpgpu_shader_fn)(&AlanWindowFrame {
-                    context: ws.context_buffer.as_ref().unwrap().clone(),
-                    framebuffer: ws.buffer.as_ref().unwrap().clone(),
-                    width: size.width,
-                    height: size.height,
-                }));
+            ws.gpgpu_shaders = Some((ws.gpgpu_shader_fn)(&AlanWindowFrame {
+                context: ws.context_buffer.as_ref().unwrap().clone(),
+                framebuffer: ws.buffer.as_ref().unwrap().clone(),
+                width: size.width,
+                height: size.height,
+            }));
         }
         ws.inited = true;
     }
@@ -1579,8 +1597,7 @@ impl WindowManager {
                 Some(c) => c,
                 None => return,
             };
-            config.usage =
-                wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::RENDER_ATTACHMENT;
+            config.usage = wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::RENDER_ATTACHMENT;
             config.present_mode = wgpu::PresentMode::AutoVsync;
             config.desired_maximum_frame_latency = 1;
             config.alpha_mode = if ws.context.transparent {
@@ -1637,11 +1654,10 @@ impl WindowManager {
             let compute_pipeline = gg.compute_pipeline.as_ref().unwrap();
             let mut bind_groups = Vec::new();
             {
-                let mut cpass =
-                    encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                        label: None,
-                        timestamp_writes: None,
-                    });
+                let mut cpass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: None,
+                    timestamp_writes: None,
+                });
                 cpass.set_pipeline(compute_pipeline);
                 for i in 0..gg.buffers.len() {
                     let bind_group_layout =
@@ -1655,12 +1671,11 @@ impl WindowManager {
                             resource: bind_group_buffers[j].as_entire_binding(),
                         });
                     }
-                    let bind_group =
-                        device.create_bind_group(&wgpu::BindGroupDescriptor {
-                            label: None,
-                            layout: &bind_group_layout,
-                            entries: &bind_group_entries[..],
-                        });
+                    let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                        label: None,
+                        layout: &bind_group_layout,
+                        entries: &bind_group_entries[..],
+                    });
                     bind_groups.push(bind_group);
                 }
                 #[allow(clippy::needless_range_loop)]
@@ -1752,12 +1767,7 @@ impl ApplicationHandler<UserEvent> for WindowManager {
         }
     }
 
-    fn window_event(
-        &mut self,
-        event_loop: &ActiveEventLoop,
-        id: WindowId,
-        event: WindowEvent,
-    ) {
+    fn window_event(&mut self, event_loop: &ActiveEventLoop, id: WindowId, event: WindowEvent) {
         match event {
             WindowEvent::CloseRequested => {
                 if let Some(ws) = self.windows.remove(&id) {
@@ -1797,7 +1807,10 @@ impl ApplicationHandler<UserEvent> for WindowManager {
                                 usage: storage_buffer_type(),
                                 mapped_at_creation: false,
                             })),
-                            id: format!("buffer_{}", format!("{}", Uuid::new_v4()).replace("-", "_")),
+                            id: format!(
+                                "buffer_{}",
+                                format!("{}", Uuid::new_v4()).replace("-", "_")
+                            ),
                             element_size: 4,
                         };
                         if let Some(ws) = self.windows.get_mut(&id) {
@@ -1806,13 +1819,12 @@ impl ApplicationHandler<UserEvent> for WindowManager {
                             }
                             ws.buffer = Some(new_buffer);
                             ws.context.buffer_width = Some(buffer_width);
-                            ws.gpgpu_shaders =
-                                Some((ws.gpgpu_shader_fn)(&AlanWindowFrame {
-                                    context: ws.context_buffer.as_ref().unwrap().clone(),
-                                    framebuffer: ws.buffer.as_ref().unwrap().clone(),
-                                    width: new_size.width,
-                                    height: new_size.height,
-                                }));
+                            ws.gpgpu_shaders = Some((ws.gpgpu_shader_fn)(&AlanWindowFrame {
+                                context: ws.context_buffer.as_ref().unwrap().clone(),
+                                framebuffer: ws.buffer.as_ref().unwrap().clone(),
+                                width: new_size.width,
+                                height: new_size.height,
+                            }));
                         }
                         if let Some(ws) = self.windows.get(&id) {
                             ws.context.window.as_ref().unwrap().request_redraw();
@@ -1896,11 +1908,12 @@ where
     // First call: create and run the event loop on the current thread.
     // Subsequent calls: send requests via the proxy and block on the channel.
     if EVENT_LOOP_PROXY.get().is_none() {
-        let event_loop: EventLoop<UserEvent> = EventLoop::with_user_event()
-            .build()
-            .map_err(|e| AlanError {
-                message: format!("Failed to create event loop: {}", e),
-            })?;
+        let event_loop: EventLoop<UserEvent> =
+            EventLoop::with_user_event()
+                .build()
+                .map_err(|e| AlanError {
+                    message: format!("Failed to create event loop: {}", e),
+                })?;
         let proxy = event_loop.create_proxy();
         EVENT_LOOP_PROXY.set(proxy).unwrap();
 
