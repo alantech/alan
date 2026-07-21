@@ -1,16 +1,19 @@
 /// Rust functions that the root scope binds.
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
+use std::collections::VecDeque;
 use std::hash::{Hash, Hasher};
 use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
-use std::sync::OnceLock;
+use std::sync::mpsc::{channel, Sender};
+use std::sync::{Arc, OnceLock};
+
 
 pub use ordered_hash_map::OrderedHashMap;
 pub use uuid::Uuid;
 pub use wgpu::BufferUsages;
 use winit::application::ApplicationHandler;
 use winit::event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent};
-use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
+use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop, EventLoopProxy};
 use winit::window::{Window, WindowAttributes, WindowId};
 
 /// The `AlanError` type is a *cloneable* error that all errors are implemented as within Alan, to
@@ -767,15 +770,23 @@ pub fn cross_f64(a: &[f64; 3], b: &[f64; 3]) -> [f64; 3] {
 
 // GPU-related functions and types
 
-pub struct GPU {
-    pub adapter: wgpu::Adapter,
-    pub device: wgpu::Device,
-    pub queue: wgpu::Queue,
+static INSTANCE: OnceLock<wgpu::Instance> = OnceLock::new();
+
+/// The shared `wgpu::Instance` for the whole program. Both the GPGPU device(s)
+/// and any window surface must come from the same instance for them to be
+/// compatible with each other.
+pub fn instance() -> &'static wgpu::Instance {
+    INSTANCE.get_or_init(wgpu::Instance::default)
 }
 
+pub struct GPU {
+    pub adapter: wgpu::Adapter,
+    /// Lazily-initialized (device, queue) pair. Created on first access.
+    device: OnceLock<(wgpu::Device, wgpu::Queue)>,
+}
 impl GPU {
     pub fn list() -> Vec<wgpu::Adapter> {
-        let instance = wgpu::Instance::default();
+        let instance = instance();
         let mut out = Vec::new();
         let adapters_future = instance.enumerate_adapters(wgpu::Backends::all());
         let adapters = futures::executor::block_on(adapters_future);
@@ -786,42 +797,116 @@ impl GPU {
         }
         out
     }
+
     pub fn init(adapters: Vec<wgpu::Adapter>) -> Vec<GPU> {
-        let mut out = Vec::new();
-        for adapter in adapters {
-            let limits = adapter.limits();
-            let info = adapter.get_info();
-            let device_future = adapter.request_device(&wgpu::DeviceDescriptor {
-                label: Some(&format!("{} on {}", info.name, info.backend.to_str())),
-                required_features: wgpu::Features::empty(),
-                required_limits: limits,
-                experimental_features: wgpu::ExperimentalFeatures::disabled(),
-                memory_hints: wgpu::MemoryHints::Performance,
-                trace: wgpu::Trace::Off,
-            });
-            if let Ok((device, queue)) = futures::executor::block_on(device_future) {
-                out.push(GPU {
-                    adapter,
-                    device,
-                    queue,
-                });
-            };
+        adapters
+            .into_iter()
+            .map(|adapter| GPU {
+                adapter,
+                device: OnceLock::new(),
+            })
+            .collect()
+    }
+    /// Move an adapter capable of presenting to the given surface to the front.
+    pub fn prefer_surface(adapters: &mut Vec<wgpu::Adapter>, surface: &wgpu::Surface<'_>) {
+        if let Some(pos) = adapters
+            .iter()
+            .position(|a| a.is_surface_supported(surface))
+        {
+            let preferred = adapters.remove(pos);
+            adapters.insert(0, preferred);
         }
-        out
+    }
+    /// Lazily create the device and queue for this adapter on first access.
+    fn get_device(&self) -> &wgpu::Device {
+        &self.device.get_or_init(|| {
+            let info = self.adapter.get_info();
+            futures::executor::block_on(
+                self.adapter
+                    .request_device(&wgpu::DeviceDescriptor {
+                        label: Some(&format!("{} on {}", info.name, info.backend.to_str())),
+                        required_features: wgpu::Features::empty(),
+                        required_limits: self.adapter.limits(),
+                        experimental_features: wgpu::ExperimentalFeatures::disabled(),
+                        memory_hints: wgpu::MemoryHints::Performance,
+                        trace: wgpu::Trace::Off,
+                    }),
+            )
+            .expect("Failed to create GPU device")
+        })
+        .0
+    }
+    /// Lazily create the device and queue for this adapter on first access.
+    fn get_queue(&self) -> &wgpu::Queue {
+        self.get_device();
+        &self.device.get().unwrap().1
     }
 }
 
 static GPUS: OnceLock<Vec<GPU>> = OnceLock::new();
 static SUBGROUP_MAX_SIZE: OnceLock<u32> = OnceLock::new();
 
+fn gpus_init() -> &'static Vec<GPU> {
+    GPUS.get_or_init(|| {
+        // Create a temporary test window to find a presentation-capable
+        // adapter. This guarantees that `gpu()` returns a device that can
+        // drive both GPGPU compute *and* window surfaces, so all `GBuffer`s
+        // allocated via the standard path end up on the "right" device.
+        // May fail on some platforms (e.g., macOS from non-main thread),
+        // in which case we fall back to the default adapter list.
+        struct TestAdapterFinder {
+            found_surface: Option<wgpu::Surface<'static>>,
+        }
+        impl ApplicationHandler<()> for TestAdapterFinder {
+            fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+                match event_loop.create_window(Window::default_attributes()) {
+                    Ok(window) => {
+                        self.found_surface = match instance().create_surface(window) {
+                            Ok(s) => Some(s),
+                            Err(_) => None,
+                        };
+                    }
+                    Err(_) => {}
+                }
+                event_loop.exit();
+            }
+            fn window_event(
+                &mut self,
+                _event_loop: &ActiveEventLoop,
+                _id: WindowId,
+                _event: WindowEvent,
+            ) {
+            }
+        }
+        let adapters = std::panic::catch_unwind(|| {
+            let event_loop: EventLoop<()> = match EventLoop::new() {
+                Ok(el) => el,
+                Err(_) => return None,
+            };
+            let mut finder = TestAdapterFinder { found_surface: None };
+            if event_loop.run_app(&mut finder).is_err() {
+                return None;
+            }
+            let test_surface = finder.found_surface?;
+            let mut adapters = GPU::list();
+            GPU::prefer_surface(&mut adapters, &test_surface);
+            Some(adapters)
+        })
+        .unwrap_or_else(|_| None)
+        .unwrap_or_else(GPU::list);
+        GPU::init(adapters)
+    })
+}
+
 fn gpu() -> &'static GPU {
-    match GPUS.get_or_init(|| GPU::init(GPU::list())).first() {
+    match gpus_init().first() {
         Some(g) => g,
         None => panic!(
             "This program requires a GPU but there are no WebGPU-compliant GPUs on this machine"
         ),
     }
 }
+
 
 fn subgroup_max_size() -> u32 {
     *SUBGROUP_MAX_SIZE.get_or_init(|| {
@@ -897,14 +982,14 @@ pub fn create_buffer_init<T>(
     let g = gpu();
     let val_ptr = vals.as_ptr();
     let val_u8_len = vals.len() * (*element_size as usize);
-    let limits = g.device.limits();
+    let limits = g.get_device().limits();
     if limits.max_buffer_size < val_u8_len as u64 {
         return Err(AlanError { message: format!("Cannot load the array into the GPU, as it is too large. GBuffer on your GPU only supports up to {} bytes per buffer", limits.max_buffer_size), });
     }
 
     // Create an empty buffer first
     let buf = GBuffer {
-        buffer: Rc::new(g.device.create_buffer(&wgpu::BufferDescriptor {
+        buffer: Rc::new(g.get_device().create_buffer(&wgpu::BufferDescriptor {
             label: None,
             size: val_u8_len as u64,
             usage: *usage,
@@ -916,7 +1001,7 @@ pub fn create_buffer_init<T>(
 
     // Create a staging buffer with the data
     let val_u8: &[u8] = unsafe { std::slice::from_raw_parts(val_ptr as *const u8, val_u8_len) };
-    let staging_buffer = g.device.create_buffer(&wgpu::BufferDescriptor {
+    let staging_buffer = g.get_device().create_buffer(&wgpu::BufferDescriptor {
         label: None,
         size: val_u8_len as u64,
         usage: wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::MAP_WRITE,
@@ -938,14 +1023,12 @@ pub fn create_buffer_init<T>(
     staging_buffer.unmap();
 
     // Copy from staging buffer to target buffer
-    let mut encoder = g
-        .device
-        .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+    let mut encoder = g.get_device().create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
     encoder.copy_buffer_to_buffer(&staging_buffer, 0, &buf, 0, val_u8_len as u64);
 
     // Submit and wait for the copy to complete
-    let submission_index = g.queue.submit(Some(encoder.finish()));
-    match g.device.poll(wgpu::PollType::Wait {
+    let submission_index = g.get_queue().submit(Some(encoder.finish()));
+    match g.get_device().poll(wgpu::PollType::Wait {
         submission_index: Some(submission_index),
         timeout: None,
     }) {
@@ -964,12 +1047,12 @@ pub fn create_empty_buffer(
     element_size: &i8,
 ) -> Result<GBuffer, AlanError> {
     let g = gpu();
-    let limits = g.device.limits();
+    let limits = g.get_device().limits();
     if limits.max_buffer_size < *size as u64 {
         return Err(AlanError { message: format!("Cannot load the array into the GPU, as it is too large. GBuffer on your GPU only supports up to {} bytes per buffer", limits.max_buffer_size), });
     }
     Ok(GBuffer {
-        buffer: Rc::new(g.device.create_buffer(&wgpu::BufferDescriptor {
+        buffer: Rc::new(g.get_device().create_buffer(&wgpu::BufferDescriptor {
             label: None, // TODO: Add a label for easier debugging?
             size: (*size as u64) * (*element_size as u64),
             usage: *usage,
@@ -1039,14 +1122,14 @@ impl GPGPU {
 pub fn gpu_run(gg: &mut GPGPU) {
     let g = gpu();
     if gg.module.is_none() {
-        gg.module = Some(g.device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        gg.module = Some(g.get_device().create_shader_module(wgpu::ShaderModuleDescriptor {
             label: None,
             source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(&gg.source)),
         }));
     }
     let module = gg.module.as_ref().unwrap();
     if gg.compute_pipeline.is_none() {
-        gg.compute_pipeline = Some(g.device.create_compute_pipeline(
+        gg.compute_pipeline = Some(g.get_device().create_compute_pipeline(
             &wgpu::ComputePipelineDescriptor {
                 label: None,
                 layout: None,
@@ -1059,9 +1142,7 @@ pub fn gpu_run(gg: &mut GPGPU) {
     }
     let compute_pipeline = gg.compute_pipeline.as_ref().unwrap();
     let mut bind_groups = Vec::new();
-    let mut encoder = g
-        .device
-        .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+    let mut encoder = g.get_device().create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
     {
         let mut cpass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: None,
@@ -1079,7 +1160,7 @@ pub fn gpu_run(gg: &mut GPGPU) {
                     resource: bind_group_buffers[j].as_entire_binding(),
                 });
             }
-            let bind_group = g.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            let bind_group = g.get_device().create_bind_group(&wgpu::BindGroupDescriptor {
                 label: None,
                 layout: &bind_group_layout,
                 entries: &bind_group_entries[..],
@@ -1107,24 +1188,22 @@ pub fn gpu_run(gg: &mut GPGPU) {
         cpass.dispatch_workgroups(x, y, z);
     }
 
-    g.queue.submit(Some(encoder.finish()));
+    g.get_queue().submit(Some(encoder.finish()));
 }
 
 pub fn gpu_run_list(ggs: &mut Vec<GPGPU>) {
     let g = gpu();
-    let mut encoder = g
-        .device
-        .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+    let mut encoder = g.get_device().create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
     for gg in ggs {
         if gg.module.is_none() {
-            gg.module = Some(g.device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            gg.module = Some(g.get_device().create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: None,
                 source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(&gg.source)),
             }));
         }
         let module = gg.module.as_ref().unwrap();
         if gg.compute_pipeline.is_none() {
-            gg.compute_pipeline = Some(g.device.create_compute_pipeline(
+            gg.compute_pipeline = Some(g.get_device().create_compute_pipeline(
                 &wgpu::ComputePipelineDescriptor {
                     label: None,
                     layout: None,
@@ -1155,7 +1234,7 @@ pub fn gpu_run_list(ggs: &mut Vec<GPGPU>) {
                         resource: bind_group_buffers[j].as_entire_binding(),
                     });
                 }
-                let bind_group = g.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                let bind_group = g.get_device().create_bind_group(&wgpu::BindGroupDescriptor {
                     label: None,
                     layout: &bind_group_layout,
                     entries: &bind_group_entries[..],
@@ -1184,28 +1263,26 @@ pub fn gpu_run_list(ggs: &mut Vec<GPGPU>) {
         }
     }
 
-    g.queue.submit(Some(encoder.finish()));
+    g.get_queue().submit(Some(encoder.finish()));
 }
 
 pub fn read_buffer<T: std::clone::Clone>(b: &GBuffer) -> Vec<T> {
     let g = gpu();
 
     // Wait for all work to finish before reading out to avoid race conditions
-    let _ = g.device.poll(wgpu::PollType::wait_indefinitely());
+    let _ = g.get_device().poll(wgpu::PollType::wait_indefinitely());
 
     let temp_buffer = create_empty_buffer(&map_read_buffer_type(), &bufferlen(b), &b.element_size)
         .expect("The buffer already exists so a new one the same size should always work");
-    let mut encoder = g
-        .device
-        .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+    let mut encoder = g.get_device().create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
     encoder.copy_buffer_to_buffer(b, 0, &temp_buffer, 0, b.size());
-    let submission_index = g.queue.submit(Some(encoder.finish()));
+    let submission_index = g.get_queue().submit(Some(encoder.finish()));
     let temp_slice = temp_buffer.slice(..);
     temp_slice.map_async(
         wgpu::MapMode::Read,
         |_| { /* Not needed for us; single threaded GPU access in Alan (for now) */ },
     );
-    let _ = g.device.poll(wgpu::PollType::Wait {
+    let _ = g.get_device().poll(wgpu::PollType::Wait {
         submission_index: Some(submission_index),
         timeout: None,
     });
@@ -1234,12 +1311,10 @@ pub fn replace_buffer<T>(b: &GBuffer, v: &[T]) -> Result<(), AlanError> {
         let g = gpu();
         let gb = create_buffer_init(&storage_buffer_type(), v, &b.element_size)
             .expect("The buffer already exists so a new one the same size should always work");
-        let mut encoder = g
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        let mut encoder = g.get_device().create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
         encoder.copy_buffer_to_buffer(&gb, 0, b, 0, b.size());
-        let submission_index = g.queue.submit(Some(encoder.finish()));
-        let _ = g.device.poll(wgpu::PollType::Wait {
+        let submission_index = g.get_queue().submit(Some(encoder.finish()));
+        let _ = g.get_device().poll(wgpu::PollType::Wait {
             submission_index: Some(submission_index),
             timeout: None,
         });
@@ -1360,83 +1435,70 @@ pub struct AlanWindowFrame {
     pub height: u32,
 }
 
-pub struct AlanWindow<C, R>
-where
-    C: FnMut(&mut AlanWindowContext) -> Vec<u32>,
-    R: Fn(&AlanWindowFrame) -> Vec<GPGPU>,
-{
-    config: WindowAttributes,
+/// User events sent to the shared event loop
+enum UserEvent {
+    /// Request to create a new window; blocks on `done_tx` until window closes
+    NewWindow {
+        config: WindowAttributes,
+        context: AlanWindowContext,
+        context_fn: Box<dyn FnMut(&mut AlanWindowContext) -> Vec<u32> + Send>,
+        gpgpu_shader_fn: Box<dyn Fn(&AlanWindowFrame) -> Vec<GPGPU> + Send>,
+        done_tx: Sender<()>,
+    },
+}
+
+/// Per-window GPU and rendering state
+struct WindowState {
     context: AlanWindowContext,
-    instance: Option<wgpu::Instance>,
     surface: Option<wgpu::Surface<'static>>,
-    adapter: Option<wgpu::Adapter>,
     device: Option<wgpu::Device>,
     queue: Option<wgpu::Queue>,
     context_buffer: Option<GBuffer>,
     buffer: Option<GBuffer>,
     cached_surface_config: Option<wgpu::SurfaceConfiguration>,
     cached_size: winit::dpi::PhysicalSize<u32>,
-    context_fn: C,
-    gpgpu_shader_fn: R,
+    context_fn: Box<dyn FnMut(&mut AlanWindowContext) -> Vec<u32>>,
+    gpgpu_shader_fn: Box<dyn Fn(&AlanWindowFrame) -> Vec<GPGPU>>,
     gpgpu_shaders: Option<Vec<GPGPU>>,
     inited: bool,
+    /// Signals the calling thread that this window has closed
+    done_tx: Option<Sender<()>>,
 }
 
-impl<C, R> AlanWindow<C, R>
-where
-    C: FnMut(&mut AlanWindowContext) -> Vec<u32>,
-    R: Fn(&AlanWindowFrame) -> Vec<GPGPU>,
-{
-    fn window_gpu_init(&mut self) {
-        if self.context.start.is_none() {
-            self.context.start = Some(std::time::Instant::now());
+/// Manages all open windows in the shared event loop
+struct WindowManager {
+    windows: HashMap<WindowId, WindowState>,
+    pending: VecDeque<UserEvent>,
+}
+
+impl WindowManager {
+    fn new() -> Self {
+        Self {
+            windows: HashMap::new(),
+            pending: VecDeque::new(),
         }
-        if self.instance.is_none() {
-            self.instance = Some(wgpu::Instance::default());
+    }
+
+    fn gpu_init(&mut self, id: WindowId) {
+        let ws = self.windows.get_mut(&id).unwrap();
+        if ws.context.start.is_none() {
+            ws.context.start = Some(std::time::Instant::now());
         }
-        if self.surface.is_none() {
-            let instance = self.instance.as_ref().unwrap();
-            self.surface = Some(
-                instance
-                    .create_surface(self.context.window.as_ref().unwrap().clone())
-                    .unwrap(),
-            );
+        if ws.surface.is_none() {
+            let window = ws.context.window.as_ref().unwrap().clone();
+            ws.surface = Some(instance().create_surface(window).unwrap());
         }
-        if self.adapter.is_none() {
-            let instance = self.instance.as_ref().unwrap();
-            let surface = self.surface.as_ref().unwrap();
-            self.adapter = Some(
-                pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-                    power_preference: wgpu::PowerPreference::default(), // TODO: Configure this
-                    force_fallback_adapter: false,
-                    compatible_surface: Some(surface),
-                    apply_limit_buckets: false,
-                }))
-                .unwrap(),
-            );
+        if ws.device.is_none() {
+            let g = gpu();
+            ws.device = Some(g.get_device().clone());
+            ws.queue = Some(g.get_queue().clone());
         }
-        if self.device.is_none() {
-            // We can do both device and queue here as they're created at the same time
-            let adapter = self.adapter.as_ref().unwrap();
-            let (device, queue) =
-                pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-                    label: None,
-                    required_features: wgpu::Features::empty(),
-                    required_limits: adapter.limits(),
-                    experimental_features: wgpu::ExperimentalFeatures::disabled(),
-                    memory_hints: wgpu::MemoryHints::MemoryUsage,
-                    trace: wgpu::Trace::Off,
-                }))
-                .unwrap();
-            self.device = Some(device);
-            self.queue = Some(queue);
-        }
-        if self.context_buffer.is_none() {
-            let device = self.device.as_ref().unwrap();
-            self.context_buffer = Some(GBuffer {
+        if ws.context_buffer.is_none() {
+            let device = ws.device.as_ref().unwrap();
+            ws.context_buffer = Some(GBuffer {
                 buffer: Rc::new(device.create_buffer(&wgpu::BufferDescriptor {
                     label: None,
-                    size: 256, // TODO: Not hardwired
+                    size: 256,
                     usage: storage_buffer_type(),
                     mapped_at_creation: false,
                 })),
@@ -1444,19 +1506,15 @@ where
                 element_size: 4,
             });
         }
-        if self.buffer.is_none() {
-            let device = self.device.as_ref().unwrap();
-            let mut size = self.context.window.as_ref().unwrap().inner_size();
+        if ws.buffer.is_none() {
+            let device = ws.device.as_ref().unwrap();
+            let mut size = ws.context.window.as_ref().unwrap().inner_size();
             size.width = size.width.max(1);
             size.height = size.height.max(1);
-            self.context.buffer_width = Some(if (4 * size.width).is_multiple_of(256) {
-                4 * size.width
-            } else {
-                (4 * size.width) + (256 - ((4 * size.width) % 256))
-            });
-            let buffer_height = size.height;
-            let buffer_size = (self.context.buffer_width.unwrap() as u64) * (buffer_height as u64);
-            self.buffer = Some(GBuffer {
+            ws.context.buffer_width =
+                Some(if (4 * size.width) % 256 == 0 { 4 * size.width } else { (4 * size.width) + (256 - ((4 * size.width) % 256)) });
+            let buffer_size = (ws.context.buffer_width.unwrap() as u64) * (size.height as u64);
+            ws.buffer = Some(GBuffer {
                 buffer: Rc::new(device.create_buffer(&wgpu::BufferDescriptor {
                     label: None,
                     size: buffer_size,
@@ -1467,272 +1525,346 @@ where
                 element_size: 4,
             });
         }
-        if self.gpgpu_shaders.is_none() {
-            let mut size = self.context.window.as_ref().unwrap().inner_size();
+        if ws.gpgpu_shaders.is_none() {
+            let mut size = ws.context.window.as_ref().unwrap().inner_size();
             size.width = size.width.max(1);
             size.height = size.height.max(1);
-            self.gpgpu_shaders = Some((self.gpgpu_shader_fn)(&AlanWindowFrame {
-                context: self.context_buffer.as_ref().unwrap().clone(),
-                framebuffer: self.buffer.as_ref().unwrap().clone(),
-                width: size.width,
-                height: size.height,
-            }));
+            ws.gpgpu_shaders =
+                Some((ws.gpgpu_shader_fn)(&AlanWindowFrame {
+                    context: ws.context_buffer.as_ref().unwrap().clone(),
+                    framebuffer: ws.buffer.as_ref().unwrap().clone(),
+                    width: size.width,
+                    height: size.height,
+                }));
         }
-        self.inited = true;
+        ws.inited = true;
+    }
+
+    fn render_frame(&mut self, id: WindowId) {
+        let ws = match self.windows.get_mut(&id) {
+            Some(ws) => ws,
+            None => return,
+        };
+        if !ws.inited {
+            self.gpu_init(id);
+        }
+        let ws = match self.windows.get_mut(&id) {
+            Some(ws) => ws,
+            None => return,
+        };
+        let window = match ws.context.window.as_ref() {
+            Some(w) => Arc::clone(w),
+            None => return,
+        };
+        window.set_cursor_visible(ws.context.cursor_visible);
+        window.set_transparent(ws.context.transparent);
+        let mut size = window.inner_size();
+        size.width = size.width.max(1);
+        size.height = size.height.max(1);
+        let surface = match ws.surface.as_ref() {
+            Some(s) => s,
+            None => return,
+        };
+        let g = gpu();
+        let device = match ws.device.as_ref() {
+            Some(d) => d,
+            None => return,
+        };
+        let queue = match ws.queue.as_ref() {
+            Some(q) => q,
+            None => return,
+        };
+        if ws.cached_surface_config.is_none() || ws.cached_size != size {
+            let mut config = match surface.get_default_config(&g.adapter, size.width, size.height) {
+                Some(c) => c,
+                None => return,
+            };
+            config.usage =
+                wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::RENDER_ATTACHMENT;
+            config.present_mode = wgpu::PresentMode::AutoVsync;
+            config.desired_maximum_frame_latency = 1;
+            config.alpha_mode = if ws.context.transparent {
+                wgpu::CompositeAlphaMode::PreMultiplied
+            } else {
+                wgpu::CompositeAlphaMode::Auto
+            };
+            surface.configure(device, &config);
+            ws.cached_surface_config = Some(config);
+            ws.cached_size = size;
+        }
+        let frame = match surface.get_current_texture() {
+            wgpu::CurrentSurfaceTexture::Success(f)
+            | wgpu::CurrentSurfaceTexture::Suboptimal(f) => f,
+            _ => return,
+        };
+        let mut encoder =
+            device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        let context_array = (ws.context_fn)(&mut ws.context);
+        let context_slice = &context_array[..];
+        let context_ptr = context_slice.as_ptr();
+        let context_u8_len = context_array.len() * 4;
+        let context_u8: &[u8] =
+            unsafe { std::slice::from_raw_parts(context_ptr as *const u8, context_u8_len) };
+        let ctx_buf = match ws.context_buffer.as_ref() {
+            Some(b) => b,
+            None => return,
+        };
+        queue.write_buffer(&ctx_buf.buffer, 0, context_u8);
+        let ggs = match ws.gpgpu_shaders.as_mut() {
+            Some(g) => g,
+            None => return,
+        };
+        for gg in ggs {
+            if gg.module.is_none() {
+                gg.module = Some(device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: None,
+                    source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(&gg.source)),
+                }));
+            }
+            let module = gg.module.as_ref().unwrap();
+            if gg.compute_pipeline.is_none() {
+                gg.compute_pipeline = Some(device.create_compute_pipeline(
+                    &wgpu::ComputePipelineDescriptor {
+                        label: None,
+                        layout: None,
+                        module,
+                        entry_point: Some(&gg.entrypoint),
+                        compilation_options: wgpu::PipelineCompilationOptions::default(),
+                        cache: None,
+                    },
+                ));
+            }
+            let compute_pipeline = gg.compute_pipeline.as_ref().unwrap();
+            let mut bind_groups = Vec::new();
+            {
+                let mut cpass =
+                    encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                        label: None,
+                        timestamp_writes: None,
+                    });
+                cpass.set_pipeline(compute_pipeline);
+                for i in 0..gg.buffers.len() {
+                    let bind_group_layout =
+                        compute_pipeline.get_bind_group_layout(i.try_into().unwrap());
+                    let bind_group_buffers = &gg.buffers[i];
+                    let mut bind_group_entries = Vec::new();
+                    #[allow(clippy::needless_range_loop)]
+                    for j in 0..bind_group_buffers.len() {
+                        bind_group_entries.push(wgpu::BindGroupEntry {
+                            binding: j.try_into().unwrap(),
+                            resource: bind_group_buffers[j].as_entire_binding(),
+                        });
+                    }
+                    let bind_group =
+                        device.create_bind_group(&wgpu::BindGroupDescriptor {
+                            label: None,
+                            layout: &bind_group_layout,
+                            entries: &bind_group_entries[..],
+                        });
+                    bind_groups.push(bind_group);
+                }
+                #[allow(clippy::needless_range_loop)]
+                for i in 0..gg.buffers.len() {
+                    cpass.set_bind_group(i.try_into().unwrap(), &bind_groups[i], &[]);
+                }
+                let lx = gg.local_workgroup_size[0];
+                let ly = gg.local_workgroup_size[1];
+                cpass.dispatch_workgroups(
+                    ((gg.workgroup_sizes[0] + lx - 1) / lx) as u32,
+                    ((gg.workgroup_sizes[1] + ly - 1) / ly) as u32,
+                    gg.workgroup_sizes[2] as u32,
+                );
+            }
+        }
+        let framebuffer = match ws.buffer.as_ref() {
+            Some(b) => b,
+            None => return,
+        };
+        encoder.copy_buffer_to_texture(
+            wgpu::TexelCopyBufferInfo {
+                buffer: &framebuffer.buffer,
+                layout: wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: ws.context.buffer_width,
+                    rows_per_image: None,
+                },
+            },
+            frame.texture.as_image_copy(),
+            frame.texture.size(),
+        );
+        queue.submit(Some(encoder.finish()));
+        queue.present(frame);
+        let frame_start = std::time::Instant::now()
+            .checked_sub(std::time::Duration::from_secs(0))
+            .unwrap();
+        let render_time = frame_start.elapsed();
+        window.set_title(&format!("Render time: {:.3}", render_time.as_secs_f64()));
+        window.request_redraw();
     }
 }
 
-impl<C, R> ApplicationHandler for AlanWindow<C, R>
-where
-    C: FnMut(&mut AlanWindowContext) -> Vec<u32>,
-    R: Fn(&AlanWindowFrame) -> Vec<GPGPU>,
-{
+impl ApplicationHandler<UserEvent> for WindowManager {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         if event_loop.exiting() {
             return;
         }
-        self.context.window = Some(std::sync::Arc::new(
-            event_loop.create_window(self.config.clone()).unwrap(),
-        ));
+        event_loop.set_control_flow(ControlFlow::Poll);
     }
 
-    fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
+    fn user_event(&mut self, _event_loop: &ActiveEventLoop, event: UserEvent) {
+        self.pending.push_back(event);
+    }
+
+    fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
+        while let Some(event) = self.pending.pop_front() {
+            match event {
+                UserEvent::NewWindow {
+                    config,
+                    mut context,
+                    context_fn,
+                    gpgpu_shader_fn,
+                    done_tx,
+                } => {
+                    let window = Arc::new(event_loop.create_window(config).unwrap());
+                    context.window = Some(window.clone());
+                    let id = window.id();
+                    self.windows.insert(
+                        id,
+                        WindowState {
+                            context,
+                            surface: None,
+                            device: None,
+                            queue: None,
+                            context_buffer: None,
+                            buffer: None,
+                            cached_surface_config: None,
+                            cached_size: winit::dpi::PhysicalSize::new(0, 0),
+                            context_fn,
+                            gpgpu_shader_fn,
+                            gpgpu_shaders: None,
+                            inited: false,
+                            done_tx: Some(done_tx),
+                        },
+                    );
+                    window.request_redraw();
+                }
+            }
+        }
+    }
+
+    fn window_event(
+        &mut self,
+        event_loop: &ActiveEventLoop,
+        id: WindowId,
+        event: WindowEvent,
+    ) {
         match event {
             WindowEvent::CloseRequested => {
-                // Cleanup the app now that we're caching things
-                self.gpgpu_shaders = None;
-                self.context.window = None;
-                if let Some(b) = &self.buffer {
-                    b.destroy();
+                if let Some(ws) = self.windows.remove(&id) {
+                    if let Some(b) = &ws.buffer {
+                        b.destroy();
+                    }
+                    if let Some(b) = &ws.context_buffer {
+                        b.destroy();
+                    }
+                    if let Some(tx) = ws.done_tx {
+                        let _ = tx.send(());
+                    }
                 }
-                self.buffer = None;
-                if let Some(b) = &self.context_buffer {
-                    b.destroy();
+                if self.windows.is_empty() {
+                    event_loop.exit();
                 }
-                self.context_buffer = None;
-                self.queue = None;
-                self.device = None;
-                self.adapter = None;
-                self.surface = None;
-                self.instance = None;
-                event_loop.exit();
             }
             WindowEvent::Resized(mut new_size) => {
                 if event_loop.exiting() {
                     return;
                 }
-                if !self.inited {
-                    self.window_gpu_init();
+                if let Some(ws) = self.windows.get(&id) {
+                    if ws.inited {
+                        let device = ws.device.as_ref().unwrap();
+                        new_size.width = new_size.width.max(1);
+                        new_size.height = new_size.height.max(1);
+                        let buffer_width = if (4 * new_size.width) % 256 == 0 {
+                            4 * new_size.width
+                        } else {
+                            (4 * new_size.width) + (256 - ((4 * new_size.width) % 256))
+                        };
+                        let buffer_size = (buffer_width as u64) * (new_size.height as u64);
+                        let new_buffer = GBuffer {
+                            buffer: Rc::new(device.create_buffer(&wgpu::BufferDescriptor {
+                                label: None,
+                                size: buffer_size,
+                                usage: storage_buffer_type(),
+                                mapped_at_creation: false,
+                            })),
+                            id: format!("buffer_{}", format!("{}", Uuid::new_v4()).replace("-", "_")),
+                            element_size: 4,
+                        };
+                        if let Some(ws) = self.windows.get_mut(&id) {
+                            if let Some(b) = &ws.buffer {
+                                b.destroy();
+                            }
+                            ws.buffer = Some(new_buffer);
+                            ws.context.buffer_width = Some(buffer_width);
+                            ws.gpgpu_shaders =
+                                Some((ws.gpgpu_shader_fn)(&AlanWindowFrame {
+                                    context: ws.context_buffer.as_ref().unwrap().clone(),
+                                    framebuffer: ws.buffer.as_ref().unwrap().clone(),
+                                    width: new_size.width,
+                                    height: new_size.height,
+                                }));
+                        }
+                        if let Some(ws) = self.windows.get(&id) {
+                            ws.context.window.as_ref().unwrap().request_redraw();
+                        }
+                    }
                 }
-                let device = self.device.as_ref().unwrap();
-                new_size.width = new_size.width.max(1);
-                new_size.height = new_size.height.max(1);
-                self.context.buffer_width = Some(if (4 * new_size.width) % 256 == 0 {
-                    4 * new_size.width
-                } else {
-                    (4 * new_size.width) + (256 - ((4 * new_size.width) % 256))
-                });
-                let buffer_height = new_size.height;
-                let buffer_size =
-                    (self.context.buffer_width.unwrap() as u64) * (buffer_height as u64);
-                let new_buffer = GBuffer {
-                    buffer: Rc::new(device.create_buffer(&wgpu::BufferDescriptor {
-                        label: None,
-                        size: buffer_size,
-                        usage: storage_buffer_type(),
-                        mapped_at_creation: false,
-                    })),
-                    id: format!("buffer_{}", format!("{}", Uuid::new_v4()).replace("-", "_")),
-                    element_size: 4,
-                };
-                if let Some(b) = &self.buffer {
-                    b.destroy();
-                }
-                self.buffer = Some(new_buffer);
-                // Re-invoke the shader callback with new dimensions so shaders are regenerated
-                self.gpgpu_shaders = Some((self.gpgpu_shader_fn)(&AlanWindowFrame {
-                    context: self.context_buffer.as_ref().unwrap().clone(),
-                    framebuffer: self.buffer.as_ref().unwrap().clone(),
-                    width: new_size.width,
-                    height: new_size.height,
-                }));
-                self.context.window.as_ref().unwrap().request_redraw();
             }
             WindowEvent::RedrawRequested => {
                 if event_loop.exiting() {
                     return;
                 }
-                let frame_start = std::time::Instant::now();
-                if !self.inited {
-                    self.window_gpu_init();
-                }
-                let window = self.context.window.as_ref().unwrap();
-                // TODO: These shouldn't be set every frame
-                window.set_cursor_visible(self.context.cursor_visible);
-                window.set_transparent(self.context.transparent);
-                let mut size = window.inner_size();
-                size.width = size.width.max(1);
-                size.height = size.height.max(1);
-                let surface = self.surface.as_ref().unwrap();
-                let adapter = self.adapter.as_ref().unwrap();
-                let device = self.device.as_ref().unwrap();
-                let queue = self.queue.as_ref().unwrap();
-                if self.cached_surface_config.is_none() || self.cached_size != size {
-                    let mut config =
-                        match surface.get_default_config(adapter, size.width, size.height) {
-                            Some(config) => config,
-                            None => {
-                                return;
-                            }
-                        };
-                    config.usage =
-                        wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::RENDER_ATTACHMENT;
-                    config.present_mode = wgpu::PresentMode::AutoVsync;
-                    config.desired_maximum_frame_latency = 1;
-                    config.alpha_mode = if self.context.transparent {
-                        wgpu::CompositeAlphaMode::PreMultiplied
-                    } else {
-                        wgpu::CompositeAlphaMode::Auto
-                    };
-                    surface.configure(device, &config);
-                    self.cached_surface_config = Some(config);
-                    self.cached_size = size;
-                }
-                let frame = match surface.get_current_texture() {
-                    wgpu::CurrentSurfaceTexture::Success(frame)
-                    | wgpu::CurrentSurfaceTexture::Suboptimal(frame) => frame,
-                    _ => {
-                        /* Skip this particular redraw request */
-                        return;
-                    }
-                };
-
-                let mut encoder =
-                    device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-                let context_array = (self.context_fn)(&mut self.context);
-                let context_slice = &context_array[..];
-                let context_ptr = context_slice.as_ptr();
-                let context_u8_len = context_array.len() * 4;
-                let context_u8: &[u8] =
-                    unsafe { std::slice::from_raw_parts(context_ptr as *const u8, context_u8_len) };
-                let new_context_buffer = self.context_buffer.as_ref().unwrap();
-                queue.write_buffer(&new_context_buffer.buffer, 0, context_u8);
-                let ggs = self.gpgpu_shaders.as_mut().unwrap();
-                for gg in ggs {
-                    if gg.module.is_none() {
-                        gg.module =
-                            Some(device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                                label: None,
-                                source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(
-                                    &gg.source,
-                                )),
-                            }));
-                    }
-                    let module = gg.module.as_ref().unwrap();
-                    if gg.compute_pipeline.is_none() {
-                        gg.compute_pipeline = Some(device.create_compute_pipeline(
-                            &wgpu::ComputePipelineDescriptor {
-                                label: None,
-                                layout: None,
-                                module,
-                                entry_point: Some(&gg.entrypoint),
-                                compilation_options: wgpu::PipelineCompilationOptions::default(),
-                                cache: None,
-                            },
-                        ));
-                    }
-                    let compute_pipeline = gg.compute_pipeline.as_ref().unwrap();
-                    let mut bind_groups = Vec::new();
-                    {
-                        let mut cpass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                            label: None,
-                            timestamp_writes: None,
-                        });
-                        cpass.set_pipeline(compute_pipeline);
-                        for i in 0..gg.buffers.len() {
-                            let bind_group_layout =
-                                compute_pipeline.get_bind_group_layout(i.try_into().unwrap());
-                            let bind_group_buffers = &gg.buffers[i];
-                            let mut bind_group_entries = Vec::new();
-                            #[allow(clippy::needless_range_loop)]
-                            for j in 0..bind_group_buffers.len() {
-                                bind_group_entries.push(wgpu::BindGroupEntry {
-                                    binding: j.try_into().unwrap(),
-                                    resource: bind_group_buffers[j].as_entire_binding(),
-                                });
-                            }
-                            let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                                label: None,
-                                layout: &bind_group_layout,
-                                entries: &bind_group_entries[..],
-                            });
-                            bind_groups.push(bind_group);
-                        }
-                        #[allow(clippy::needless_range_loop)]
-                        for i in 0..gg.buffers.len() {
-                            // The Rust borrow checker is forcing my hand here
-                            cpass.set_bind_group(i.try_into().unwrap(), &bind_groups[i], &[]);
-                        }
-                        let lx = gg.local_workgroup_size[0];
-                        let ly = gg.local_workgroup_size[1];
-                        cpass.dispatch_workgroups(
-                            ((gg.workgroup_sizes[0] + lx - 1) / lx) as u32,
-                            ((gg.workgroup_sizes[1] + ly - 1) / ly) as u32,
-                            gg.workgroup_sizes[2] as u32,
-                        );
-                    }
-                }
-                encoder.copy_buffer_to_texture(
-                    wgpu::TexelCopyBufferInfo {
-                        buffer: &self.buffer.as_ref().unwrap().buffer,
-                        layout: wgpu::TexelCopyBufferLayout {
-                            offset: 0,
-                            bytes_per_row: self.context.buffer_width,
-                            rows_per_image: None,
-                        },
-                    },
-                    frame.texture.as_image_copy(),
-                    frame.texture.size(),
-                );
-                queue.submit(Some(encoder.finish()));
-                queue.present(frame);
-                let render_time = frame_start.elapsed();
-                self.context
-                    .window
-                    .as_ref()
-                    .unwrap()
-                    .set_title(&format!("Render time: {:.3}", render_time.as_secs_f64()));
-                self.context.window.as_ref().unwrap().request_redraw();
+                self.render_frame(id);
             }
             WindowEvent::CursorMoved { position, .. } => {
-                if self.context.mouse_x.is_some() {
-                    self.context.mouse_x = Some(position.x as u32);
-                    self.context.mouse_y = Some(position.y as u32);
+                if let Some(ws) = self.windows.get_mut(&id) {
+                    if ws.context.mouse_x.is_some() {
+                        ws.context.mouse_x = Some(position.x as u32);
+                        ws.context.mouse_y = Some(position.y as u32);
+                    }
                 }
             }
             WindowEvent::MouseInput { state, button, .. } => {
                 let pressed = state == ElementState::Pressed;
-                match button {
-                    MouseButton::Left => self.context.mouse_left = pressed,
-                    MouseButton::Right => self.context.mouse_right = pressed,
-                    MouseButton::Middle => self.context.mouse_middle = pressed,
-                    _ => {}
+                if let Some(ws) = self.windows.get_mut(&id) {
+                    match button {
+                        MouseButton::Left => ws.context.mouse_left = pressed,
+                        MouseButton::Right => ws.context.mouse_right = pressed,
+                        MouseButton::Middle => ws.context.mouse_middle = pressed,
+                        _ => {}
+                    }
                 }
             }
-            WindowEvent::MouseWheel { delta, .. } => match delta {
-                MouseScrollDelta::LineDelta(x, y) => {
-                    self.context.mouse_wheel_dx += x;
-                    self.context.mouse_wheel_dy += y;
+            WindowEvent::MouseWheel { delta, .. } => {
+                if let Some(ws) = self.windows.get_mut(&id) {
+                    match delta {
+                        MouseScrollDelta::LineDelta(x, y) => {
+                            ws.context.mouse_wheel_dx += x;
+                            ws.context.mouse_wheel_dy += y;
+                        }
+                        MouseScrollDelta::PixelDelta(pos) => {
+                            ws.context.mouse_wheel_dx += pos.x as f32;
+                            ws.context.mouse_wheel_dy += pos.y as f32;
+                        }
+                    }
                 }
-                MouseScrollDelta::PixelDelta(pos) => {
-                    self.context.mouse_wheel_dx += pos.x as f32;
-                    self.context.mouse_wheel_dy += pos.y as f32;
-                }
-            },
-            _ => {} // Ignore all other events
+            }
+            _ => {}
         }
     }
 }
+
+static EVENT_LOOP_PROXY: OnceLock<EventLoopProxy<UserEvent>> = OnceLock::new();
 
 pub fn run_window<C, R>(
     mut initial_context_fn: impl FnMut(&mut AlanWindowContext),
@@ -1740,8 +1872,8 @@ pub fn run_window<C, R>(
     gpgpu_shader_fn: R,
 ) -> Result<(), AlanError>
 where
-    C: FnMut(&mut AlanWindowContext) -> Vec<u32>,
-    R: Fn(&AlanWindowFrame) -> Vec<GPGPU>,
+    C: FnMut(&mut AlanWindowContext) -> Vec<u32> + Send + 'static,
+    R: Fn(&AlanWindowFrame) -> Vec<GPGPU> + Send + 'static,
 {
     let mut context = AlanWindowContext {
         window: None,
@@ -1759,29 +1891,62 @@ where
     };
     initial_context_fn(&mut context);
     let config = Window::default_attributes().with_transparent(context.transparent);
-    let event_loop = EventLoop::new().unwrap();
-    event_loop.set_control_flow(ControlFlow::Poll); // TODO: This should also be configurable
-    let mut app = AlanWindow {
-        config,
-        context,
-        instance: None,
-        surface: None,
-        adapter: None,
-        device: None,
-        queue: None,
-        context_buffer: None,
-        buffer: None,
-        cached_surface_config: None,
-        cached_size: winit::dpi::PhysicalSize::new(0, 0),
-        context_fn,
-        gpgpu_shader_fn,
-        gpgpu_shaders: None,
-        inited: false,
-    };
-    match event_loop.run_app(&mut app) {
-        Ok(_) => Ok(()),
-        Err(e) => Err(AlanError {
-            message: format!("{e:?}"),
-        }),
+    let (tx, rx) = channel();
+
+    // First call: create and run the event loop on the current thread.
+    // Subsequent calls: send requests via the proxy and block on the channel.
+    if EVENT_LOOP_PROXY.get().is_none() {
+        let event_loop: EventLoop<UserEvent> = EventLoop::with_user_event()
+            .build()
+            .map_err(|e| AlanError {
+                message: format!("Failed to create event loop: {}", e),
+            })?;
+        let proxy = event_loop.create_proxy();
+        EVENT_LOOP_PROXY.set(proxy).unwrap();
+
+        // Send the first window request
+        EVENT_LOOP_PROXY
+            .get()
+            .unwrap()
+            .send_event(UserEvent::NewWindow {
+                config,
+                context,
+                context_fn: Box::new(context_fn),
+                gpgpu_shader_fn: Box::new(gpgpu_shader_fn),
+                done_tx: tx,
+            })
+            .map_err(|e| AlanError {
+                message: format!("Failed to send window request: {}", e),
+            })?;
+
+        let mut manager = WindowManager::new();
+        event_loop.run_app(&mut manager).map_err(|e| AlanError {
+            message: format!("Event loop error: {}", e),
+        })?;
+
+        // After run_app returns, all windows have closed; drain the notification
+        rx.recv().map_err(|e| AlanError {
+            message: format!("Window channel closed: {}", e),
+        })?;
+        Ok(())
+    } else {
+        // Event loop already running — send request via proxy
+        EVENT_LOOP_PROXY
+            .get()
+            .unwrap()
+            .send_event(UserEvent::NewWindow {
+                config,
+                context,
+                context_fn: Box::new(context_fn),
+                gpgpu_shader_fn: Box::new(gpgpu_shader_fn),
+                done_tx: tx,
+            })
+            .map_err(|e| AlanError {
+                message: format!("Failed to send window request: {}", e),
+            })?;
+        rx.recv().map_err(|e| AlanError {
+            message: format!("Window channel closed: {}", e),
+        })?;
+        Ok(())
     }
 }

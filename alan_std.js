@@ -1469,9 +1469,13 @@ export async function runWindow(initialContextFn, contextFn, gpgpuShaderFn) {
     context.mouseWheelY += event.deltaY;
   }, { passive: true });
   let surface = context.canvas.getContext('webgpu');
-  let adapter = await navigator.gpu.requestAdapter();
-  let device = await adapter.requestDevice();
-  let queue = device.queue;
+  // Reuse the shared GPGPU device so `GBuffer`s created anywhere in the
+  // program can bind into window shaders (and vice versa). Unlike native
+  // wgpu, any WebGPU device can present to a canvas, so there is no
+  // surface-compatibility concern in the browser.
+  let g = await gpu();
+  let device = g.device;
+  let queue = g.queue;
   surface.configure({
     device,
     format: 'bgra8unorm',
