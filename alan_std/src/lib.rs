@@ -817,7 +817,7 @@ impl GPU {
         }
     }
     /// Lazily create the device and queue for this adapter on first access.
-    fn get_device(&self) -> &wgpu::Device {
+    pub fn get_device(&self) -> &wgpu::Device {
         &self
             .device
             .get_or_init(|| {
@@ -835,7 +835,7 @@ impl GPU {
             .0
     }
     /// Lazily create the device and queue for this adapter on first access.
-    fn get_queue(&self) -> &wgpu::Queue {
+    pub fn get_queue(&self) -> &wgpu::Queue {
         self.get_device();
         &self.device.get().unwrap().1
     }
@@ -892,7 +892,7 @@ fn gpus_init() -> &'static Vec<GPU> {
     })
 }
 
-fn gpu() -> &'static GPU {
+pub fn gpu() -> &'static GPU {
     match gpus_init().first() {
         Some(g) => g,
         None => panic!(
