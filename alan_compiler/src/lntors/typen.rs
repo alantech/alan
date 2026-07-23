@@ -42,10 +42,10 @@ pub fn ctype_to_rtype(
                     let res = ctype_to_rtype(o.clone(), deps)?;
                     let s = res.0;
                     deps = res.1;
-                    Ok((format!("impl FnMut() -> {s} + Send"), deps))
+                    Ok((format!("impl FnMut() -> {s}"), deps))
                 } else {
                     Ok((format!(
-                        "impl FnMut(&{}) -> {} + Send",
+                        "impl FnMut(&{}) -> {}",
                         match &**i {
                             CType::Tuple(ts, _) => {
                                 let mut out = Vec::new();
@@ -214,10 +214,10 @@ pub fn ctype_to_rtype(
                 let res = ctype_to_rtype(o.clone(), deps)?;
                 let s = res.0;
                 deps = res.1;
-                Ok((format!("impl Fn() -> {s} + Send"), deps))
+                Ok((format!("impl Fn() -> {s}"), deps))
             } else {
                 Ok((format!(
-                    "impl Fn(&{}) -> {} + Send",
+                    "impl Fn(&{}) -> {}",
                     match &**i {
                         CType::Tuple(ts, _) => {
                             let mut out = Vec::new();

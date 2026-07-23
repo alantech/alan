@@ -9,9 +9,6 @@ export type{Rs} WindowBacking = Rust{"alan_std_window" @ "https://github.com/ala
 export type{Js} WindowBacking = Nodejs{"alan_std_window" @ "https://github.com/alantech/alan.git"};
 export type Window = Binds{"alan_std_window::AlanWindowContext" <- WindowBacking};
 export type Frame = Binds{"alan_std_window::AlanWindowFrame" <- WindowBacking};
-// Re-use root-scope GBufferRaw so GBuffer{T} struct is compatible
-type{Rs} GBufferRaw = Binds{"alan_std::GBuffer" <- Rust{"alan_std" @ "https://github.com/alantech/alan.git"}};
-type{Js} GBufferRaw = Binds{"GPUBuffer"};
 
 export fn window
   "alan_std_window::run_window"
@@ -54,14 +51,14 @@ export fn{Js} runtime "alan_std_window.contextRuntime" <- WindowBacking :: Windo
 export fn{Js} canvas "alan_std_window.contextCanvas" <- WindowBacking :: (Window, string) -> ();
 
 // Frame accessor functions
-export fn context(f: Frame) = GBuffer{u32}({"alan_std_window::frame_context" <- WindowBacking :: Frame -> GBufferRaw}(f));
-export fn framebuffer(f: Frame) = GBuffer{u32}({"alan_std_window::frame_framebuffer" <- WindowBacking :: Frame -> GBufferRaw}(f));
+export fn context(f: Frame) = {"alan_std_window::frame_context" <- WindowBacking :: Frame -> GBuffer{u32}}(f);
+export fn framebuffer(f: Frame) = {"alan_std_window::frame_framebuffer" <- WindowBacking :: Frame -> GBuffer{u32}}(f);
 export fn width(f: Frame) = {Property{"width"} :: Frame -> u32}(f);
 export fn height(f: Frame) = {Property{"height"} :: Frame -> u32}(f);
 
 // JS frame accessors
-export fn{Js} context(f: Frame) = GBuffer{u32}({"alan_std_window.frameContext" <- WindowBacking :: Frame -> GBufferRaw}(f));
-export fn{Js} framebuffer(f: Frame) = GBuffer{u32}({"alan_std_window.frameFramebuffer" <- WindowBacking :: Frame -> GBufferRaw}(f));
+export fn{Js} context(f: Frame) = {"alan_std_window.frameContext" <- WindowBacking :: Frame -> GBuffer{u32}}(f);
+export fn{Js} framebuffer(f: Frame) = {"alan_std_window.frameFramebuffer" <- WindowBacking :: Frame -> GBuffer{u32}}(f);
 export fn{Js} width(f: Frame) = {"alan_std_window.frameWidth" <- WindowBacking :: Frame -> u32}(f);
 export fn{Js} height(f: Frame) = {"alan_std_window.frameHeight" <- WindowBacking :: Frame -> u32}(f);
 
