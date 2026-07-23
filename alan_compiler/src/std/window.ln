@@ -6,7 +6,7 @@
 ///   fn GBuffer <-- '@std/window'
 ///   fn window <-- '@std/window'
 
-export type{Rs} WindowBacking = Rust{"alan_std_window" @ "https://github.com/alantech/alan.git"};
+export type{Rs} WindowBacking = Rust{"alan_std_window" @ "https://github.com/alantech/alan.git#alan_std_window"};
 export type{Js} WindowBacking = Nodejs{"alan_std_window" @ "https://github.com/alantech/alan.git"};
 export type Window = Binds{"alan_std_window::AlanWindowContext" <- WindowBacking};
 export type Frame = Binds{"alan_std_window::AlanWindowFrame" <- WindowBacking};
