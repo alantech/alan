@@ -10,7 +10,7 @@ authors.workspace = true
 edition.workspace = true
 
 [dependencies]
-alan_std = { git = "https://github.com/alantech/alan.git" }
+alan_std = { git = "https://github.com/alantech/alan.git", branch = "alan_std_window" }
 futures = "0.3.32"
 ordered_hash_map = "0.6.0"
 uuid = { version = "1.23.2", features = ["v4", "fast-rng"] }
