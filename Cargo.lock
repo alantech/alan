@@ -60,6 +60,7 @@ dependencies = [
  "ordered_hash_map",
  "uuid",
  "wgpu",
+ "winit",
 ]
 
 [[package]]
