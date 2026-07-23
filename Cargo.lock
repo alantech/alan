@@ -60,6 +60,17 @@ dependencies = [
  "ordered_hash_map",
  "uuid",
  "wgpu",
+]
+
+[[package]]
+name = "alan_std_window"
+version = "0.2.0"
+dependencies = [
+ "alan_std",
+ "futures",
+ "ordered_hash_map",
+ "uuid",
+ "wgpu",
  "winit",
 ]
 

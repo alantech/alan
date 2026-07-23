@@ -1,6 +1,6 @@
 [package]
-name = "alan_std"
-description = "The Alan Standard Library Rust Implementation"
+name = "alan_std_window"
+description = "Alan Standard Library Window Implementation"
 license.workspace = true
 homepage.workspace = true
 documentation.workspace = true
@@ -10,7 +10,9 @@ authors.workspace = true
 edition.workspace = true
 
 [dependencies]
+alan_std = { path = "../alan_std" }
 futures = "0.3.32"
 ordered_hash_map = "0.6.0"
 uuid = { version = "1.23.2", features = ["v4", "fast-rng"] }
 wgpu = "30.0.0"
+winit = "0.30.13"

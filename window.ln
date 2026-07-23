@@ -1,0 +1,58 @@
+type Window <-- '@std/window';
+type Frame <-- '@std/window';
+fn window <-- '@std/window';
+fn cursorInvisible <-- '@std/window';
+fn width <-- '@std/window';
+fn height <-- '@std/window';
+fn runtime <-- '@std/window';
+fn mouseX <-- '@std/window';
+fn mouseY <-- '@std/window';
+fn mouseLeft <-- '@std/window';
+fn mouseRight <-- '@std/window';
+fn pixel <-- '@std/window';
+fn context <-- '@std/window';
+fn framebuffer <-- '@std/window';
+
+export fn main {
+  // Start a "window" inside of a canvas element
+  window(fn (win: Mut{Window}) {
+    // Use the canvas named "render"
+    // win.canvas("render");
+    // Disable the normal cursor when over the canvas
+    win.cursorInvisible;
+  }, fn (win: Mut{Window}) = [
+    // On each frame, create a context buffer consisting of the width, height, current run time, and mouse data
+    win.width, win.height, win.runtime, win.mouseX, win.mouseY, win.mouseLeft, win.mouseRight
+  ], fn (frame: Frame) {
+    // On each frame in the GPU, get the current pixel to render and extract the context
+    let id = frame.pixel;
+    let width = frame.context[0];
+    let height = frame.context[1];
+    let time = frame.context[2].asF32;
+    let mouseX = frame.context[3];
+    let mouseY = frame.context[4];
+    let mouseLeft = frame.context[5].asBool;
+    let mouseRight = frame.context[6].asBool;
+    // Compute a value that cycles cleanly over 10 seconds of time
+    let per10sec = time / 10.0;
+    let cycle = 2.0 * abs(per10sec - floor(per10sec) - 0.5);
+    // Determine how "bright" the light the mouse "shines" on the current pixel
+    let scale = 3.0.gf32;
+    if mouseLeft {
+      scale = 5.0.gf32;
+    } else if mouseRight {
+      scale = 10.0.gf32;
+    }
+    let light = scale / gvec2f(abs(mouseX.gi32 - id.x).gf32, abs(mouseY.gi32 - id.y).gf32).magnitude;
+    // Compute the RGBA values for the current pixel
+    let red = min(1.0, light + cycle * gf32(id.x) / gf32(width));
+    let green = min(1.0, light + 1.0 - red);
+    let blue = min(1.0, light + gf32(id.y) / gf32(height));
+    let alpha = 1.0;
+    // Compute the memory location in the framebuffer for the current pixel
+    let loc = id.x + (frame.framebuffer.len / height) * id.y;
+    // Pack the color values into a single 32-bit integer and store them in the correct location
+    // returning this as the only GPU operation to run per frame
+    return [frame.framebuffer[loc].store(pack4x8unorm(gvec4f(blue, green, red, alpha))).build];
+  });
+}

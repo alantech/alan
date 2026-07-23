@@ -1,0 +1,78 @@
+/// @std/window - Window and GPU rendering module
+///
+/// Import with:
+///   type Window <-- '@std/window'
+///   type Frame <-- '@std/window'
+///   fn GBuffer <-- '@std/window'
+///   fn window <-- '@std/window'
+
+export type{Rs} WindowBacking = Rust{"alan_std_window" @ "https://github.com/alantech/alan.git"};
+export type{Js} WindowBacking = Nodejs{"alan_std_window" @ "https://github.com/alantech/alan.git"};
+export type Window = Binds{"alan_std_window::AlanWindowContext" <- WindowBacking};
+export type Frame = Binds{"alan_std_window::AlanWindowFrame" <- WindowBacking};
+
+/// Import GBuffer{T} constructors from window scope
+export fn GBuffer{T} "create_buffer_init" <- WindowBacking :: (T[]) -> GBufferRaw;
+export fn GBuffer{T} "create_empty_buffer" <- WindowBacking :: (gu32) -> GBufferRaw!;
+
+export fn window
+  "alan_std_window::run_window"
+  <- WindowBacking
+  :: (Mut{(Mut{Window}) -> ()}, Mut{(Mut{Window}) -> u32[]}, (Frame) -> GPGPU[]) -> ()!;
+
+// Window context methods (Rust - method calls on AlanWindowContext)
+export fn width Method{"width"} :: Window -> u32;
+export fn height Method{"height"} :: Window -> u32;
+export fn bufferWidth Method{"buffer_width"} :: Window -> u32;
+export fn mouseX Method{"mouse_x"} :: Mut{Window} -> u32;
+export fn mouseY Method{"mouse_y"} :: Mut{Window} -> u32;
+export fn mouseLeft Method{"mouse_left"} :: Mut{Window} -> u32;
+export fn mouseRight Method{"mouse_right"} :: Mut{Window} -> u32;
+export fn mouseMiddle Method{"mouse_middle"} :: Mut{Window} -> u32;
+export fn mouseWheelX Method{"mouse_wheel_x"} :: Mut{Window} -> f32;
+export fn mouseWheelY Method{"mouse_wheel_y"} :: Mut{Window} -> f32;
+export fn cursorVisible Method{"cursor_visible"} :: Mut{Window} -> ();
+export fn cursorInvisible Method{"cursor_invisible"} :: Mut{Window} -> ();
+export fn transparent Method{"transparent"} :: Mut{Window} -> ();
+export fn opaque Method{"opaque"} :: Mut{Window} -> ();
+export fn runtime Method{"runtime"} :: Window -> u32;
+
+// Window context methods (JS - accessor functions)
+export fn{Js} width "alan_std_window.contextWidth" <- WindowBacking :: Window -> u32;
+export fn{Js} height "alan_std_window.contextHeight" <- WindowBacking :: Window -> u32;
+export fn{Js} bufferWidth "alan_std_window.contextBufferWidth" <- WindowBacking :: Window -> u32;
+export fn{Js} mouseX "alan_std_window.contextMouseX" <- WindowBacking :: Window -> u32;
+export fn{Js} mouseY "alan_std_window.contextMouseY" <- WindowBacking :: Window -> u32;
+export fn{Js} mouseLeft "alan_std_window.contextMouseLeft" <- WindowBacking :: Window -> u32;
+export fn{Js} mouseRight "alan_std_window.contextMouseRight" <- WindowBacking :: Window -> u32;
+export fn{Js} mouseMiddle "alan_std_window.contextMouseMiddle" <- WindowBacking :: Window -> u32;
+export fn{Js} mouseWheelX "alan_std_window.contextMouseWheelX" <- WindowBacking :: Window -> f32;
+export fn{Js} mouseWheelY "alan_std_window.contextMouseWheelY" <- WindowBacking :: Window -> f32;
+export fn{Js} cursorVisible "alan_std_window.contextCursorVisible" <- WindowBacking :: Mut{Window} -> ();
+export fn{Js} cursorInvisible "alan_std_window.contextCursorInvisible" <- WindowBacking :: Mut{Window} -> ();
+export fn{Js} transparent "alan_std_window.contextTransparent" <- WindowBacking :: Mut{Window} -> ();
+export fn{Js} opaque "alan_std_window.contextOpaque" <- WindowBacking :: Mut{Window} -> ();
+export fn{Js} runtime "alan_std_window.contextRuntime" <- WindowBacking :: Window -> u32;
+export fn{Js} canvas "alan_std_window.contextCanvas" <- WindowBacking :: (Window, string) -> ();
+
+// Frame accessor functions
+export fn context(f: Frame) {
+  return GBuffer{u32}({"alan_std_window.frameContext" <- WindowBacking :: Frame -> GBufferRaw}(f));
+}
+export fn framebuffer(f: Frame) {
+  return GBuffer{u32}({"alan_std_window.frameFramebuffer" <- WindowBacking :: Frame -> GBufferRaw}(f));
+}
+export fn width(f: Frame) = {Property{"width"} :: Frame -> u32}(f);
+export fn height(f: Frame) = {Property{"height"} :: Frame -> u32}(f);
+
+// JS frame accessors
+export fn{Js} context(f: Frame) {
+  return GBuffer{u32}({"alan_std_window.frameContext" <- WindowBacking :: Frame -> GBufferRaw}(f));
+}
+export fn{Js} framebuffer(f: Frame) {
+  return GBuffer{u32}({"alan_std_window.frameFramebuffer" <- WindowBacking :: Frame -> GBufferRaw}(f));
+}
+export fn{Js} width(f: Frame) = {"alan_std_window.frameWidth" <- WindowBacking :: Frame -> u32}(f);
+export fn{Js} height(f: Frame) = {"alan_std_window.frameHeight" <- WindowBacking :: Frame -> u32}(f);
+
+export fn pixel(f: Frame) = gFor(f.width, f.height);

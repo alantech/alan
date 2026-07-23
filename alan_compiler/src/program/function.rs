@@ -400,12 +400,27 @@ impl Function {
                     // grab the specified function to import. If it's any other type, we presume
                     // it's only the input type defined
                     let (kind, input_type, rettype) = match &*ctype {
-                        CType::From(_) => CType::fail(
-                            "TODO: Support importing a function from an Alan dependency.",
-                        ),
-                        CType::Import(..) => CType::fail(
-                            "TODO: Support importing a function from an Alan dependency.",
-                        ),
+                        CType::From(t) => {
+                            // Convert From to Import with the function name, same as non-generic path
+                            let import = CType::import(Arc::new(CType::TString(name.clone())), t.clone());
+                            match &*import {
+                                CType::Import(n, d) => match &**n {
+                                    CType::TString(s) => {
+                                        (FnKind::ExternalGeneric(generics, s.clone(), d.clone()), import, Arc::new(CType::Infer("unknown".to_string(), "unknown".to_string())))
+                                    }
+                                    _ => CType::fail("TODO: Support more than bare function imports for generic function binding"),
+                                }
+                                _ => unreachable!(),
+                            }
+                        }
+                        CType::Import(n, d) => {
+                            match &**n {
+                                CType::TString(s) => {
+                                    (FnKind::ExternalGeneric(generics, s.clone(), d.clone()), ctype, Arc::new(CType::Infer("unknown".to_string(), "unknown".to_string())))
+                                }
+                                _ => CType::fail("TODO: Support more than bare function imports for generic function binding"),
+                            }
+                        }
                         CType::Call(n, f) => match &**n {
                             CType::TString(s) => {
                                 match &**f {

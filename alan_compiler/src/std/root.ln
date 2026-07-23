@@ -5956,67 +5956,6 @@ fn map{G, G2}
   compute.build.run;
   return out;
 }
-/// GPU Rendering-related functions
-type{Rs} Window = Binds{"alan_std::AlanWindowContext" <- RootBacking};
-type{Js} Window = Binds{"AlanWindowContext"};
-type{Rs} Frame = Binds{"alan_std::AlanWindowFrame" <- RootBacking};
-type{Js} Frame = Binds{"AlanWindowFrame"};
-
-fn{Rs} window
-  "alan_std::run_window"
-  <- RootBacking
-  :: (Mut{(Mut{Window}) -> ()}, Mut{(Mut{Window}) -> u32[]}, (Frame) -> GPGPU[]) -> ()!;
-fn{Js} window
-  "alan_std.runWindow"
-  <- RootBacking
-  :: (Window -> (), Window -> u32[], Frame -> GPGPU[]) -> Promise{()!};
-fn{Rs} width Method{"width"} :: Window -> u32;
-fn{Js} width "alan_std.contextWidth" <- RootBacking :: Window -> u32;
-fn{Rs} height Method{"height"} :: Window -> u32;
-fn{Js} height "alan_std.contextHeight" <- RootBacking :: Window -> u32;
-fn{Rs} bufferWidth Method{"buffer_width"} :: Window -> u32;
-fn{Js} bufferWidth "alan_std.contextBufferWidth" <- RootBacking :: Window -> u32;
-fn{Rs} mouseX Method{"mouse_x"} :: Mut{Window} -> u32;
-fn{Js} mouseX "alan_std.contextMouseX" <- RootBacking :: Window -> u32;
-fn{Rs} mouseY Method{"mouse_y"} :: Mut{Window} -> u32;
-fn{Js} mouseY "alan_std.contextMouseY" <- RootBacking :: Window -> u32;
-fn{Rs} mouseLeft Method{"mouse_left"} :: Mut{Window} -> u32;
-fn{Js} mouseLeft "alan_std.contextMouseLeft" <- RootBacking :: Window -> u32;
-fn{Rs} mouseRight Method{"mouse_right"} :: Mut{Window} -> u32;
-fn{Js} mouseRight "alan_std.contextMouseRight" <- RootBacking :: Window -> u32;
-fn{Rs} mouseMiddle Method{"mouse_middle"} :: Mut{Window} -> u32;
-fn{Js} mouseMiddle "alan_std.contextMouseMiddle" <- RootBacking :: Window -> u32;
-fn{Rs} mouseWheelX Method{"mouse_wheel_x"} :: Mut{Window} -> f32;
-fn{Js} mouseWheelX "alan_std.contextMouseWheelX" <- RootBacking :: Window -> f32;
-fn{Rs} mouseWheelY Method{"mouse_wheel_y"} :: Mut{Window} -> f32;
-fn{Js} mouseWheelY "alan_std.contextMouseWheelY" <- RootBacking :: Window -> f32;
-fn{Rs} cursorVisible Method{"cursor_visible"} :: Mut{Window} -> ();
-fn{Js} cursorVisible "alan_std.contextCursorVisible" <- RootBacking :: Window -> ();
-fn{Rs} cursorInvisible Method{"cursor_invisible"} :: Mut{Window} -> ();
-fn{Js} cursorInvisible "alan_std.contextCursorInvisible" <- RootBacking :: Window -> ();
-fn{Rs} transparent Method{"transparent"} :: Mut{Window} -> ();
-fn{Js} transparent "alan_std.contextTransparent" <- RootBacking :: Window -> ();
-fn{Rs} opaque Method{"opaque"} :: Mut{Window} -> ();
-fn{Js} opaque "alan_std.contextOpaque" <- RootBacking :: Window -> ();
-fn{Rs} runtime Method{"runtime"} :: Window -> u32;
-fn{Js} runtime "alan_std.contextRuntime" <- RootBacking :: Window -> u32;
-fn{Js} canvas "alan_std.contextCanvas" <- RootBacking :: (Window, string) -> ();
-// TODO: Be less opinionated on the context and framebuffer types, maybe?
-fn{Rs} context(f: Frame) = GBuffer{u32}({Property{"context.clone()"} :: Frame -> GBufferRaw}(f));
-fn{Js} context(f: Frame) {
-  return GBuffer{u32}({"alan_std.frameContext" <- RootBacking :: Frame -> GBufferRaw}(f));
-}
-fn{Rs} framebuffer(f: Frame) {
-  return GBuffer{u32}({Property{"framebuffer.clone()"} :: Frame -> GBufferRaw}(f));
-}
-fn{Js} framebuffer(f: Frame) {
-  return GBuffer{u32}({"alan_std.frameFramebuffer" <- RootBacking :: Frame -> GBufferRaw}(f));
-}
-fn{Rs} width(f: Frame) = {Property{"width"} :: Frame -> u32}(f);
-fn{Js} width(f: Frame) = {"alan_std.frameWidth" <- RootBacking :: Frame -> u32}(f);
-fn{Rs} height(f: Frame) = {Property{"height"} :: Frame -> u32}(f);
-fn{Js} height(f: Frame) = {"alan_std.frameHeight" <- RootBacking :: Frame -> u32}(f);
-fn pixel(f: Frame) = gFor(f.width, f.height);
 /// Process exit-related functions
 fn{Rs} ExitCode "std::process::ExitCode::from" :: Own{u8} -> ExitCode;
 fn{Js} ExitCode "Number" :: u8 -> ExitCode;

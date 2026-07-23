@@ -1,0 +1,48 @@
+# State: Working on `from_microstatement` refactoring (Refactoring #1)
+
+## Objective
+Refactor the Alan compiler to eliminate duplicated `from_microstatement` IR traversal logic between Rust and JS backends. Continue the broader codegen abstraction plan.
+
+## Important Details
+- Full CI passed (85/85 tests) and ProgramGuard work merged (commit ca2917d).
+- `from_microstatement` in both backends matches the same 8 `Microstatement` variants with identical control flow but divergent rendering.
+- `Backend` trait in `codegen/mod.rs` provides `render_function_value` and `render_bind_value`; both backends implement it.
+- `codegen/common.rs` contains shared helpers: `resolve_function_from_scope`, `is_function_arg`, `mangled_function_name`, `strip_amp_mut`, `enum_variant_kind`, `try_single_inline`, `try_multi_inline`, `sanitize_ctype_string`, `render_binds_name`, `is_option_or_result_either`, `either_variant_to_rust_str`, `build_native_call`, `build_native_call_no_cast`, `render_array`.
+- `ProgramGuard` RAII wrapper with `get_ref()`/`get_mut()` replaces all `get_program()`/`return_program()` calls.
+- `codegen::bootstrap` and `codegen::register_dependency` consolidate backend entry points.
+- `FnCall` arms are too backend-specific (inlining, cfn, ownership) to share — already extracted what's possible.
+- Remaining arms (Arg, Assignment, Closure, VarCall, Return) are either too small or too divergent to justify extraction.
+
+## Work State
+### Completed
+- `Backend` trait + implementations for `LnToRust`/`LnToJs`
+- Shared `CType::Function` dispatch via `Backend::render_function_value` / `render_bind_value`
+- Shared `NativeCall` formatting via `build_native_call` / `build_native_call_no_cast`
+- Shared `Array` rendering via `render_array` helper with backend-specific format closure
+- `ProgramGuard` RAII wrapper, all 19 access sites updated
+- Entry point consolidation via `codegen::bootstrap` / `codegen::register_dependency`
+- Shared type helpers: `sanitize_ctype_string`, `render_binds_name`, `is_option_or_result_either`, `either_variant_to_rust_str`
+- Shared inlining: `try_single_inline`, `try_multi_inline`
+- Cleaned up unused `NativeCallKind` import from JS backend
+- `cargo check` passes cleanly; 85/85 unit tests pass
+
+### Active
+- `from_microstatement` high-impact refactoring is complete
+- Remaining arms (Arg, Assignment, Closure, FnCall, VarCall, Return) assessed: not worth extracting
+
+### Blocked
+- (none)
+
+## Next Move
+The `from_microstatement` refactoring is effectively complete. High-impact shared code has been extracted. Remaining options:
+1. **Option/Result special-casing** (plan item): ~16 occurrences across both backends — consolidate into a single helper
+2. **Split `ctype.rs`** (plan item #3): 299KB/6239 lines — pure file reorganization, no behavioral changes
+3. **Consolidate `typen.rs`** (plan item #5): `lntors/typen.rs` (565 lines) and `lntojs/typen.rs` (230 lines) share verbatim arms
+
+## Relevant Files
+- `alan_compiler/src/codegen/common.rs` (231 lines): Shared helpers + new `render_array`
+- `alan_compiler/src/codegen/mod.rs` (148 lines): Backend trait, type aliases, bootstrap, register_dependency
+- `alan_compiler/src/lntors/function.rs` (3051 lines): Rust backend — `from_microstatement` refactored
+- `alan_compiler/src/lntojs/function.rs` (1984 lines): JS backend — `from_microstatement` refactored
+- `alan_compiler/src/program/microstatement.rs`: IR `Microstatement` enum definition
+- `.opencode/plans/alan-refactor.md`: Full refactoring plan & structural map

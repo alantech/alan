@@ -177,6 +177,7 @@ impl<'a> Program<'a> {
             let src = match path.as_str() {
                 "@std/fs" => include_str!("../std/fs.ln").to_string(),
                 "@std/seq" => include_str!("../std/seq.ln").to_string(),
+                "@std/window" => include_str!("../std/window.ln").to_string(),
                 _ => {
                     return Err(format!("Unknown standard library named {}", &path).into());
                 }
