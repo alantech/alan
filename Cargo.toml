@@ -11,3 +11,7 @@ version = "0.2.0"
 rust-version = "1.92.0"
 authors = ["David Ellis <isv.damocles@gmail.com>"]
 edition = "2021"
+
+[patch."https://github.com/alantech/alan.git"]
+alan_std = { path = "alan_std" }
+alan_std_window = { path = "alan_std_window" }
