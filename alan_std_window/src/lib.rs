@@ -4,13 +4,12 @@
 /// Import with:
 ///   type Window <-- '@std/window'
 ///   type Frame <-- '@std/window'
-///   fn GBuffer <-- '@std/window'
 ///   fn window <-- '@std/window'
 
-/// Marker type for window-scope Rust bindings (distinct from root-scope RootBacking).
+/// Marker type for window-scope Rust bindings.
 pub struct WindowBacking;
 
-// Re-export GBuffer and GPGPU types from alan_std so window code can use them
+// Re-export GBuffer and GPGPU types from alan_std
 pub use alan_std::buffer_id;
 pub use alan_std::bufferlen;
 pub use alan_std::create_buffer_init;
@@ -27,21 +26,27 @@ pub use alan_std::AlanError;
 pub use alan_std::GBuffer;
 pub use alan_std::GPGPU;
 
+use std::sync::Arc;
+use winit::application::ApplicationHandler;
+use winit::dpi::PhysicalSize;
+use winit::event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent};
+use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
+use winit::window::{Window, WindowAttributes};
+
 /// Window context struct -- holds window state and input tracking.
-#[derive(Clone)]
 pub struct AlanWindowContext {
-    pub window: Option<std::sync::Arc<winit::window::Window>>,
-    pub start: Option<std::time::Instant>,
-    pub buffer_width: Option<u32>,
-    pub mouse_x: Option<u32>,
-    pub mouse_y: Option<u32>,
-    pub mouse_left: bool,
-    pub mouse_right: bool,
-    pub mouse_middle: bool,
-    pub mouse_wheel_dx: f32,
-    pub mouse_wheel_dy: f32,
-    pub cursor_visible: bool,
-    pub transparent: bool,
+    window: Option<Arc<Window>>,
+    start: Option<std::time::Instant>,
+    buffer_width: Option<u32>,
+    mouse_x: Option<u32>,
+    mouse_y: Option<u32>,
+    mouse_left: bool,
+    mouse_right: bool,
+    mouse_middle: bool,
+    mouse_wheel_dx: f32,
+    mouse_wheel_dy: f32,
+    cursor_visible: bool,
+    transparent: bool,
 }
 
 impl AlanWindowContext {
@@ -141,12 +146,14 @@ pub struct AlanWindowFrame {
     pub height: u32,
 }
 
-// Type aliases for window function signatures
-type WindowContextFn = Box<dyn FnMut(&mut AlanWindowContext) -> Vec<u32>>;
-type WindowGPGPUShaderFn = Box<dyn Fn(&AlanWindowFrame) -> Vec<GPGPU>>;
-
-/// Per-window GPU and rendering state
-struct WindowState {
+/// Generic window handler -- closures are stored as type params, NOT boxed traits.
+/// This avoids 'static and Send bounds entirely.
+pub struct AlanWindow<C, R>
+where
+    C: FnMut(&mut AlanWindowContext) -> Vec<u32>,
+    R: Fn(&AlanWindowFrame) -> Vec<GPGPU>,
+{
+    config: WindowAttributes,
     context: AlanWindowContext,
     surface: Option<wgpu::Surface<'static>>,
     device: Option<wgpu::Device>,
@@ -154,113 +161,114 @@ struct WindowState {
     context_buffer: Option<GBuffer>,
     buffer: Option<GBuffer>,
     cached_surface_config: Option<wgpu::SurfaceConfiguration>,
-    cached_size: winit::dpi::PhysicalSize<u32>,
-    context_fn: WindowContextFn,
-    gpgpu_shader_fn: WindowGPGPUShaderFn,
+    cached_size: PhysicalSize<u32>,
+    context_fn: C,
+    gpgpu_shader_fn: R,
     gpgpu_shaders: Option<Vec<GPGPU>>,
     inited: bool,
 }
 
-/// Manages all open windows in the event loop
-struct WindowManager {
-    window: Option<std::sync::Arc<winit::window::Window>>,
-    state: Option<WindowState>,
-    init: Option<WindowInit>,
-}
-
-impl WindowManager {
+impl<C, R> AlanWindow<C, R>
+where
+    C: FnMut(&mut AlanWindowContext) -> Vec<u32>,
+    R: Fn(&AlanWindowFrame) -> Vec<GPGPU>,
+{
     fn gpu_init(&mut self) {
-        let ws = self.state.as_mut().unwrap();
-        let window = self.window.as_ref().unwrap().clone();
-        ws.context.window = Some(window);
-        if ws.context.start.is_none() {
-            ws.context.start = Some(std::time::Instant::now());
+        if self.context.start.is_none() {
+            self.context.start = Some(std::time::Instant::now());
         }
-        if ws.surface.is_none() {
-            ws.surface = Some(alan_std::instance().create_surface(self.window.as_ref().unwrap().clone()).unwrap());
+        if self.surface.is_none() {
+            self.surface = Some(
+                alan_std::instance()
+                    .create_surface(self.context.window.as_ref().unwrap().clone())
+                    .unwrap(),
+            );
         }
-        if ws.device.is_none() {
+        if self.device.is_none() {
             let g = alan_std::gpu();
-            ws.device = Some(g.get_device().clone());
-            ws.queue = Some(g.get_queue().clone());
+            self.device = Some(g.get_device().clone());
+            self.queue = Some(g.get_queue().clone());
         }
-        if ws.context_buffer.is_none() {
-            ws.context_buffer = Some(create_empty_buffer(&storage_buffer_type(), &64, &4).unwrap());
+        if self.context_buffer.is_none() {
+            self.context_buffer = Some(create_empty_buffer(&storage_buffer_type(), &64, &4).unwrap());
         }
-        if ws.buffer.is_none() {
-            let mut size = self.window.as_ref().unwrap().inner_size();
+        if self.buffer.is_none() {
+            let mut size = self.context.window.as_ref().unwrap().inner_size();
             size.width = size.width.max(1);
             size.height = size.height.max(1);
-            ws.context.buffer_width = Some(if (4 * size.width).is_multiple_of(256) {
+            self.context.buffer_width = Some(if (4 * size.width).is_multiple_of(256) {
                 4 * size.width
             } else {
                 (4 * size.width) + (256 - ((4 * size.width) % 256))
             });
-            let buffer_size = (ws.context.buffer_width.unwrap() as u64) * (size.height as u64);
-            ws.buffer = Some(
+            let buffer_size = (self.context.buffer_width.unwrap() as u64) * (size.height as u64);
+            self.buffer = Some(
                 create_empty_buffer(&storage_buffer_type(), &(buffer_size as i64), &4).unwrap(),
             );
         }
-        if ws.gpgpu_shaders.is_none() {
-            let mut size = self.window.as_ref().unwrap().inner_size();
+        if self.gpgpu_shaders.is_none() {
+            let mut size = self.context.window.as_ref().unwrap().inner_size();
             size.width = size.width.max(1);
             size.height = size.height.max(1);
-            ws.gpgpu_shaders = Some((ws.gpgpu_shader_fn)(&AlanWindowFrame {
-                context: ws.context_buffer.as_ref().unwrap().clone(),
-                framebuffer: ws.buffer.as_ref().unwrap().clone(),
+            self.gpgpu_shaders = Some((self.gpgpu_shader_fn)(&AlanWindowFrame {
+                context: self.context_buffer.as_ref().unwrap().clone(),
+                framebuffer: self.buffer.as_ref().unwrap().clone(),
                 width: size.width,
                 height: size.height,
             }));
         }
-        ws.inited = true;
+        self.inited = true;
     }
 
     fn render_frame(&mut self) {
-        let ws = self.state.as_mut().unwrap();
-        if !ws.inited {
+        if !self.inited {
             self.gpu_init();
         }
-        let ws = self.state.as_mut().unwrap();
-        let window = self.window.as_ref().unwrap();
-        window.set_cursor_visible(ws.context.cursor_visible);
-        window.set_transparent(ws.context.transparent);
+        // Clone the Arc early so we don't hold an immutable borrow on self.context
+        let window = self.context.window.as_ref().unwrap().clone();
+        window.set_cursor_visible(self.context.cursor_visible);
+        window.set_transparent(self.context.transparent);
         let mut size = window.inner_size();
         size.width = size.width.max(1);
         size.height = size.height.max(1);
-        let surface = ws.surface.as_ref().unwrap();
+        let surface = self.surface.as_ref().unwrap();
         let g = alan_std::gpu();
-        let device = ws.device.as_ref().unwrap();
-        let queue = ws.queue.as_ref().unwrap();
-        if ws.cached_surface_config.is_none() || ws.cached_size != size {
+        let device = self.device.as_ref().unwrap();
+        let queue = self.queue.as_ref().unwrap();
+        if self.cached_surface_config.is_none() || self.cached_size != size {
             let mut config = surface.get_default_config(&g.adapter, size.width, size.height).unwrap();
             config.usage = wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::RENDER_ATTACHMENT;
             config.present_mode = wgpu::PresentMode::AutoVsync;
             config.desired_maximum_frame_latency = 1;
-            config.alpha_mode = if ws.context.transparent {
+            config.alpha_mode = if self.context.transparent {
                 wgpu::CompositeAlphaMode::PreMultiplied
             } else {
                 wgpu::CompositeAlphaMode::Auto
             };
             surface.configure(device, &config);
-            ws.cached_surface_config = Some(config);
-            ws.cached_size = size;
+            self.cached_surface_config = Some(config);
+            self.cached_size = size;
         }
         let frame = match surface.get_current_texture() {
             wgpu::CurrentSurfaceTexture::Success(f)
             | wgpu::CurrentSurfaceTexture::Suboptimal(f) => f,
-            _ => return,
+            wgpu::CurrentSurfaceTexture::Timeout
+            | wgpu::CurrentSurfaceTexture::Outdated
+            | wgpu::CurrentSurfaceTexture::Occluded
+            | wgpu::CurrentSurfaceTexture::Lost
+            | wgpu::CurrentSurfaceTexture::Validation => return,
         };
         let mut encoder =
             device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-        let context_array = (ws.context_fn)(&mut ws.context);
+        let context_array = (self.context_fn)(&mut self.context);
         let context_slice = &context_array[..];
         let context_ptr = context_slice.as_ptr();
         let context_u8_len = context_array.len() * 4;
         let context_u8: &[u8] =
             unsafe { std::slice::from_raw_parts(context_ptr as *const u8, context_u8_len) };
-        let ctx_buf = ws.context_buffer.as_ref().unwrap();
+        let ctx_buf = self.context_buffer.as_ref().unwrap();
         queue.write_buffer(&**ctx_buf, 0, context_u8);
-        let ggs = ws.gpgpu_shaders.as_mut().unwrap();
+        let ggs = self.gpgpu_shaders.as_mut().unwrap();
         for gg in ggs {
             if gg.module.is_none() {
                 gg.module = Some(device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -319,13 +327,13 @@ impl WindowManager {
                 );
             }
         }
-        let framebuffer = ws.buffer.as_ref().unwrap();
+        let framebuffer = self.buffer.as_ref().unwrap();
         encoder.copy_buffer_to_texture(
             wgpu::TexelCopyBufferInfo {
                 buffer: &**framebuffer,
                 layout: wgpu::TexelCopyBufferLayout {
                     offset: 0,
-                    bytes_per_row: ws.context.buffer_width,
+                    bytes_per_row: self.context.buffer_width,
                     rows_per_image: None,
                 },
             },
@@ -341,69 +349,45 @@ impl WindowManager {
     }
 }
 
-struct WindowInit {
-    config: winit::window::WindowAttributes,
-    context: AlanWindowContext,
-    context_fn: WindowContextFn,
-    gpgpu_shader_fn: WindowGPGPUShaderFn,
-}
-
-impl winit::application::ApplicationHandler<()> for WindowManager {
-    fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
-        if self.window.is_some() {
-            event_loop.set_control_flow(winit::event_loop::ControlFlow::Poll);
+impl<C, R> ApplicationHandler for AlanWindow<C, R>
+where
+    C: FnMut(&mut AlanWindowContext) -> Vec<u32>,
+    R: Fn(&AlanWindowFrame) -> Vec<GPGPU>,
+{
+    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        if event_loop.exiting() {
             return;
         }
-        let init = self.init.take().unwrap();
-        let window = std::sync::Arc::new(event_loop.create_window(init.config).unwrap());
-        let mut context = init.context;
-        context.window = Some(window.clone());
-        self.window = Some(window);
-        self.state = Some(WindowState {
-            context,
-            surface: None,
-            device: None,
-            queue: None,
-            context_buffer: None,
-            buffer: None,
-            cached_surface_config: None,
-            cached_size: winit::dpi::PhysicalSize::new(0, 0),
-            context_fn: init.context_fn,
-            gpgpu_shader_fn: init.gpgpu_shader_fn,
-            gpgpu_shaders: None,
-            inited: false,
-        });
-        self.window.as_ref().unwrap().request_redraw();
-        event_loop.set_control_flow(winit::event_loop::ControlFlow::Poll);
+        self.context.window = Some(Arc::new(
+            event_loop.create_window(self.config.clone()).unwrap(),
+        ));
+        self.context.window.as_ref().unwrap().request_redraw();
+        event_loop.set_control_flow(ControlFlow::Poll);
     }
 
-    fn window_event(
-        &mut self,
-        event_loop: &winit::event_loop::ActiveEventLoop,
-        _id: winit::window::WindowId,
-        event: winit::event::WindowEvent,
-    ) {
+    fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: winit::window::WindowId, event: WindowEvent) {
         match event {
-            winit::event::WindowEvent::CloseRequested => {
-                if let Some(ws) = self.state.take() {
-                    if let Some(b) = &ws.buffer {
-                        b.destroy();
-                    }
-                    if let Some(b) = &ws.context_buffer {
-                        b.destroy();
-                    }
+            WindowEvent::CloseRequested => {
+                self.gpgpu_shaders = None;
+                self.context.window = None;
+                if let Some(b) = &self.buffer {
+                    b.destroy();
                 }
+                self.buffer = None;
+                if let Some(b) = &self.context_buffer {
+                    b.destroy();
+                }
+                self.context_buffer = None;
+                self.queue = None;
+                self.device = None;
+                self.surface = None;
                 event_loop.exit();
             }
-            winit::event::WindowEvent::Resized(mut new_size) => {
+            WindowEvent::Resized(mut new_size) => {
                 if event_loop.exiting() {
                     return;
                 }
-                let ws = match self.state.as_ref() {
-                    Some(ws) => ws,
-                    None => return,
-                };
-                if !ws.inited {
+                if !self.inited {
                     return;
                 }
                 new_size.width = new_size.width.max(1);
@@ -416,56 +400,49 @@ impl winit::application::ApplicationHandler<()> for WindowManager {
                 let buffer_size = (buffer_width as u64) * (new_size.height as u64);
                 let new_buffer =
                     create_empty_buffer(&storage_buffer_type(), &(buffer_size as i64), &4).unwrap();
-                let ws = self.state.as_mut().unwrap();
-                if let Some(b) = &ws.buffer {
+                if let Some(b) = &self.buffer {
                     b.destroy();
                 }
-                ws.buffer = Some(new_buffer);
-                ws.context.buffer_width = Some(buffer_width);
-                ws.gpgpu_shaders = Some((ws.gpgpu_shader_fn)(&AlanWindowFrame {
-                    context: ws.context_buffer.as_ref().unwrap().clone(),
-                    framebuffer: ws.buffer.as_ref().unwrap().clone(),
+                self.buffer = Some(new_buffer);
+                self.context.buffer_width = Some(buffer_width);
+                self.gpgpu_shaders = Some((self.gpgpu_shader_fn)(&AlanWindowFrame {
+                    context: self.context_buffer.as_ref().unwrap().clone(),
+                    framebuffer: self.buffer.as_ref().unwrap().clone(),
                     width: new_size.width,
                     height: new_size.height,
                 }));
-                self.window.as_ref().unwrap().request_redraw();
+                self.context.window.as_ref().unwrap().request_redraw();
             }
-            winit::event::WindowEvent::RedrawRequested => {
+            WindowEvent::RedrawRequested => {
                 if event_loop.exiting() {
                     return;
                 }
                 self.render_frame();
             }
-            winit::event::WindowEvent::CursorMoved { position, .. } => {
-                if let Some(ws) = self.state.as_mut() {
-                    if ws.context.mouse_x.is_some() {
-                        ws.context.mouse_x = Some(position.x as u32);
-                        ws.context.mouse_y = Some(position.y as u32);
-                    }
+            WindowEvent::CursorMoved { position, .. } => {
+                if self.context.mouse_x.is_some() {
+                    self.context.mouse_x = Some(position.x as u32);
+                    self.context.mouse_y = Some(position.y as u32);
                 }
             }
-            winit::event::WindowEvent::MouseInput { state, button, .. } => {
-                let pressed = state == winit::event::ElementState::Pressed;
-                if let Some(ws) = self.state.as_mut() {
-                    match button {
-                        winit::event::MouseButton::Left => ws.context.mouse_left = pressed,
-                        winit::event::MouseButton::Right => ws.context.mouse_right = pressed,
-                        winit::event::MouseButton::Middle => ws.context.mouse_middle = pressed,
-                        _ => {}
-                    }
+            WindowEvent::MouseInput { state, button, .. } => {
+                let pressed = state == ElementState::Pressed;
+                match button {
+                    MouseButton::Left => self.context.mouse_left = pressed,
+                    MouseButton::Right => self.context.mouse_right = pressed,
+                    MouseButton::Middle => self.context.mouse_middle = pressed,
+                    _ => {}
                 }
             }
-            winit::event::WindowEvent::MouseWheel { delta, .. } => {
-                if let Some(ws) = self.state.as_mut() {
-                    match delta {
-                        winit::event::MouseScrollDelta::LineDelta(x, y) => {
-                            ws.context.mouse_wheel_dx += x;
-                            ws.context.mouse_wheel_dy += y;
-                        }
-                        winit::event::MouseScrollDelta::PixelDelta(pos) => {
-                            ws.context.mouse_wheel_dx += pos.x as f32;
-                            ws.context.mouse_wheel_dy += pos.y as f32;
-                        }
+            WindowEvent::MouseWheel { delta, .. } => {
+                match delta {
+                    MouseScrollDelta::LineDelta(x, y) => {
+                        self.context.mouse_wheel_dx += x;
+                        self.context.mouse_wheel_dy += y;
+                    }
+                    MouseScrollDelta::PixelDelta(pos) => {
+                        self.context.mouse_wheel_dx += pos.x as f32;
+                        self.context.mouse_wheel_dy += pos.y as f32;
                     }
                 }
             }
@@ -475,16 +452,17 @@ impl winit::application::ApplicationHandler<()> for WindowManager {
 }
 
 /// Main entry point for window-based rendering.
+/// Closures are generic type params (NOT boxed traits), so NO 'static or Send bounds needed.
 pub fn run_window<C, R>(
-    mut initial_context_fn: impl FnMut(&mut AlanWindowContext) + 'static,
+    mut initial_context_fn: impl FnMut(&mut AlanWindowContext),
     context_fn: C,
     gpgpu_shader_fn: R,
 ) -> Result<(), AlanError>
 where
-    C: FnMut(&mut AlanWindowContext) -> Vec<u32> + 'static,
-    R: Fn(&AlanWindowFrame) -> Vec<GPGPU> + 'static,
+    C: FnMut(&mut AlanWindowContext) -> Vec<u32>,
+    R: Fn(&AlanWindowFrame) -> Vec<GPGPU>,
 {
-    let mut context = AlanWindowContext {
+    let context = AlanWindowContext {
         window: None,
         start: None,
         buffer_width: None,
@@ -498,29 +476,40 @@ where
         cursor_visible: true,
         transparent: false,
     };
-    initial_context_fn(&mut context);
-    let config = winit::window::Window::default_attributes().with_transparent(context.transparent);
-    let event_loop = winit::event_loop::EventLoop::<()>::new()
-        .map_err(|e| AlanError {
-            message: format!("Failed to create event loop: {}", e),
-        })?;
-    let mut manager = WindowManager {
-        window: None,
-        state: None,
-        init: Some(WindowInit {
-            config,
-            context,
-            context_fn: Box::new(context_fn),
-            gpgpu_shader_fn: Box::new(gpgpu_shader_fn),
-        }),
+
+    let config = Window::default_attributes().with_transparent(context.transparent);
+
+    let event_loop = EventLoop::new().map_err(|e| AlanError {
+        message: format!("Failed to create event loop: {}", e),
+    })?;
+
+    let mut alan_window = AlanWindow {
+        config,
+        context,
+        surface: None,
+        device: None,
+        queue: None,
+        context_buffer: None,
+        buffer: None,
+        cached_surface_config: None,
+        cached_size: PhysicalSize::new(0, 0),
+        context_fn,
+        gpgpu_shader_fn,
+        gpgpu_shaders: None,
+        inited: false,
     };
-    event_loop.run_app(&mut manager).map_err(|e| AlanError {
+
+    // Run initial context function before entering event loop
+    initial_context_fn(&mut alan_window.context);
+
+    event_loop.run_app(&mut alan_window).map_err(|e| AlanError {
         message: format!("Event loop error: {}", e),
     })?;
+
     Ok(())
 }
 
-/// Accessor functions for AlanWindowContext, used by JS bindings
+/// Accessor functions for AlanWindowContext
 pub fn context_width(ctx: &AlanWindowContext) -> u32 {
     ctx.width()
 }
@@ -581,7 +570,7 @@ pub fn context_opaque(ctx: &mut AlanWindowContext) {
     ctx.opaque();
 }
 
-/// Accessor functions for AlanWindowFrame, used by JS bindings
+/// Accessor functions for AlanWindowFrame
 pub fn frame_context(f: &AlanWindowFrame) -> GBuffer {
     f.context.clone()
 }

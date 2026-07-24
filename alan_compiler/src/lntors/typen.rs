@@ -42,40 +42,36 @@ pub fn ctype_to_rtype(
                     let res = ctype_to_rtype(o.clone(), deps)?;
                     let s = res.0;
                     deps = res.1;
-                    Ok((format!("impl FnMut() -> {s}"), deps))
+                    Ok((format!("impl FnMut() -> {s} + 'static"), deps))
                 } else {
-                    Ok((format!(
-                        "impl FnMut(&{}) -> {}",
-                        match &**i {
-                            CType::Tuple(ts, _) => {
-                                let mut out = Vec::new();
-                                for t in ts {
-                                    let res = ctype_to_rtype(t.clone(), deps)?;
-                                    let s = res.0;
-                                    deps = res.1;
-                                    out.push(match &**t {
-                                        CType::Mut(_) => format!("mut {s}"),
-                                        _ => closure_param_form(t, s),
-                                    });
-                                }
-                                out.join(", &")
-                            },
-                            otherwise => {
-                                let res = ctype_to_rtype(i.clone(), deps)?;
+                    let params = match &**i {
+                        CType::Tuple(ts, _) => {
+                            let mut out = Vec::new();
+                            for t in ts {
+                                let res = ctype_to_rtype(t.clone(), deps)?;
                                 let s = res.0;
                                 deps = res.1;
-                                match &otherwise {
-                                    CType::Mut(_) => format!("mut {s}"),
-                                    _ => closure_param_form(otherwise, s),
-                                }
+                                out.push(match &**t {
+                                    CType::Mut(_) => format!("&mut {s}"),
+                                    _ => format!("&{}", closure_param_form(t, s)),
+                                });
                             }
-                        }, {
-                            let res = ctype_to_rtype(o.clone(), deps)?;
+                            out.join(", ")
+                        },
+                        otherwise => {
+                            let res = ctype_to_rtype(i.clone(), deps)?;
                             let s = res.0;
                             deps = res.1;
-                            s
+                            match otherwise {
+                                CType::Mut(_) => format!("&mut {s}"),
+                                _ => format!("&{}", closure_param_form(otherwise, s)),
+                            }
                         }
-                    ), deps))
+                    };
+                    let res = ctype_to_rtype(o.clone(), deps)?;
+                    let ret = res.0;
+                    deps = res.1;
+                    Ok((format!("impl FnMut({}) -> {} + 'static", params, ret), deps))
                 }
             } else {
                 unreachable!();
@@ -216,32 +212,41 @@ pub fn ctype_to_rtype(
                 deps = res.1;
                 Ok((format!("impl Fn() -> {s}"), deps))
             } else {
-                Ok((format!(
-                    "impl Fn(&{}) -> {}",
-                    match &**i {
-                        CType::Tuple(ts, _) => {
-                            let mut out = Vec::new();
-                            for t in ts {
-                                let res = ctype_to_rtype(t.clone(), deps)?;
-                                let s = res.0;
-                                deps = res.1;
-                                out.push(closure_param_form(t, s));
-                            }
-                            out.join(", &")
-                        },
-                        otherwise => {
-                            let res = ctype_to_rtype(i.clone(), deps)?;
+                // Determine if any input param is Mut{...} -> need FnMut + &mut
+                let has_mut = match &**i {
+                    CType::Tuple(ts, _) => ts.iter().any(|t| matches!(&**t, CType::Mut(_))),
+                    _ => matches!(&**i, CType::Mut(_)),
+                };
+                let trait_name = if has_mut { "FnMut" } else { "Fn" };
+                // Build param strings with correct ref prefix per-parameter
+                let params = match &**i {
+                    CType::Tuple(ts, _) => {
+                        let mut out = Vec::new();
+                        for t in ts {
+                            let res = ctype_to_rtype(t.clone(), deps)?;
                             let s = res.0;
                             deps = res.1;
-                            closure_param_form(otherwise, s)
+                            out.push(match &**t {
+                                CType::Mut(_) => format!("&mut {s}"),
+                                _ => format!("&{}", closure_param_form(t, s)),
+                            });
                         }
-                    }, {
-                        let res = ctype_to_rtype(o.clone(), deps)?;
+                        out.join(", ")
+                    },
+                    _ => {
+                        let res = ctype_to_rtype(i.clone(), deps)?;
                         let s = res.0;
                         deps = res.1;
-                        s
+                        match &**i {
+                            CType::Mut(_) => format!("&mut {s}"),
+                            _ => format!("&{}", closure_param_form(&*i, s)),
+                        }
                     }
-                ), deps))
+                };
+                let res = ctype_to_rtype(o.clone(), deps)?;
+                let ret = res.0;
+                deps = res.1;
+                Ok((format!("impl {}({}) -> {} + 'static", trait_name, params, ret), deps))
             }
         },
                    CType::Tuple(ts, _) => {
