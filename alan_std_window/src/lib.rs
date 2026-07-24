@@ -201,9 +201,11 @@ where
             } else {
                 (4 * size.width) + (256 - ((4 * size.width) % 256))
             });
-            let buffer_size = (self.context.buffer_width.unwrap() as u64) * (size.height as u64);
+            // buffer_width is already in bytes (aligned). create_empty_buffer multiplies count * element_size,
+            // so we pass byte_size / 4 as the count to get the correct total byte size.
+            let buffer_byte_size = (self.context.buffer_width.unwrap() as u64) * (size.height as u64);
             self.buffer = Some(
-                create_empty_buffer(&storage_buffer_type(), &(buffer_size as i64), &4).unwrap(),
+                create_empty_buffer(&storage_buffer_type(), &((buffer_byte_size / 4) as i64), &4).unwrap(),
             );
         }
         if self.gpgpu_shaders.is_none() {
@@ -397,9 +399,10 @@ where
                 } else {
                     (4 * new_size.width) + (256 - ((4 * new_size.width) % 256))
                 };
-                let buffer_size = (buffer_width as u64) * (new_size.height as u64);
+                // create_empty_buffer multiplies count * element_size, so pass byte_size / 4 as count
+                let buffer_byte_size = (buffer_width as u64) * (new_size.height as u64);
                 let new_buffer =
-                    create_empty_buffer(&storage_buffer_type(), &(buffer_size as i64), &4).unwrap();
+                    create_empty_buffer(&storage_buffer_type(), &((buffer_byte_size / 4) as i64), &4).unwrap();
                 if let Some(b) = &self.buffer {
                     b.destroy();
                 }
