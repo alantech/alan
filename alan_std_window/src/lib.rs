@@ -239,6 +239,7 @@ where
         let queue = self.queue.as_ref().unwrap();
         if self.cached_surface_config.is_none() || self.cached_size != size {
             let mut config = surface.get_default_config(&g.adapter, size.width, size.height).unwrap();
+            config.format = wgpu::TextureFormat::Bgra8Unorm;
             config.usage = wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::RENDER_ATTACHMENT;
             config.present_mode = wgpu::PresentMode::AutoVsync;
             config.desired_maximum_frame_latency = 1;
