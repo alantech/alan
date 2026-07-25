@@ -42,7 +42,7 @@ pub fn ctype_to_rtype(
                     let res = ctype_to_rtype(o.clone(), deps)?;
                     let s = res.0;
                     deps = res.1;
-                    Ok((format!("impl FnMut() -> {s} + 'static"), deps))
+                    Ok((format!("impl FnMut() -> {s}"), deps))
                 } else {
                     let params = match &**i {
                         CType::Tuple(ts, _) => {
@@ -71,7 +71,7 @@ pub fn ctype_to_rtype(
                     let res = ctype_to_rtype(o.clone(), deps)?;
                     let ret = res.0;
                     deps = res.1;
-                    Ok((format!("impl FnMut({}) -> {} + 'static", params, ret), deps))
+                    Ok((format!("impl FnMut({}) -> {}", params, ret), deps))
                 }
             } else {
                 unreachable!();
@@ -246,7 +246,7 @@ pub fn ctype_to_rtype(
                 let res = ctype_to_rtype(o.clone(), deps)?;
                 let ret = res.0;
                 deps = res.1;
-                Ok((format!("impl {}({}) -> {} + 'static", trait_name, params, ret), deps))
+                Ok((format!("impl {}({}) -> {}", trait_name, params, ret), deps))
             }
         },
                    CType::Tuple(ts, _) => {
