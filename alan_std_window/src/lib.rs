@@ -23,7 +23,6 @@ pub use alan_std::read_buffer;
 pub use alan_std::replace_buffer;
 pub use alan_std::storage_buffer_type;
 pub use alan_std::AlanError;
-pub use alan_std::BufferUsages;
 pub use alan_std::GBuffer;
 pub use alan_std::GPGPU;
 

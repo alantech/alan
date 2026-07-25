@@ -9,9 +9,6 @@ export type{Rs} WindowBacking = Rust{"alan_std_window" @ "https://github.com/ala
 export type{Js} WindowBacking = Nodejs{"alan_std_window" @ "https://github.com/alantech/alan.git"};
 export type Window = Binds{"alan_std_window::AlanWindowContext" <- WindowBacking};
 export type Frame = Binds{"alan_std_window::AlanWindowFrame" <- WindowBacking};
-export type{Rs} BufferUsages = Binds{"alan_std_window::BufferUsages" <- WindowBacking};
-export fn{Rs} storageBuffer "alan_std_window::storage_buffer_type" <- WindowBacking :: () -> BufferUsages;
-
 export fn window
   "alan_std_window::run_window"
   <- WindowBacking
@@ -67,7 +64,9 @@ export fn{Js} height(f: Frame) = {"alan_std_window.frameHeight" <- WindowBacking
 export fn pixel(f: Frame) = gFor(f.width, f.height);
 
 // Window-scoped GBuffer constructors — use the window's device/queue instead of the global gpu()
-export fn{Rs} windowGBuffer{T}(win: Window, bu: BufferUsages, arr: T[]) {
+// Rust: delegates to alan_std_window's device-aware buffer creation
+// JS: delegates to root scope GBuffer (no window-aware creation needed)
+export fn{Rs} GBuffer{T}(win: Window, bu: BufferUsages, arr: T[]) {
   let fallibleRawBuffer = {
     "alan_std_window::create_window_buffer_init"
     <- WindowBacking
@@ -77,7 +76,8 @@ export fn{Rs} windowGBuffer{T}(win: Window, bu: BufferUsages, arr: T[]) {
     return Fallible{GBuffer{T}}(GBuffer{T}(fallibleRawBuffer.getOrExit));
   }, fn = Error{GBuffer{T}}(fallibleRawBuffer.Error.getOrExit.string));
 }
-export fn{Rs} windowGBuffer{T}(win: Window, bu: BufferUsages, size: i64) {
+export fn{Js} GBuffer{T}(win: Window, bu: BufferUsages, arr: T[]) = GBuffer{T}(bu, arr);
+export fn{Rs} GBuffer{T}(win: Window, bu: BufferUsages, size: i64) {
   let fallibleRawBuffer = {
     "alan_std_window::create_window_empty_buffer"
     <- WindowBacking
@@ -87,6 +87,9 @@ export fn{Rs} windowGBuffer{T}(win: Window, bu: BufferUsages, size: i64) {
     return Fallible{GBuffer{T}}(GBuffer{T}(fallibleRawBuffer.getOrExit));
   }, fn = Error{GBuffer{T}}(fallibleRawBuffer.Error.getOrExit.string));
 }
+export fn{Js} GBuffer{T}(win: Window, bu: BufferUsages, size: i64) = GBuffer{T}(bu, size);
 // Convenience wrappers — default to storageBuffer() usage
-export fn{Rs} windowGBuffer{T}(win: Window, vals: T[]) = windowGBuffer{T}(win, storageBuffer(), vals);
-export fn{Rs} windowGBuffer{T}(win: Window, size: i64) = windowGBuffer{T}(win, storageBuffer(), size);
+export fn{Rs} GBuffer{T}(win: Window, vals: T[]) = GBuffer{T}(win, storageBuffer(), vals);
+export fn{Js} GBuffer{T}(win: Window, vals: T[]) = GBuffer{T}(storageBuffer(), vals);
+export fn{Rs} GBuffer{T}(win: Window, size: i64) = GBuffer{T}(win, storageBuffer(), size);
+export fn{Js} GBuffer{T}(win: Window, size: i64) = GBuffer{T}(storageBuffer(), size);
