@@ -27,19 +27,108 @@ pub use alan_std::GBuffer;
 pub use alan_std::GPGPU;
 
 use std::sync::Arc;
+use std::sync::OnceLock;
 use winit::application::ApplicationHandler;
 use winit::dpi::PhysicalSize;
 use winit::event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::window::{Window, WindowAttributes};
 
+/// Lazily-initialized GPU state for window rendering.
+/// Initialized on first call to `window_gpu()`, creating a test winit window
+/// to find a presentation-capable adapter. Shared by GBuffer constructors and `run_window`.
+static WINDOW_GPU: OnceLock<(wgpu::Adapter, wgpu::Device, wgpu::Queue)> = OnceLock::new();
+
+fn window_gpu() -> &'static (wgpu::Adapter, wgpu::Device, wgpu::Queue) {
+    WINDOW_GPU.get_or_init(|| {
+        struct TestAdapterFinder {
+            found_surface: Option<wgpu::Surface<'static>>,
+        }
+        impl ApplicationHandler<()> for TestAdapterFinder {
+            fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+                if let Ok(window) = event_loop.create_window(Window::default_attributes()) {
+                    self.found_surface = alan_std::instance().create_surface(window).ok();
+                }
+                event_loop.exit();
+            }
+            fn window_event(
+                &mut self,
+                _event_loop: &ActiveEventLoop,
+                _id: winit::window::WindowId,
+                _event: WindowEvent,
+            ) {
+            }
+        }
+        let adapters = std::panic::catch_unwind(|| {
+            let event_loop: EventLoop<()> = match EventLoop::new() {
+                Ok(el) => el,
+                Err(_) => return None,
+            };
+            let mut finder = TestAdapterFinder {
+                found_surface: None,
+            };
+            if event_loop.run_app(&mut finder).is_err() {
+                return None;
+            }
+            let test_surface = finder.found_surface?;
+            let instance = alan_std::instance();
+            let mut adapters: Vec<_> = futures::executor::block_on(instance.enumerate_adapters(wgpu::Backends::all()))
+                .into_iter()
+                .filter(|a| a.get_downlevel_capabilities().is_webgpu_compliant())
+                .collect();
+            // Move the presentation-capable adapter to front
+            if let Some(pos) = adapters.iter().position(|_a| {
+                futures::executor::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+                    power_preference: wgpu::PowerPreference::default(),
+                    force_fallback_adapter: false,
+                    compatible_surface: Some(&test_surface),
+                    apply_limit_buckets: false,
+                })).is_ok()
+            }) {
+                adapters.remove(pos);
+            }
+            Some(adapters)
+        })
+        .unwrap_or_else(|_| None)
+        .unwrap_or_else(|| {
+            futures::executor::block_on(alan_std::instance().enumerate_adapters(wgpu::Backends::all()))
+                .into_iter()
+                .filter(|a| a.get_downlevel_capabilities().is_webgpu_compliant())
+                .collect()
+        });
+        let adapter = adapters.into_iter().next().unwrap_or_else(|| {
+            let adapters: Vec<_> = futures::executor::block_on(alan_std::instance().enumerate_adapters(wgpu::Backends::all()))
+                .into_iter()
+                .filter(|a| a.get_downlevel_capabilities().is_webgpu_compliant())
+                .collect();
+            adapters.into_iter().next().unwrap()
+        });
+        let info = adapter.get_info();
+        let (device, queue) = futures::executor::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
+            label: Some(&format!("{} on {}", info.name, info.backend.to_str())),
+            required_features: wgpu::Features::empty(),
+            required_limits: adapter.limits(),
+            experimental_features: wgpu::ExperimentalFeatures::disabled(),
+            memory_hints: wgpu::MemoryHints::Performance,
+            trace: wgpu::Trace::Off,
+        })).expect("Failed to create GPU device");
+        (adapter, device, queue)
+    })
+}
+
+fn window_device() -> &'static wgpu::Device {
+    &window_gpu().1
+}
+
+fn window_queue() -> &'static wgpu::Queue {
+    &window_gpu().2
+}
+
 /// Window context struct -- holds window state and input tracking.
 pub struct AlanWindowContext {
     window: Option<Arc<Window>>,
     start: Option<std::time::Instant>,
     buffer_width: Option<u32>,
-    device: Option<wgpu::Device>,
-    queue: Option<wgpu::Queue>,
     mouse_x: Option<u32>,
     mouse_y: Option<u32>,
     mouse_left: bool,
@@ -187,14 +276,11 @@ where
             );
         }
         if self.device.is_none() {
-            let g = alan_std::gpu();
-            self.device = Some(g.get_device().clone());
-            self.queue = Some(g.get_queue().clone());
-            self.context.device = Some(g.get_device().clone());
-            self.context.queue = Some(g.get_queue().clone());
+            self.device = Some(window_device().clone());
+            self.queue = Some(window_queue().clone());
         }
         if self.context_buffer.is_none() {
-            self.context_buffer = Some(create_empty_buffer(&storage_buffer_type(), &64, &4).unwrap());
+            self.context_buffer = Some(create_window_empty_buffer(&storage_buffer_type(), &64, &4).unwrap());
         }
         if self.buffer.is_none() {
             let mut size = self.context.window.as_ref().unwrap().inner_size();
@@ -209,7 +295,7 @@ where
             // so we pass byte_size / 4 as the count to get the correct total byte size.
             let buffer_byte_size = (self.context.buffer_width.unwrap() as u64) * (size.height as u64);
             self.buffer = Some(
-                create_empty_buffer(&storage_buffer_type(), &((buffer_byte_size / 4) as i64), &4).unwrap(),
+                create_window_empty_buffer(&storage_buffer_type(), &((buffer_byte_size / 4) as i64), &4).unwrap(),
             );
         }
         if self.gpgpu_shaders.is_none() {
@@ -239,11 +325,11 @@ where
         size.width = size.width.max(1);
         size.height = size.height.max(1);
         let surface = self.surface.as_ref().unwrap();
-        let g = alan_std::gpu();
+        let adapter = &window_gpu().0;
         let device = self.device.as_ref().unwrap();
         let queue = self.queue.as_ref().unwrap();
         if self.cached_surface_config.is_none() || self.cached_size != size {
-            let mut config = surface.get_default_config(&g.adapter, size.width, size.height).unwrap();
+            let mut config = surface.get_default_config(adapter, size.width, size.height).unwrap();
             config.format = wgpu::TextureFormat::Bgra8Unorm;
             config.usage = wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::RENDER_ATTACHMENT;
             config.present_mode = wgpu::PresentMode::AutoVsync;
@@ -385,8 +471,6 @@ where
                     b.destroy();
                 }
                 self.context_buffer = None;
-                self.context.device = None;
-                self.context.queue = None;
                 self.queue = None;
                 self.device = None;
                 self.surface = None;
@@ -409,7 +493,7 @@ where
                 // create_empty_buffer multiplies count * element_size, so pass byte_size / 4 as count
                 let buffer_byte_size = (buffer_width as u64) * (new_size.height as u64);
                 let new_buffer =
-                    create_empty_buffer(&storage_buffer_type(), &((buffer_byte_size / 4) as i64), &4).unwrap();
+                    create_window_empty_buffer(&storage_buffer_type(), &((buffer_byte_size / 4) as i64), &4).unwrap();
                 if let Some(b) = &self.buffer {
                     b.destroy();
                 }
@@ -476,8 +560,6 @@ where
         window: None,
         start: None,
         buffer_width: None,
-        device: None,
-        queue: None,
         mouse_x: None,
         mouse_y: None,
         mouse_left: false,
@@ -599,32 +681,22 @@ pub fn frame_height(f: &AlanWindowFrame) -> u32 {
     f.height
 }
 
-/// Create a GBuffer initialized from an array, using the window's device if available,
-/// otherwise falls back to the global gpu() device.
+/// Create a GBuffer initialized from an array, using the window's device/queue.
+/// If not yet initialized, creates a test winit window to find the right device.
 pub fn create_window_buffer_init<T>(
-    ctx: &AlanWindowContext,
     usage: &wgpu::BufferUsages,
     vals: &[T],
     element_size: &i8,
 ) -> Result<GBuffer, AlanError> {
-    if let (Some(ref device), Some(ref queue)) = (&ctx.device, &ctx.queue) {
-        alan_std::create_buffer_init_with_device(device, queue, usage, vals, element_size)
-    } else {
-        alan_std::create_buffer_init(usage, vals, element_size)
-    }
+    alan_std::create_buffer_init_with_device(window_device(), window_queue(), usage, vals, element_size)
 }
 
-/// Create an empty GBuffer, using the window's device if available,
-/// otherwise falls back to the global gpu() device.
+/// Create an empty GBuffer, using the window's device.
+/// If not yet initialized, creates a test winit window to find the right device.
 pub fn create_window_empty_buffer(
-    ctx: &AlanWindowContext,
     usage: &wgpu::BufferUsages,
     size: &i64,
     element_size: &i8,
 ) -> Result<GBuffer, AlanError> {
-    if let Some(ref device) = &ctx.device {
-        alan_std::create_empty_buffer_with_device(device, usage, size, element_size)
-    } else {
-        alan_std::create_empty_buffer(usage, size, element_size)
-    }
+    alan_std::create_empty_buffer_with_device(window_device(), usage, size, element_size)
 }

@@ -64,32 +64,32 @@ export fn{Js} height(f: Frame) = {"alan_std_window.frameHeight" <- WindowBacking
 export fn pixel(f: Frame) = gFor(f.width, f.height);
 
 // Window-scoped GBuffer constructors — use the window's device/queue instead of the global gpu()
-// Rust: delegates to alan_std_window's device-aware buffer creation
+// Rust: delegates to alan_std_window's device-aware buffer creation (lazy init with test window)
 // JS: delegates to root scope GBuffer (no window-aware creation needed)
-export fn{Rs} GBuffer{T}(win: Window, bu: BufferUsages, arr: T[]) {
+export fn{Rs} GBuffer{T}(bu: BufferUsages, arr: T[]) {
   let fallibleRawBuffer = {
     "alan_std_window::create_window_buffer_init"
     <- WindowBacking
-    :: (Window, BufferUsages, T[], i8) -> Fallible{GBufferRaw}
-  }(win, bu, arr, {Size{T}}().i8);
+    :: (BufferUsages, T[], i8) -> Fallible{GBufferRaw}
+  }(bu, arr, {Size{T}}().i8);
   return if(fallibleRawBuffer.exists, fn {
     return Fallible{GBuffer{T}}(GBuffer{T}(fallibleRawBuffer.getOrExit));
   }, fn = Error{GBuffer{T}}(fallibleRawBuffer.Error.getOrExit.string));
 }
-export fn{Js} GBuffer{T}(win: Window, bu: BufferUsages, arr: T[]) = GBuffer{T}(bu, arr);
-export fn{Rs} GBuffer{T}(win: Window, bu: BufferUsages, size: i64) {
+export fn{Js} GBuffer{T}(bu: BufferUsages, arr: T[]) = GBuffer{T}(bu, arr);
+export fn{Rs} GBuffer{T}(bu: BufferUsages, size: i64) {
   let fallibleRawBuffer = {
     "alan_std_window::create_window_empty_buffer"
     <- WindowBacking
-    :: (Window, BufferUsages, i64, i8) -> GBufferRaw!
-  }(win, bu, size, {Size{T}}().i8);
+    :: (BufferUsages, i64, i8) -> GBufferRaw!
+  }(bu, size, {Size{T}}().i8);
   return if(fallibleRawBuffer.exists, fn {
     return Fallible{GBuffer{T}}(GBuffer{T}(fallibleRawBuffer.getOrExit));
   }, fn = Error{GBuffer{T}}(fallibleRawBuffer.Error.getOrExit.string));
 }
-export fn{Js} GBuffer{T}(win: Window, bu: BufferUsages, size: i64) = GBuffer{T}(bu, size);
+export fn{Js} GBuffer{T}(bu: BufferUsages, size: i64) = GBuffer{T}(bu, size);
 // Convenience wrappers — default to storageBuffer() usage
-export fn{Rs} GBuffer{T}(win: Window, vals: T[]) = GBuffer{T}(win, storageBuffer(), vals);
-export fn{Js} GBuffer{T}(win: Window, vals: T[]) = GBuffer{T}(storageBuffer(), vals);
-export fn{Rs} GBuffer{T}(win: Window, size: i64) = GBuffer{T}(win, storageBuffer(), size);
-export fn{Js} GBuffer{T}(win: Window, size: i64) = GBuffer{T}(storageBuffer(), size);
+export fn{Rs} GBuffer{T}(vals: T[]) = GBuffer{T}(storageBuffer(), vals);
+export fn{Js} GBuffer{T}(vals: T[]) = GBuffer{T}(storageBuffer(), vals);
+export fn{Rs} GBuffer{T}(size: i64) = GBuffer{T}(storageBuffer(), size);
+export fn{Js} GBuffer{T}(size: i64) = GBuffer{T}(storageBuffer(), size);
