@@ -998,6 +998,88 @@ pub fn create_empty_buffer(
     })
 }
 
+/// Create a buffer initialized from data, using an explicit device/queue.
+pub fn create_buffer_init_with_device<T>(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    usage: &wgpu::BufferUsages,
+    vals: &[T],
+    element_size: &i8,
+) -> Result<GBuffer, AlanError> {
+    let val_ptr = vals.as_ptr();
+    let val_u8_len = vals.len() * (*element_size as usize);
+    let limits = device.limits();
+    if limits.max_buffer_size < val_u8_len as u64 {
+        return Err(AlanError { message: format!("Cannot load the array into the GPU, as it is too large. GBuffer on your GPU only supports up to {} bytes per buffer", limits.max_buffer_size), });
+    }
+    let buf = GBuffer {
+        buffer: Rc::new(device.create_buffer(&wgpu::BufferDescriptor {
+            label: None,
+            size: val_u8_len as u64,
+            usage: *usage,
+            mapped_at_creation: false,
+        })),
+        id: format!("buffer_{}", format!("{}", Uuid::new_v4()).replace("-", "_")),
+        element_size: *element_size,
+    };
+    let val_u8: &[u8] = unsafe { std::slice::from_raw_parts(val_ptr as *const u8, val_u8_len) };
+    let staging_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+        label: None,
+        size: val_u8_len as u64,
+        usage: wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::MAP_WRITE,
+        mapped_at_creation: true,
+    });
+    {
+        let view = staging_buffer.slice(..);
+        match view.get_mapped_range_mut() {
+            Ok(mut range) => range.copy_from_slice(val_u8),
+            Err(e) => {
+                return Err(AlanError {
+                    message: format!("Somehow got an invalid range on full slice {e:?}"),
+                })
+            }
+        };
+    }
+    staging_buffer.unmap();
+    let mut encoder =
+        device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+    encoder.copy_buffer_to_buffer(&staging_buffer, 0, &buf, 0, val_u8_len as u64);
+    let submission_index = queue.submit(Some(encoder.finish()));
+    match device.poll(wgpu::PollType::Wait {
+        submission_index: Some(submission_index),
+        timeout: None,
+    }) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(AlanError {
+            message: format!("Failed to create buffer {e:?}"),
+        }),
+    }?;
+    Ok(buf)
+}
+
+/// Create an empty buffer, using an explicit device.
+pub fn create_empty_buffer_with_device(
+    device: &wgpu::Device,
+    usage: &wgpu::BufferUsages,
+    size: &i64,
+    element_size: &i8,
+) -> Result<GBuffer, AlanError> {
+    let limits = device.limits();
+    if limits.max_buffer_size < *size as u64 {
+        return Err(AlanError { message: format!("Cannot create the buffer on the GPU, as it is too large. GBuffer on your GPU only supports up to {} bytes per buffer", limits.max_buffer_size), });
+    }
+    Ok(GBuffer {
+        buffer: Rc::new(device.create_buffer(&wgpu::BufferDescriptor {
+            label: None,
+            size: (*size as u64) * (*element_size as u64),
+            usage: *usage,
+            mapped_at_creation: false,
+        })),
+        id: format!("buffer_{}", format!("{}", Uuid::new_v4()).replace("-", "_")),
+        element_size: *element_size,
+    })
+}
+
 // TODO: Either add the ability to bind to const values, or come up with a better solution. For
 // now, just hardwire a few buffer usage types in these functions
 #[inline(always)]

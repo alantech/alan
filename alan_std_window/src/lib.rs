@@ -23,6 +23,7 @@ pub use alan_std::read_buffer;
 pub use alan_std::replace_buffer;
 pub use alan_std::storage_buffer_type;
 pub use alan_std::AlanError;
+pub use alan_std::BufferUsages;
 pub use alan_std::GBuffer;
 pub use alan_std::GPGPU;
 
@@ -38,6 +39,8 @@ pub struct AlanWindowContext {
     window: Option<Arc<Window>>,
     start: Option<std::time::Instant>,
     buffer_width: Option<u32>,
+    device: Option<wgpu::Device>,
+    queue: Option<wgpu::Queue>,
     mouse_x: Option<u32>,
     mouse_y: Option<u32>,
     mouse_left: bool,
@@ -188,6 +191,8 @@ where
             let g = alan_std::gpu();
             self.device = Some(g.get_device().clone());
             self.queue = Some(g.get_queue().clone());
+            self.context.device = Some(g.get_device().clone());
+            self.context.queue = Some(g.get_queue().clone());
         }
         if self.context_buffer.is_none() {
             self.context_buffer = Some(create_empty_buffer(&storage_buffer_type(), &64, &4).unwrap());
@@ -381,6 +386,8 @@ where
                     b.destroy();
                 }
                 self.context_buffer = None;
+                self.context.device = None;
+                self.context.queue = None;
                 self.queue = None;
                 self.device = None;
                 self.surface = None;
@@ -470,6 +477,8 @@ where
         window: None,
         start: None,
         buffer_width: None,
+        device: None,
+        queue: None,
         mouse_x: None,
         mouse_y: None,
         mouse_left: false,
@@ -589,4 +598,34 @@ pub fn frame_width(f: &AlanWindowFrame) -> u32 {
 
 pub fn frame_height(f: &AlanWindowFrame) -> u32 {
     f.height
+}
+
+/// Create a GBuffer initialized from an array, using the window's device if available,
+/// otherwise falls back to the global gpu() device.
+pub fn create_window_buffer_init<T>(
+    ctx: &AlanWindowContext,
+    usage: &wgpu::BufferUsages,
+    vals: &[T],
+    element_size: &i8,
+) -> Result<GBuffer, AlanError> {
+    if let (Some(ref device), Some(ref queue)) = (&ctx.device, &ctx.queue) {
+        alan_std::create_buffer_init_with_device(device, queue, usage, vals, element_size)
+    } else {
+        alan_std::create_buffer_init(usage, vals, element_size)
+    }
+}
+
+/// Create an empty GBuffer, using the window's device if available,
+/// otherwise falls back to the global gpu() device.
+pub fn create_window_empty_buffer(
+    ctx: &AlanWindowContext,
+    usage: &wgpu::BufferUsages,
+    size: &i64,
+    element_size: &i8,
+) -> Result<GBuffer, AlanError> {
+    if let Some(ref device) = &ctx.device {
+        alan_std::create_empty_buffer_with_device(device, usage, size, element_size)
+    } else {
+        alan_std::create_empty_buffer(usage, size, element_size)
+    }
 }
