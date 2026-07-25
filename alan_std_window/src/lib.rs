@@ -226,6 +226,7 @@ where
         if !self.inited {
             self.gpu_init();
         }
+        let frame_start = std::time::Instant::now();
         // Clone the Arc early so we don't hold an immutable borrow on self.context
         let window = self.context.window.as_ref().unwrap().clone();
         window.set_cursor_visible(self.context.cursor_visible);
@@ -345,7 +346,6 @@ where
         );
         queue.submit(Some(encoder.finish()));
         queue.present(frame);
-        let frame_start = std::time::Instant::now();
         let render_time = frame_start.elapsed();
         window.set_title(&format!("Render time: {:.3}", render_time.as_secs_f64()));
         window.request_redraw();
