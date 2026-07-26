@@ -6,13 +6,3 @@ target/
 *.swp
 node_modules/
 alanStdBundle.js
-
-# Dev/test artifacts
-.opencode/
-Cargo.lock
-alan_std.js
-*.ln
-*.py
-*.txt
-window_old
-world.ln
