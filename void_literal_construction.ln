@@ -1,4 +1,0 @@
-export fn main {
-  let v = ();
-  print(v);
-}
