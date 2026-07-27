@@ -110,6 +110,57 @@ fn is_promise_head(typen: Arc<CType>) -> bool {
     matches!(&*t, CType::Promise(_))
 }
 
+/// Handle Option/Result for JS assignment: `arg = null` / `arg = val`
+fn option_result_js_assign(
+    ts: &[Arc<CType>],
+    deps: &mut OrderedHashMap<String, String>,
+    t: &Arc<CType>,
+    argstrs: &[String],
+) -> Option<Result<String, Box<dyn std::error::Error>>> {
+    codegen::handle_option_result_symmetry(
+        ts,
+        deps,
+        || codegen::is_empty_variant(ts, t),
+        |_kind, d| {
+            let (_, dd) = typen::ctype_to_jtype(ts[0].clone(), d.clone())?;
+            *d = dd;
+            let (_, dd) = typen::ctype_to_jtype(ts[1].clone(), d.clone())?;
+            *d = dd;
+            Ok(format!("{} = null", argstrs[0]))
+        },
+        |_kind, d| {
+            let (_, dd) = typen::ctype_to_jtype(ts[0].clone(), d.clone())?;
+            *d = dd;
+            let (_, dd) = typen::ctype_to_jtype(ts[1].clone(), d.clone())?;
+            *d = dd;
+            Ok(format!("{} = {}", argstrs[0], argstrs[1]))
+        },
+    )
+}
+
+/// Handle Option/Result for JS return expression: `empty` / `argstrs[0]`
+fn option_result_js_return(
+    ts: &[Arc<CType>],
+    deps: &mut OrderedHashMap<String, String>,
+    is_empty_fn: impl FnOnce() -> bool,
+    empty: String,
+    argstrs: &[String],
+) -> Option<Result<String, Box<dyn std::error::Error>>> {
+    codegen::handle_option_result_symmetry(
+        ts,
+        deps,
+        is_empty_fn,
+        |_kind, _| Ok(empty),
+        |_kind, d| {
+            let (_, dd) = typen::ctype_to_jtype(ts[0].clone(), d.clone())?;
+            *d = dd;
+            let (_, dd) = typen::ctype_to_jtype(ts[1].clone(), d.clone())?;
+            *d = dd;
+            Ok(argstrs[0].clone())
+        },
+    )
+}
+
 fn function_codegen_is_async(function: Arc<Function>) -> bool {
     fn microstatement_awaits_for_codegen(ms: &Microstatement, seen: &mut HashSet<usize>) -> bool {
         match ms {
@@ -937,42 +988,7 @@ pub fn from_microstatement(
                                     let inner_type = t.clone().degroup();
                                     match &*inner_type {
                                         CType::Field(n, _) if *n == enum_name => {
-                                            if let Some(res) =
-                                                codegen::handle_option_result_symmetry(
-                                                    ts,
-                                                    &mut deps,
-                                                    || codegen::is_empty_variant(ts, t),
-                                                    |_kind, d| {
-                                                        let (_, dd) = typen::ctype_to_jtype(
-                                                            ts[0].clone(),
-                                                            d.clone(),
-                                                        )?;
-                                                        *d = dd;
-                                                        let (_, dd) = typen::ctype_to_jtype(
-                                                            ts[1].clone(),
-                                                            d.clone(),
-                                                        )?;
-                                                        *d = dd;
-                                                        Ok(format!("{} = null", argstrs[0]))
-                                                    },
-                                                    |_kind, d| {
-                                                        let (_, dd) = typen::ctype_to_jtype(
-                                                            ts[0].clone(),
-                                                            d.clone(),
-                                                        )?;
-                                                        *d = dd;
-                                                        let (_, dd) = typen::ctype_to_jtype(
-                                                            ts[1].clone(),
-                                                            d.clone(),
-                                                        )?;
-                                                        *d = dd;
-                                                        Ok(format!(
-                                                            "{} = {}",
-                                                            argstrs[0], argstrs[1]
-                                                        ))
-                                                    },
-                                                )
-                                            {
+                                            if let Some(res) = option_result_js_assign(ts, &mut deps, t, &argstrs) {
                                                 return Ok((res?, out, deps));
                                             }
                                             return Ok((
@@ -982,42 +998,7 @@ pub fn from_microstatement(
                                             ));
                                         }
                                         CType::Type(n, _) if *n == enum_name => {
-                                            if let Some(res) =
-                                                codegen::handle_option_result_symmetry(
-                                                    ts,
-                                                    &mut deps,
-                                                    || codegen::is_empty_variant(ts, t),
-                                                    |_kind, d| {
-                                                        let (_, dd) = typen::ctype_to_jtype(
-                                                            ts[0].clone(),
-                                                            d.clone(),
-                                                        )?;
-                                                        *d = dd;
-                                                        let (_, dd) = typen::ctype_to_jtype(
-                                                            ts[1].clone(),
-                                                            d.clone(),
-                                                        )?;
-                                                        *d = dd;
-                                                        Ok(format!("{} = null", argstrs[0]))
-                                                    },
-                                                    |_kind, d| {
-                                                        let (_, dd) = typen::ctype_to_jtype(
-                                                            ts[0].clone(),
-                                                            d.clone(),
-                                                        )?;
-                                                        *d = dd;
-                                                        let (_, dd) = typen::ctype_to_jtype(
-                                                            ts[1].clone(),
-                                                            d.clone(),
-                                                        )?;
-                                                        *d = dd;
-                                                        Ok(format!(
-                                                            "{} = {}",
-                                                            argstrs[0], argstrs[1]
-                                                        ))
-                                                    },
-                                                )
-                                            {
+                                            if let Some(res) = option_result_js_assign(ts, &mut deps, t, &argstrs) {
                                                 return Ok((res?, out, deps));
                                             }
                                             return Ok((
@@ -1090,27 +1071,7 @@ pub fn from_microstatement(
                                             if inner_type.clone().to_callable_string()
                                                 == enum_name =>
                                         {
-                                            if let Some(res) =
-                                                codegen::handle_option_result_symmetry(
-                                                    ts,
-                                                    &mut deps,
-                                                    || codegen::is_empty_variant(ts, t),
-                                                    |_, _| Ok("null".to_string()),
-                                                    |_, d| {
-                                                        let (_, dd) = typen::ctype_to_jtype(
-                                                            ts[0].clone(),
-                                                            d.clone(),
-                                                        )?;
-                                                        *d = dd;
-                                                        let (_, dd) = typen::ctype_to_jtype(
-                                                            ts[1].clone(),
-                                                            d.clone(),
-                                                        )?;
-                                                        *d = dd;
-                                                        Ok(argstrs[0].clone())
-                                                    },
-                                                )
-                                            {
+                                            if let Some(res) = option_result_js_return(ts, &mut deps, || codegen::is_empty_variant(ts, t), "null".to_string(), &argstrs) {
                                                 return Ok((res?, out, deps));
                                             }
                                             return Ok((argstrs[0].clone(), out, deps));
@@ -1119,79 +1080,19 @@ pub fn from_microstatement(
                                             if inner_type.clone().to_callable_string()
                                                 == enum_name =>
                                         {
-                                            if let Some(res) =
-                                                codegen::handle_option_result_symmetry(
-                                                    ts,
-                                                    &mut deps,
-                                                    || codegen::is_empty_variant(ts, t),
-                                                    |_, _| Ok("null".to_string()),
-                                                    |_, d| {
-                                                        let (_, dd) = typen::ctype_to_jtype(
-                                                            ts[0].clone(),
-                                                            d.clone(),
-                                                        )?;
-                                                        *d = dd;
-                                                        let (_, dd) = typen::ctype_to_jtype(
-                                                            ts[1].clone(),
-                                                            d.clone(),
-                                                        )?;
-                                                        *d = dd;
-                                                        Ok(argstrs[0].clone())
-                                                    },
-                                                )
-                                            {
+                                            if let Some(res) = option_result_js_return(ts, &mut deps, || codegen::is_empty_variant(ts, t), "null".to_string(), &argstrs) {
                                                 return Ok((res?, out, deps));
                                             }
                                             return Ok((argstrs[0].clone(), out, deps));
                                         }
                                         CType::Field(n, _) if *n == enum_name => {
-                                            if let Some(res) =
-                                                codegen::handle_option_result_symmetry(
-                                                    ts,
-                                                    &mut deps,
-                                                    || codegen::is_empty_variant(ts, t),
-                                                    |_, _| Ok("null".to_string()),
-                                                    |_, d| {
-                                                        let (_, dd) = typen::ctype_to_jtype(
-                                                            ts[0].clone(),
-                                                            d.clone(),
-                                                        )?;
-                                                        *d = dd;
-                                                        let (_, dd) = typen::ctype_to_jtype(
-                                                            ts[1].clone(),
-                                                            d.clone(),
-                                                        )?;
-                                                        *d = dd;
-                                                        Ok(argstrs[0].clone())
-                                                    },
-                                                )
-                                            {
+                                            if let Some(res) = option_result_js_return(ts, &mut deps, || codegen::is_empty_variant(ts, t), "null".to_string(), &argstrs) {
                                                 return Ok((res?, out, deps));
                                             }
                                             return Ok((argstrs[0].clone(), out, deps));
                                         }
                                         CType::Type(n, _) if *n == enum_name => {
-                                            if let Some(res) =
-                                                codegen::handle_option_result_symmetry(
-                                                    ts,
-                                                    &mut deps,
-                                                    || codegen::is_empty_variant(ts, t),
-                                                    |_, _| Ok("null".to_string()),
-                                                    |_, d| {
-                                                        let (_, dd) = typen::ctype_to_jtype(
-                                                            ts[0].clone(),
-                                                            d.clone(),
-                                                        )?;
-                                                        *d = dd;
-                                                        let (_, dd) = typen::ctype_to_jtype(
-                                                            ts[1].clone(),
-                                                            d.clone(),
-                                                        )?;
-                                                        *d = dd;
-                                                        Ok(argstrs[0].clone())
-                                                    },
-                                                )
-                                            {
+                                            if let Some(res) = option_result_js_return(ts, &mut deps, || codegen::is_empty_variant(ts, t), "null".to_string(), &argstrs) {
                                                 return Ok((res?, out, deps));
                                             }
                                             return Ok((argstrs[0].clone(), out, deps));
@@ -1199,31 +1100,7 @@ pub fn from_microstatement(
                                         CType::Binds(n, ..) => {
                                             match &**n {
                                                 CType::TString(s) if *s == enum_name => {
-                                                    if let Some(res) =
-                                                        codegen::handle_option_result_symmetry(
-                                                            ts,
-                                                            &mut deps,
-                                                            || codegen::is_empty_variant(ts, t),
-                                                            |_, _| {
-                                                                Ok(format!("{} = null", argstrs[0]))
-                                                            },
-                                                            |_, d| {
-                                                                let (_, dd) =
-                                                                    typen::ctype_to_jtype(
-                                                                        ts[0].clone(),
-                                                                        d.clone(),
-                                                                    )?;
-                                                                *d = dd;
-                                                                let (_, dd) =
-                                                                    typen::ctype_to_jtype(
-                                                                        ts[1].clone(),
-                                                                        d.clone(),
-                                                                    )?;
-                                                                *d = dd;
-                                                                Ok(argstrs[0].clone())
-                                                            },
-                                                        )
-                                                    {
+                                                    if let Some(res) = option_result_js_return(ts, &mut deps, || codegen::is_empty_variant(ts, t), format!("{} = null", argstrs[0]), &argstrs) {
                                                         return Ok((res?, out, deps));
                                                     }
                                                     return Ok((argstrs[0].clone(), out, deps));
@@ -1234,21 +1111,9 @@ pub fn from_microstatement(
                                                             super::register_nodejs_dependency(
                                                                 d, &mut deps,
                                                             );
-                                                            if let Some(res) = codegen::handle_option_result_symmetry(
-                                                             ts,
-                                                             &mut deps,
-                                                             || matches!(&**t, CType::Void),
-                                                             |_, _| Ok("null".to_string()),
-                                                             |_, dd| {
-                                                                 let (_, ddd) = typen::ctype_to_jtype(ts[0].clone(), dd.clone())?;
-                                                                 *dd = ddd;
-                                                                 let (_, ddd) = typen::ctype_to_jtype(ts[1].clone(), dd.clone())?;
-                                                                 *dd = ddd;
-                                                                 Ok(argstrs[0].clone())
-                                                             },
-                                                         ) {
-                                                             return Ok((res?, out, deps));
-                                                         }
+                                                            if let Some(res) = option_result_js_return(ts, &mut deps, || matches!(&**t, CType::Void), "null".to_string(), &argstrs) {
+                                                                return Ok((res?, out, deps));
+                                                            }
                                                             return Ok((
                                                                 argstrs[0].clone(),
                                                                 out,
@@ -1261,21 +1126,9 @@ pub fn from_microstatement(
                                                                     .clone()
                                                                     .to_callable_string() =>
                                                         {
-                                                            if let Some(res) = codegen::handle_option_result_symmetry(
-                                                             ts,
-                                                             &mut deps,
-                                                             || matches!(&**t, CType::Void),
-                                                             |_, _| Ok("null".to_string()),
-                                                             |_, dd| {
-                                                                 let (_, ddd) = typen::ctype_to_jtype(ts[0].clone(), dd.clone())?;
-                                                                 *dd = ddd;
-                                                                 let (_, ddd) = typen::ctype_to_jtype(ts[1].clone(), dd.clone())?;
-                                                                 *dd = ddd;
-                                                                 Ok(argstrs[0].clone())
-                                                             },
-                                                         ) {
-                                                             return Ok((res?, out, deps));
-                                                         }
+                                                            if let Some(res) = option_result_js_return(ts, &mut deps, || matches!(&**t, CType::Void), "null".to_string(), &argstrs) {
+                                                                return Ok((res?, out, deps));
+                                                            }
                                                             return Ok((
                                                                 argstrs[0].clone(),
                                                                 out,
