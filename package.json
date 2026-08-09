@@ -41,7 +41,7 @@
     "@rollup/plugin-terser": "^1.0.0",
     "@types/uuid": "^11.0.0",
     "http-server": "^14.1.1",
-    "playwright": "^1.62.0",
+    "playwright": "^1.62.1",
     "rollup": "4.x"
   }
 }
