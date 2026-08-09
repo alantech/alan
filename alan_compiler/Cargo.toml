@@ -14,4 +14,4 @@ edition.workspace = true
 [dependencies]
 nom = "8.0.0"
 ordered_hash_map = "0.6.0"
-weak-table = "0.3.2"
+weak-table = "0.4.0"
