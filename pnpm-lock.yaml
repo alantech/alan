@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       uuid:
-        specifier: ^14.0.2
-        version: 14.0.2
+        specifier: ^14.0.3
+        version: 14.0.3
     devDependencies:
       '@rollup/plugin-node-resolve':
         specifier: 16.x
@@ -501,8 +501,8 @@ packages:
   url-join@4.0.1:
     resolution: {integrity: sha512-jk1+QP6ZJqyOiuEI9AEWQfju/nB2Pw466kbA0LEZljHwKeMgd9WrAEgEGxjPDD2+TNbbb37rTyhEfrCXfuKXnA==}
 
-  uuid@14.0.2:
-    resolution: {integrity: sha512-xZe/16rV4aa+HGSOCiY2YeLT1OybRLrrkL/Rqaq7p7GMVXjFh+6wN4oMYgjFmnSnhY8t6Xpdl2l9qmnHYuMHwQ==}
+  uuid@14.0.3:
+    resolution: {integrity: sha512-Sc5u1VVln93y1Xnz4R+CunOZc7R9LUcTmhj7Rc7Eg3HVcf7rVn2FOoa812fe0W8p3jD7xeoGSYbfqCGGH2B6xw==}
     hasBin: true
 
   whatwg-encoding@2.0.0:
@@ -641,7 +641,7 @@ snapshots:
 
   '@types/uuid@11.0.0':
     dependencies:
-      uuid: 14.0.2
+      uuid: 14.0.3
 
   acorn@8.17.0: {}
 
@@ -923,7 +923,7 @@ snapshots:
 
   url-join@4.0.1: {}
 
-  uuid@14.0.2: {}
+  uuid@14.0.3: {}
 
   whatwg-encoding@2.0.0:
     dependencies:
