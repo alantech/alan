@@ -38,7 +38,7 @@
   },
   "devDependencies": {
     "@rollup/plugin-node-resolve": "16.x",
-    "@rollup/plugin-terser": "^1.0.0",
+    "@rollup/plugin-terser": "^1.0.2",
     "@types/uuid": "^11.0.0",
     "http-server": "^14.1.1",
     "playwright": "^1.64.1",
